@@ -81,6 +81,32 @@ In an isolated `HOME` first, then on a third-party machine:
 - **No forced migration of the source machine** to the new layout (see "Impact").
 - **Neither the cold corpus nor the embeddings venv**: optional, BM25 is enough by default.
 
+## Recall: one corpus, and weights you can read
+
+Two decisions worth stating, because both were once invisible.
+
+**The indexable corpus is defined once**, in `hooks/brain_corpus.py`. It used to be written
+twice — once per recall engine — under a comment claiming the two were identical. Measured
+on a real trunk, they had drifted by 5 documents. `tests/shared_corpus.py` now rejects any
+engine that writes itself a local copy; the check is static, because comparing two lists
+imported from the same module would be tautological and could never fail.
+
+**The ranking weights live in `config/ranking.json`**, not in the engine. Each weight ships
+with the measurement that justifies it, and `brain_recall.py --explain` decomposes any
+result into the components that actually exist — the BM25 contribution per term, and the
+utility factor as the multiplier it really is. It publishes no invented component: a number
+nobody computes would be worse than no explanation, because it would be trusted.
+
+The file is optional. Absent, unreadable or truncated, recall falls back on defaults that
+are exactly the previously hardcoded values — a configuration must never be able to break
+recall. It is part of the index fingerprint, so changing a weight rebuilds the index instead
+of silently serving one scored under the old rules.
+
+One knob ships OFF: `index.family_bridge_weight`, the vocabulary bridge between notes of the
+same thematic family. At weight 1, on a 15-case golden set over a real trunk, it demoted the
+note that literally answers the query from 1st to 2nd place and promoted an off-topic one.
+The mechanism is there; turning it up is a decision that owes a measurement.
+
 ## Approach
 
 ### 1. The structural decision: separate the ENGINE from the TRUNK

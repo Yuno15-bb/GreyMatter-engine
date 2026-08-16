@@ -1,0 +1,35 @@
+{
+  "_readme": "The recall ranking weights, lifted out of hooks/brain_recall.py. Until they moved here nobody could read them without reading the engine, and no result could say where its score came from. NOTHING CHANGED IN BEHAVIOUR when they moved out: the values below are exactly the ones that were hardcoded, and tests/golden_recall-style barriers check that per query, not just on averages. JSON and not TOML: the system python3 can be 3.9, which has no tomllib, and this project keeps its zero-dependency rule. If this file disappears, recall falls back on these same defaults — it can never break because of its configuration.",
+
+  "_before_touching_a_weight": "Measure BEFORE, change, measure AFTER — per query, never only on averages. A weight that wins on one query and breaks fifteen others is exactly what this guard exists to catch, and three aggregates (P@1, P@3, MRR) cannot see two queries swapping their outcomes. If the reference has to move, that is a decision and it gets written down; it is not something you work around by editing the baseline.",
+
+  "version": "ranking-v1",
+
+  "index": {
+    "_why": "Weights applied to the INDEXED TEXT, not to the score: the name and the description are repeated N times in the tokenised document. ⚠️ Touching this section changes the index, so it invalidates the cache — that is deliberate and automatic, since this file is part of the index fingerprint.",
+    "name_weight": 3,
+    "description_weight": 3,
+    "family_bridge_weight": 0,
+    "_why_the_bridge_ships_at_0": "The bridge lets a note inherit the vocabulary of the thematic family it is tagged with (meta/familles.json) — the words people actually type but the notes do not use. The MECHANISM is here and configurable; it is OFF by default for two measured reasons. First, this package does not ship meta/familles.json yet, so the axis has nothing to read. Second, at weight 1 on a 15-case golden set over a real trunk, it demoted the note that literally answers the query from 1st to 2nd place and promoted an off-topic one: P@1 0.7333 -> 0.6667, MRR 0.8000 -> 0.7667. The bridge must catch what the words miss, never cover what they find. Turning it up is a decision that owes a measurement."
+  },
+
+  "bm25": {
+    "_why": "Standard Okapi BM25 parameters. k1 = saturation of a term's frequency, b = strength of the document-length normalisation. Never tuned for this corpus — these are the reference values from the literature.",
+    "k1": 1.5,
+    "b": 0.75
+  },
+
+  "utility": {
+    "_why": "Usage multiplier: score x (1 + alpha x log(1 + hits)), where hits = a note that was suggested AND actually opened in the same session. Logarithmic — the first hit weighs a lot, the tenth almost nothing.",
+    "alpha": 0.2,
+    "_why_0_2": "MEASURED, not picked. Share of the top-3 held by notes with a history, over 10 queries: alpha=0 -> 3/30 · 0.2 -> 8/30 · 0.5 -> 12/30 · 1.0 -> 15/30. Past ~0.3 the history dictates the ranking and the lexical score is no longer the judge. 0.2 = usage breaks ties without dominating."
+  },
+
+  "exploration": {
+    "_why": "Slots reserved for seldom-seen notes, to break the self-reinforcing loop the utility multiplier mechanically creates. ⚠️ INSEPARABLE from utility.alpha: setting alpha > 0 without exploration IS the defect, not the feature.",
+    "denominator": 3,
+    "_denominator": "1 slot in N. At 3 with k=3, one slot in three. The 5-10% quota of recommender systems would be ZERO here: on k=3, 5% rounds down to nothing and the rule would be decorative.",
+    "rarely_suggested_threshold": 3,
+    "_threshold": "Below this number of suggestions a note counts as seldom seen and earns an exploration slot."
+  }
+}
