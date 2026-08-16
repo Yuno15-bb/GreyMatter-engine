@@ -229,5 +229,39 @@ class WritingAgentsKnowTheEngineIsOffLimits(unittest.TestCase):
         self.assertIn("You do NOT touch note content", self._brief("mechanic"))
 
 
+class ResumeDetectorStaysAudible(unittest.TestCase):
+    """INVARIANT: the resume-point detector still FINDS a real resume point.
+
+    WHY THIS GUARD LANDS BEFORE THE FILTER IT GUARDS. The French branch narrows
+    `best_marker` so a struck-through or negated marker stops counting as work to
+    resume ("nothing left to do", "~~to resume~~ — ABANDONED"). Measured here on
+    2026-08-16, this engine reports 6 false positives out of 6 on those sentences,
+    so the filter is a real improvement and it is coming.
+
+    But a filter that over-matches "passes" by finding NOTHING AT ALL, and a mute
+    detector is the failure, not the success — it would report a clean trunk for
+    ever. So the anti-mute half is installed FIRST, while the detector is still
+    permissive and this test is green for the right reason. When the filter lands,
+    this test is already standing behind it.
+
+    The fixtures are French because the markers the detector matches are French —
+    they are the user's notes, not this codebase's UI.
+    """
+
+    REAL_MARKERS = (
+        "## RESTE À FAIRE : brancher le token Notion du compte partagé",   # i18n-ok
+        "Point de reprise : finir la refonte de l'interface",              # i18n-ok
+        "Réglé le lot A ; RESTE À FAIRE : le lot B",                       # i18n-ok
+        "## À faire\n- brancher le webhook",                               # i18n-ok
+        "À faire : relancer l'export",                                     # i18n-ok
+    )
+
+    def test_a_real_resume_point_is_still_detected(self):
+        import brain_anticipate as ba
+        for line in self.REAL_MARKERS:
+            self.assertIsNotNone(ba.best_marker(line),
+                                 f"real resume point lost: {line!r}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
