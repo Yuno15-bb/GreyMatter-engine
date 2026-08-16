@@ -14,7 +14,7 @@ Deterministic and free of external dependencies. Always exits 0 (never blocks a 
 """
 import os, re, json, sys
 
-BRAIN = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 OUT = os.path.join(BRAIN, "planet", "graph.json")
 EMBED2 = os.path.join(BRAIN, "state", "embed2.json")   # SEMANTIC map, computed by brain_embed2.py
 COACT = os.path.join(BRAIN, "state", "coactivation.json")  # working memory, computed by coactivation.py
@@ -149,6 +149,33 @@ def frontmatter(text):
     return ""
 
 
+EN_CLAIR = re.compile(r'^##[ \t]+En clair[ \t]*$(.*?)(?=^## |\Z)', re.M | re.S)  # i18n-ok
+
+
+def extract_en_clair(text):
+    """The note's "## En clair" block — the plain-language register, jargon-free.
+
+    ONE file, not two. Two hand-maintained files always drift; after a month there are two
+    truths, therefore none. The block lives INSIDE the note and the viewer decides what to
+    show first: the panel shows the whole block, the hover shows its first paragraph.
+
+    Returns None when a note has no such block — the panel then falls back on `desc`, which
+    is what the viewer already does.
+
+    The heading stays in French because it is the convention of the NOTES themselves, not a
+    string of this codebase; the notes are the user's, in the user's language.
+    """
+    m = EN_CLAIR.search(text)
+    if not m:
+        return None
+    txt = re.sub(r"\[\[([^\]]+)\]\]", r"\1", m.group(1))
+    txt = txt.replace("**", "").replace("`", "")
+    # The file's line breaks serve reading the .md, not the display: re-join paragraphs and
+    # keep only the real breaks (a blank line).
+    paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", txt) if p.strip()]
+    return "\n\n".join(paras) or None
+
+
 def clean_body(text):
     """The note body stripped of markdown → a long readable explanation for the expanded panel."""
     body = text
@@ -228,6 +255,11 @@ def scan():
                 nodes[nid] = {"id": nid, "name": nid, "title": title, "domain": domain,
                               "group": group, "desc": desc,
                               "born_from": born, "scale": scale,
+                              # The plain-language register, shown FIRST by the viewer: the
+                              # panel renders the whole block, the hover its first paragraph.
+                              # It was read at five sites in planet/index.html and produced
+                              # nowhere, so the register was invisible in the map.
+                              "en_clair": extract_en_clair(text),
                               "long": clean_body(text),
                               "embed2": embed2.get(rel_file),   # semantic [x,y] or None
                               "heat": heat.get(nid, 0.0),        # usage heat 0..1
@@ -310,7 +342,8 @@ def scan():
                    "convictions": sum(1 for n in nodes.values() if n.get("conviction")),
                    "media": sum(1 for n in nodes.values() if n.get("media")),
                    "active": sum(1 for n in nodes.values() if n.get("active")),
-                   "resume": sum(1 for n in nodes.values() if n.get("resume"))},
+                   "resume": sum(1 for n in nodes.values() if n.get("resume")),
+                   "en_clair": sum(1 for n in nodes.values() if n.get("en_clair"))},
         "domains": DOMAINS,
         # LIVE ACTIVITY window (minutes): the visualizer fades out a ring whose `active_ts`
         # has left the window on its own, without waiting for a graph regeneration.

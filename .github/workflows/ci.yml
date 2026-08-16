@@ -73,6 +73,10 @@ jobs:
       # Both engines must index the SAME corpus. They drifted by 5 documents
       # under a comment claiming they did not — a comment never turns red.
       - run: python3 tests/shared_corpus.py --check
+      # And the map must understand what the exporter writes. A field read and
+      # never written is `undefined`: one section silently missing from every
+      # panel. It happened to en_clair, at six read sites, for as long as it existed.
+      - run: python3 tests/planet_contract.py --check
       # And the thing the product is FOR: does the right note come back?
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.
