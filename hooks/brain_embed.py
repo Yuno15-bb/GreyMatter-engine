@@ -16,29 +16,18 @@ import os, sys, re, json, glob, hashlib
 import numpy as np
 from model2vec import StaticModel
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+# ⚠️ LE CORPUS N'EST PLUS DÉFINI ICI. Il l'a été, en copie de celui de brain_recall, sous
+# un commentaire qui affirmait « MÊME corpus que brain_recall ». Les deux ont divergé le
+# 2026-08-15 : 458 documents ici contre 393 là-bas, les 65 fiches de `skills/`. Une parité
+# AFFIRMÉE dans un commentaire n'est pas une parité GARANTIE — un commentaire ne rougit
+# jamais. La définition est maintenant importée, et tests/corpus_partage.py la surveille.
+from brain_corpus import (  # noqa: E402
+    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip,
+)
+
 NPZ = os.path.join(BRAIN, "state", "embeddings.npz")
 META = os.path.join(BRAIN, "state", "embeddings.json")
 MODEL = "minishlab/potion-base-8M"
-# dossiers à ignorer — matchés sur les SEGMENTS de chemin (pas en substring :
-# sinon une fiche nommée « capsule-… » serait exclue à tort de l'index). cf. fix 2026-06-27
-# IMPORTANT : MÊME corpus que brain_recall (BM25) — sinon les deux backends ne voient pas les mêmes
-# fiches. On exclut TOUT sessions/ (TIMELINE.md = index de 130+ sessions → matche presque tout = bruit),
-# pas seulement l'archive. cf. [[bm25-recall-exclure-index-catalogues]]
-SKIP_DIRS = {
-    ".git", "node_modules", "capsule", "capsule-v2", "corpus", "audits",
-    "agents", "state", "tools",
-    "archive",   # parité avec brain_recall : deux backends, MÊME corpus
-}
-SKIP_PREFIX = ("sessions",)
-SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-
-
-def _skip(rel):
-    if rel in SKIP_FILES or any(rel.startswith(p) for p in SKIP_PREFIX):
-        return True
-    dirs = rel.split(os.sep)[:-1]               # segments de DOSSIER (hors nom de fichier)
-    return any(d in SKIP_DIRS for d in dirs)
 
 _model = None
 def model():

@@ -16,47 +16,14 @@ Usage :
 import os, re, sys, json, math, glob, hashlib, unicodedata
 from collections import Counter
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
-# on exclut du recall les couches BRUTES/infra — le recall doit remonter le savoir DISTILLÉ
-# (projects/lessons/meta/life), pas les catalogues d'agents, l'état ni le corpus froid.
-#   • sessions/ : TIMELINE.md = index de 80+ sessions, si long qu'il matche presque tout → bruit.
-#   • corpus/   : couche froide (milliers de conversations importées) → noierait le top-k. cf. carte-vivante
-# Matché par SEGMENTS de dossier (pas en substring : sinon une fiche « capsule-… » ou « …-sessions »
-# serait exclue à tort, comme l'ancien bug). cf. [[bm25-recall-exclure-index-catalogues]]
-#   • tools/    : outillage. Le banc de valeur y garde des COPIES du tronc pour ses
-#     conditions ; sans cette exclusion chaque fiche était indexée 5 fois (1 573 docs
-#     au lieu de 312), ce qui fausse l'IDF de tout le corpus et donc tous les scores.
-SKIP_DIRS = {
-    ".git", "node_modules", "capsule", "capsule-v2", "corpus", "audits",
-    "agents", "state", "tools",
-    #   • skills/ : entré dans le tronc le 2026-08-15 (les 24 compétences vivent
-    #     désormais ici, `~/.claude/skills` est un symlink). Ce sont des MODES
-    #     D'EMPLOI et leurs références — de l'outillage, comme `agents/` juste
-    #     au-dessus, pas du savoir distillé. Mesuré à chaud : sans cette ligne,
-    #     438 docs indexés dont **65 venant de skills/** (15 % du corpus), et le
-    #     rappel proposait `skills/blender-motion/references/fcurve-modifiers.md`
-    #     sur la requête « pousse les modifs ». Le déplacement dans le tronc et
-    #     l'exclusion du rappel doivent aller ENSEMBLE : ranger une couche
-    #     d'outillage dans le Brain sans l'exclure ici la fait concurrencer les
-    #     fiches. Les skills restent trouvables par leur fiche,
-    #     [[systeme-skills-standard]]. cf. [[ce-qui-vit-dans-la-config-ne-vit-pas-dans-le-brain]]
-    "skills",
-    # `archive/` = la couche FROIDE (journaux détachés des fiches, cf.
-    # tools/archiver-journal.py). Mesuré le 2026-08-14 : sans cette ligne, un
-    # journal archivé ressortait **en 1re position** devant la fiche courante —
-    # ranger l'historique au froid n'a aucun sens s'il continue de concurrencer
-    # le présent dans la recherche. Sur disque et dans git, hors du rappel.
-    "archive",
-}
-SKIP_PREFIX = ("sessions",)
-SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-
-
-def _skip(rel):
-    if rel in SKIP_FILES or any(rel.startswith(p) for p in SKIP_PREFIX):
-        return True
-    dirs = rel.split(os.sep)[:-1]               # segments de DOSSIER (hors nom de fichier)
-    return any(d in SKIP_DIRS for d in dirs)
+# ⚠️ LA DÉFINITION DU CORPUS N'EST PAS ÉCRITE ICI — elle vit dans brain_corpus.py, et les
+# deux moteurs (BM25 et embeddings) l'importent. Elle a existé en double jusqu'au
+# 2026-08-16 et les deux copies avaient divergé de 65 documents sans que rien ne le voie.
+# Les noms sont ré-exportés tels quels : `br.SKIP_DIRS` reste valide pour ses appelants
+# (tests/pas_de_fuite_evaluation.py notamment).
+from brain_corpus import (  # noqa: E402
+    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip, indexable as _indexable_de,
+)
 STOP = set("""
 au aux avec ce ces dans de des du elle en et eux il je la le les leur lui ma mais me meme
 mes moi mon ne nos notre nous on ou par pas pour qu que qui sa se ses son sur ta te tes toi
@@ -174,13 +141,7 @@ def strip_md(text):
 
 def _indexable():
     """Les .md que le rappel considère, triés — l'entrée de l'empreinte."""
-    out = []
-    for p in glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True):
-        rel = os.path.relpath(p, BRAIN)
-        if not _skip(rel):
-            out.append((rel, p))
-    out.sort()
-    return out
+    return _indexable_de(BRAIN)
 
 
 def _fingerprint(files):
