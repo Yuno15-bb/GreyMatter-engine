@@ -263,5 +263,89 @@ class ResumeDetectorStaysAudible(unittest.TestCase):
                                  f"real resume point lost: {line!r}")
 
 
+class FeedbackProducerAndConsumerAgree(unittest.TestCase):
+    """INVARIANT: what recall_feedback WRITES is what brain_recall READS.
+
+    THE FAILURE THIS EXISTS TO PREVENT. The usage feedback is a contract between two
+    files that never call each other — `recall_feedback.py` writes
+    `state/recall-utility.json`, `brain_recall.py` reads it — so nothing links them but a
+    filename and two key names. Rename the file on one side, or rename `hit`, and the
+    reader finds nothing, falls back to `{}`, and recall keeps working PERFECTLY while the
+    usage multiplier and the exploration quota become inert. No error, no empty result,
+    no log: the feature simply stops existing.
+
+    It is not hypothetical. The French branch renamed this file to `recall-utilite.json`
+    on BOTH sides at once, which is why nothing broke there. A partial migration —
+    new reader, old writer — is what produces the silent version.
+
+    SO THE TEST RUNS THE WHOLE ROUND TRIP, through the real code of both halves: build a
+    trunk, log a suggestion and a read, let the PRODUCER compute, then let the CONSUMER
+    rank and assert the usage actually reached the score. A static comparison of two
+    string constants would pass the day someone changes a key name in both places while
+    breaking the shape.
+
+    RULE THIS ENCODES: any change to the feedback schema must be tested with producer AND
+    consumer together. Neither half is testable alone — alone, each is self-consistent.
+    """
+
+    NOTE = "lessons/a-note.md"
+
+    PROBE = r'''
+import json, os, sys, time
+BRAIN = os.environ["BRAIN_HOME"]
+for d in ("state", "lessons"):
+    os.makedirs(os.path.join(BRAIN, d), exist_ok=True)
+with open(os.path.join(BRAIN, "lessons", "a-note.md"), "w", encoding="utf-8") as f:
+    f.write("---\nname: a-note\ndescription: peculiar vocabulary zzyzx\n---\n\nzzyzx\n")
+
+# One suggestion, then a read in the SAME session: that is what counts as a hit.
+now = int(time.time())
+with open(os.path.join(BRAIN, "state", "recall_log.jsonl"), "w", encoding="utf-8") as f:
+    f.write(json.dumps({"path": "lessons/a-note.md", "sid": "s1", "ts": now}) + "\n")
+with open(os.path.join(BRAIN, "state", "read_log.jsonl"), "w", encoding="utf-8") as f:
+    f.write(json.dumps({"path": "lessons/a-note.md", "sid": "s1", "ts": now + 1}) + "\n")
+
+sys.path.insert(0, os.environ["HOOKS"])
+import recall_feedback as rf
+utility, _ = rf.compute()
+rf.write(rf.UTILITY, utility)                       # the PRODUCER, its own write path
+
+import brain_recall as br                           # the CONSUMER, its own read path
+seen = br._utility()
+records = br.BM25(br.load_corpus()).rank("zzyzx", k=3)
+factor = next((r["utility_factor"] for r in records
+               if r["doc"]["path"] == "lessons/a-note.md"), None)
+print(json.dumps({
+    "produced": utility.get("lessons/a-note.md"),
+    "read_back": seen.get("lessons/a-note.md"),
+    "utility_factor": factor,
+}))
+'''
+
+    def test_the_consumer_reads_what_the_producer_wrote(self):
+        import json as _json
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as trunk:
+            env = dict(os.environ, BRAIN_HOME=trunk, HOOKS=os.path.join(CODE, "hooks"))
+            out = subprocess.run([sys.executable, "-c", self.PROBE],
+                                 capture_output=True, text=True, env=env, timeout=120)
+            self.assertEqual(out.returncode, 0, f"round trip crashed:\n{out.stderr}")
+            got = _json.loads(out.stdout.strip().splitlines()[-1])
+
+        self.assertEqual(got["produced"], {"sugg": 1, "hit": 1},
+                         "the producer no longer computes the {sugg, hit} shape")
+        self.assertEqual(got["read_back"], got["produced"],
+                         "brain_recall does not read back what recall_feedback wrote — "
+                         "the file name or the record shape has drifted between them")
+        # And the contract is not just "the file is readable": the usage must reach the
+        # score. A factor of exactly 1.0 means the reader found the file and understood
+        # nothing in it — the silent failure this test exists for.
+        self.assertIsNotNone(got["utility_factor"], "the note did not come back at all")
+        self.assertGreater(got["utility_factor"], 1.0,
+                           "usage was recorded but does not reach the ranking: the "
+                           "multiplier is inert")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
