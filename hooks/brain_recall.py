@@ -16,29 +16,14 @@ Usage :
 import os, re, sys, json, math, glob, hashlib, unicodedata
 from collections import Counter
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
-# the RAW/infra layers are excluded from recall — recall must surface DISTILLED knowledge
-# (projects/lessons/meta/life), not the agent catalogues, not state, not the cold corpus.
-#   • sessions/ : TIMELINE.md = an index of 80+ sessions, so long it matches almost anything → noise.
-#   • corpus/   : the cold layer (thousands of imported conversations) → would drown the top-k.
-# Matched on folder SEGMENTS (not substrings: otherwise a note named "capsule-…" or "…-sessions"
-# would be wrongly excluded, which is exactly the old bug). cf. [[bm25-recall-exclure-index-catalogues]]
-#   • tools/    : tooling. The value bench keeps COPIES of the trunk there for its
-#     conditions; without this exclusion every note was indexed 5 times (1,573 docs
-#     instead of 312), which skews the IDF of the whole corpus and therefore every score.
-SKIP_DIRS = {
-    ".git", "node_modules", "capsule", "capsule-v2", "corpus", "audits",
-    "agents", "state", "tools",
-}
-SKIP_PREFIX = ("sessions",)
-SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-
-
-def _skip(rel):
-    if rel in SKIP_FILES or any(rel.startswith(p) for p in SKIP_PREFIX):
-        return True
-    dirs = rel.split(os.sep)[:-1]               # FOLDER segments (excluding the file name)
-    return any(d in SKIP_DIRS for d in dirs)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ⚠️ THE CORPUS DEFINITION IS NOT WRITTEN HERE — it lives in brain_corpus.py, and the two
+# engines (BM25 here, embeddings in brain_embed.py) IMPORT it. Two copies had already
+# drifted by 5 documents under a comment claiming they were identical.
+# The names are re-exported as-is: `br.SKIP_DIRS` stays valid for existing callers.
+from brain_corpus import (  # noqa: E402
+    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip, indexable as _indexable_from,
+)
 STOP = set("""
 au aux avec ce ces dans de des du elle en et eux il je la le les leur lui ma mais me meme
 mes moi mon ne nos notre nous on ou par pas pour qu que qui sa se ses son sur ta te tes toi
@@ -158,13 +143,7 @@ def strip_md(text):
 
 def _indexable():
     """The .md files recall considers, sorted — the input to the fingerprint."""
-    out = []
-    for p in glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True):
-        rel = os.path.relpath(p, BRAIN)
-        if not _skip(rel):
-            out.append((rel, p))
-    out.sort()
-    return out
+    return _indexable_from(BRAIN)
 
 
 def _fingerprint(files):

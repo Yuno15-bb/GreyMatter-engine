@@ -70,6 +70,9 @@ jobs:
       # A stale index is worse than a slow one: recall would keep answering,
       # confidently, out of date. This runs first.
       - run: python3 tests/recall_cache.py
+      # Both engines must index the SAME corpus. They drifted by 5 documents
+      # under a comment claiming they did not — a comment never turns red.
+      - run: python3 tests/shared_corpus.py --check
       # And the thing the product is FOR: does the right note come back?
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.

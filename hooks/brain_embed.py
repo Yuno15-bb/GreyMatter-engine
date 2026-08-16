@@ -16,28 +16,16 @@ import os, sys, re, json, glob, hashlib
 import numpy as np
 from model2vec import StaticModel
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ⚠️ THE CORPUS DEFINITION IS NOT WRITTEN HERE — it lives in brain_corpus.py, imported by
+# both engines. This file used to keep its own copy under the comment "IMPORTANT: the SAME
+# corpus as brain_recall". The two had drifted by 5 documents (all of tools/), and the
+# comment could not turn red. Asserting parity is not guaranteeing it.
+from brain_corpus import BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip  # noqa: E402,F401
+
 NPZ = os.path.join(BRAIN, "state", "embeddings.npz")
 META = os.path.join(BRAIN, "state", "embeddings.json")
 MODEL = "minishlab/potion-base-8M"
-# folders to ignore — matched on path SEGMENTS (not substrings:
-# otherwise a note named "capsule-…" would be wrongly excluded from the index).
-# IMPORTANT: the SAME corpus as brain_recall (BM25) — otherwise the two backends do not see the same
-# fiches. On exclut TOUT sessions/ (TIMELINE.md = index de 130+ sessions → matche presque tout = bruit),
-# pas seulement l'archive. cf. [[bm25-recall-exclure-index-catalogues]]
-SKIP_DIRS = {
-    ".git", "node_modules", "capsule", "capsule-v2", "corpus", "audits",
-    "agents", "state",
-}
-SKIP_PREFIX = ("sessions",)
-SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-
-
-def _skip(rel):
-    if rel in SKIP_FILES or any(rel.startswith(p) for p in SKIP_PREFIX):
-        return True
-    dirs = rel.split(os.sep)[:-1]               # segments de DOSSIER (hors nom de fichier)
-    return any(d in SKIP_DIRS for d in dirs)
 
 _model = None
 def model():
