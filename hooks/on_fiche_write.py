@@ -20,11 +20,26 @@ try:
 except Exception:
     def write_status(*a, **k): pass
 
-BRAIN = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 MAP_RELS = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
 INBOX_HEADER = "## 🆕 Inbox — notes to file (auto)"
+
+# The `metadata.type` vocabulary. THESE FOUR ARE NOT CHOSEN HERE: they are the ones the
+# writing agents are told to use, in agents/*.md ("type: user | feedback | project |
+# reference"). tests/type_vocabulary.py compares the two lists so they cannot drift — a
+# vocabulary written down twice is a vocabulary that will disagree with itself.
+#
+# WHY ONLY LOG, NEVER REFUSE. This hook's golden rule is that it never blocks. An unknown
+# type is almost always a typo or an invention, not a catastrophe; what costs is that it
+# passes IN SILENCE and nobody ever learns the note is mistyped. So it is recorded, and
+# the status line says it once.
+#
+# The French branch runs a fifth value, `lesson`, on the measured grounds that 205 of its
+# notes live in lessons/. That is a real argument, but it is a change to what the agents
+# are told, not a change to this file alone — so it stays a decision, not a drift.
+VALID_TYPES = {"user", "feedback", "project", "reference"}
 
 SECRET = re.compile(
     r'(ntn_[A-Za-z0-9]+|sk-ant-[A-Za-z0-9_-]+|AIza[A-Za-z0-9_-]+|secret_[A-Za-z0-9]+'
@@ -106,6 +121,19 @@ def main(data):
     m = re.search(r'^name:\s*(.+)$', txt, re.M)
     slug = m.group(1).strip() if m else None
     fname = os.path.basename(rel)[:-3]
+
+    # --- 1 bis. an unknown `type:` is recorded, never refused ---
+    try:
+        mt = re.search(r'^\s*type:\s*(\S+)\s*$', txt[:1200], re.M)
+        if mt and mt.group(1) not in VALID_TYPES:
+            import time
+            with open(os.path.join(BRAIN, "state", "unknown-types.jsonl"),
+                      "a", encoding="utf-8") as f:
+                f.write(json.dumps({"ts": int(time.time()), "path": rel,
+                                    "type": mt.group(1)}, ensure_ascii=False) + "\n")
+            write_status("busy", "correcting", f"unknown type '{mt.group(1)}' in {fname}")
+    except Exception:
+        pass        # never block: a wobbly frontmatter must not cost a note its save
 
     # --- 2. guarantee presence on the composed map ---
     try:

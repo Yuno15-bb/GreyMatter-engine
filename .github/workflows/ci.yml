@@ -77,6 +77,13 @@ jobs:
       # never written is `undefined`: one section silently missing from every
       # panel. It happened to en_clair, at six read sites, for as long as it existed.
       - run: python3 tests/planet_contract.py --check
+      # And what the write hook does to a note the moment it lands: masking,
+      # Inbox, unknown type, and the golden rule that it never blocks. Three of
+      # those effects are wrapped in try/except, so a broken one is silent.
+      - run: python3 tests/fiche_write_contract.py --check
+      # The type vocabulary is written in the hook AND in the agent briefs.
+      # Two copies of a contract always end up disagreeing.
+      - run: python3 tests/type_vocabulary.py --check
       # And the thing the product is FOR: does the right note come back?
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.

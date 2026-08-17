@@ -90,6 +90,16 @@ Connections used to appear on hover. They made a passing panel long enough to
 scroll, under a cursor that was still moving. They are an exploration, not a
 label, so they wait for you to decide to stop.
 
+`for you` comes from the note itself: the exporter lifts its `## En clair` block
+into the graph, the panel shows the whole block and the hover shows its first
+paragraph. A note without that block simply falls back on its summary.
+
+That last paragraph described the intent long before it described the code: the
+viewer read the field at six places and the exporter produced it nowhere, so the
+section was empty in every panel and nothing said so. `tests/planet_contract.py`
+now runs the real exporter and refuses any field the viewer reads and the
+exporter does not write — a promise in a document cannot turn red, a test can.
+
 <table>
 <tr>
 <td width="50%"><img src="media/planet-hover.webp" alt="The hover panel: region, title, a two-line summary and the file path — no connection list" width="100%"></td>
