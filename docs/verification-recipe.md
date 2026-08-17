@@ -80,15 +80,32 @@ grep, and only reading catches them.
 
 ## 5. Capsule
 
+⚠️ **The procedure that used to be written here did not exist.** It told you to
+`touch /tmp/cap_shot_req` and read `/tmp/cap.png`; grepping the whole tree on
+2026-08-17 found that string in this file and nowhere else. The documented way to
+verify the capsule could not be run, and nobody noticed because nobody ran it.
+What follows is the mechanism that was then built, and exercised.
+
 ```bash
-HOME=$T CAPSULE_DEV=1 <repo>/capsule/node_modules/.bin/electron <repo>/capsule \
-  --user-data-dir=$T/electron-data &
+export CBRAIN_PROBE_OUT=$T/probe.json      # opt-in; nothing is written without it
+HOME=$T "$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
+  "$ENGINE/capsule" --user-data-dir=$T/electron-data &
 HOME=$T python3 $T/.c-brain/trunk/hooks/brain_status.py busy distilling "test"
-sleep 3; touch /tmp/cap_shot_req; sleep 3   # → /tmp/cap.png
+sleep 6; cat $T/probe.json
 ```
 
-**Expected**: the capture shows `DISTILLING` plus the detail. Switch back to
-`idle` and the next capture shows `IDLE`.
+**Expected**: `state_text: "DISTILLING..."`, `detail_text: "test"`,
+`state_visible: true`, `renderer_ready: "complete"`, and `engine_dir` pointing
+under `~/.c-brain/versions/`. Set `idle` and both texts go empty with
+`state_visible: false` — measured, and that difference is what makes the probe a
+sensor rather than a constant.
+
+> ⚠️ **This is the RENDERER's opinion, not the screen.** It says what the DOM
+> holds. A renderer can be certain it is drawing an orb nobody can see, and — the
+> trap this whole section exists for — a screenshot can show an orb no renderer
+> is drawing, because macOS keeps ghost layers. The two observables do not
+> substitute for one another. The pixel half is `tests/a1_capsule_pixel.sh`, and
+> it refuses to run until it has proved its own sensor can see.
 
 > `--user-data-dir` is mandatory: without it the second instance quits silently
 > because of the single-instance lock, and you think the capsule is broken.

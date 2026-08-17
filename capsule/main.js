@@ -241,6 +241,64 @@ app.whenReady().then(() => {
   watchPower();    // real pause when the screen sleeps or the session locks
   heartbeat(); setInterval(heartbeat, HEARTBEAT);   // proof of life of the WINDOW
 
+  // ─── THE DIAGNOSTIC CHANNEL ────────────────────────────────────────────────
+  //
+  // WHY IT EXISTS. `docs/verification-recipe.md` told the reader to `touch
+  // /tmp/cap_shot_req` and read `/tmp/cap.png`. No such mechanism was ever in
+  // this repository — the documented way to verify the capsule could not be run,
+  // and nobody noticed because nobody ran it. Found on 2026-08-17 by grepping the
+  // whole tree for the string the recipe prescribes.
+  //
+  // WHAT IT IS, AND WHAT IT IS NOT. It reports what the RENDERER believes it is
+  // displaying: the state label, whether that label is visible, the detail, the
+  // code pad, and whether the orb object exists. That is one observable.
+  //
+  // ⚠ IT IS NOT A SUBSTITUTE FOR THE PIXEL. A renderer can be certain it is
+  // drawing an orb that no one can see — the window may be off-screen, occluded,
+  // or fully transparent. And the converse trap is the one this whole verification
+  // exists for: macOS keeps GHOST LAYERS of these windows, so a screenshot can
+  // show an orb that no renderer is drawing. Neither observable can stand in for
+  // the other, which is exactly why both are collected.
+  //
+  // Opt-in by environment variable, so nothing is written in normal use.
+  if (process.env.CBRAIN_PROBE_OUT) {
+    const OUT = process.env.CBRAIN_PROBE_OUT;
+    const probe = () => {
+      if (!win || win.isDestroyed()) return;
+      // Read from the DOM, in the renderer. Not from main's own idea of the
+      // state: main's idea is the INPUT. Asking it what it displays would be
+      // asking the question to the answer.
+      win.webContents.executeJavaScript(`(() => {
+        const el = (id) => document.getElementById(id);
+        const seen = (id) => { const e = el(id); return !!e && e.classList.contains('vu'); };
+        const c = el('c');
+        return {
+          renderer_ready: document.readyState,
+          state_text: (el('dit') || {}).textContent || "",
+          state_visible: seen('dit'),
+          detail_text: (el('fiche') || {}).textContent || "",
+          detail_visible: seen('fiche'),
+          pad_visible: seen('pave'),
+          orb_object: typeof window.__orbe,
+          canvas_w: c ? c.width : 0,
+          canvas_h: c ? c.height : 0
+        };
+      })()`, true).then((dom) => {
+        const b = win.getBounds();
+        const payload = Object.assign({
+          ts: Date.now(),
+          // The window as the SYSTEM sees it. A renderer drawing perfectly into
+          // a hidden window is the failure this pair of fields catches.
+          window_visible: win.isVisible(),
+          window_bounds: b,
+          engine_dir: __dirname
+        }, dom);
+        try { fs.writeFileSync(OUT, JSON.stringify(payload, null, 2)); } catch (e) {}
+      }).catch(() => {});
+    };
+    probe(); setInterval(probe, 1000);
+  }
+
   // Hot reload — opt-in: this is a DEVELOPMENT comfort, not a feature of the
   // capsule. In normal use it would hit the disk every second, forever, for a
   // file that never changes.
