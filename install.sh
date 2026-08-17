@@ -144,6 +144,44 @@ else
 fi
 run mkdir -p "$TRUNK/state" "$TRUNK/sessions/archive"
 
+# ─── LOCAL VERSION HISTORY ───────────────────────────────────────────────────
+#
+# ⚠️ THIS IS NOT A BACKUP. It is a local history, on this disk, in this trunk. If
+# the disk dies it dies with it. The package pushes nowhere and never will on its
+# own — a user who puts a remote on their trunk did not ask for their notes to
+# leave at every session end. Say "history", never "backup", or the word does the
+# promising.
+#
+# WHY IT IS CREATED HERE. `hooks/commit_par_zone.py` — the per-zone auto-save
+# that runs at the end of every session — begins with "is this a git repo?" and
+# returns 0 when it is not, printing one line into a log nobody reads. Its own
+# comment called that "the normal case: nobody ran `git init`". So on a default
+# install the shipped protection was INERT, silently, for everyone: the notes
+# were on disk, and nothing kept a history of them. `brain doctor` said so, but
+# only to whoever ran it and read to the end.
+#
+# ⚠️ TRUNK GIT IS NOT ENGINE GIT. The ownership gate added to `brain update`
+# reasons about the ENGINE repo. This one is the user's notes, it has no remote,
+# no tag and no upstream, and nothing about updating may ever look at it.
+if [ "$DRY" != "1" ] && [ ! -e "$TRUNK/.git" ]; then
+  if ! command -v git >/dev/null 2>&1; then
+    warn "git is missing — local version history is OFF."
+    warn "Your notes are still saved as files; nothing keeps their history."
+    warn "Install git, then re-run this installer to turn it on."
+  elif git -C "$TRUNK" init -q >/dev/null 2>&1 \
+       && git -C "$TRUNK" add -A >/dev/null 2>&1 \
+       && git -C "$TRUNK" -c user.email=c-brain@localhost -c user.name="C Brain" \
+              commit -qm "the trunk, as installed" >/dev/null 2>&1; then
+    note dir "$TRUNK/.git"
+    say "+ local version history ON — every session end records what changed"
+    say "  (on this disk only: it is a history, not a backup. \`brain backup\` shows where it stands.)"
+  else
+    warn "could not start the local version history in $TRUNK."
+    warn "Your notes are still saved as files, but nothing records their history."
+    warn "To turn it on by hand:  git -C $TRUNK init"
+  fi
+fi
+
 # ─── 3. The engine, linked into the trunk ────────────────────────────────────
 # The list is NOT inline here any more: cbrain/engine-paths.txt is the single
 # definition, also read by update.sh (to tell engine dirt from user work) and by

@@ -76,9 +76,33 @@ if b and time.time() < b:
     fi
     ;;
   push|backup)
+    # ⚠️ THE NAME OVERPROMISES, and the wording below is what corrects it: this
+    # records a local HISTORY, on this disk. It is not an off-machine backup, and
+    # calling it one would let someone lose a laptop believing otherwise.
+    #
+    # It used to run `git add -A` straight away. On a trunk nobody had `git init`ed
+    # — the state a default install was left in — that printed
+    # "fatal: not a git repository" and exited 128: the command whose name promises
+    # safekeeping answered with a git error and no instruction.
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+      echo "⚠️  This trunk has no local history: it is not a git repository."
+      echo "   Your notes are safe as files — nothing is lost — but nothing records"
+      echo "   what changed, and the per-session auto-save has nothing to write to."
+      echo "   Turn it on:  git -C \"$BRAIN\" init && brain backup"
+      exit 1
+    fi
     git add -A
-    git commit -q -m "manual backup via brain $(date +%F\ %H:%M)" || echo "(nothing to commit)"
-    git push --quiet origin main && echo "✅ pushed to origin/main" || echo "⚠️ push failed (remote?)"
+    # `git commit -q` still prints "On branch main / nothing to commit" on its own
+    # stdout when there is nothing staged, so the quiet flag is not enough.
+    git commit -q -m "manual save via brain $(date +%F\ %H:%M)" >/dev/null 2>&1 \
+      || echo "(nothing new to record)"
+    echo "✅ recorded in the local history ($(git rev-list --count HEAD) entries, on this disk)"
+    # A remote is opt-in and rare: the package never adds one. Staying silent when
+    # there is none avoids reporting a failed push to someone who never wanted one.
+    if git remote get-url origin >/dev/null 2>&1; then
+      git push --quiet origin HEAD && echo "✅ pushed to origin" \
+        || echo "⚠️  push to origin failed — the local history is recorded all the same"
+    fi
     ;;
   selftest)
     bash hooks/selftest.sh
