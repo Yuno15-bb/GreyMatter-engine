@@ -149,6 +149,33 @@ HOME=$T brain update
 > protects users already on that version or later. Think twice before publishing
 > a change to the updater itself.
 
+### What it must REFUSE — the other half of the test
+
+An updater does destructive git: it checks out a release tag over your engine. It
+is allowed to do that **only** on an engine the installer owns, recorded in
+`state/engine-managed` and written only from a clean checkout detached on a
+release tag. Anywhere else it must refuse and change nothing at all.
+
+Point `~/.c-brain/engine` at a repository you work in, and check each refusal:
+
+- [ ] **uncommitted changes** → refuses, names the files, discards nothing;
+- [ ] **on a branch** → refuses; a managed install sits detached on its tag;
+- [ ] **no marker**, and not on a release tag → refuses;
+- [ ] **marker naming another engine** → refuses.
+
+After each one, the repository must be **bit-identical** — HEAD, branch, working
+tree and index:
+
+```bash
+git -C <engine> rev-parse HEAD; git -C <engine> rev-parse --abbrev-ref HEAD
+git -C <engine> write-tree;     git -C <engine> status --porcelain
+```
+
+> Why this half exists: on 2026-08-17 an update run from a sandbox install whose
+> engine pointed at the development repo rewound it past four commits and detached
+> HEAD, and an earlier version discarded uncommitted work under `hooks/` outright.
+> `tests/update_ownership.py` now holds all of it on five real repositories.
+
 ## 9. Publish
 
 ```bash
