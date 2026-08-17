@@ -27,6 +27,13 @@
       ],
       "why": "The translation doc describes the fr → main chain: what is copied, what is rewritten, and by which rules."
     },
+    "docs/UPGRADING.md": {
+      "documents": [
+        "install.sh",
+        "cbrain/update.sh"
+      ],
+      "why": "A one-time upgrade warning about what the OLDER updater does on its last run, plus what the installer and updater do from v1.29.0 on. It watches the two scripts whose behaviour it describes: if either changes, the promise made to somebody mid-upgrade has to be re-read."
+    },
     "docs/install-model.md": {
       "documents": [
         "install.sh",

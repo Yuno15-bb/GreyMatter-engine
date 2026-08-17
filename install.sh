@@ -147,6 +147,9 @@ fi
 # a single git command ever naming a directory somebody works in.
 step "C Brain root (~/.c-brain)"
 run mkdir -p "$CB" "$CB/state"
+# What the engine pointed at BEFORE this run — read now, because we are about to
+# repoint it. Used only to tell a converting installation what just happened.
+PREVIOUS_ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P || true)"
 
 # The version identity, read off the source. A tagged checkout gives `v1.29.0`;
 # a plain clone of `main` gives `v1.28.1-24-g6f28312`. Both are legitimate names
@@ -210,6 +213,25 @@ else
     # The mirror the updater fetches into. It exists so that NO git command in
     # the update path ever names a directory the user created.
     mirror_source "$SOURCE" "$MIRROR"
+    # ─── SAY IT, AT THE ONE MOMENT IT IS TRUE ────────────────────────────────
+    # An installation upgrading from v1.28.1 or earlier arrives here with
+    # `engine` still pointing at the user's own clone, and leaves with it
+    # pointing at a built version. That is a change in what their checkout IS,
+    # and it happens inside an automatic update they did not watch. Saying so
+    # here puts the explanation in the update log, next to the moment it applies
+    # — docs/UPGRADING.md is where they would have to already suspect something
+    # to go looking.
+    if [ -n "${PREVIOUS_ENGINE:-}" ] && [ "$PREVIOUS_ENGINE" != "${ENGINE%/*}" ]; then
+      case "$PREVIOUS_ENGINE/" in
+        "$VERSIONS"/*) : ;;   # already a managed install, nothing to announce
+        *)
+          say "converted: your checkout is now a SOURCE, not the engine"
+          say "  was:  $PREVIOUS_ENGINE (a git checkout C Brain used directly)"
+          say "  now:  $ENGINE (built here, replaceable, never your repository)"
+          say "  \`brain update\` will not touch $PREVIOUS_ENGINE again — see docs/UPGRADING.md"
+          ;;
+      esac
+    fi
     # OWNERSHIP AS PROVENANCE, not as a verdict on a git state: this file says
     # "the installer built the tree under versions/ and may replace it". It names
     # the versions root rather than one version, because the whole point is that

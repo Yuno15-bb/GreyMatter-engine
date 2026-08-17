@@ -1,5 +1,16 @@
 # Installing C Brain
 
+> ### ⚠️ Already running C Brain v1.28.1 or earlier?
+> **Read [docs/UPGRADING.md](docs/UPGRADING.md) before you upgrade.** The updater
+> shipped with older releases may reset uncommitted changes in your engine
+> checkout, once, during the move to v1.29.0. One command tells you whether it
+> concerns you:
+> ```bash
+> git -C ~/.c-brain/engine status --short
+> ```
+> Your notes are not affected — the trunk is a separate directory and no update
+> path writes to it.
+
 ## The short way: ask your agent
 
 Paste this into your CLI (Claude Code or another command-line agent):

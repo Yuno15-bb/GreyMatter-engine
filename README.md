@@ -123,6 +123,10 @@ then run ./install.sh and show me the final verification output.
 
 Or by hand: `git clone … && cd c-brain && ./install.sh`
 
+> **Upgrading from v1.28.1 or earlier?** Read
+> [docs/UPGRADING.md](docs/UPGRADING.md) first — a one-time warning about
+> uncommitted changes in your engine checkout. Your notes are not affected.
+
 **The memory and nothing else** — no Electron window, no 3D globe, no
 background job:
 
