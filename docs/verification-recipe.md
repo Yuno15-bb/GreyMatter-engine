@@ -93,9 +93,30 @@ sleep 3; touch /tmp/cap_shot_req; sleep 3   # → /tmp/cap.png
 > `--user-data-dir` is mandatory: without it the second instance quits silently
 > because of the single-instance lock, and you think the capsule is broken.
 
-> If Electron will not start: its downloader sometimes leaves a truncated
-> archive while still exiting successfully. `install.sh` now detects this and
-> says so. Remedy: delete `capsule/node_modules/electron` and reinstall.
+> If Electron will not start, do **not** reach for `npm install` again — that is
+> the step that fails. Measured on 2026-08-17 (Node 26, npm 11): the archive
+> downloads intact, the postinstall runs, ends in one second, exits 0, and
+> extracts 20 directory entries before stopping at the first real file. `dist/`
+> stays at 256 KB with no `Frameworks/`, and `path.txt` never appears. The binary
+> then aborts with *Library not loaded: Electron Framework*.
+> `install.sh` now unpacks the downloaded archive itself and only reports success
+> after the binary answers `--version`. Re-running the installer is the remedy.
+
+**Do not stop at "the process started".** A half-extracted Electron starts too.
+The chain to check, in order:
+
+- [ ] `…/Electron.app/Contents/MacOS/Electron --version` answers;
+- [ ] `dist/` is ~250 MB and `Frameworks/Electron Framework.framework` exists;
+- [ ] `path.txt` reads exactly `Electron.app/Contents/MacOS/Electron`, **no newline**
+      (electron compares it with a strict `!==`; a stray `\n` makes every later
+      `npm install` redo the extraction that fails);
+- [ ] the process is alive;
+- [ ] the **renderer** loaded and built its DOM — not just the main process.
+
+> ⚠️ **Screenshots of the orb are not a reliable sensor.** macOS keeps ghost
+> layers of these transparent always-on-top windows: a capture taken after every
+> capsule process was killed still showed an orb. Verify the renderer's own DOM,
+> and keep the pixel check for a clean graphics session.
 
 ## 6. Planet
 
