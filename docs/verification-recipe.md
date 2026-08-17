@@ -194,20 +194,40 @@ HOME=$T brain update
 
 ### What it must REFUSE — the other half of the test
 
-An updater does destructive git: it checks out a release tag over your engine. It
-is allowed to do that **only** on an engine the installer owns, recorded in
-`state/engine-managed` and written only from a clean checkout detached on a
-release tag. Anywhere else it must refuse and change nothing at all.
+An updater replaces the engine. It is allowed to do that **only** on an engine
+the installer BUILT — a directory under `~/.c-brain/versions/`, recorded in
+`state/engine-managed`. Anywhere else it must refuse and change nothing at all.
+
+⚠️ This used to read "it checks out a release tag over your engine", and the
+refusals below used to be about git state — dirty, on a branch, not on a tag.
+That was the old model, and inferring ownership from git state is what made the
+documented install permanently un-updatable (chantier #9, 2026-08-17). There is
+no longer any git command in the update path that names a directory a user made.
+See [install-model.md](install-model.md).
 
 Point `~/.c-brain/engine` at a repository you work in, and check each refusal:
 
-- [ ] **uncommitted changes** → refuses, names the files, discards nothing;
-- [ ] **on a branch** → refuses; a managed install sits detached on its tag;
-- [ ] **no marker**, and not on a release tag → refuses;
-- [ ] **marker naming another engine** → refuses.
+- [ ] **no marker** → refuses; there is no adoption path any more;
+- [ ] **engine outside `versions/`** → refuses, even with a valid marker;
+- [ ] **marker naming another root** → refuses;
+- [ ] **`state/engine-dev` present** → refuses **by name**: "Development engine
+      detected", not a generic ownership error — a developer sent looking for a
+      marker to create is being handed the wrong problem;
+- [ ] **the active version no longer matches its `.cbrain-manifest`** → refuses,
+      and does **not** repair it: something wrote to a frozen tree, and
+      overwriting it would destroy whatever that was.
 
-After each one, the repository must be **bit-identical** — HEAD, branch, working
-tree and index:
+And the half that matters just as much — a gate that refuses everywhere is an
+outage, not a fix:
+
+- [ ] a **real managed install** still updates, switches, and rolls back.
+
+`tests/update_ownership.py` runs all of the above in seconds;
+`tests/e2e_install_update.sh` runs the whole chain for real, from `git clone` to
+rollback, and is the only one that proves `install.sh` writes the marker itself.
+
+After each refusal, the repository must be **bit-identical** — HEAD, branch,
+working tree and index:
 
 ```bash
 git -C <engine> rev-parse HEAD; git -C <engine> rev-parse --abbrev-ref HEAD

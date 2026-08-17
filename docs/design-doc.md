@@ -162,7 +162,8 @@ A single `~/claude-brain` mixes code (hooks, agents, capsule, planet) and conten
 in conflict — or in loss.
 
 ```
-~/.c-brain/engine/     ← a clone of C Brain. Code ONLY. git pull cannot conflict.
+~/.c-brain/versions/   ← the installed versions. Immutable exports, code ONLY.
+~/.c-brain/engine/     ← a link to the ACTIVE version. Updating switches this link.
 ~/.c-brain/trunk/        ← the user's trunk. Their notes, their own git. NEVER touched.
     hooks/  → symlink to ~/.c-brain/engine/hooks
     agents/ → symlink to ~/.c-brain/engine/agents
