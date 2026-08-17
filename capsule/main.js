@@ -68,7 +68,19 @@ function heartbeat() {
 const IDLE_BEFORE_HIDE = 60000;
 // Same freshness guard as the renderer: status.json can stay on "busy" with a
 // stale timestamp if an agent dies abruptly.
-const STALE = 30000;
+// THE WINDOW IS NOT DECIDED HERE. It used to be, as a literal — and the renderer
+// held a second literal, and `brain status` a third at 120 s. Three copies of one
+// question, already 4x apart. The number now comes from the file the Python side
+// reads too; the literal below is a fallback for a broken install, not a rival.
+const FRESHNESS = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+function freshnessWindows() {
+  try {
+    const j = JSON.parse(fs.readFileSync(FRESHNESS, 'utf8'));
+    return { live: (j.liveness_stale_seconds || 30) * 1000,
+             activity: (j.activity_stale_seconds || 120) * 1000 };
+  } catch (e) { return { live: 30000, activity: 120000 }; }
+}
+const STALE = freshnessWindows().live;
 let idleSince = null;
 
 function watchStatus() {

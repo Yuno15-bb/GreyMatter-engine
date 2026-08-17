@@ -224,6 +224,15 @@ const { creerOrbe } = await import('./orbe/orbe.js');
 const { reglage }   = await import('./orbe/palettes.js');
 
 const STATUT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
+// The canonical windows, same file as main.js and brain_status.py. Read on each poll
+// rather than cached: the orb runs for days, and a value edited in between should take.
+const FRAICHEUR = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+function fenetresFraicheur() {
+  try {
+    const j = JSON.parse(fs.readFileSync(FRAICHEUR, 'utf8'));
+    return { live: j.liveness_stale_seconds || 30, activity: j.activity_stale_seconds || 120 };
+  } catch (e) { return { live: 30, activity: 120 }; }
+}
 const snoise = await fetch('./orbe/snoise.glsl').then(r => r.text());
 
 const REDUIT = window.matchMedia &&
@@ -558,8 +567,19 @@ function peindrePave() {
 function lire() {
   let st = { state:'idle' };
   try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
-  const frais = (Date.now()/1000 - (st.ts || 0)) < 30;
-  const etat = (st.state === 'busy' && frais) ? (st.activity || 'working') : 'idle';
+  // TWO questions, two timestamps, and they are NOT the same question.
+  //   `ts`          — is Claude still working?     refreshed by every tool (heartbeat)
+  //   `activity_ts` — is this LABEL still current?  set only by whoever knows the activity
+  // Measured on 2026-08-17: `busy / correcting`, 654 s old, while the session had never
+  // stopped. Refreshing everything from the heartbeat would have made the orb announce
+  // "correcting" for the rest of the session — fresh-looking, and false. So a stale label
+  // falls back to the honest word the code already had: `working`.
+  const F = fenetresFraicheur();
+  const frais = (Date.now()/1000 - (st.ts || 0)) < F.live;
+  const actFraiche = (Date.now()/1000 - (st.activity_ts || 0)) < F.activity;
+  const etat = (st.state === 'busy' && frais)
+    ? ((actFraiche && st.activity) || 'working')
+    : 'idle';
   // ⚠ The feed grows WITHOUT the state changing: one agent writes dozens of
   //   times in a row. Keeping this outside the `etat === dernier` guard is the
   //   only way to see anything past each agent's first diff.
