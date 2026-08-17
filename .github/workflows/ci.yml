@@ -84,6 +84,11 @@ jobs:
       # The type vocabulary is written in the hook AND in the agent briefs.
       # Two copies of a contract always end up disagreeing.
       - run: python3 tests/type_vocabulary.py --check
+      # And the doctor: silent on a healthy trunk, one anomaly per category, and
+      # it ANNOUNCES a check it could not run. Its two vocabulary checks import
+      # their reference from the hook that owns it — the test forbids falling
+      # back on a local copy, which would make the doctor a third source of truth.
+      - run: python3 tests/doctor_contract.py --check
       # And the thing the product is FOR: does the right note come back?
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.

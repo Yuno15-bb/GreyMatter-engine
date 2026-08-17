@@ -8,7 +8,31 @@ Checks, without modifying anything:
   4. convention de nom kebab-case,
   5. presence in the map: MEMORY.md + lessons/INDEX.md,
   6. MEMORY.md size under the safe-loading threshold,
-  7. git drift (uncommitted changes).
+  7. git drift (uncommitted changes),
+  8. a `metadata.type` outside the known vocabulary,
+  9. a typed `relations:` entry the graph exporter would silently drop.
+
+DOCTOR DIAGNOSES. IT NEVER REPAIRS, AND IT NEVER DEFINES.
+
+Checks 8 and 9 are about vocabularies, and neither of them is written here. They are
+IMPORTED from the file that owns them:
+
+    metadata.type      hooks/on_fiche_write.py   VALID_TYPES
+    relations:         hooks/graph_export.py     RELATION_TYPES  (+ its own parser)
+
+That is the whole point. A third copy of a vocabulary is a third thing to disagree with,
+and this repository has already met that failure three times in three days: two recall
+engines that silently indexed different corpora, a viewer reading a field its exporter
+never wrote, and a type list living in a hook and in five agent briefs at once. Doctor's
+job is to REPORT a disagreement between existing sources, never to arbitrate one.
+
+WHAT IT DELIBERATELY DELEGATES, because a test already owns it:
+    tests/type_vocabulary.py    the hook's type list == the agent briefs'
+    tests/planet_contract.py    the viewer reads only fields the exporter writes
+    tests/shared_corpus.py      one corpus definition, imported by both engines
+    tests/fiche_write_contract.py   what the write hook does to a note
+Those run in CI, on the repository. Doctor runs on a user's trunk, where the question is
+not "is the engine coherent" but "is this trunk consistent with the engine it has".
 
 Usage :
   brain_doctor.py            → rapport lisible + exit 0 (sain) / 1 (anomalies)
@@ -17,7 +41,22 @@ Usage :
 """
 import os, re, sys, json, subprocess, glob
 
-BRAIN = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# The two vocabularies, imported from the files that OWN them — never restated here.
+# Guarded: a doctor that cannot run because a hook moved would be worse than a doctor
+# that reports one check less. When a vocabulary cannot be reached, the corresponding
+# check is skipped and SAYS SO, rather than passing silently on an empty set.
+try:
+    from on_fiche_write import VALID_TYPES
+except Exception:
+    VALID_TYPES = None
+try:
+    from graph_export import RELATION_TYPES, _REL_BLOCK, _REL_LINE
+except Exception:
+    RELATION_TYPES = _REL_BLOCK = _REL_LINE = None
+
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 MEMORY_WARN_BYTES = 20_000
@@ -92,10 +131,21 @@ def main():
     all_links = set()
     problems = {"dead_links": [], "orphans": [], "frontmatter": [],
                 "naming": [], "off_index": [], "memory_too_heavy": [],
+                "unknown_type": [], "unknown_relation": [], "vocabulary_unreachable": [],
                 # Counted as a real defect: a dirty engine silently blocks every
                 # future update. An unversioned trunk is reported too, but NOT
                 # counted — it is a legitimate choice, only an undisclosed one.
                 "engine_dirty": []}
+
+    # A vocabulary we could not reach means a check DID NOT RUN. Saying so is the whole
+    # difference between "nothing to report" and "I did not look": a guard that goes
+    # quiet when its reference disappears reports a clean trunk for ever.
+    if VALID_TYPES is None:
+        problems["vocabulary_unreachable"].append(
+            "metadata.type — hooks/on_fiche_write.py unreadable, check 8 SKIPPED")
+    if RELATION_TYPES is None:
+        problems["vocabulary_unreachable"].append(
+            "relations — hooks/graph_export.py unreadable, check 9 SKIPPED")
 
     # Structural maps contribute the links they carry, without themselves becoming
     # notes subject to the frontmatter/naming invariants.
@@ -129,6 +179,25 @@ def main():
                     problems["frontmatter"].append(f"{rel} : 'description' manquante")
             if not re.fullmatch(r"[a-z0-9-]+", base):
                 problems["naming"].append(f"{rel}: '{base}' is not kebab-case")
+
+            # 8. a type outside the vocabulary the write hook enforces. The hook records
+            # this at write time; doctor catches the notes that never went through it —
+            # a git clone, a restore, an agent writing around the tool.
+            if VALID_TYPES is not None and fm:
+                t = fm.get("type")
+                if t and t not in VALID_TYPES:
+                    problems["unknown_type"].append(f"{rel} : type='{t}'")
+
+            # 9. a typed relation the exporter would drop. Same parser, same vocabulary
+            # as graph_export: an unknown type is not refused there, it is dropped in
+            # SILENCE, and the qualified link disappears from the map as if never written.
+            if RELATION_TYPES is not None:
+                head = re.match(r"^---\n(.*?)\n---", txt, re.S)
+                block = _REL_BLOCK.search(head.group(1) + "\n") if head else None
+                if block:
+                    for typ, _targets in _REL_LINE.findall(block.group(1)):
+                        if typ not in RELATION_TYPES:
+                            problems["unknown_relation"].append(f"{rel} : '{typ}'")
 
             # 2. orphan (never targeted by a link)
             if base not in INDEX_EXEMPT and base not in all_links:
@@ -221,7 +290,10 @@ def main():
         labels = {"dead_links": "Dead links", "orphans": "Orphans",
                   "frontmatter": "Front matter", "naming": "Naming",
                   "off_index": "Off-map",
-                  "memory_too_heavy": "MEMORY.md too heavy"}
+                  "memory_too_heavy": "MEMORY.md too heavy",
+                  "unknown_type": "Unknown metadata.type",
+                  "unknown_relation": "Relation the exporter would drop",
+                  "vocabulary_unreachable": "Check SKIPPED"}
         for k, lab in labels.items():
             if problems[k]:
                 print(f"  ⚠️  {lab} ({len(problems[k])}): " + ", ".join(map(str, problems[k][:12])))
