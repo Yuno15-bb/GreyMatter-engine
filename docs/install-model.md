@@ -179,11 +179,18 @@ Measured, not assumed — replayed in a sandbox with a laboratory origin, the re
    `engine-managed`, repoints `engine`.
 5. From that moment the clone is a source. Nothing writes to it again.
 
+The installer **says so when it happens**. A conversion changes what somebody's
+checkout IS, inside an automatic update they did not watch, so the notice goes
+into the update log at the moment it applies rather than waiting to be looked up:
+what the checkout was, what the engine is now, and that `brain update` will not
+touch the checkout again. It fires only on a conversion — an ordinary re-install
+is silent, because a notice printed every time stops being read.
+
 Measured end state of the equivalent sequence: `branch main` →
 `detached v1.29.0` → marker written. The conversion self-heals; there is no
 migration script for the user to run.
 
-**The one honest cost, for the release notes.** The old updater has no gate, so
+**The one honest cost, and it has its own document** — [UPGRADING.md](UPGRADING.md). The old updater has no gate, so
 for a user with uncommitted work in their clone, step 2 runs `git checkout -- .`
 one final time and discards it. We cannot fix that from here — it is the code
 already installed. The release note must say, plainly: *commit or stash anything
