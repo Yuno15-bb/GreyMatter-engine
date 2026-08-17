@@ -131,6 +131,12 @@ to trust the sentence you just read.
 - `◉ live in: …` — the regions the current session is working in.
 - `✦ +N notes` — what the trunk has gained.
 - `⚠ N challenged` — what the challenger has put in doubt.
+- `⚠ N relation types were not recognized` — a note declared a typed relation
+  (`relations:` in its front matter) whose type this exporter does not know.
+  **The links are still there and still drawn**: the edge comes from the `[[slug]]`
+  in the body, so only its *qualification* is lost. The bar says how many, once,
+  and never lists them — `brain doctor` names each note and each type. Nothing
+  here decides which vocabulary is right; that decision is deliberately left open.
 
 ---
 
