@@ -61,8 +61,18 @@ changes.
 One exception: `~/.claude/statusline.py` is a **copy** (`install.sh:227`), not a
 link. It is refreshed by the `install.sh` replay that follows every switch.
 
-So a version switch is `ln -sfn` + `mv -f` on a single symlink — one `rename(2)`,
-atomic. There is no window in which half the installation is on the new version.
+So a version switch is `ln -sfn` + **`mv -hf`** on a single symlink — one
+`rename(2)`, atomic. There is no window in which half the installation is on the
+new version.
+
+⚠️ `-h` is not a detail, and leaving it out does not fail — it does something
+else. `~/.c-brain/engine` is a symlink to a DIRECTORY, so plain `mv -f` follows
+it and moves the new link *inside* the old version: the engine never switches,
+and an immutable version quietly gains a stray file that breaks its own manifest.
+Written that way first, and it still looked like it worked — the `install.sh`
+replay relinks the engine afterwards with `rm` + `ln -s`, so the real switch was
+happening non-atomically, in another file, by accident. The end-to-end test found
+it on its second run; no component test could have.
 
 ## Behaviour, command by command
 
