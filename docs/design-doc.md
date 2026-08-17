@@ -119,7 +119,7 @@ So each vocabulary now has exactly one owner, and everyone else imports it:
 | Vocabulary | Owner |
 |---|---|
 | the indexable corpus | `hooks/brain_corpus.py` |
-| `metadata.type` | `hooks/on_fiche_write.py` |
+| `metadata.type` | `hooks/on_fiche_write.py` (see below) |
 | typed `relations:` | `hooks/graph_export.py` |
 | ranking weights | `config/ranking.json` |
 
@@ -129,6 +129,27 @@ and then nobody can say which one is right. The cost of importing rather than re
 that an import can fail, so the doctor announces a check it could not run instead of
 reporting a clean trunk. `tests/doctor_contract.py` makes falling back on a local copy a
 test failure.
+
+### What `metadata.type` means — and what it is not
+
+Five values: `user`, `feedback`, `project`, `reference`, `lesson`. They classify a note by
+**what kind of knowledge it is**, and the writing agents are told this list in
+`agents/*.md`; `tests/type_vocabulary.py` holds the two sides equal, because a vocabulary
+written down twice is one that will disagree with itself.
+
+**It is not the folder.** The two dimensions look alike — there is a `lessons/` folder and
+a `lesson` type — and collapsing them would be a one-way mistake. Measured on a 400-note
+trunk, `lessons/` holds `feedback` 121 · `lesson` 67 · `reference` 54 · `project` 1: most
+of what lives there is not a lesson. Filing says *where you will look for it*; the type
+says *what it is*.
+
+`feedback` and `lesson` are the pair worth stating, since they share that folder: the
+difference is the **origin** — what the user told you, against what was learned by
+measuring something. `lesson` was adopted on that evidence on 2026-08-17, and explicitly
+not on the grounds that a lot of notes live in `lessons/`.
+
+The vocabulary stays **closed**: an unrecognised value is still recorded and still
+reported. Widening it by one word did not turn it into "anything goes".
 
 ## Approach
 
