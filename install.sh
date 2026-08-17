@@ -198,7 +198,53 @@ fi
 step "Capsule (Electron window)"
 capsule_ok() {  # does Electron ACTUALLY respond?
   local bin="$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
-  [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1
+  # ⚠ The whole point is to run a binary that may be broken, and a half-extracted
+  # Electron does not exit — it ABORTS. The shell then reports "Abort trap: 6" on
+  # ITS OWN stderr, past the redirection on the command, so the install printed a
+  # crash trace one line before announcing success. The subshell catches the
+  # shell's own job report; the check itself is unchanged.
+  [ -x "$bin" ] && ( "$bin" --version >/dev/null 2>&1 ) 2>/dev/null
+}
+
+# ─── Repairing an Electron that npm reported as installed ────────────────────
+#
+# MEASURED on 2026-08-17, macOS arm64, Node v26.5.0, npm 11.17:
+#   · the archive downloads fine and `unzip -t` reports no error;
+#   · electron's postinstall RUNS (`> electron@33.4.11 postinstall`), finishes in
+#     ONE second, exits 0, prints nothing;
+#   · with DEBUG=* it extracts 20 directory entries, reaches the first real file
+#     ("opening read stream … electron.icns") and the process simply ends;
+#   · `dist/` is left at 256 KB instead of ~250 MB, with no `Frameworks/` at all,
+#     and `path.txt` — which electron writes only on success — is never created.
+# So the binary exists, is executable, and dies with
+# "Library not loaded: @rpath/Electron Framework.framework/Electron Framework".
+# Reproduced identically on electron 42, so it is not the electron version: the
+# node-side extraction is what broke. The system `unzip` reads the same archive
+# without complaint and yields a runtime that answers `--version`.
+#
+# ⚠ This is a REPAIR, not an architecture. It uses the archive electron already
+# downloaded, and does nothing that electron's own installer would not have done.
+# The capsule's future is not more Electron plumbing, so this stays the smallest
+# thing that makes a fresh install produce a window that opens.
+capsule_repair() {
+  local ed="$ENGINE/capsule/node_modules/electron" ver arch zip
+  [ "$(uname -s)" = "Darwin" ] || return 1        # the only packaging we ship
+  [ -d "$ed" ] || return 1
+  command -v unzip >/dev/null 2>&1 || return 1
+  ver="$(node -p "require('$ed/package.json').version" 2>/dev/null)" || return 1
+  [ -n "$ver" ] || return 1
+  case "$(uname -m)" in arm64) arch=arm64 ;; x86_64) arch=x64 ;; *) return 1 ;; esac
+  # Where @electron/get puts what it downloaded, keyed by a hash we do not need
+  # to recompute: the file name carries the version and the architecture.
+  zip="$(find "$HOME/Library/Caches/electron" -name "electron-v$ver-darwin-$arch.zip" \
+         -print 2>/dev/null | head -1)"
+  [ -n "$zip" ] && [ -f "$zip" ] || return 1
+  rm -rf "$ed/dist" && mkdir -p "$ed/dist" || return 1
+  unzip -q "$zip" -d "$ed/dist" || return 1
+  # ⚠ NO trailing newline. electron's `isInstalled()` compares this file to the
+  # platform path with `!==`, so a stray "\n" makes every later `npm install`
+  # decide the runtime is missing and run the broken download again.
+  printf '%s' 'Electron.app/Contents/MacOS/Electron' > "$ed/path.txt"
 }
 
 if [ "$DO_CAPSULE" = "0" ]; then say "(skipped — --no-capsule)"
@@ -250,11 +296,21 @@ else
     # PROVE it, since capsule_ok has just started the actual binary.
     say "  (npm's \"allow-scripts\" warning above is benign: Electron did start,"
     say "   which is what the line above checks — the binary, not npm's exit code.)"
+  elif capsule_repair && capsule_ok; then
+    # The remedy this branch used to PRINT was the very thing that had just
+    # failed — `npm install` again, which re-runs the extraction that dies. A
+    # remedy that cannot work is worse than none: it sends the reader round the
+    # loop and lets us call the capsule "known flaw, not ours" while a fresh
+    # install ships a window that never opens.
+    say "+ capsule repaired and working ($("$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" --version 2>/dev/null))"
+    say "  (electron's own extraction stopped at the first file and exited 0;"
+    say "   the archive it had already downloaded was unpacked with unzip.)"
   else
-    warn "npm returned, but the Electron binary does not respond."
-    warn "This is a known flaw in its downloader, not in C Brain. Remedy:"
-    warn "  rm -rf $ENGINE/capsule/node_modules/electron && npm --prefix $ENGINE/capsule install"
-    warn "Everything else in C Brain works without the capsule."
+    warn "The Electron binary does not respond, and the archive could not be unpacked."
+    warn "The capsule (the floating orb) will not open. Everything else works."
+    warn "To retry by hand:"
+    warn "  rm -rf $ENGINE/capsule/node_modules && npm --prefix $ENGINE/capsule install"
+    warn "  then re-run this installer — it will unpack what npm downloaded."
   fi
 fi
 

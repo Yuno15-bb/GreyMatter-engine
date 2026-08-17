@@ -18,6 +18,18 @@ const os = require('os');
 let win;
 
 // --- Single instance: one capsule, never a zombie window ------------------
+// ⚠ KNOWN FRICTION, observed 2026-08-17, NOT fixed here on purpose. A second
+//   capsule quits INSTANTLY and SILENTLY: no message, no exit code anyone sees,
+//   nothing in any log. It cost half an hour of chasing a capsule that "would
+//   not start" before the lock turned out to be the reason. It bites whoever
+//   runs two trunks on one machine — a private install and a package checkout,
+//   which is exactly the author's setup — and anyone debugging the orb, since
+//   the fix is invisible while an older instance still holds the lock.
+//   Worse for observation: on macOS the window server keeps ghost layers of
+//   these transparent always-on-top windows, so a killed instance can still be
+//   on screen. Screenshots of the orb are not a reliable sensor.
+//   Left as is because it is not what stops a fresh install from working; the
+//   sensible fix is a line on stderr saying which instance already holds it.
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
