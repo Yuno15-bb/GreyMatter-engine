@@ -590,7 +590,13 @@ function lire() {
   //   line would be frozen on the first note of every pass. Same class of
   //   defect as the pad that would not light back up.
   if (occupe) {
-    const quoi = surQuoi(st.detail);
+    // SAME clock as the label, and deliberately not a third one: `activity` and
+    // `detail` describe ONE operation ("gardening" / "Organizing the tree"), so they
+    // go stale together. Seen on screen on 2026-08-17, and it is the defect the first
+    // fix left behind: the label had honestly fallen back to WORKING… while the line
+    // underneath still read "Organizing the tree". Half a truth is the worse half —
+    // the subtitle is the precise part, so it is the part that misleads.
+    const quoi = actFraiche ? surQuoi(st.detail) : '';
     if (fiche._t !== quoi) { fiche.textContent = quoi; fiche._t = quoi; }
     fiche.classList.toggle('vu', !!quoi);
   } else { fiche.classList.remove('vu'); }

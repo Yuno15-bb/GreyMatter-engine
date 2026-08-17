@@ -177,6 +177,16 @@ def main():
         trouble.append("the orb never reads `activity_ts`: it shows whatever label is in "
                        "the file, however old — the heartbeat would make the lie look fresh")
 
+    # The SUBTITLE is half of the same claim. Gating only the label was the real defect the
+    # first fix shipped: on screen the orb read `WORKING…` — honest — over a line still
+    # reading `Organizing the tree`. The precise half is the one that misleads.
+    detail_gated = re.search(r"actFraiche\s*\?\s*surQuoi\(st\.detail\)", src_orbe)
+    print(f"  {'capsule/orbe.html':20} gates the SUBTITLE too  "
+          f"{'yes' if detail_gated else 'NO'}")
+    if not detail_gated:
+        trouble.append("the subtitle is not gated on activity_ts: the label falls back to "
+                       "`working` while the line under it still names the stale operation")
+
     # ---------- 6. the producer is wired to EVERY tool ----------
     hooks = json.load(open(HOOKS_JSON, encoding="utf-8"))
     post = (hooks.get("hooks") or hooks).get("PostToolUse", [])
