@@ -145,6 +145,28 @@ echo '{"session_id":"t","model":{"display_name":"X"},"workspace":{"current_dir":
 **Expected**: **two** lines, the second showing the file count and the `+`/`−`
 balance.
 
+## 7 bis. The local history — prove the observable, not `.git`
+
+A fresh install must leave a trunk whose changes are recorded, or say plainly that
+they are not. Checking that `.git/` exists proves nothing: what is promised is that
+a note you wrote can be read back.
+
+```bash
+HOME=$T bash install.sh --no-launchd --no-capsule | grep "history"
+# write a note in $T/.c-brain/trunk/lessons/, then:
+python3 $T/.c-brain/trunk/hooks/commit_par_zone.py
+git -C $T/.c-brain/trunk show HEAD:lessons/<your-note>.md
+```
+
+- [ ] the installer states the history is **ON** (or **OFF**, with the reason);
+- [ ] writing a note produces a commit;
+- [ ] `git show` returns the note's **text** — recovering it is the promise;
+- [ ] on a trunk with no git, the save says so and exits **0** (nothing is lost);
+- [ ] `brain backup` on such a trunk **explains**, instead of `fatal: not a git repository`.
+
+> ⚠️ It is a **history**, not a backup: one disk, no remote, and the package pushes
+> nowhere. And **trunk git is not engine git** — `brain update` must never look at it.
+
 ## 8. Updates — the test that matters most
 
 Set up a local bare remote, publish two tags, install the first, write a note,

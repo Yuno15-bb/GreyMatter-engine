@@ -258,6 +258,18 @@ c-brain/
 - `state/`, `planet/graph.json`, `capsule/node_modules/`, `corpus/`, `.venv/` are never committed;
 - `install.sh` run twice yields the same state;
 - **no engine script writes into `lessons|projects|meta|life`** — except the agents, the only legitimate write path, and they go through the user's trunk.
+- **the local history exists before anything relies on it.** `install.sh` starts a git
+  repository in the trunk, and says which way it went. Until 2026-08-17 it did not: a
+  default trunk was unversioned, so the per-session save opened with "is this a repo?" and
+  returned 0 — its own comment called that *"the normal case: nobody ran `git init`"*. The
+  protection shipped, and was inert for everyone. **A protection that is silently inactive
+  is worse than an absent one**: nothing is lost, and someone can believe for weeks that
+  their history is being kept. Either it works, or the user is told it does not.
+  ⚠️ **A local history is not a backup.** One disk, no remote, and the package pushes
+  nowhere — a remote is opt-in. The vocabulary is load-bearing: `brain backup` records a
+  "manual save", because the other word promises off-machine safety this never provided.
+  ⚠️ **Trunk git is not engine git.** The ownership gate that protects `brain update`
+  reasons about the ENGINE repository. Nothing about updating may look at the notes.
 - **the automatic save commits ONE ZONE PER COMMIT** (`hooks/commit_par_zone.py`). It used to be a single `git add -A`: one such commit swallowed nineteen files of an unfinished piece of work, and 612 commits of that shape are in the history. A mixed commit cannot be read back, so the trunk's pre-commit hook refuses them and the automatic save leans on that refusal instead of working around it.
 - **the maintenance loop asks before it spends** (`hooks/quota_probe.py`, surfaced as `brain credit`). An agent pass that starts with no credit left does not fail loudly — it half-runs and marks work as done. The probe is what makes the degraded mode a decision rather than an accident.
 - **prose is held to the same standard as code** (`tests/docs_aligned.py`). Not by reading it — a check that needs a model to decide is not a check — but by asking whether the code a document claims to describe has moved since that document was last edited. `publish.sh` reports it; it does not yet refuse.
