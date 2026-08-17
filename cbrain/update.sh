@@ -172,10 +172,63 @@ latest_tag() {
   git -C "$ENGINE" tag -l 'v*' | grep -E "$rx" | sort -V | tail -1 || true
 }
 
+gate_ownership() {   # every destructive path goes through here, rollback included
+  MANAGED="$STATE/engine-managed"
+
+  refus() {                       # refuse WITHOUT touching HEAD, branch, files or index
+    echo "❌ $1"
+    echo "   The engine at $ENGINE looks like a development checkout, not a"
+    echo "   managed install. Nothing was changed: no checkout, no reset, no branch move."
+    echo "   $2"
+    result "blocked" "${NEW:-}"
+    exit 1
+  }
+
+  # 1. DIRTY — absolute, whatever the path and whoever wrote it. There is no
+  #    version of "I know better" that justifies discarding an unsaved change.
+  if [ -n "$(git -C "$ENGINE" status --porcelain --untracked-files=no)" ]; then
+    echo "❌ The engine has uncommitted changes."
+    echo "   Nothing was changed. Put them away first:  git -C $ENGINE stash"
+    git -C "$ENGINE" status --porcelain --untracked-files=no | head -5 | sed 's/^/     /'
+    result "blocked" "${NEW:-}"
+    exit 1
+  fi
+
+  # 2. ON A BRANCH — a managed install sits DETACHED on its release tag; that is
+  #    what install.sh leaves behind. A checked-out branch means a human works
+  #    here, and `checkout <tag>` would silently strand every commit above the tag.
+  BRANCH_NOW="$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)"
+  if [ "$BRANCH_NOW" != "HEAD" ]; then
+    refus "The engine is on branch '$BRANCH_NOW'." \
+          "Update it with git, or point ~/.c-brain/engine at a managed install."
+  fi
+
+  # 3. NOT OWNED — no marker. Adopt only from a state that can hold no work:
+  #    detached, clean (checked above), and exactly on a published release tag.
+  if [ ! -f "$MANAGED" ]; then
+    if git -C "$ENGINE" describe --tags --exact-match >/dev/null 2>&1; then
+      printf '%s\n' "$ENGINE" > "$MANAGED"      # pre-marker install, adopted
+    else
+      refus "This engine carries no managed-install marker." \
+            "Re-run install.sh from a clean release checkout to hand it over."
+    fi
+  fi
+
+  # 4. The marker must name THIS engine: ~/.c-brain/engine may have been repointed
+  #    at somebody's repo since, and a stale marker must not vouch for it.
+  if [ "$(cat "$MANAGED" 2>/dev/null)" != "$ENGINE" ]; then
+    refus "The managed marker names a different engine." \
+          "It says $(cat "$MANAGED" 2>/dev/null), the engine is $ENGINE."
+  fi
+}
+
 # ─── Rollback ───────────────────────────────────────────────────────
 if [ "$MODE" = "rollback" ]; then
   [ -f "$PREVIOUS" ] || { echo "❌ No previous version on record."; exit 1; }
   target="$(cat "$PREVIOUS")"
+  # A rollback is a checkout like any other: same gate, or the same incident
+  # through a different flag.
+  gate_ownership
   echo "⏪ Rolling back to $target"
   git -C "$ENGINE" checkout -q "$target"
   bash "$ENGINE/install.sh" >/dev/null 2>&1 || warn "install.sh reported a problem"
@@ -275,53 +328,7 @@ fi
 # says "the installer put this engine here and owns it". Missing → not owned →
 # nothing is touched. It is adopted below for installs that predate the marker,
 # but ONLY from a state that could not hold anyone's work.
-MANAGED="$STATE/engine-managed"
-
-refus() {                       # refuse WITHOUT touching HEAD, branch, files or index
-  echo "❌ $1"
-  echo "   The engine at $ENGINE looks like a development checkout, not a"
-  echo "   managed install. Nothing was changed: no checkout, no reset, no branch move."
-  echo "   $2"
-  result "blocked" "$NEW"
-  exit 1
-}
-
-# 1. DIRTY — absolute, whatever the path and whoever wrote it. There is no
-#    version of "I know better" that justifies discarding an unsaved change.
-if [ -n "$(git -C "$ENGINE" status --porcelain --untracked-files=no)" ]; then
-  echo "❌ The engine has uncommitted changes."
-  echo "   Nothing was changed. Put them away first:  git -C $ENGINE stash"
-  git -C "$ENGINE" status --porcelain --untracked-files=no | head -5 | sed 's/^/     /'
-  result "blocked" "$NEW"
-  exit 1
-fi
-
-# 2. ON A BRANCH — a managed install sits DETACHED on its release tag; that is
-#    what install.sh leaves behind. A checked-out branch means a human works
-#    here, and `checkout <tag>` would silently strand every commit above the tag.
-BRANCH_NOW="$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)"
-if [ "$BRANCH_NOW" != "HEAD" ]; then
-  refus "The engine is on branch '$BRANCH_NOW'." \
-        "Update it with git, or point ~/.c-brain/engine at a managed install."
-fi
-
-# 3. NOT OWNED — no marker. Adopt only from a state that can hold no work:
-#    detached, clean (checked above), and exactly on a published release tag.
-if [ ! -f "$MANAGED" ]; then
-  if git -C "$ENGINE" describe --tags --exact-match >/dev/null 2>&1; then
-    printf '%s\n' "$ENGINE" > "$MANAGED"      # pre-marker install, adopted
-  else
-    refus "This engine carries no managed-install marker." \
-          "Re-run install.sh from a clean release checkout to hand it over."
-  fi
-fi
-
-# 4. The marker must name THIS engine: ~/.c-brain/engine may have been repointed
-#    at somebody's repo since, and a stale marker must not vouch for it.
-if [ "$(cat "$MANAGED" 2>/dev/null)" != "$ENGINE" ]; then
-  refus "The managed marker names a different engine." \
-        "It says $(cat "$MANAGED" 2>/dev/null), the engine is $ENGINE."
-fi
+gate_ownership
 
 echo "$CUR" > "$PREVIOUS"
 git -C "$ENGINE" checkout -q "$NEW"

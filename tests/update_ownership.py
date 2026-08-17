@@ -86,7 +86,7 @@ def build_remote(path):
     git(path, "checkout", "-q", "v1.0.0")
 
 
-def run_case(work, remote, name, setup, managed):
+def run_case(work, remote, name, setup, managed, args=()):
     home = os.path.join(work, name)
     eng = os.path.join(home, "engine")
     os.makedirs(os.path.join(home, ".c-brain", "state"), exist_ok=True)
@@ -102,7 +102,7 @@ def run_case(work, remote, name, setup, managed):
             f.write(os.path.realpath(eng) + "\n")
 
     before = state(eng)
-    proc = subprocess.run(["bash", os.path.join(eng, "cbrain", "update.sh")],
+    proc = subprocess.run(["bash", os.path.join(eng, "cbrain", "update.sh"), *args],
                           capture_output=True, text=True, timeout=180,
                           env=dict(os.environ, HOME=home))
     return before, state(eng), proc.stdout + proc.stderr
@@ -168,6 +168,26 @@ def main():
             if setup is dirty and not a["dirty"]:
                 trouble.append("the uncommitted change was DISCARDED: work under an "
                                "engine-owned path must survive a refused update")
+
+        # ROLLBACK is a checkout too. It sits EARLIER in the script than the update
+        # path, so it reached `git checkout <target>` without passing the gate at all:
+        # the same incident through a different flag. Asserted here because a guard
+        # nobody exercises is a guard that comes back off.
+        def dev_with_previous(e):
+            on_branch(e)
+            home = os.path.dirname(e)
+            st = os.path.join(home, ".c-brain", "state")
+            os.makedirs(st, exist_ok=True)
+            with open(os.path.join(st, "previous-version"), "w") as f:
+                f.write("v1.0.0\n")
+
+        b, a, out = run_case(work, remote, "rollback", dev_with_previous,
+                             managed=False, args=("--rollback",))
+        same = b == a
+        print(f"  {'dev repo, --rollback':34} untouched: {'yes' if same else 'NO'}")
+        if not same:
+            trouble.append("`brain update --rollback` checked out over a repo it does not "
+                           "own: the gate is bypassed by the rollback path")
 
     if trouble:
         print("\n❌ the updater touches what it does not own:")
