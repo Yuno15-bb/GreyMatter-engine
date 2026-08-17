@@ -20,6 +20,8 @@ cd ~/dev/c-brain
 ```
 
 Options: `--dry-run` (writes nothing, shows what would happen) ·
+`--dev` (for working ON C Brain: links the engine to your checkout and turns
+automatic engine updates off for it) ·
 `--no-launchd` (no scheduled jobs) · `--no-capsule` (no Electron) · `--no-shortcut`
 (no `C Brain` shortcut in your home folder).
 
@@ -30,14 +32,21 @@ Options: `--dry-run` (writes nothing, shows what would happen) ·
 Two locations, and keeping them apart is the heart of the system:
 
 ```
-~/.c-brain/engine  → link to this repo. CODE only. Updates.
-~/.c-brain/trunk     → YOUR trunk. Your notes. Never overwritten, never updated.
+~/.c-brain/versions/  each installed version. CODE only, immutable.
+~/.c-brain/engine     → link to the ACTIVE version. Updating switches this link.
+~/.c-brain/trunk      → YOUR trunk. Your notes. Never overwritten, never updated.
 ```
+
+**This repository is the SOURCE, not the engine.** The installer reads it to
+build a version under `~/.c-brain/versions/` and never writes to it again — so
+`brain update` has nothing to do with your clone, and cannot move, reset or
+overwrite it. Update your clone with git, like any other repository.
+See [docs/install-model.md](docs/install-model.md).
 
 The installer:
 
 - creates your **empty** trunk if none exists (and touches nothing if one does);
-- links the engine into the trunk with symlinks;
+- builds an engine from this source and links it into the trunk with symlinks;
 - puts the `brain` command in `~/.local/bin`;
 - makes the agents visible to your CLI;
 - **adds** its hooks to `~/.claude/settings.json` without touching the rest —

@@ -2,38 +2,60 @@
 # brain — the single entry point of C Brain.
 # Usage : brain <status|doctor|audit|push|metrics|selftest|backup>
 set -euo pipefail
+
+# ─── WHERE THIS CLI'S OWN CODE LIVES ─────────────────────────────────────────
+# A CLI must run ITS OWN scripts. This one used to `cd` into the trunk and call
+# `hooks/brain_status.py` — a path that resolves through the trunk's symlinks to
+# whatever engine is CURRENTLY active. Harmless while there was exactly one
+# engine; wrong the moment versions live side by side, because
+# `versions/v1.29.0/brain` would then execute v1.28.1's hooks and report on a
+# mixture of the two. A selftest aimed at a candidate version would go green
+# having tested the active one.
+#
+# `$0` may be a symlink (`~/.local/bin/brain` → `~/.c-brain/engine/brain`, itself
+# a symlink into `versions/`), so it is followed to the end before taking the
+# directory. The trunk stays the working directory: it is the DATA.
+src="$0"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+SELF="$(cd -P "$(dirname "$src")" && pwd)"
+export SELF          # one inline python block reads it from the environment
+
 BRAIN="$HOME/.c-brain/trunk"
 cd "$BRAIN"
 
 cmd="${1:-status}"
 case "$cmd" in
   status)
-    python3 hooks/brain_status.py show 2>/dev/null || cat state/status.json 2>/dev/null || echo "(no status)"
+    python3 "$SELF"/hooks/brain_status.py show 2>/dev/null || cat state/status.json 2>/dev/null || echo "(no status)"
     ;;
   doctor)
-    python3 hooks/brain_doctor.py "${@:2}"
+    python3 "$SELF"/hooks/brain_doctor.py "${@:2}"
     ;;
   audit)
     # OPERATIONAL state of the pipeline: what is distilled / queued / uncaptured + health
-    python3 hooks/brain_audit.py "${@:2}"
+    python3 "$SELF"/hooks/brain_audit.py "${@:2}"
     ;;
   review)
     # GLOBAL audit of the trunk (content/topology): aggregates topology + utility +
     # challenger + doctor + stale notes + infrastructure paths → state/review.{json,md}
-    python3 hooks/brain_review.py "${@:2}"
+    python3 "$SELF"/hooks/brain_review.py "${@:2}"
     ;;
   recall|search)
-    python3 hooks/brain_recall.py "${@:2}"
+    python3 "$SELF"/hooks/brain_recall.py "${@:2}"
     ;;
   embed)
     # (re)build the semantic embeddings index (optional backend)
-    if [ -x .venv/bin/python ]; then .venv/bin/python hooks/brain_embed.py build; else echo "embeddings venv missing (BM25 by default)"; fi
+    if [ -x .venv/bin/python ]; then .venv/bin/python "$SELF"/hooks/brain_embed.py build; else echo "embeddings venv missing (BM25 by default)"; fi
     ;;
   next|reprises)
-    python3 hooks/brain_anticipate.py
+    python3 "$SELF"/hooks/brain_anticipate.py
     ;;
   utility|usage)
-    python3 hooks/brain_utility.py "${@:2}"
+    python3 "$SELF"/hooks/brain_utility.py "${@:2}"
     ;;
   coherence)
     # heavily overlapping note pairs awaiting the gardener's arbitration
@@ -49,8 +71,8 @@ case "$cmd" in
     # false (cap topped up, account switched).
     if [ "${2:-}" = "--unblock" ]; then
       python3 -c "
-import json, sys, time
-sys.path.insert(0, 'hooks')
+import json, os, sys, time
+sys.path.insert(0, os.environ['SELF'] + '/hooks')
 import quota_probe as qp
 v = qp.probe()
 if not v['ok']:
@@ -61,7 +83,7 @@ json.dump({'blocked_until': 0, 'family': None, 'failures': 0, 'msg': 'ok — unb
 print('✅ block lifted — the agents can start again (verified by probe, HTTP', str(v['http']) + ')')
 "
     else
-      python3 hooks/quota_probe.py
+      python3 "$SELF"/hooks/quota_probe.py
       python3 -c "
 import json, time
 try: q = json.load(open('state/quota.json'))
@@ -105,16 +127,16 @@ if b and time.time() < b:
     fi
     ;;
   selftest)
-    bash hooks/selftest.sh
+    bash "$SELF"/hooks/selftest.sh "$SELF"
     ;;
   update)
     # Updates the ENGINE only. The trunk — your notes — is never touched.
-    bash "$HOME/.c-brain/engine/cbrain/update.sh" "${@:2}"
+    bash "$SELF"/cbrain/update.sh "${@:2}"
     ;;
   demo)
     # Three example notes, placed and taken away on demand. An empty trunk on
     # first launch shows nothing of what the tool can do.
-    bash "$HOME/.c-brain/engine/cbrain/demo.sh" "${@:2}"
+    bash "$SELF"/cbrain/demo.sh "${@:2}"
     ;;
   version)
     cat "$HOME/.c-brain/VERSION" 2>/dev/null || echo "(unknown version)"

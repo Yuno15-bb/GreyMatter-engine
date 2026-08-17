@@ -116,9 +116,22 @@ echo
 echo "▸ Engine"
 if [ "$PURGE_ENGINE" = "1" ]; then
   rm -f "$CB/engine" "$MANIFEST" "$CB/VERSION"
-  say "- engine references removed (the cloned repo itself stays on disk)"
+  # ⚠ THIS CAN NOW ACTUALLY DELETE THE ENGINE, and it could not before. While
+  # `~/.c-brain/engine` was a link to the user's own clone, the only honest thing
+  # to remove was the link — deleting the target would have deleted a repository
+  # somebody else made. Since 2026-08-17 the installer BUILDS what it mounts:
+  # `versions/`, the source mirror and the shared Electron runtime are all ours,
+  # so `--purge-engine` finally removes what its name promises.
+  #
+  # The user's clone is still never touched. It was a source, it stays a source.
+  for d in "$CB/versions" "$CB/source.git" "$CB/runtime"; do
+    [ -e "$d" ] || continue
+    rm -rf "$d" && say "- $(basename "$d") removed (built by the installer)"
+  done
+  rm -f "$CB/state/engine-managed" "$CB/state/engine-dev" "$CB/state/previous-version"
+  say "  (the repository you cloned is untouched — it was the source, not the engine)"
 else
-  say "= $CB kept (backups + version). Use --purge-engine to wipe it."
+  say "= $CB kept (versions + backups). Use --purge-engine to wipe it."
 fi
 
 echo

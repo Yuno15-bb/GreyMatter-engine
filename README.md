@@ -135,7 +135,7 @@ Details, prerequisites and uninstall: **[INSTALL.md](INSTALL.md)**.
 ## The idea holding it all together
 
 ```
-~/.c-brain/engine  ← the ENGINE. Code. Updates, gets replaced, is disposable.
+~/.c-brain/engine  ← link to the ACTIVE version under versions/. Code, replaceable, disposable.
 ~/.c-brain/trunk     ← the TRUNK. Your notes. Changes only when YOU write.
 ```
 

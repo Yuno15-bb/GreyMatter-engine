@@ -56,9 +56,21 @@ def report():
                f"ROLLED BACK to the previous version on its own. "
                f"Log: ~/.c-brain/state/auto-update.log")
     elif outcome == "blocked":
-        msg = (f"Update {tag} is available but was NOT applied: the engine has "
-               f"uncommitted local changes. Put them away, or run "
-               f"`brain update` to see the details.")
+        # ⚠ NO LONGER "uncommitted local changes". That was the only way an update
+        # could be blocked while the engine was the user's own git clone. Since
+        # 2026-08-17 the engine is a built version and an update can stop for
+        # several unrelated reasons — the install owns nothing, the candidate
+        # failed its own selftest, the build did not come out. Naming one cause
+        # for all of them sends the reader to look for a problem they do not have;
+        # the log names the real one.
+        msg = (f"Update {tag} is available but was NOT applied. Nothing was "
+               f"changed and C Brain is still running the version it was. "
+               f"Why: ~/.c-brain/state/auto-update.log — or run `brain update`.")
+    elif outcome == "dev":
+        # A development install. Expected, and said once rather than warned about:
+        # this is a configuration the developer chose by running `install.sh --dev`.
+        msg = ("This is a development install (`install.sh --dev`): C Brain does "
+               "not update its own engine here. Update it with git.")
     else:
         return
     print(f"<c-brain-update>{msg}</c-brain-update>")

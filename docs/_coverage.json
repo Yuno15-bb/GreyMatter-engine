@@ -27,6 +27,15 @@
       ],
       "why": "The translation doc describes the fr → main chain: what is copied, what is rewritten, and by which rules."
     },
+    "docs/install-model.md": {
+      "documents": [
+        "install.sh",
+        "cbrain/update.sh",
+        "uninstall.sh",
+        "cbrain/engine-paths.txt"
+      ],
+      "why": "The install model describes who owns the engine and how a version is built, switched and rolled back. It is only true while the installer, the updater and the uninstaller agree on it — those three write and read the versions/ tree between them."
+    },
     "docs/verification-recipe.md": {
       "documents": [
         "leakcheck.py",

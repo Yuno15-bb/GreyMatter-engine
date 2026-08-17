@@ -120,7 +120,7 @@ wait_done
 [ -f "$H/.c-brain/engine/UPDATE_MARKER" ]
 check $? "the new version is on disk, without anyone typing anything" \
   "$(tail -5 "$H/.c-brain/state/auto-update.log" 2>/dev/null)"
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.1" ]
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
 check $? "the engine is on v9.9.1"
 
 echo
@@ -149,22 +149,41 @@ printf '%s' "$OUT4" | grep -q "v9.9.2"
 check $? "but it still REPORTS the available version" "got: $OUT4"
 
 echo
-echo "▸ 5. a version that breaks the tool is undone on its own"
+echo "▸ 5. a version that breaks the tool is NEVER ACTIVATED"
 brain update --auto-on >/dev/null 2>&1
 rm -f "$H/.c-brain/state/last-auto-update"
 # The BROKEN version: its selftest exits red. That is the only way to prove the
-# automatic rollback — faking it with a flag would only prove the flag.
+# refusal — faking it with a flag would only prove the flag.
+#
+# ⚠ WHAT THIS ACT NOW PROVES CHANGED, and for the better (chantier #9). It used
+# to assert an automatic ROLLBACK: the updater checked the broken version out
+# over the live engine, discovered it was broken, and went back. That works, but
+# it means the active engine spends a moment being a version nobody has checked —
+# and sessions start in that moment. Versions now live side by side, so the
+# candidate is selftested while INACTIVE and simply never becomes the engine.
+# There is nothing to roll back from, which is a stronger property than rolling
+# back well.
 ( cd "$H/upstream" \
   && printf '#!/usr/bin/env bash\necho "selftest broken on purpose"\nexit 1\n' > hooks/selftest.sh \
   && git add hooks/selftest.sh && git commit -q -m "test: broken selftest" \
   && git tag -a v9.9.3 -m "test: broken" )
 hook >/dev/null
 wait_done
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.1" ]
-check $? "the engine ROLLED BACK to v9.9.1" "it stayed on a version whose selftest is red"
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
+check $? "the engine STAYED on v9.9.1 — the broken version was never activated"
+# And the broken candidate must not be left lying about: a half-installed version
+# on disk is a rollback target that would break the tool if anyone reached it.
+[ ! -d "$H/.c-brain/versions/v9.9.3" ]
+check $? "the broken candidate was deleted, not kept beside the good one"
 OUT5="$(hook)"
-printf '%s' "$OUT5" | grep -qi "rolled back\|rolled-back"
-check $? "and the next session says so plainly" "got: $OUT5"
+printf '%s' "$OUT5" | grep -qi "was NOT applied"
+check $? "and the next session says the update did not happen" "got: $OUT5"
+# ⚠ AND IT MUST NOT INVENT A CAUSE. The message used to blame "uncommitted local
+# changes" for every blocked update, which was the only possible cause when the
+# engine was the user's clone and is now almost never the real one. Sending a
+# reader to look for local changes they do not have costs them the evening.
+printf '%s' "$OUT5" | grep -qvi "uncommitted local changes"
+check $? "and does not blame a cause it has not established" "got: $OUT5"
 
 echo
 echo "▸ 6. through all five acts, the user's note never moved"

@@ -9,26 +9,53 @@
 #   · REVERSIBLE — every action is logged; ./uninstall.sh undoes them.
 #
 # Installed layout:
-#   ~/.c-brain/engine  → link to THIS repo (the ENGINE: code, nothing else)
-#   ~/.c-brain/trunk     → YOUR trunk (your notes). Never overwritten, never updated.
+#   ~/.c-brain/versions/<id>/  an ENGINE: an immutable export of the source
+#   ~/.c-brain/engine          → link to the ACTIVE version. Switching is one symlink.
+#   ~/.c-brain/source.git      the mirror updates are fetched into
+#   ~/.c-brain/runtime/        the Electron runtime, installed once and shared
+#   ~/.c-brain/trunk           YOUR trunk (your notes). Never overwritten, never updated.
+#
+# THIS REPOSITORY IS THE SOURCE, NOT THE ENGINE. The installer reads it to build
+# a version and never writes to it again — see docs/install-model.md.
 #
 # Usage: ./install.sh [--core-only] [--no-launchd] [--no-capsule]
-#                     [--no-planet] [--no-shortcut] [--dry-run]
+#                     [--no-planet] [--no-shortcut] [--dry-run] [--dev]
 #
 #   --core-only  the memory alone: trunk, recall, agents, hooks, `brain`.
 #                No capsule, no planet launcher, no scheduled jobs.
+#   --dev        link the engine to THIS checkout instead of building a version,
+#                and switch automatic updates off for it. For working on C Brain.
 set -euo pipefail
 
-ENGINE="$(cd "$(dirname "$0")" && pwd -P)"
-TRUNK="$HOME/.c-brain/trunk"
+# WHERE THIS SCRIPT WAS RUN FROM — the SOURCE. It is read to build an engine and
+# is never written to. It is not the engine, and after 2026-08-17 it never is
+# again unless --dev says so explicitly.
+SOURCE="$(cd "$(dirname "$0")" && pwd -P)"
+# ⚠ CANONICAL, and it matters. `$HOME` may contain a symlink — on macOS every
+# `mktemp -d` path does, `/var` being a link to `/private/var`. The installer
+# records ownership as a path and the updater compares the engine against it
+# with `pwd -P`, so one side resolved and the other not made a legitimate
+# install look like somebody else's directory. Caught by the end-to-end test on
+# its first run, which is precisely the kind of gap no component test can see.
 CB="$HOME/.c-brain"
+mkdir -p "$CB" 2>/dev/null || true
+CB="$(cd "$CB" 2>/dev/null && pwd -P || echo "$HOME/.c-brain")"
+TRUNK="$CB/trunk"
+VERSIONS="$CB/versions"
+RUNTIME="$CB/runtime"
+MIRROR="$CB/source.git"
 TS="$(date +%Y%m%d-%H%M%S)"
 BACKUPS="$CB/backups/$TS"
 MANIFEST="$CB/manifest.txt"
 
-DO_LAUNCHD=1; DO_CAPSULE=1; DO_SHORTCUT=1; DO_PLANET=1; DRY=0
+DO_LAUNCHD=1; DO_CAPSULE=1; DO_SHORTCUT=1; DO_PLANET=1; DRY=0; DEV=0
 for a in "$@"; do
   case "$a" in
+    # The ONLY mode in which an engine may be a working checkout, and it has to
+    # be asked for by name. Everything the updater could do destructively is
+    # switched off for this install: a development repo is somebody's work, and
+    # no amount of inspection can tell it apart from an install after the fact.
+    --dev) DEV=1 ;;
     --no-launchd) DO_LAUNCHD=0 ;;
     --no-capsule) DO_CAPSULE=0 ;;
     --no-shortcut) DO_SHORTCUT=0 ;;
@@ -47,6 +74,10 @@ say()  { echo "  $*"; }
 step() { echo; echo "▸ $*"; }
 warn() { echo "  ⚠️  $*"; }
 die()  { echo; echo "❌ $*"; exit 1; }
+
+# Building, verifying and mounting a version — shared with cbrain/update.sh so
+# that the installer and the updater cannot disagree on what a version is.
+. "$SOURCE/cbrain/engine-lib.sh"
 
 # Logs what we create, so uninstall knows what to undo.
 note() { [ "$DRY" = "1" ] || { mkdir -p "$CB"; echo "$1|$2" >> "$MANIFEST"; }; }
@@ -79,7 +110,7 @@ link() {  # link <target> <link>
 }
 
 echo "🧠 C Brain — installation"
-echo "   engine : $ENGINE"
+echo "   source : $SOURCE"
 echo "   trunk  : $TRUNK"
 [ "$DRY" = "1" ] && echo "   (DRY-RUN: nothing will be written)"
 
@@ -99,29 +130,98 @@ if [ "$HAS_CLAUDE_CODE" = "0" ]; then
   warn "You keep the \`brain\` CLI, the agents, the planet and the capsule."
 fi
 
-# ─── 1. C Brain root ────────────────────────────────────────────────────
+# ─── 1. C Brain root, and the ENGINE this install will own ───────────────────
+#
+# A SOURCE IS NOT AN ENGINE. Until 2026-08-17 `~/.c-brain/engine` was a link to
+# the very clone the user had just made, and ownership was INFERRED from that
+# clone's git state: clean, detached, exactly on a release tag. The trouble is
+# that `git clone` never produces that state — it lands on a branch — so the
+# documented install produced an engine `brain update` refused for ever, while a
+# developer's clean checkout sitting on a tag was adopted as if it were an
+# install. Inference cannot answer "whose repository is this?", and never could.
+#
+# So the installer stops guessing and starts BUILDING. It exports the source into
+# `versions/<id>/`, an immutable tree with no `.git` and no history, and points
+# `engine` at it. What it created, it owns; what the user created, it never
+# touches again. The engine can be replaced, rolled back and thrown away without
+# a single git command ever naming a directory somebody works in.
 step "C Brain root (~/.c-brain)"
-run mkdir -p "$CB"
-link "$ENGINE" "$CB/engine"
-[ "$DRY" = "1" ] || { git -C "$ENGINE" describe --tags --always 2>/dev/null > "$CB/VERSION" || echo "untagged" > "$CB/VERSION"; }
-# HANDS THE ENGINE OVER TO THE UPDATER — and only from a state that holds no work.
-# `brain update` does destructive git on the engine (it checks out a release tag),
-# and this file is what says it is allowed to. Written only when the repo is clean
-# AND detached on a release tag, i.e. what an install looks like and what a
-# development checkout does not: on 2026-08-17 an update rewound a working repo
-# past four commits and detached its branch, because nothing recorded who owned it.
-if [ "$DRY" != "1" ]; then
-  mkdir -p "$CB/state"
-  if [ -z "$(git -C "$ENGINE" status --porcelain --untracked-files=no 2>/dev/null)" ] \
-     && [ "$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null)" = "HEAD" ] \
-     && git -C "$ENGINE" describe --tags --exact-match >/dev/null 2>&1; then
-    printf '%s\n' "$ENGINE" > "$CB/state/engine-managed"
-    note "file" "$CB/state/engine-managed"
+run mkdir -p "$CB" "$CB/state"
+
+# The version identity, read off the source. A tagged checkout gives `v1.29.0`;
+# a plain clone of `main` gives `v1.28.1-24-g6f28312`. Both are legitimate names
+# for a version directory — which is precisely what makes the DOCUMENTED
+# `git clone && ./install.sh` produce an updatable install with no extra gesture
+# from the user, and no change to a single line of INSTALL.md.
+if git -C "$SOURCE" rev-parse --git-dir >/dev/null 2>&1; then
+  VERSION_ID="$(git -C "$SOURCE" describe --tags --always 2>/dev/null || echo "untagged")"
+  [ -n "$(git -C "$SOURCE" status --porcelain --untracked-files=no 2>/dev/null)" ] \
+    && VERSION_ID="$VERSION_ID-dirty"
+else
+  # Downloaded as a zip rather than cloned: no history to name it by. Datestamp
+  # it and say so — an install must not fail because the user chose the button
+  # instead of the command.
+  VERSION_ID="src-$TS"
+fi
+
+# ─── ALREADY AN ENGINE ───────────────────────────────────────────────────────
+# `update.sh` replays this script FROM the version it has just built, and every
+# successful update ends by doing so. Run from inside `versions/`, there is
+# nothing to build: the tree we would build from is the tree we are standing in,
+# and it has no `.git` to export from anyway. So we mount and move on. Without
+# this branch the replay would try to rebuild an engine out of a non-repository
+# and fail on every single update.
+case "$SOURCE" in
+  "$VERSIONS"/*) ALREADY_A_VERSION=1 ;;
+  *)             ALREADY_A_VERSION=0 ;;
+esac
+
+if [ "$ALREADY_A_VERSION" = "1" ]; then
+  ENGINE="$SOURCE"
+  VERSION_ID="$(basename "$SOURCE")"
+  say "= running from versions/$VERSION_ID — mounting it, nothing to build"
+elif [ "$DEV" = "1" ]; then
+  # ─── DEVELOPMENT ENGINE ────────────────────────────────────────────────────
+  # Linked to the checkout, exactly as installs behaved before this change, and
+  # marked as such so the updater refuses to run destructive git against it.
+  # The marker is a FILE, not a deduction: nothing about this repo has to look
+  # different from an install for it to be protected.
+  ENGINE="$SOURCE"
+  if [ "$DRY" != "1" ]; then
+    printf '%s\n' "$SOURCE" > "$CB/state/engine-dev"
+    rm -f "$CB/state/engine-managed"          # the two are mutually exclusive
+    note "file" "$CB/state/engine-dev"
+  fi
+  say "DEVELOPMENT engine — $SOURCE"
+  say "automatic engine updates are OFF for this install (\`brain update\` will say so)"
+else
+  # ─── MANAGED ENGINE ────────────────────────────────────────────────────────
+  ENGINE="$VERSIONS/$VERSION_ID"
+  if [ "$DRY" = "1" ]; then
+    say "(dry-run) would build $ENGINE from $SOURCE"
   else
-    rm -f "$CB/state/engine-managed"     # never vouch for a repo somebody works in
-    say "engine is a working checkout — \`brain update\` will refuse to touch it"
+    mkdir -p "$VERSIONS"
+    if [ -f "$ENGINE/.cbrain-manifest" ] && verify_manifest "$ENGINE" >/dev/null 2>&1; then
+      say "= $VERSION_ID already installed and intact"
+    else
+      build_version "$SOURCE" "$ENGINE" || die "could not build the engine $VERSION_ID from $SOURCE"
+      say "+ engine built: versions/$VERSION_ID ($(find "$ENGINE" -type f ! -name .cbrain-manifest | wc -l | tr -d ' ') files)"
+    fi
+    # The mirror the updater fetches into. It exists so that NO git command in
+    # the update path ever names a directory the user created.
+    mirror_source "$SOURCE" "$MIRROR"
+    # OWNERSHIP AS PROVENANCE, not as a verdict on a git state: this file says
+    # "the installer built the tree under versions/ and may replace it". It names
+    # the versions root rather than one version, because the whole point is that
+    # the active version changes.
+    printf '%s\n' "$VERSIONS" > "$CB/state/engine-managed"
+    rm -f "$CB/state/engine-dev"
+    note "file" "$CB/state/engine-managed"
   fi
 fi
+
+link "$ENGINE" "$CB/engine"
+[ "$DRY" = "1" ] || printf '%s\n' "$VERSION_ID" > "$CB/VERSION"
 say "version: $(cat "$CB/VERSION" 2>/dev/null || echo '?')"
 
 # ─── 2. The trunk ──────────────────────────────────────────────────────────
@@ -285,6 +385,20 @@ capsule_repair() {
   printf '%s' 'Electron.app/Contents/MacOS/Electron' > "$ed/path.txt"
 }
 
+# WHERE npm IS ALLOWED TO WRITE. `npm install` rewrites `package-lock.json` in
+# the directory it runs in. In the old model that directory was the engine repo,
+# and the rewrite is what made the SECOND update refuse ("local changes") — the
+# net for it is still in update.sh. Here it would be worse: it would mutate an
+# immutable version at every install, and doctor would report an anomaly the
+# installer had just caused itself. So for a managed engine npm runs in the
+# SHARED RUNTIME, and the version holds only a symlink to its `node_modules`.
+if [ "$DEV" = "1" ] || [ "$DRY" = "1" ]; then
+  CAPSULE_PREFIX="$ENGINE/capsule"
+else
+  link_runtime "$ENGINE" "$RUNTIME" || warn "could not mount the shared Electron runtime"
+  CAPSULE_PREFIX="$(runtime_dir "$ENGINE" "$RUNTIME")"
+fi
+
 if [ "$DO_CAPSULE" = "0" ]; then say "(skipped — --no-capsule)"
 elif ! command -v npm >/dev/null; then
   # ⚠ THIS BRANCH USED TO BE ONE SILENT LINE, and it cost a first user about an
@@ -321,7 +435,7 @@ elif [ "$DRY" = "1" ]; then say "(dry-run) would install the capsule dependencie
 elif capsule_ok; then say "= capsule already working"
 else
   say "npm install (Electron, ~1 min)…"
-  npm --prefix "$ENGINE/capsule" install --silent >/dev/null 2>&1 || true
+  npm --prefix "$CAPSULE_PREFIX" install --silent >/dev/null 2>&1 || true
   # `npm install` exits SUCCESSFULLY even when the Electron binary was never
   # extracted (archive truncated by @electron/get — a trap already hit). Trusting
   # the exit code would report a capsule as installed while it cannot start.
@@ -347,7 +461,7 @@ else
     warn "The Electron binary does not respond, and the archive could not be unpacked."
     warn "The capsule (the floating orb) will not open. Everything else works."
     warn "To retry by hand:"
-    warn "  rm -rf $ENGINE/capsule/node_modules && npm --prefix $ENGINE/capsule install"
+    warn "  rm -rf $CAPSULE_PREFIX/node_modules && npm --prefix $CAPSULE_PREFIX install"
     warn "  then re-run this installer — it will unpack what npm downloaded."
   fi
 fi

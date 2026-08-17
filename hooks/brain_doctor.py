@@ -244,18 +244,48 @@ def main():
     #        NOTHING. Observed on a real install: three days, 23 notes, no history,
     #        no way back if an agent overwrites a note. It is a legitimate choice,
     #        but it must be a CHOICE — not a silent default nobody was told about.
+    #
+    #    ⚠ HOW (a) IS MEASURED CHANGED ON 2026-08-17. An installed engine is no
+    #    longer a git checkout — it is an immutable export under `versions/`,
+    #    with no `.git` for `git status` to answer about. The oracle is now the
+    #    manifest the installer wrote beside it: sha256 per file, in `shasum -c`
+    #    format. A file that differs, or has gone missing, means SOMETHING WROTE
+    #    TO A VERSION THAT IS SUPPOSED TO BE FROZEN — an agent through the
+    #    trunk's mounts, a hand, an interrupted copy.
+    #
+    #    It is REPORTED AND NEVER REPAIRED. Overwriting it back to the manifest
+    #    would destroy whatever got written there, which is the whole family of
+    #    faults the ownership work exists to end. Doctor's job is to make it
+    #    visible; deciding what to do with it is the user's.
+    #
+    #    A --dev engine keeps the git check: there, a dirty tree is normal work
+    #    and the question "has this changed" has a different, correct answer.
     moteur_sale = []
     engine = os.path.realpath(os.path.expanduser("~/.c-brain/engine"))
-    if os.path.isdir(engine) and os.path.realpath(engine) != BRAIN:
-        try:
-            r = subprocess.run(["git", "-C", engine, "status", "--porcelain",
-                                "--untracked-files=no"],
-                               capture_output=True, text=True, timeout=10)
-            moteur_sale = [l for l in r.stdout.splitlines() if l.strip()]
-        except Exception:
-            pass
+    manifest = os.path.join(engine, ".cbrain-manifest")
+    if os.path.isdir(engine) and engine != BRAIN:
+        if os.path.isfile(manifest):
+            try:
+                r = subprocess.run(["shasum", "-a", "256", "-c", ".cbrain-manifest"],
+                                   cwd=engine, capture_output=True, text=True,
+                                   timeout=120)
+                # `shasum -c` prints "<file>: FAILED" per mismatch, and
+                # "<file>: FAILED open or read" for one that has disappeared.
+                moteur_sale = [l.rsplit(":", 1)[0] for l in r.stdout.splitlines()
+                               if l.strip().endswith("FAILED")
+                               or l.strip().endswith("FAILED open or read")]
+            except Exception:
+                pass
+        else:
+            try:
+                r = subprocess.run(["git", "-C", engine, "status", "--porcelain",
+                                    "--untracked-files=no"],
+                                   capture_output=True, text=True, timeout=10)
+                moteur_sale = [l.split()[-1] for l in r.stdout.splitlines() if l.strip()]
+            except Exception:
+                pass
 
-    problems["engine_dirty"] = [l.split()[-1] for l in moteur_sale]
+    problems["engine_dirty"] = moteur_sale
 
     total = sum(len(v) for v in problems.values())
     report = {"ok": total == 0, "total": total, "notes": len(checked_files),

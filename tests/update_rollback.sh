@@ -76,7 +76,7 @@ printf -- "---\nname: mine\ndescription: \"my own note\"\n---\nwork I cannot los
 NOTE_SUM="$(shasum -a 256 "$TRUNK/lessons/mine.md" | cut -d' ' -f1)"
 
 [ "$(brain version 2>/dev/null | tr -d '[:space:]')" ] || true
-echo "  installed: $(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)"
+echo "  installed: $(basename "$(cd "$H/.c-brain/engine" && pwd -P)")"
 
 echo "▸ brain update --check reports the newer version without applying it"
 brain update --check >"$H/check.log" 2>&1; rc=$?
@@ -95,7 +95,7 @@ check $? "--check names the exact commit it would move to" "$(tail -4 "$H/check.
 echo "▸ brain update moves the engine"
 brain update >"$H/update.log" 2>&1 || { echo "❌ update failed:"; tail -20 "$H/update.log"; FAILS=$((FAILS+1)); }
 [ -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is really on disk" "$(tail -3 "$H/update.log")"
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.1" ]
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
 check $? "the engine reports the new tag"
 [ "$(cat "$H/.c-brain/state/previous-version" 2>/dev/null)" = "v9.9.0" ]
 check $? "the previous version was recorded" "rollback would have nowhere to go"
@@ -103,7 +103,7 @@ check $? "the previous version was recorded" "rollback would have nowhere to go"
 echo "▸ brain update --rollback puts it back"
 brain update --rollback >"$H/rollback.log" 2>&1 || { echo "❌ rollback failed:"; tail -20 "$H/rollback.log"; FAILS=$((FAILS+1)); }
 [ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is gone from disk"
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.0" ]
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.0" ]
 check $? "the engine is back on the old tag"
 
 echo "▸ and through all of it, the notes never moved"
