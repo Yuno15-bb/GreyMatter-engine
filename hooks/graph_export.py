@@ -13,6 +13,7 @@ Designed to be called:
 Deterministic and free of external dependencies. Always exits 0 (never blocks a hook).
 """
 import os, re, json, sys
+from collections import Counter
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 OUT = os.path.join(BRAIN, "planet", "graph.json")
@@ -149,6 +150,7 @@ def frontmatter(text):
     return ""
 
 
+FM_TYPE = re.compile(r"^\s*type:\s*(\S+)\s*$", re.M)
 EN_CLAIR = re.compile(r'^##[ \t]+En clair[ \t]*$(.*?)(?=^## |\Z)', re.M | re.S)  # i18n-ok
 
 
@@ -259,6 +261,9 @@ def scan():
                               # panel renders the whole block, the hover its first paragraph.
                               # It was read at five sites in planet/index.html and produced
                               # nowhere, so the register was invisible in the map.
+                              # read to decide `regle` below, then dropped: not exported.
+                              "_type": (FM_TYPE.search(fm).group(1)
+                                        if fm and FM_TYPE.search(fm) else None),
                               "en_clair": extract_en_clair(text),
                               "long": clean_body(text),
                               "embed2": embed2.get(rel_file),   # semantic [x,y] or None
@@ -292,6 +297,28 @@ def scan():
             if typ:
                 edge["type"] = typ
             links.append(edge)
+
+    # ---------- RULE NOTES (the orange badge the viewer already draws) ----------
+    # A `type: feedback` note wired to at least this many others is a RULE: something the
+    # whole trunk leans on. The viewer draws a badge for it and explains, in its own
+    # comment, why such a point has no visible children. It read `nd.regle` and nothing
+    # ever wrote it, so that badge could never appear — the same silent shape as en_clair,
+    # found by widening the contract test to the viewer's second accessor.
+    # The type is read here and NOT exported: the viewer never reads `type`, so shipping it
+    # would be bytes in every graph for nobody.
+    RULE_DEGREE = 20                     # ~5% of a trunk; past that "rule" means nothing
+    degrees = Counter()
+    for l in links:
+        degrees[l["source"]] += 1
+        degrees[l["target"]] += 1
+    rules = {nid for nid, n in nodes.items()
+             if n.pop("_type", None) == "feedback" and degrees[nid] >= RULE_DEGREE}
+    for nid, n in nodes.items():
+        n.pop("_type", None)
+        n["regle"] = nid in rules
+    for l in links:
+        if l["source"] in rules or l["target"] in rules:
+            l["regle"] = True
 
     # ---------- MEMBERSHIP (continent / city / frontier model) ----------
     # « villes » = les sous-dossiers du domaine projects (chaque projet est une ville).

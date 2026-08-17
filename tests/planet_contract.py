@@ -42,9 +42,13 @@ ROOT = os.path.dirname(HERE)
 EXPORTER = os.path.join(ROOT, "hooks", "graph_export.py")
 VIEWER = os.path.join(ROOT, "planet", "index.html")
 
-# The viewer names a node `n` everywhere it reads one. Matched on that exact accessor: a
-# looser pattern would catch unrelated locals and turn this guard into noise.
-FIELD = re.compile(r"\bn\.([a-z_][a-z_0-9]*)\b")
+# The viewer reads a node through TWO names, `n` and `nd`. Matching only `n.` was this
+# test's own blind spot: `nd.embed2` and `nd.regle` were invisible to it, and one of the
+# two turned out to be read and never written — the very defect this file exists to catch.
+# The accessor list is deliberately CLOSED: `d.` and `f.` are unrelated locals in this
+# viewer (`d.push`, `f.ids`), and matching them would turn the guard into noise.
+NODE_ACCESSORS = ("n", "nd")
+FIELD = re.compile(r"\b(?:%s)\.([a-z_][a-z_0-9]*)\b" % "|".join(NODE_ACCESSORS))
 
 # Read by the viewer but produced elsewhere than per-node, or provided by the layout code
 # itself. Listed with a reason rather than silently skipped.
