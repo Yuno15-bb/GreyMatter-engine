@@ -107,6 +107,29 @@ same thematic family. At weight 1, on a 15-case golden set over a real trunk, it
 note that literally answers the query from 1st to 2nd place and promoted an off-topic one.
 The mechanism is there; turning it up is a decision that owes a measurement.
 
+## One owner per vocabulary
+
+Three times in three days this repository shipped the same shape of bug: a contract stated
+in two places instead of shared from one. Two recall engines silently indexed different
+corpora. The map read a field its exporter never wrote. A list of note types lived in a hook
+and in five agent briefs at once.
+
+So each vocabulary now has exactly one owner, and everyone else imports it:
+
+| Vocabulary | Owner |
+|---|---|
+| the indexable corpus | `hooks/brain_corpus.py` |
+| `metadata.type` | `hooks/on_fiche_write.py` |
+| typed `relations:` | `hooks/graph_export.py` |
+| ranking weights | `config/ranking.json` |
+
+`brain_doctor` reports disagreements between these sources. It deliberately owns none of
+them — a diagnostic tool that defines a vocabulary becomes a third thing to disagree with,
+and then nobody can say which one is right. The cost of importing rather than restating is
+that an import can fail, so the doctor announces a check it could not run instead of
+reporting a clean trunk. `tests/doctor_contract.py` makes falling back on a local copy a
+test failure.
+
 ## Approach
 
 ### 1. The structural decision: separate the ENGINE from the TRUNK
