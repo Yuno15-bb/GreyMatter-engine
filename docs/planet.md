@@ -100,6 +100,19 @@ section was empty in every panel and nothing said so. `tests/planet_contract.py`
 now runs the real exporter and refuses any field the viewer reads and the
 exporter does not write — a promise in a document cannot turn red, a test can.
 
+It happened twice. The orange **rule badge** — drawn on a `type: feedback` note
+wired to twenty others, to explain why the most connected point on the map has no
+visible children — was read and written by nobody either. That one hid longer,
+because the viewer reads a node through two names and the test only knew one of
+them. Both accessors are covered now.
+
+The **semantic layout** places notes by meaning rather than by folder. It uses
+three coordinates: projecting 256 dimensions onto a plane keeps 6.6% of each
+note's semantic neighbourhood, three axes keep 11.9%. Neither number is high —
+most of 256 dimensions cannot survive — but the comparison is what chose the
+dimension, and `brain_embed2.py --cohesion` re-measures it rather than asking you
+to trust the sentence you just read.
+
 <table>
 <tr>
 <td width="50%"><img src="media/planet-hover.webp" alt="The hover panel: region, title, a two-line summary and the file path — no connection list" width="100%"></td>
