@@ -104,6 +104,24 @@ step "C Brain root (~/.c-brain)"
 run mkdir -p "$CB"
 link "$ENGINE" "$CB/engine"
 [ "$DRY" = "1" ] || { git -C "$ENGINE" describe --tags --always 2>/dev/null > "$CB/VERSION" || echo "untagged" > "$CB/VERSION"; }
+# HANDS THE ENGINE OVER TO THE UPDATER — and only from a state that holds no work.
+# `brain update` does destructive git on the engine (it checks out a release tag),
+# and this file is what says it is allowed to. Written only when the repo is clean
+# AND detached on a release tag, i.e. what an install looks like and what a
+# development checkout does not: on 2026-08-17 an update rewound a working repo
+# past four commits and detached its branch, because nothing recorded who owned it.
+if [ "$DRY" != "1" ]; then
+  mkdir -p "$CB/state"
+  if [ -z "$(git -C "$ENGINE" status --porcelain --untracked-files=no 2>/dev/null)" ] \
+     && [ "$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null)" = "HEAD" ] \
+     && git -C "$ENGINE" describe --tags --exact-match >/dev/null 2>&1; then
+    printf '%s\n' "$ENGINE" > "$CB/state/engine-managed"
+    note "file" "$CB/state/engine-managed"
+  else
+    rm -f "$CB/state/engine-managed"     # never vouch for a repo somebody works in
+    say "engine is a working checkout — \`brain update\` will refuse to touch it"
+  fi
+fi
 say "version: $(cat "$CB/VERSION" 2>/dev/null || echo '?')"
 
 # ─── 2. The trunk ──────────────────────────────────────────────────────────

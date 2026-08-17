@@ -245,32 +245,82 @@ fi
 #
 # ⚠️ The refusal STAYS for anything outside those paths: a genuinely hand-edited
 # engine is still somebody's work, and still blocks.
-ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$ENGINE/cbrain/engine-paths.txt" 2>/dev/null \
-               || echo "hooks agents capsule planet companion tests")
-SALE=$(git -C "$ENGINE" status --porcelain --untracked-files=no | awk '{print $NF}')
-HORS_MOTEUR=""
-for f in $SALE; do
-  garde=1
-  for d in $ENGINE_PATHS; do
-    case "$f" in "$d"/*) garde=0; break ;; esac
-  done
-  [ "$garde" = "1" ] && HORS_MOTEUR="$HORS_MOTEUR $f"
-done
-if [ -n "$SALE" ] && [ -z "$HORS_MOTEUR" ]; then
-  say "engine dirty only under agent-owned paths — the gardening pass did that, not you"
-  say "restoring them before updating (they are discarded after the update anyway)"
-  git -C "$ENGINE" checkout -- . 2>/dev/null || true
-fi
+# ⚠️ THE PER-PATH EXCEPTION IS GONE, on purpose. It sorted dirty files into
+# "engine-owned" and "yours", and quietly restored the first group. But the
+# engine-owned list IS the codebase (hooks, capsule, planet, tests), and no test
+# could tell an agent's edit from a human's — so the exception's real effect was
+# to discard unsaved work under the paths where work actually happens. The
+# stranded-install problem it was answering is solved instead by refusing without
+# touching anything, and saying which files block: the user unblocks in one
+# command, and nobody's edit is spent doing it.
+# ─── THE OWNERSHIP GATE ──────────────────────────────────────────────────
+#
+# AN UPDATER MAY ONLY DESTROY WHAT IT OWNS.
+#
+# Measured on 2026-08-17, on five real repositories, before this gate existed:
+#
+#   managed install, on its tag     HEAD moved, tree replaced   legitimate
+#   dev repo, clean branch          HEAD moved, BRANCH LOST
+#   dev repo, commits above the tag HEAD moved, BRANCH LOST     ← the incident
+#   uncommitted work in hooks/      `M hooks/thing.py` → clean  ← work DESTROYED
+#
+# The last line is the serious one. The block this replaces ran
+# `git checkout -- .` over every engine-owned path — hooks, capsule, planet,
+# tests, i.e. where ALL the code lives — so a developer's unsaved edits went to
+# nothing with a `say` line for a warning. The intent was good (an agent editing
+# its own brief must not strand the install), but the remedy was to throw the
+# work away, and it could not tell an agent's edit from a human's.
+#
+# The gate is EXPLICIT, not a guess about paths or symlinks. `state/engine-managed`
+# says "the installer put this engine here and owns it". Missing → not owned →
+# nothing is touched. It is adopted below for installs that predate the marker,
+# but ONLY from a state that could not hold anyone's work.
+MANAGED="$STATE/engine-managed"
 
-if [ -n "$HORS_MOTEUR" ] && { ! git -C "$ENGINE" diff --quiet || ! git -C "$ENGINE" diff --cached --quiet; }; then
-  echo "❌ The engine has uncommitted local changes."
-  echo "   Put them away (git stash / git commit) before updating."
-  echo "   Files:$HORS_MOTEUR"
-  # In automatic mode this is not a failure: it is a deliberate refusal to
-  # overwrite somebody's work. But it has to be SEEN, otherwise the install
-  # falls behind version after version while session start stays silent.
+refus() {                       # refuse WITHOUT touching HEAD, branch, files or index
+  echo "❌ $1"
+  echo "   The engine at $ENGINE looks like a development checkout, not a"
+  echo "   managed install. Nothing was changed: no checkout, no reset, no branch move."
+  echo "   $2"
   result "blocked" "$NEW"
   exit 1
+}
+
+# 1. DIRTY — absolute, whatever the path and whoever wrote it. There is no
+#    version of "I know better" that justifies discarding an unsaved change.
+if [ -n "$(git -C "$ENGINE" status --porcelain --untracked-files=no)" ]; then
+  echo "❌ The engine has uncommitted changes."
+  echo "   Nothing was changed. Put them away first:  git -C $ENGINE stash"
+  git -C "$ENGINE" status --porcelain --untracked-files=no | head -5 | sed 's/^/     /'
+  result "blocked" "$NEW"
+  exit 1
+fi
+
+# 2. ON A BRANCH — a managed install sits DETACHED on its release tag; that is
+#    what install.sh leaves behind. A checked-out branch means a human works
+#    here, and `checkout <tag>` would silently strand every commit above the tag.
+BRANCH_NOW="$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)"
+if [ "$BRANCH_NOW" != "HEAD" ]; then
+  refus "The engine is on branch '$BRANCH_NOW'." \
+        "Update it with git, or point ~/.c-brain/engine at a managed install."
+fi
+
+# 3. NOT OWNED — no marker. Adopt only from a state that can hold no work:
+#    detached, clean (checked above), and exactly on a published release tag.
+if [ ! -f "$MANAGED" ]; then
+  if git -C "$ENGINE" describe --tags --exact-match >/dev/null 2>&1; then
+    printf '%s\n' "$ENGINE" > "$MANAGED"      # pre-marker install, adopted
+  else
+    refus "This engine carries no managed-install marker." \
+          "Re-run install.sh from a clean release checkout to hand it over."
+  fi
+fi
+
+# 4. The marker must name THIS engine: ~/.c-brain/engine may have been repointed
+#    at somebody's repo since, and a stale marker must not vouch for it.
+if [ "$(cat "$MANAGED" 2>/dev/null)" != "$ENGINE" ]; then
+  refus "The managed marker names a different engine." \
+        "It says $(cat "$MANAGED" 2>/dev/null), the engine is $ENGINE."
 fi
 
 echo "$CUR" > "$PREVIOUS"
