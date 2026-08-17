@@ -222,6 +222,33 @@ outage, not a fix:
 
 - [ ] a **real managed install** still updates, switches, and rolls back.
 
+### The conversion, on an installation that predates versions/
+
+An installation from v1.28.1 or earlier arrives with `~/.c-brain/engine` pointing
+at the user's own clone and leaves with it pointing at a built version — inside
+an automatic update nobody watched. Point `engine` at a checkout, run the
+installer, and check that it **says so**:
+
+```bash
+ln -s /path/to/a/checkout ~/.c-brain/engine     # in a THROWAWAY $HOME
+HOME=$T bash install.sh --core-only | grep -A3 converted
+```
+
+- [ ] it names what the checkout **was**, what the engine **is now**, and that
+      `brain update` will not touch the checkout again;
+- [ ] the checkout itself is bit-identical afterwards;
+- [ ] running the installer a **second** time says nothing — a conversion notice
+      that fires on every re-install is noise, and noise is not read.
+
+And the warning that goes with it: [UPGRADING.md](UPGRADING.md) is the one-time
+notice about what the OLDER updater does on its last run. Check the detection
+line it gives actually discriminates:
+
+- [ ] `git -C ~/.c-brain/engine status --short` **lists files** on a checkout
+      engine with uncommitted changes;
+- [ ] the same command answers `fatal: not a git repository` on a managed engine
+      — there, the error is the good news, and the note must say so.
+
 `tests/update_ownership.py` runs all of the above in seconds;
 `tests/e2e_install_update.sh` runs the whole chain for real, from `git clone` to
 rollback, and is the only one that proves `install.sh` writes the marker itself.
