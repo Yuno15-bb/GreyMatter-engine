@@ -1102,7 +1102,12 @@ function build(data){
   prevIds=new Set(data.nodes.map(n=>n.id));
   document.getElementById('counts').innerHTML =
     `${data.counts.nodes} notes · ${data.counts.links} links · ${REGION_LIST.length} regions · ${data.counts.frontier} border${data.counts.frontier>1?'s':''}`
-    + (data.counts.challenged ? ` · <span style="color:#e0a13a">⚠ ${data.counts.challenged} challenged</span>` : '');
+    + (data.counts.challenged ? ` · <span style="color:#e0a13a">⚠ ${data.counts.challenged} challenged</span>` : '')
+    // Qualifications the exporter could not read. ONE line, never a list: `brain doctor`
+    // already names each note and each type, and a second detailed report here would be
+    // a second source of truth. The wording says what is actually lost — the links are
+    // still on the map, only their type is gone — so this never reads as missing notes.
+    + (data.counts.unknown_relations ? ` · <span style="color:#e0a13a">⚠ ${data.counts.unknown_relations} relation type${data.counts.unknown_relations>1?'s':''} were not recognized; links remain visible but untyped. Run brain doctor for details.</span>` : '');
   // reprise (Étage 2) : régions où la dernière session a travaillé — orientation au démarrage
   const act=data.nodes.filter(n=>n.active), sEl=document.getElementById('session');
   if(act.length){

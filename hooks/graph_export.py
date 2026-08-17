@@ -210,6 +210,7 @@ def scan():
     nodes = {}      # id -> {id, name, domain, group, desc, file}
     raw_links = []   # (src_id, target_name)
     link_types = {}  # (src_id, target_name) -> "based_on" | "contradicts" | "replaces"
+    unknown_relations = 0   # qualifications lost to a type outside RELATION_TYPES
     embed2 = load_embed2()         # semantic positions keyed by note path
     heat, coact_edges, live, live_window_min = load_coact()   # heat + usage links + live activity
     challenges = load_challenges()             # the challenger's verdict per note
@@ -281,7 +282,14 @@ def scan():
                 # TYPED relations from the frontmatter (cf. gardening rules §4 bis).
                 # They add no edge: they QUALIFY the one that already exists, since the
                 # convention requires keeping the [[slug]] in the body.
-                for typ, targets in _relations(text).items():
+                # An unrecognized type costs the QUALIFICATION, never the edge: the link
+                # comes from the [[slug]] in the body, so it survives untyped. The counter
+                # says how many qualifications were lost, and says it in graph.json — the
+                # only place the automatic path (on_fiche_write → export → Planet) passes
+                # through. A warning printed here would be invisible: that path has no tty.
+                recognized, unknown = _relations(text)
+                unknown_relations += unknown
+                for typ, targets in recognized.items():
                     for c in targets:
                         link_types[(nid, c)] = typ
 
@@ -370,7 +378,12 @@ def scan():
                    "media": sum(1 for n in nodes.values() if n.get("media")),
                    "active": sum(1 for n in nodes.values() if n.get("active")),
                    "resume": sum(1 for n in nodes.values() if n.get("resume")),
-                   "en_clair": sum(1 for n in nodes.values() if n.get("en_clair"))},
+                   "en_clair": sum(1 for n in nodes.values() if n.get("en_clair")),
+                   # Relation TYPES this exporter did not recognize. The links are all
+                   # still there and still drawn — only their qualification is gone.
+                   # `brain doctor` says which notes and which types; this only says
+                   # how many, so the loss is visible without a second validator.
+                   "unknown_relations": unknown_relations},
         "domains": DOMAINS,
         # LIVE ACTIVITY window (minutes): the visualizer fades out a ring whose `active_ts`
         # has left the window on its own, without waiting for a graph regeneration.
@@ -389,19 +402,34 @@ _REL_LINE = re.compile(r"^\s+(\w+)\s*:\s*\[([^\]]*)\]", re.M)
 
 
 def _relations(text):
-    """Reads the frontmatter's `relations:` block. Silent when absent or malformed —
-    a wobbly frontmatter must never bring the graph export down."""
+    """Reads the frontmatter's `relations:` block → (recognized, unknown_count).
+
+    Silent when absent or malformed — a wobbly frontmatter must never bring the graph
+    export down. But silent about DROPPING was a different thing: a type outside
+    RELATION_TYPES used to vanish without a word, and 58 `base_sur` in the private trunk
+    would come out unqualified under this exporter with no error and no log.
+
+    What is counted is the unrecognized TYPE LINE, not its targets, for two reasons: it is
+    what the viewer's wording says ("relation types were not recognized"), and it makes
+    this count comparable to `brain_doctor`'s `unknown_relation`, which lists one entry per
+    (note, type) — the two read the same block with the same parser and must agree.
+
+    The count is NOT a validation verdict. Nothing here decides that `base_sur` or
+    `illustre` should become valid: that is a vocabulary decision, and it lives elsewhere.
+    """
     fm = re.match(r"^---\n(.*?)\n---", text, re.S)
     if not fm:
-        return {}
+        return {}, 0
     block = _REL_BLOCK.search(fm.group(1) + "\n")
     if not block:
-        return {}
-    out = {}
+        return {}, 0
+    out, unknown = {}, 0
     for typ, targets in _REL_LINE.findall(block.group(1)):
         if typ in RELATION_TYPES:
             out[typ] = [c.strip().strip('"\'') for c in targets.split(",") if c.strip()]
-    return out
+        else:
+            unknown += 1
+    return out, unknown
 
 
 def main():
