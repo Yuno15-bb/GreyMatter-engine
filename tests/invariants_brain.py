@@ -21,6 +21,34 @@ CODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 BRAIN = os.path.expanduser("~/.c-brain/trunk")
 sys.path.insert(0, os.path.join(CODE, "hooks"))
 
+# ─── IS THERE AN INSTALLED TRUNK TO MEASURE AT ALL? ──────────────────────────
+#
+# These invariants are about a trunk as `install.sh` leaves it: MEMORY.md copied
+# from `skeleton/`, and `hooks/` and `agents/` mounted as symlinks into the
+# engine. Run from a repository checkout on a machine where `~/.c-brain/trunk`
+# is a leftover stub, they raised FileNotFoundError three times over — a RED that
+# says nothing about the product, on a developer's machine, every single time.
+#
+# ⚠ AND THAT IS THE DANGEROUS SHAPE. A red everyone learns to expect is a red
+# nobody reads, and "preexisting" quietly becomes "unimportant" one summary at a
+# time. So: measured on a fresh install this file is 18/18 green; where there is
+# nothing installed to look at, it says SKIPPED, with the reason, rather than
+# reporting a failure it did not observe. "I could not look" is not "it is
+# broken" — and it is not "it is fine" either, which is why it is not a pass.
+#
+# The condition is deliberately narrow: only a trunk with no engine mounts and no
+# MEMORY.md is treated as "not an installation". A real trunk that has LOST one
+# of them is a genuine defect and still fails — selftest.sh runs this file, and
+# an update is refused on a red selftest, which is the correct outcome there.
+NOT_INSTALLED = None
+if not os.path.isdir(BRAIN):
+    NOT_INSTALLED = "%s does not exist — nothing is installed here" % BRAIN
+elif not os.path.exists(os.path.join(BRAIN, "hooks")) \
+        and not os.path.exists(os.path.join(BRAIN, "MEMORY.md")):
+    NOT_INSTALLED = ("%s is not an installed trunk: no engine mounts (hooks/, "
+                     "agents/) and no MEMORY.md. Run ./install.sh, or point HOME "
+                     "at an installation, to measure these invariants." % BRAIN)
+
 MALFORMED = [{"note": "✓ arbitrated, false positive", "note2": "✓ same"}]
 REAL_PAIR = [{"a": "x", "b": "y", "sim": 0.9, "ts": 0, "status": "heavy overlap"}]
 
@@ -348,4 +376,12 @@ print(json.dumps({
 
 
 if __name__ == "__main__":
+    if NOT_INSTALLED:
+        # Said once, loudly, and NOT dressed up as a pass: the exit code is 0
+        # because nothing was found wrong, and the line above says nothing was
+        # looked at either.
+        print("⤳ SKIPPED — these invariants measure an INSTALLED trunk.")
+        print("   %s" % NOT_INSTALLED)
+        print("   Nothing was measured. This is not a pass.")
+        sys.exit(0)
     unittest.main(verbosity=2)
