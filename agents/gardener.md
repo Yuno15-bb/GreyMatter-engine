@@ -39,10 +39,10 @@ Mandatory YAML front matter:
 name: slug-in-kebab-case
 description: one-line summary (used for relevance at recall time)
 metadata:
-  type: user | feedback | project | reference
+  type: user | feedback | project | reference | lesson
 ---
 ```
-For `feedback` and `project`: the body must contain **Why:** and **How to apply:** lines. Notes link to each other with `[[slug]]`.
+For `feedback` and `project`: the body must contain **Why:** and **How to apply:** lines. `feedback` and `lesson` differ by ORIGIN, not by folder: what the user told you, against what was learned by measuring. Both live in `lessons/`. Notes link to each other with `[[slug]]`.
 
 ## Context: the automatic mechanical guard
 A `PostToolUse` hook (`hooks/on_fiche_write.py`) processes **every** note as it lands, instantly: it masks secrets and, if the note is in neither `MEMORY.md` nor `lessons/INDEX.md`, adds it to a **`## 🆕 Inbox — notes to file (auto)`** section at the bottom of `MEMORY.md`. It is deliberately dumb (deterministic, no LLM). **Your job as the intelligence**: empty that Inbox into the right map.

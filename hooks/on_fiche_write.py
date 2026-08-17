@@ -36,10 +36,28 @@ INBOX_HEADER = "## 🆕 Inbox — notes to file (auto)"
 # passes IN SILENCE and nobody ever learns the note is mistyped. So it is recorded, and
 # the status line says it once.
 #
-# The French branch runs a fifth value, `lesson`, on the measured grounds that 205 of its
-# notes live in lessons/. That is a real argument, but it is a change to what the agents
-# are told, not a change to this file alone — so it stays a decision, not a drift.
-VALID_TYPES = {"user", "feedback", "project", "reference"}
+# `lesson` was added on 2026-08-17, WITH the briefs, in one commit — and not on the
+# grounds the French branch gave for it. Its argument was that 205 of its notes live in
+# lessons/, which is an argument about a FOLDER: it would have made this vocabulary a
+# second name for the filing, and the two dimensions would have been impossible to tell
+# apart afterwards.
+#
+# The measurement that settles it, taken on a 400-note trunk, is the one INSIDE that
+# folder. lessons/ holds four types at once:
+#
+#     feedback 121 · lesson 67 · reference 54 · project 1
+#
+# So the folder is not the type: a majority of what sits in lessons/ is NOT a lesson. What
+# the author sustains, across 188 notes in the same folder, is the distinction between
+# what the user TOLD them (`feedback`) and what was learned by measuring (`lesson`) — an
+# origin, which is exactly the kind of thing the other four express. That is a category,
+# not a shelf, and it is why a fifth word is warranted where a folder name would not be.
+#
+# A note found by the natural path — write a lesson in lessons/, type it `lesson` — was
+# reported by `brain doctor` as mistyped, on a trunk that ships a lessons/ folder and
+# agents that talk about lessons. A check that fires on a correct value is a check people
+# learn to ignore, which is what tests/type_vocabulary.py exists to prevent.
+VALID_TYPES = {"user", "feedback", "project", "reference", "lesson"}
 
 SECRET = re.compile(
     r'(ntn_[A-Za-z0-9]+|sk-ant-[A-Za-z0-9_-]+|AIza[A-Za-z0-9_-]+|secret_[A-Za-z0-9]+'

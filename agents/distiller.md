@@ -33,11 +33,12 @@ Notes in the right folder:
 name: slug-in-kebab-case
 description: one-line summary (used for relevance at recall time)
 metadata:
-  type: user | feedback | project | reference
+  type: user | feedback | project | reference | lesson
 ---
 <the fact, concise>
 ```
 - `feedback` and `project` → add **Why:** and **How to apply:** lines.
+- `feedback` vs `lesson` — the distinction is the ORIGIN, not the folder: `feedback` is what the user told you to do, `lesson` is what was learned by measuring something. Both belong in `lessons/`; the folder does not decide the type.
 - Link to neighbouring notes with `[[slug]]` (link generously, even towards a note not written yet).
 - **Type the link AT THE MOMENT you lay it down**, when it falls into one of the three
   cases — and only those. You already know why you are linking two notes while you write;
