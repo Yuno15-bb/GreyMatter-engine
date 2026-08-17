@@ -89,6 +89,12 @@ jobs:
       # their reference from the hook that owns it — the test forbids falling
       # back on a local copy, which would make the doctor a third source of truth.
       - run: python3 tests/doctor_contract.py --check
+      # And the four lines injected into EVERY session. The question is not
+      # whether the regex finds things — it always does — but whether a line
+      # that reaches the model earns its slot. Tested in pairs: something that
+      # must be found, and something that must not, because an over-eager
+      # filter passes by finding nothing at all.
+      - run: python3 tests/anticipate_contract.py --check
       # And the thing the product is FOR: does the right note come back?
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.
