@@ -55,11 +55,40 @@ changes.
 | trunk mounts (`hooks`, `agents`, `capsule`, `planet`, `companion`, `tests`) | `$CB/engine/<dir>` | `install.sh:193` |
 | the `brain` CLI | `$CB/engine/brain` | `install.sh:198` |
 | Claude Code hooks in `settings.json` | `~/.c-brain/engine/...` | `merge_settings.py:69` |
-| launchd jobs | `~/.c-brain/trunk/hooks/...` → engine | plist templates |
+| launchd jobs | `~/.c-brain/trunk/hooks/...` → engine | plist templates, **guarded** — see below |
 | the Desktop planet launcher | `$TRUNK/planet/launch.sh` → engine | `install.sh:398` |
 
 One exception: `~/.claude/statusline.py` is a **copy** (`install.sh:227`), not a
 link. It is refreshed by the `install.sh` replay that follows every switch.
+
+### launchd jobs are the one thing the installer may not simply replace
+
+`launchctl` indexes the per-user domain by **Label**, not by `$HOME` and not by
+the path of the plist. `launchctl unload <path>` therefore frees whatever the
+domain holds under the Label written *inside* that file — including a job a
+different installation loaded from somewhere else. On 2026-08-18 that took the
+author's `com.claudebrain.resume` and `.machiniste` over for about 28 hours, and
+the plists on disk never changed: it was invisible to `ls`, `cat` and `shasum`.
+
+So ownership of a Label is a **recorded fact**, `state/launchd-owned`, written
+only after a successful `load` — the same shape as `state/engine-managed` for
+the engine. It is never inferred from the Label, the `com.claudebrain.*` prefix,
+the plist on disk, `$HOME`, or `ProgramArguments`.
+
+| Situation | What the installer does |
+|---|---|
+| the Label is not in the domain | registers it, then records it |
+| it is there **and** recorded | unloads and reloads, and **checks the result** |
+| it is there and **not** recorded | refuses by name, writes nothing, touches nothing — not even the plist file |
+
+A job installed before that record existed is adopted by a separate, deliberate
+command, `cbrain/adopt-launchd.sh <label>`. No automatic path calls it. It
+requires two concordances **before** it asks anything — the live service must
+run this installation's program from the expected plist, and that plist must be
+equivalent to the template this installation would render, under the normal form
+in `cbrain/plist_normalise.py` — and then an explicit human confirmation. The
+two together do not discover who loaded the job; nothing can. They say the
+service matches this installation today, and the person decides.
 
 So a version switch is `ln -sfn` + **`mv -hf`** on a single symlink — one
 `rename(2)`, atomic. There is no window in which half the installation is on the

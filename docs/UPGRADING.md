@@ -95,6 +95,20 @@ Automatic engine updates are disabled for --dev installations.
 
 No checkout, no reset, no fetch. Update your checkout with git.
 
+### Your scheduled jobs will be left alone, and told so
+
+An update replays `install.sh`. From now on the installer refuses to unload a
+launchd Label it holds no record of owning — and an installation made before
+that record existed has none. So on the first update you will see, by name:
+
+    ! The service com.claudebrain.resume already exists, and this installation
+      holds no proof that it owns it. NOTHING was changed [...]
+
+**Nothing is broken**: the jobs keep running exactly what they were running. The
+message names the command that adopts them. Until you run it, the plist is no
+longer rewritten by an update, so a future change to the job definition will not
+reach this machine — that is the price of not guessing whose job it is.
+
 ### Nothing else to do
 
 There is no migration script and no command to run. An older installation

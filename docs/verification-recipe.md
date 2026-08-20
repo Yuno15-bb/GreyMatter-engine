@@ -283,6 +283,27 @@ git -C <engine> write-tree;     git -C <engine> status --porcelain
 > HEAD, and an earlier version discarded uncommitted work under `hooks/` outright.
 > `tests/update_ownership.py` now holds all of it on five real repositories.
 
+## 8 bis. launchd ownership — and what must NEVER be in a recipe
+
+**No recipe may run `launchctl` against the machine doing the verification.**
+`$HOME` does not isolate the launchd domain: `--no-launchd` in the recipes above
+is not a convenience, it is the reason they are safe to run. A recipe that loaded
+a job would register it in the real `gui/<uid>` — that is the experiment, run by
+accident on 2026-08-18, that took the author's jobs over for 28 hours.
+
+The three contracts are therefore proved without it, and they are the whole of
+what is proved today:
+
+```bash
+python3 tests/launchd_ownership.py   # static: reads the shell, invokes nothing
+python3 tests/launchd_refusal.py     # the guard, on a domain that is a text file
+python3 tests/launchd_adoption.py    # proof before permission, permission before the record
+```
+
+Still unmeasured, and it needs a machine that is not the author's: that the real
+`launchctl print` reports a program and a plist path the way the benches assume,
+and that its exit codes match the man page.
+
 ## 9. Publish
 
 ```bash

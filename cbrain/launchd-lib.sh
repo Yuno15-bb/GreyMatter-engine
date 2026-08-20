@@ -76,7 +76,9 @@ cb_launchd_refuse() {       # <label> — the named refusal, one voice for both 
   cb_launchd_warn "  proof that it owns it. NOTHING was changed: the job that is"
   cb_launchd_warn "  running keeps running, and its plist was not touched."
   cb_launchd_warn "  If this job is yours, adopt it deliberately — installing must"
-  cb_launchd_warn "  not decide that for you."
+  cb_launchd_warn "  not decide that for you. A refusal that does not say what to do"
+  cb_launchd_warn "  next is just an obstacle, so here it is:"
+  cb_launchd_warn "    bash ${CB:-$HOME/.c-brain}/engine/cbrain/adopt-launchd.sh $1"
   return 3
 }
 

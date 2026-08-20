@@ -26,6 +26,8 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIB = os.path.join(ROOT, "cbrain", "launchd-lib.sh")
 
@@ -41,34 +43,8 @@ def ko(label, detail=""):
     fails.append(label)
 
 
-FAKE = r'''#!/usr/bin/env bash
-# A launchd domain that is a text file. Exit codes follow launchctl(1): a
-# `print` of an unknown service fails, and `load` of a Label the domain already
-# holds fails too -- which is why the theft needed the unload first.
-printf '%s\n' "$*" >> "$FAKE_LOG"
-verb="$1"; shift
-label_of_plist() { sed -n 's|.*<string>\(com\.[^<]*\)</string>.*|\1|p' "$1" | head -1; }
-case "$verb" in
-  print)
-    grep -qxF "${1##*/}" "$FAKE_REG" 2>/dev/null || exit 1 ;;
-  load)
-    [ "${FAKE_FAIL_LOAD:-0}" = "1" ] && { echo "Load failed: 5: Input/output error" >&2; exit 1; }
-    l="$(label_of_plist "$1")"
-    grep -qxF "$l" "$FAKE_REG" 2>/dev/null && { echo "Load failed: 17: File exists" >&2; exit 1; }
-    printf '%s\n' "$l" >> "$FAKE_REG" ;;
-  unload)
-    [ "${FAKE_FAIL_UNLOAD:-0}" = "1" ] && { echo "Unload failed: 3: No such process" >&2; exit 1; }
-    l="$(label_of_plist "$1")"
-    grep -vxF "$l" "$FAKE_REG" > "$FAKE_REG.t" 2>/dev/null || :
-    mv "$FAKE_REG.t" "$FAKE_REG" ;;
-esac
-exit 0
-'''
+from _fake_launchd import FAKE, PLIST   # one definition of the fake domain
 
-PLIST = ('<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>\n'
-         '<key>Label</key><string>%s</string>\n'
-         '<key>ProgramArguments</key><array><string>/bin/echo</string></array>\n'
-         '</dict></plist>\n')
 
 
 class Bench:
@@ -99,7 +75,7 @@ class Bench:
         p = os.path.join(self.tmp, label + ".plist")
         if on_disk:
             with open(p, "w") as f:
-                f.write(PLIST % label)
+                f.write(PLIST % (label, "/opt/whatever/job.py"))
         return p
 
     def call(self, func, label, plist, **env):
