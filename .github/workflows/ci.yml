@@ -99,6 +99,12 @@ jobs:
       # Gates are set below what the engine scores today, to catch a
       # regression rather than freeze a number.
       - run: python3 tests/recall_benchmark.py --check
+      # And who owns a launchd identity. The first is static -- it reads the
+      # shell sources and never invokes launchctl, because the dynamic proof is
+      # the experiment that took the author's jobs over for 28 hours. The second
+      # drives the library against a launchd domain that is a text file.
+      - run: python3 tests/launchd_ownership.py
+      - run: python3 tests/launchd_refusal.py
 
   update:
     name: the update path keeps its language

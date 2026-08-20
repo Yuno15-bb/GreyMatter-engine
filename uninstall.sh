@@ -55,14 +55,21 @@ fi
 # ─── 2. Scheduled jobs ────────────────────────────────────────────────────
 echo
 echo "▸ Scheduled jobs"
-for t in resume machiniste; do
-  p="$HOME/Library/LaunchAgents/com.claudebrain.$t.plist"
-  if [ -f "$p" ]; then
-    launchctl unload "$p" 2>/dev/null || true
-    rm -f "$p"
-    say "- com.claudebrain.$t"
-  fi
-done
+# FAIL CLOSED. Without the library there is no way to tell our jobs from
+# somebody else's, and the safe answer to "whose is this?" is to leave it.
+if [ -f "$CB/engine/cbrain/launchd-lib.sh" ]; then
+  . "$CB/engine/cbrain/launchd-lib.sh"
+  for t in resume machiniste; do
+    label="com.claudebrain.$t"
+    p="$HOME/Library/LaunchAgents/$label.plist"
+    if [ -f "$p" ] || cb_launchd_registered "$label"; then
+      cb_launchd_uninstall "$label" "$p" || :
+    fi
+  done
+else
+  say "(cbrain/launchd-lib.sh missing — the launchd jobs are LEFT ALONE:"
+  say " removing them would mean touching identities this script cannot prove are ours)"
+fi
 
 # ─── 3. Links ─────────────────────────────────────────────────────────────
 # We delete symlinks ONLY. If something has become a real folder, that is

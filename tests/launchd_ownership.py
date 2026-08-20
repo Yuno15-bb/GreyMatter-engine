@@ -75,7 +75,8 @@ OWNERSHIP_FACTS = ("launchd-owned", "engine-managed", "MANIFEST", "manifest.txt"
 # case where the file was there, correct, and owned by somebody else.
 EXISTENCE_ONLY = re.compile(r"^\s*(\[\[?|test)\s+-[efLrsd]\s")
 
-SHELL_SOURCES = ["install.sh", "uninstall.sh", "sync.sh", "publish.sh"]
+SHELL_SOURCES = ["install.sh", "uninstall.sh", "sync.sh", "publish.sh",
+                 "cbrain/launchd-lib.sh"]
 
 fails = []
 calibration_fails = []
@@ -131,6 +132,47 @@ def _conditions_open_at(lines, target_line):
     return stack
 
 
+REFUSAL = re.compile(r"\b(return|exit|continue|die)\b")
+
+
+def _refuses_before(lines, target_line):
+    """A guard that BAILS OUT before the mutation, not one that is merely named.
+
+    Two legitimate early-exit shapes the block reader cannot see on its own:
+        cb_launchd_owned "$l" || { refuse; return 3; }
+        if ! cb_launchd_owned "$l"; then ...; return 3; fi
+    In both, the guard CONTROLS a branch whose body leaves. Mentioning the guard
+    and carrying on is not a guard, and a fixture below pins that down.
+    """
+    start = 0
+    for i in range(target_line - 1):
+        if re.match(r"^\s*(?:function\s+)?[A-Za-z_][A-Za-z0-9_]*\s*\(\)\s*\{",
+                    lines[i]):
+            start = i
+    for i in range(start, target_line - 1):
+        line = lines[i].split("#", 1)[0]
+        if GUARD not in line:
+            continue
+        # same-line group: `guard ... || { refuse; return 3; }`
+        if REFUSAL.search(line):
+            return True
+        # block form: the guard is the condition, the body leaves
+        if re.match(r"^\s*(if|elif|while|until)\b", line.strip()):
+            depth, body = 0, []
+            for raw in lines[i:target_line - 1]:
+                s = raw.split("#", 1)[0].strip()
+                if re.match(r"^(if|while|until|case)\b", s):
+                    depth += 1
+                elif re.match(r"^(fi|done|esac)\b", s):
+                    depth -= 1
+                    if depth <= 0:
+                        break
+                body.append(s)
+            if any(REFUSAL.search(b) for b in body):
+                return True
+    return False
+
+
 def unguarded(text):
     """Mutation sites NOT covered by the named guard, with the reason."""
     lines = text.splitlines()
@@ -142,6 +184,9 @@ def unguarded(text):
             continue
         # enclosing blocks: `if guard "$label"; then ... unload ... fi`
         if any(GUARD in c for c in _conditions_open_at(lines, line_no)):
+            continue
+        # early-return guard: the function has already left if it is not ours
+        if _refuses_before(lines, line_no):
             continue
         bad.append((line_no, verb, raw.strip()))
     return bad
@@ -163,9 +208,20 @@ def guard_definition(text):
     return True, "\n".join(body)
 
 
-def guard_is_real(body):
-    """A guard must read a recorded fact, and must not be a file test alone."""
-    if not any(tok in body for tok in OWNERSHIP_FACTS):
+def guard_is_real(body, whole_file=""):
+    """A guard must read a recorded fact, and must not be a file test alone.
+
+    One level of indirection is allowed: naming the record in a small accessor
+    beside the guard is better style, not a way round the rule. What is refused
+    is a guard that reaches no record at all.
+    """
+    reach = body
+    for helper in re.findall(r"\$\(\s*([a-z_][a-z0-9_]*)\b", body):
+        m = re.search(r"^\s*(?:function\s+)?%s\s*\(\)\s*\{.*?^\}"
+                      % re.escape(helper), whole_file, re.M | re.S)
+        if m:
+            reach += "\n" + m.group(0)
+    if not any(tok in reach for tok in OWNERSHIP_FACTS):
         return False, "consults no recorded ownership fact"
     meat = [l for l in body.splitlines()[1:-1]
             if l.strip() and not l.strip().startswith("#")]
@@ -201,6 +257,19 @@ if cb_launchd_owned "$label"; then
   launchctl unload "$out"
 fi
 launchctl bootout "gui/$(id -u)/com.claudebrain.machiniste"
+'''),
+    ("guard mentioned but nothing bails out", True, '''
+cb_launchd_owned "$label"
+launchctl unload "$out"
+'''),
+    ("early-return guard", False, '''
+cb_launchd_install() {
+  if ! cb_launchd_owned "$label"; then
+    cb_launchd_refuse "$label"
+    return 3
+  fi
+  launchctl unload "$plist"
+}
 '''),
     ("guard on the same line", False, '''
 cb_launchd_owned "$label" && launchctl unload "$out"
@@ -257,7 +326,7 @@ def calibrate():
             ko("%s: the fixture's guard was not even found" % name,
                bucket=calibration_fails)
             continue
-        real, why = guard_is_real(body)
+        real, why = guard_is_real(body, text)
         if real == should_pass:
             ok("%s: %s" % (name, "accepted" if real else "rejected (%s)" % why))
         else:
@@ -278,7 +347,7 @@ def audit_product():
         defined, body = guard_definition(text)
         if defined:
             seen_guard = True
-            real, why = guard_is_real(body)
+            real, why = guard_is_real(body, text)
             (ok if real else ko)("%s defines %s%s"
                                  % (rel, GUARD, "" if real else " -- " + why))
         bad = unguarded(text)

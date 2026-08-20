@@ -78,6 +78,7 @@ die()  { echo; echo "❌ $*"; exit 1; }
 # Building, verifying and mounting a version — shared with cbrain/update.sh so
 # that the installer and the updater cannot disagree on what a version is.
 . "$SOURCE/cbrain/engine-lib.sh"
+. "$SOURCE/cbrain/launchd-lib.sh"
 
 # Logs what we create, so uninstall knows what to undo.
 note() { [ "$DRY" = "1" ] || { mkdir -p "$CB"; echo "$1|$2" >> "$MANIFEST"; }; }
@@ -493,19 +494,33 @@ step "Scheduled jobs (launchd)"
 if [ "$DO_LAUNCHD" = "0" ]; then say "(skipped — --no-launchd)"
 else
   run mkdir -p "$HOME/Library/LaunchAgents"
+  refused=0
   for t in resume machiniste; do
     tpl="$ENGINE/hooks/com.claudebrain.$t.plist.template"
     [ -f "$tpl" ] || continue
-    out="$HOME/Library/LaunchAgents/com.claudebrain.$t.plist"
+    label="com.claudebrain.$t"
+    out="$HOME/Library/LaunchAgents/$label.plist"
     if [ "$DRY" = "1" ]; then say "(dry-run) would generate $out"; continue; fi
+    # OWNERSHIP IS ASKED BEFORE THE FILE IS WRITTEN, not before the unload. On a
+    # machine where another installation already holds this identity, its plist
+    # sits at exactly this path: writing first and asking after would have
+    # overwritten it, and "nothing was changed" would be a lie.
+    if cb_launchd_registered "$label" && ! cb_launchd_owned "$label"; then
+      cb_launchd_refuse "$label" || :
+      refused=$((refused + 1))
+      continue
+    fi
     # __HOME__ substituted here: a hardcoded path in a .plist is THE bug that
     # silently breaks an install on another machine.
     sed "s|__HOME__|$HOME|g" "$tpl" > "$out"
     note file "$out"
-    launchctl unload "$out" 2>/dev/null || true
-    launchctl load "$out" 2>/dev/null && say "+ com.claudebrain.$t loaded" \
-      || warn "com.claudebrain.$t generated but not loaded (launchctl refused)"
+    cb_launchd_install "$label" "$out" \
+      || warn "$label generated but not registered — see the line above"
   done
+  if [ "$refused" -gt 0 ]; then
+    warn "$refused scheduled job(s) left untouched. C Brain is installed and works;"
+    warn "  those jobs keep running whatever they were already running."
+  fi
 fi
 
 # ─── 9. Planet launcher ─────────────────────────────────────────────
