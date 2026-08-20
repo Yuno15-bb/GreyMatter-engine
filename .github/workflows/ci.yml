@@ -106,6 +106,7 @@ jobs:
       - run: python3 tests/launchd_ownership.py
       - run: python3 tests/launchd_refusal.py
       - run: python3 tests/launchd_adoption.py
+      - run: python3 tests/launchd_template_migration.py
 
   update:
     name: the update path keeps its language

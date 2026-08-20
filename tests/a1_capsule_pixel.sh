@@ -76,14 +76,15 @@ STEPS=(
   "5|check_drive|driving busy, then idle, and collecting both observables"
   "6|check_dom|what the RENDERER says it is showing"
   "7|check_pixels|what the SCREEN actually shows"
-  "8|check_cross|the crossed verdict"
+  "8|check_disappearance|that the orb really left, and the corner came back"
+  "9|check_cross|the crossed verdict"
 )
 # Steps whose sabotage lives in this file rather than in the library.
 SHELL_SABOTAGED=""
 
 # State carried between steps.
 ENGINE_ROOT=""; ENGINE_CAPSULE=""; ORB_RECT=""; POINTS_W=""; POINTS_H=""
-SIZE=""; EDGE=""; PROBE_BUSY=""; PROBE_IDLE=""; DOM_OK="no"; PIXEL_OK="no"
+SIZE=""; EDGE=""; PROBE_BUSY=""; PROBE_IDLE=""; DOM_OK="no"; PIXEL_OK="no"; GONE_OK="no"
 CAPSULE_PID=""; STATUS_FILE=""; STATUS_BACKUP=""; UDD=""
 
 cleanup() {
@@ -364,10 +365,35 @@ check_pixels() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STEP 8 — the crossed verdict
+# STEP 8 — did it really LEAVE?
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 7 only says the screen CHANGED when the orb went. A half-erased orb and a
+# ghost layer macOS forgot to drop both change the screen too. This asks the
+# stronger question: is the corner the SAME PICTURE as before anything ran —
+# the one taken in step 2, while no capsule had ever run in this session?
+check_disappearance() {
+  local d_return drift_idle win
+  d_return="$(lib diff "$WORK/20-empty.png" "$WORK/71-idle-a.png" | sed 's/^DIFF=//')"
+  drift_idle="$(lib diff "$WORK/71-idle-a.png" "$WORK/72-idle-b.png" | sed 's/^DIFF=//')"
+  # Read from the probe the MAIN process writes, not from the renderer: a
+  # renderer can clear its labels inside a window that is still standing.
+  # On doubt — no probe, unreadable JSON — the answer is "still visible", so an
+  # unreadable state can never be mistaken for a disappearance.
+  win="$(python3 -c "import json,sys;print('yes' if json.load(open(sys.argv[1])).get('window_visible') else 'no')" \
+         "$PROBE_IDLE" 2>/dev/null || echo yes)"
+  info "corner vs the BEFORE picture: ${d_return}%   empty-scene floor: ${drift_idle}%   window_visible: ${win}"
+  if lib judge-disappearance "$d_return" "$drift_idle" "$win"; then
+    GONE_OK="yes"; ok "the orb left, and the corner is the BEFORE picture again"
+  else
+    GONE_OK="no";  ko "the orb did not really leave"
+  fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STEP 9 — the crossed verdict
 # ═══════════════════════════════════════════════════════════════════════════
 check_cross() {
-  if lib judge-cross "$DOM_OK" "$PIXEL_OK"; then
+  if lib judge-cross "$DOM_OK" "$PIXEL_OK" "$GONE_OK"; then
     echo; echo "✅ A1 PROVEN — the capsule of the installed engine draws an orb, and the"
     echo "   renderer agrees about what it shows. Artefacts: $WORK"
   else

@@ -292,6 +292,19 @@ def judge_drive(capsule_status_path, written_status_path, payload, liveness_seco
     return True, ["driving %s, the file this capsule reads" % capsule_status_path]
 
 
+# The fields that carry MEANING in a probe payload. `ts` and `window_bounds` are
+# excluded on purpose: the probe stamps a fresh `ts` every second, so comparing
+# whole payloads made the "is this channel a constant?" test below unable to fire
+# on a real capsule — two payloads were never equal, however identical their
+# content. A control that cannot go red on the real product is not a control.
+_DOM_MEANING = ("renderer_ready", "state_text", "state_visible", "detail_text",
+                "detail_visible", "pad_visible", "window_visible")
+
+
+def _dom_meaning(p):
+    return tuple(p.get(k) for k in _DOM_MEANING)
+
+
 def judge_dom(busy, idle, versions_root):
     """What the RENDERER says it is showing, in both states.
 
@@ -299,11 +312,31 @@ def judge_dom(busy, idle, versions_root):
     states must each be right, AND they must DIFFER. A probe file that never
     changes satisfies neither state honestly, and would sail through a check
     that only ever looked at `busy`.
+
+    ⚠ CORRECTED 2026-08-17. The idle half used to demand an EMPTY `state_text`.
+    It was refused by the real product, and the refusal was right about the
+    facts and wrong about the requirement: this capsule hides its label by
+    dropping the CSS class `vu`, it never blanks the textContent. `state_text`
+    stays "DISTILLING..." at idle BY DESIGN.
+
+    The requirement was not unobservable — that was the first guess, and the
+    probes refuted it. Both payloads of the failing run were fresh (71.2s apart
+    by their own `ts`) and `window_visible` had correctly flipped true → false,
+    as had `state_visible` and `detail_visible`. The renderer answers perfectly
+    well while hidden. The assertion was simply aimed at an implementation
+    detail the product never promised, instead of at the question A1 asks:
+    is the capsule still SHOWING anything?
+
+    So the idle half is not dropped, it is re-aimed — and made stricter: the
+    window's own visibility, reported by the MAIN process rather than by the
+    renderer, is now required to be false. A renderer that clears its labels
+    inside a window still standing on screen used to pass here; it no longer
+    does.
     """
     bad = []
     if not busy or not idle:
         return False, ["the probe wrote no readable JSON in one of the two states"]
-    if busy == idle:
+    if _dom_meaning(busy) == _dom_meaning(idle):
         bad.append("the probe reported the SAME thing busy and idle: a constant, "
                    "not a measurement")
     if busy.get("renderer_ready") != "complete":
@@ -320,57 +353,146 @@ def judge_dom(busy, idle, versions_root):
     engine = str(busy.get("engine_dir", ""))
     if versions_root not in engine:
         bad.append("busy: engine_dir is %r, which is not under %s" % (engine, versions_root))
-    if str(idle.get("state_text", "")).strip():
-        bad.append("idle: state_text is still %r" % idle.get("state_text"))
+    # Idle is judged on what is SHOWN, never on what the DOM still holds in a
+    # node nobody can see. See the note above: state_text keeps its last value
+    # by design, and demanding it be empty tested the product's internals.
     if idle.get("state_visible"):
         bad.append("idle: the state label is still visible")
     if idle.get("detail_visible"):
         bad.append("idle: the detail is still visible")
+    if idle.get("window_visible"):
+        bad.append("idle: the system still reports the window as visible")
     if bad:
         return False, bad
-    return True, ["busy says %r, idle says nothing, engine under versions/"
-                  % busy.get("state_text")]
+    return True, ["busy says %r and shows it; idle shows nothing and the window is "
+                  "hidden; engine under versions/" % busy.get("state_text")]
 
 
 def judge_pixels(d_appear, d_vanish, drift_busy, drift_idle):
     """Did the SCREEN change when the orb came and went?
 
-    The comparison that matters is against the harness's own noise: the orb
-    animates, so two captures of the same busy state already differ. If that
-    self-difference is as large as the difference the orb's arrival makes, the
-    instrument cannot attribute anything, and it has to say so rather than
-    round up to a pass.
+    ⚠ CORRECTED 2026-08-17, by the first complete run rather than by review.
+
+    The floor used to be max(drift_busy, drift_idle, 0.3) — it took the
+    difference between TWO CAPTURES OF THE ORB ITSELF as the measure of the
+    scene's noise. But this orb is a WebGL animation BY DESIGN: those two
+    captures differ because the subject is alive, not because the scene is
+    unstable. Measured that day: busy-twice 16.19%, idle-twice 0.00%, signal
+    19.37%. The judgement announced "the screen does not carry the orb" while
+    the orb was plainly on screen with its text legible. The instrument was
+    counting the subject's own life as noise — so the livelier the proof, the
+    blinder it declared itself. A control cannot be allowed to get stricter as
+    the evidence gets stronger.
+
+    The floor is now measured where the subject is ABSENT (idle, orb hidden).
+    That is the only state in which "two captures should be identical" is a
+    claim about the INSTRUMENT rather than about the orb.
+
+    The thresholds are UNCHANGED — 5% absolute, 3x the floor, 0.3% minimum.
+    What was wrong was the quantity fed to them, not their severity.
+
+    drift_busy is still collected and reported: it is evidence of the opposite
+    kind, an orb that moves. It is deliberately NOT judged here. Turning it into
+    a requirement would be a new claim, and a new claim needs its own
+    calibration before it is allowed to decide anything.
     """
     if None in (d_appear, d_vanish, drift_busy, drift_idle):
         return False, ["one of the four captures was unreadable — nothing can be "
                        "concluded, and an unreadable capture is not an empty rectangle"]
-    floor = max(drift_busy, drift_idle, 0.3)
+    floor = max(drift_idle, 0.3)
     bad = []
     if d_appear < 5.0:
         bad.append("the orb appearing moved only %.1f%% of the rectangle" % d_appear)
     if d_vanish < 5.0:
         bad.append("the orb leaving moved only %.1f%% of the rectangle" % d_vanish)
     if d_appear < 3 * floor:
-        bad.append("appear %.1f%% is not clear of the same-state noise %.1f%%"
+        bad.append("appear %.1f%% is not clear of the empty-scene noise %.1f%%"
                    % (d_appear, floor))
     if d_vanish < 3 * floor:
-        bad.append("vanish %.1f%% is not clear of the same-state noise %.1f%%"
+        bad.append("vanish %.1f%% is not clear of the empty-scene noise %.1f%%"
                    % (d_vanish, floor))
     if bad:
         return False, bad
-    return True, ["appear %.1f%% / vanish %.1f%% against a %.1f%% noise floor"
-                  % (d_appear, d_vanish, floor)]
+    return True, ["appear %.1f%% / vanish %.1f%% against a %.1f%% empty-scene floor "
+                  "(the orb's own motion, %.1f%%, is signal and is not counted here)"
+                  % (d_appear, d_vanish, floor, drift_busy)]
 
 
-def judge_cross(dom_ok, pixel_ok):
-    """Neither observable is allowed to stand in for the other.
+def judge_disappearance(d_return, drift_idle, window_visible_idle):
+    """Did the rectangle come BACK to the picture taken before anything ran?
+
+    Added 2026-08-17. "vanish" in judge_pixels only says the screen CHANGED when
+    the orb left — a half-erased orb, or a ghost layer macOS forgot to drop,
+    changes the screen too. The stronger question is whether the corner returned
+    to the exact BEFORE picture of step 2, the one taken while no capsule had
+    ever run in this session.
+
+    On the run that motivated this, 20-empty.png, 71-idle-a.png and
+    72-idle-b.png shared one SHA-256: the return was byte-for-byte. Requiring
+    byte equality would still be too brittle (a cursor, a notification), so the
+    test is "indistinguishable from the BEFORE picture within the floor the
+    instrument just measured on that same empty scene". No new threshold.
+
+    The window's own state is checked too, and from the MAIN process rather than
+    the renderer: a renderer can clear its labels while the window stays up.
+    """
+    if d_return is None or drift_idle is None:
+        return False, ["a capture was unreadable — an unreadable rectangle is not "
+                       "a rectangle that came back"]
+    floor = max(drift_idle, 0.3)
+    bad = []
+    if d_return > floor:
+        bad.append("the corner differs from the BEFORE picture by %.1f%%, above the "
+                   "%.1f%% empty-scene floor — something of the orb is still there"
+                   % (d_return, floor))
+    if window_visible_idle:
+        bad.append("the system still reports the capsule window as visible")
+    if bad:
+        return False, bad
+    return True, ["the corner returned to the BEFORE picture (%.1f%% <= %.1f%%) and the "
+                  "window reports itself hidden" % (d_return, floor)]
+
+
+def _flag(v):
+    """A yes/no token from the shell, or a hard stop.
+
+    ⚠ Found 2026-08-17, while wiring the third observable. The shell sets
+    DOM_OK/PIXEL_OK to "yes"/"no" and passed them straight in, while this side
+    compared them to "ok". Nothing ever matched: judge_cross received
+    (False, False) on EVERY run, so "A1 PROVEN" was a branch the harness could
+    not reach — the one sentence the whole file exists to be able to print.
+
+    The positive control never caught it because it calls judge_cross() in
+    Python, with real booleans, bypassing the only path a run actually takes.
+    A harness proves the paths its assertions are wired to, and nothing else.
+
+    So an unrecognised token now STOPS the run instead of quietly meaning "no".
+    A verdict must never be produced by a comparison that silently failed.
+    """
+    if v not in ("yes", "no"):
+        print("     unusable verdict token %r — expected 'yes' or 'no'. Refusing to "
+              "turn an unreadable answer into a negative one." % v)
+        sys.exit(2)
+    return v == "yes"
+
+
+def judge_cross(dom_ok, pixel_ok, gone_ok):
+    """No observable is allowed to stand in for another.
 
     A renderer can be certain it is drawing an orb nobody can see. A screen can
-    show an orb no renderer is drawing — macOS keeps ghost layers. A1 is proven
-    only where the two agree.
+    show an orb no renderer is drawing — macOS keeps ghost layers. And an orb
+    that arrives but never leaves has not been shown to be a capsule window at
+    all; it could be anything painted over that corner.
+
+    `gone_ok` joined the verdict on 2026-08-17, when the disappearance became a
+    step of its own. It is carried here rather than left to the shell so that
+    the decision to say PROVEN lives where sabotages can reach it.
     """
-    if dom_ok and pixel_ok:
-        return True, "the renderer and the screen agree"
+    if dom_ok and pixel_ok and gone_ok:
+        return True, "the renderer, the screen and the return to an empty corner agree"
+    if not gone_ok and dom_ok and pixel_ok:
+        return False, ("the orb appeared and the renderer agreed, but the corner never "
+                       "came back to its BEFORE picture — that is what a ghost layer is")
     if dom_ok and not pixel_ok:
         return False, ("the renderer believes it is drawing an orb the screen does not "
                        "show — off-screen, occluded, or fully transparent")
@@ -600,10 +722,17 @@ def _sab_pixel_flat():
     return (not ok and any("only" in b for b in why)), "; ".join(why)
 
 
-@sabotage("7", "a change no larger than the orb's own animation proves nothing")
+@sabotage("7", "a change no larger than the noise of the EMPTY scene proves nothing")
 def _sab_pixel_in_the_noise():
-    ok, why = judge_pixels(d_appear=18.0, d_vanish=17.0, drift_busy=16.0, drift_idle=0.2)
+    # Revised 2026-08-17 with the floor itself. It used to put the 16% in
+    # drift_busy — which no longer moves the floor, so the sabotage would have
+    # gone green and quietly stopped proving anything. That break is the point:
+    # it is how one can tell the assertion really runs through the changed path.
+    # The unstable scene now lives where it belongs, in the subject's ABSENCE.
+    ok, why = judge_pixels(d_appear=18.0, d_vanish=17.0, drift_busy=1.0, drift_idle=16.0)
     return (not ok and any("noise" in b for b in why)), "; ".join(why)
+
+
 
 
 @sabotage("7", "an unreadable capture never becomes a pixel verdict")
@@ -612,16 +741,40 @@ def _sab_pixel_unreadable():
     return (not ok and any("unreadable" in b for b in why)), "; ".join(why)
 
 
-@sabotage("8", "the renderer alone cannot carry the verdict")
+@sabotage("8", "an orb still on the screen at idle is not a disappearance")
+def _sab_gone_still_there():
+    ok, why = judge_disappearance(d_return=19.0, drift_idle=0.2, window_visible_idle=False)
+    return (not ok and any("still there" in b for b in why)), "; ".join(why)
+
+
+@sabotage("8", "a window the system still calls visible is not a disappearance")
+def _sab_gone_window_up():
+    ok, why = judge_disappearance(d_return=0.0, drift_idle=0.2, window_visible_idle=True)
+    return (not ok and any("still reports" in b for b in why)), "; ".join(why)
+
+
+@sabotage("8", "an unreadable capture never becomes a disappearance")
+def _sab_gone_unreadable():
+    ok, why = judge_disappearance(None, 0.2, False)
+    return (not ok and any("unreadable" in b for b in why)), "; ".join(why)
+
+
+@sabotage("9", "the renderer alone cannot carry the verdict")
 def _sab_cross_dom_only():
-    ok, why = judge_cross(dom_ok=True, pixel_ok=False)
+    ok, why = judge_cross(dom_ok=True, pixel_ok=False, gone_ok=True)
     return (not ok and "does not show" in why), why
 
 
-@sabotage("8", "the screen alone cannot carry it either — that is what a ghost is")
+@sabotage("9", "the screen alone cannot carry it either — that is what a ghost is")
 def _sab_cross_pixel_only():
-    ok, why = judge_cross(dom_ok=False, pixel_ok=True)
+    ok, why = judge_cross(dom_ok=False, pixel_ok=True, gone_ok=True)
     return (not ok and "ghost layer" in why), why
+
+
+@sabotage("9", "an orb that arrives and never leaves cannot carry it either")
+def _sab_cross_never_left():
+    ok, why = judge_cross(dom_ok=True, pixel_ok=True, gone_ok=False)
+    return (not ok and "never came back" in why), why
 
 
 @sabotage("*", "diff refuses to compare an unreadable signature")
@@ -651,8 +804,14 @@ _GOOD_BUSY = {"renderer_ready": "complete", "state_text": "DISTILLING...",
               "state_visible": True, "detail_text": "a1 capsule pixel proof",
               "detail_visible": True, "window_visible": True,
               "engine_dir": "/Users/x/.c-brain/versions/abc123/capsule"}
-_GOOD_IDLE = {"renderer_ready": "complete", "state_text": "", "state_visible": False,
-              "detail_text": "", "detail_visible": False, "window_visible": True,
+# ⚠ This is the REAL idle payload of the 2026-08-17 run, not an invented one.
+# It used to be a fiction — empty texts and window_visible True — and the fiction
+# was what let the idle half be written against the product's internals instead
+# of against what it shows. The texts KEEP their last value at idle (the label is
+# hidden by dropping a CSS class), and the window reports itself hidden.
+_GOOD_IDLE = {"renderer_ready": "complete", "state_text": "DISTILLING...",
+              "state_visible": False, "detail_text": "a1 capsule pixel proof",
+              "detail_visible": False, "pad_visible": False, "window_visible": False,
               "engine_dir": _GOOD_BUSY["engine_dir"]}
 
 
@@ -711,9 +870,25 @@ def _pos_pixels():
     return ok, "; ".join(why)
 
 
-@positive("8", "two agreeing observables are accepted")
+@positive("7", "a LIVELY orb is accepted — its own motion is signal, not noise")
+def _pos_pixels_animated():
+    # The REAL values of the 2026-08-17 run, kept as a regression guard. Under
+    # the old floor these were REFUSED while the orb was visibly on screen. If
+    # a later edit ever puts drift_busy back into the floor, this goes red.
+    ok, why = judge_pixels(19.37, 19.37, 16.19, 0.0)
+    return ok, "; ".join(why)
+
+
+@positive("8", "a corner back to its BEFORE picture, window hidden, is accepted")
+def _pos_gone():
+    # Also the real run: 20-empty, 71-idle-a and 72-idle-b shared one SHA-256.
+    ok, why = judge_disappearance(0.0, 0.0, False)
+    return ok, "; ".join(why)
+
+
+@positive("9", "three agreeing observables are accepted")
 def _pos_cross():
-    return judge_cross(True, True)
+    return judge_cross(True, True, True)
 
 
 @positive("*", "diff of two real signatures returns a number")
@@ -847,8 +1022,16 @@ def main(argv):
             print("     %s" % line)
         return 0 if ok else 1
 
+    if cmd == "judge-disappearance":
+        d_return = None if argv[2] == "UNREADABLE" else float(argv[2])
+        drift = None if argv[3] == "UNREADABLE" else float(argv[3])
+        ok, why = judge_disappearance(d_return, drift, _flag(argv[4]))
+        for line in why:
+            print("     %s" % line)
+        return 0 if ok else 1
+
     if cmd == "judge-cross":
-        ok, why = judge_cross(argv[2] == "ok", argv[3] == "ok")
+        ok, why = judge_cross(_flag(argv[2]), _flag(argv[3]), _flag(argv[4]))
         print("     %s" % why)
         return 0 if ok else 1
 

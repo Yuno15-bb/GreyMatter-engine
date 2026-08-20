@@ -102,8 +102,31 @@ echo "  ── loaded from .......... ${LIVE_PATH:-(not reported)}"
 NORM="$SELF/plist_normalise.py"
 if ! diff -q <(python3 "$NORM" < "$PLIST") \
              <(printf '%s\n' "$RENDERED" | python3 "$NORM") >/dev/null 2>&1; then
-  refuse "the plist on disk is not what this installation would write
-   compared under the normal form in cbrain/plist_normalise.py"
+  # PROOF A HELD AND PROOF B DID NOT. Say exactly that, and nothing more: we do
+  # NOT know that this file came from an older release. It is the likeliest
+  # explanation, it is not established, and a refusal that asserts a cause it
+  # cannot show is the same inference this whole guard exists to remove.
+  printf '\n  ADOPTION REFUSED\n' >&2
+  printf '  The live service matches this installation, but its launchd file does\n' >&2
+  printf '  not match the template this installation currently recognises. It may\n' >&2
+  printf '  come from an earlier version. Automatic adoption is refused.\n\n' >&2
+  printf '  What differs (normal form, cbrain/plist_normalise.py):\n' >&2
+  diff <(python3 "$NORM" < "$PLIST") \
+       <(printf '%s\n' "$RENDERED" | python3 "$NORM") 2>/dev/null \
+    | head -20 | sed 's|^|    |' >&2 || :
+  cat >&2 <<TXT
+
+  Nothing was changed. To get back to a state this installation owns, the safe
+  procedure is yours to run, deliberately — this command will not do it for you:
+
+    1. read the difference above and make sure losing that file is acceptable
+    2. stop the job:    launchctl bootout gui/$(id -u)/$LABEL
+    3. remove its file: rm "$PLIST"
+    4. re-run the installer; it will register the job and record it as owned
+
+  Step 2 stops the job. Between step 2 and step 4 it does not run.
+TXT
+  exit 3
 fi
 echo "  ── plist ................ $PLIST"
 echo "  ── template match ....... equivalent under cbrain/plist_normalise.py"

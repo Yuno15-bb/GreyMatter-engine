@@ -1,0 +1,11 @@
+{
+  "_why": "The sha256 of each launchd template's NORMAL FORM (see cbrain/plist_normalise.py), and the migration decision taken when that form last changed. Changing a template semantically shuts the legacy adoption window for every machine that has not adopted yet: update the hash AND say here what happens to them. tests/launchd_template_migration.py goes red otherwise.",
+  "com.claudebrain.machiniste.plist.template": {
+    "normal_form_sha256": "3115729641574fe574cfb7ec465ea86e66e2329ebed378011bcdf134f33e09eb",
+    "migration_decision": "none needed -- first baseline, 2026-08-20. No semantic change has been published since legacy adoption existed."
+  },
+  "com.claudebrain.resume.plist.template": {
+    "normal_form_sha256": "0e3e8048db063afed2bef5624447d80406250d62e3b28c1d44e50cfef416a84e",
+    "migration_decision": "none needed -- first baseline, 2026-08-20. No semantic change has been published since legacy adoption existed."
+  }
+}

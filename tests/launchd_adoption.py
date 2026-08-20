@@ -210,6 +210,42 @@ def case_adopted():
         b.close()
 
 
+def case_older_version_wording():
+    """Proof A held, proof B did not: say that, and do not assert a cause.
+
+    "This job comes from an older version" is the likeliest explanation and it
+    is NOT established -- the file could have been edited by hand, or written by
+    something else entirely. A refusal that asserts a cause it cannot show is
+    the same inference the whole guard exists to remove.
+    """
+    b = Bench()
+    try:
+        changed = b.rendered(LABEL).replace("<integer>300</integer>",
+                                            "<integer>600</integer>")
+        b.put_plist(LABEL, changed)
+        b.register(LABEL, b.program(LABEL), b.plist_path(LABEL))
+        rc, out = b.adopt(LABEL, "y\n")
+        flat = " ".join(out.split())   # the message wraps across lines
+        if "It may come from an earlier version." in flat:
+            ok("proof B fails: the cause is offered as possible, not asserted")
+        else:
+            ko("the refusal states a cause it cannot show", out.strip()[-160:])
+        if "<integer>600</integer>" in out and "<integer>300</integer>" in out:
+            ok("  and it shows WHAT differs, both sides")
+        else:
+            ko("  the refusal does not show the difference")
+        if "launchctl bootout" in out and "re-run the installer" in out:
+            ok("  and names the safe procedure, step by step")
+        else:
+            ko("  the refusal is a dead end: no way back is given")
+        if os.path.exists(b.plist_path(LABEL)) and not b.mutations():
+            ok("  nothing was deleted and nothing was unloaded")
+        else:
+            ko("  the refusal removed something on the user's behalf")
+    finally:
+        b.close()
+
+
 def case_declined():
     b = Bench()
     try:
@@ -346,6 +382,8 @@ def main():
             label="com.claudebrain.somebodyelse")
     refusal("a confirmation offered with no proofs at all",
             lambda b: None)
+
+    case_older_version_wording()
 
     print("\n> what is not written")
     case_declined()
