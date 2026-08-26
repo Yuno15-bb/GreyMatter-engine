@@ -22,6 +22,49 @@ python3 leakcheck.py --history
 
 > On `main`, `sync.sh` refuses to run — see [`translation.md`](translation.md).
 
+## 0 bis. The leak check, and the decoys it must NOT wave through
+
+Some tests have to CONTAIN what the check forbids: `tests/fiche_write_contract.py`
+writes a fake Anthropic key to prove that a key is refused, `tests/a1_pixel_lib.py`
+compares home-directory paths to prove that a personal path is recognized. On
+2026-08-26 that read as 13 leaks — 13 of them deliberate — and held 37 commits at
+the door.
+
+Disarming a marker would have been the wrong repair. The exception granted instead
+holds on **three cumulative locks**: the exact literal (a closed list, never a
+relaxed pattern), the location (`tests/` only — the same value anywhere else stays
+red), and a manifestly fake shape, one no reader could mistake for real data. The
+literals themselves are deliberately not reprinted here: `docs/` is exempt for the
+owner's name only, so a decoy quoted in this file would go red like any other leak.
+
+An exception nobody tests is a hole that hides itself, so the counter-proof runs
+next to the check:
+
+```bash
+python3 leakcheck.py
+python3 leakcheck.py --history
+python3 tests/leakcheck_fixtures.py
+```
+
+**Expected**: `✅ CLEAN` twice, then 11 green cases.
+
+The counter-proof NAMES the marker it expects for every case instead of settling
+for "something was flagged" — a sabotage found exactly that hole in the first
+version of this check. Allowing a real key as a decoy still went red, but on a
+DIFFERENT marker, so the case kept passing while the marker under test was
+disarmed. Three sabotages must turn it red: widen the scope past `tests/`, remove
+a marker, whitelist a real key.
+
+> Two traps, recorded in the code. The marker for a secret assigned in clear reads
+> the SHAPE of the line, not the value — so the forbidden values in the
+> counter-proof are assembled at runtime; written as literals they would trip the
+> check on the very file that tests it. And the comment that explained that trap
+> tripped it in turn, by quoting it.
+
+> Adding an entry to the decoy list is a decision, not a convenience: it comes with
+> a case in `tests/leakcheck_fixtures.py` proving that the non-exempted variant
+> still blocks.
+
 ## 1. Install from a real CLONE
 
 **Never from a copied folder.** Cloning is what reveals what `.gitignore`
