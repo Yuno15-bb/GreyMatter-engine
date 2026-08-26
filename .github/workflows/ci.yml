@@ -33,6 +33,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 leakcheck.py --history
+      # Contre-épreuve de l'exception « leurres de test » : prouve que les
+      # valeurs déclarées passent ET que tout le reste rougit encore. Sans elle,
+      # l'exception serait un trou qui s'ignore.
+      - run: python3 tests/leakcheck_fixtures.py
 
   english:
     name: English only (main)

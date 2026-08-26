@@ -100,6 +100,40 @@ FAUX_POSITIFS = {
     "adresse mail": ("git@github.com",),   # syntaxe SSH, pas une personne
 }
 
+# ── LEURRES DE TEST ────────────────────────────────────────────────────────
+# Un test qui prouve qu'un garde-fou ROUGIT doit contenir la chose interdite.
+# `tests/fiche_write_contract.py` écrit une fausse clé Anthropic pour vérifier
+# qu'elle est bien refusée ; `tests/a1_pixel_lib.py` compare des chemins
+# `/Users/x/` pour vérifier qu'un chemin personnel est bien reconnu. Sans
+# exception, le contrôle bloque les tests écrits POUR LUI — et le seul geste
+# possible devient de l'assouplir. C'est précisément ce qu'on refuse.
+#
+# Trois verrous, cumulatifs, pour que l'exception ne puisse pas grossir :
+#   1. VALEUR EXACTE. Liste fermée de littéraux, jamais un motif détendu.
+#      Toute variation — une vraie clé, un vrai chemin — reste rouge.
+#   2. EMPLACEMENT. Uniquement sous `tests/`. La même valeur ailleurs dans le
+#      dépôt rougit toujours : un leurre n'a de sens que dans un test.
+#   3. FORME MANIFESTEMENT FAUSSE. `AAAABBBBCCCCDDDDEEEE`, `/Users/x/` — aucune
+#      ne peut être confondue avec une donnée réelle par un relecteur.
+#
+# Ajouter une entrée ici est une décision, pas une commodité : elle doit être
+# accompagnée d'un test dans `tests/leakcheck_fixtures.py` qui prouve que la
+# variante NON exemptée reste bloquante.
+FIXTURES_DIRS = ("tests/",)
+FIXTURES = {
+    "chemin personnel": ("/Users/x/", "/Users/them/", "/Users/us/"),
+    "clé Anthropic": ("sk-ant-AAAABBBBCCCCDDDDEEEE",),
+    "secret assigné en clair": ('SECRET = "sk-ant-AAAABBBBCCCCDDDDEEEE',),
+}
+
+
+def est_un_leurre(label: str, source: str, valeur: str) -> bool:
+    """Vrai seulement si les trois verrous sont satisfaits en même temps."""
+    src = source[len("historique:"):] if source.startswith("historique:") else source
+    if not src.startswith(FIXTURES_DIRS):
+        return False
+    return valeur in FIXTURES.get(label, ())
+
 
 def exempted(label: str, source: str) -> bool:
     # « historique:docs/… » doit être exempté comme « docs/… » : c'est le même
@@ -166,6 +200,8 @@ def scan(label_source, text, compiled, leaks):
             continue
         for m in rx.finditer(text):
             if m.group(0) in FAUX_POSITIFS.get(label, ()):
+                continue
+            if est_un_leurre(label, label_source, m.group(0)):
                 continue
             if label == "personne — propriétaire" and _sur_une_ligne_de_copyright(text, m.start()):
                 continue

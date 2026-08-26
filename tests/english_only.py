@@ -43,6 +43,7 @@ SKIP_FILES = {
     "rules.json",            # the French→English rules themselves
     "generalize.py",         # ships the French patterns it rewrites
     "leakcheck.py",          # French markers are what it hunts for
+    "tests/leakcheck_fixtures.py",  # its counter-proof: same markers, same reason
     "tests/english_only.py",
 }
 SKIP_DIRS = {".git", "node_modules", "docs/media", "planet/media", "skeleton", "demo"}
