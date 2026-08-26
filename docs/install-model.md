@@ -185,6 +185,16 @@ pruned at the end of a successful update.
 source clone stays on disk, untouched — it was never ours to delete. Without the
 flag, nothing changes.
 
+**It resolves `~/.c-brain` exactly the way the installer does** (2026-08-26). The
+two scripts decide ownership by comparing PATHS — is this shortcut the one we
+made, is this engine the one we built — and a comparison is only as good as the
+spelling on both sides. The installer canonicalises with `pwd -P`; uninstall did
+not, so wherever `$HOME` goes through a symlink (every `mktemp -d` on macOS, and
+the CI runner) it read the Finder shortcut it had just created, saw
+`/private/var/…` where it expected `/var/…`, concluded the link was somebody
+else's and left it on the machine. Same trap as the ownership record install.sh
+already warns about, one file further on.
+
 ### `brain doctor`
 
 - Today it runs `git -C engine status` to detect a dirty engine

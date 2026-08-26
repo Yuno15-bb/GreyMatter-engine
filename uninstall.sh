@@ -10,8 +10,21 @@
 # Usage: ./uninstall.sh [--yes] [--purge-engine]
 set -euo pipefail
 
-TRUNK="$HOME/.c-brain/trunk"
+# ⚠ CANONICAL, on the SAME rule as install.sh — and it has to be, because the two
+# compare strings. The installer resolves $HOME with `pwd -P` before writing the
+# Finder shortcut, so the link holds `/private/var/…` wherever $HOME goes through
+# a symlink (every `mktemp -d` on macOS, and the CI runner). Uninstall read
+# `$HOME/.c-brain/trunk` unresolved, the two spellings of the same directory did
+# not match, and the uninstaller decided the shortcut IT had just made belonged
+# to somebody else and left it behind. install.sh already carries this warning
+# for the ownership record; this is the same trap, one file further on.
 CB="$HOME/.c-brain"
+if [ -d "$CB" ]; then
+  CB="$(cd "$CB" && pwd -P)"
+else
+  CB="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")/.c-brain"
+fi
+TRUNK="$CB/trunk"
 MANIFEST="$CB/manifest.txt"
 
 ASSUME_YES=0; PURGE_ENGINE=0
