@@ -642,7 +642,16 @@ fi
 step "Verification"
 if [ "$DRY" = "1" ]; then say "(dry-run) would run the selftest"
 else
-  if bash "$TRUNK/hooks/selftest.sh" >/tmp/c-brain-selftest.log 2>&1; then
+  # THE ENGINE IS NAMED, and that is the whole point. With no argument the
+  # selftest reaches the CLI through `$TRUNK/brain` — which install.sh does not
+  # create, the command being linked into ~/.local/bin — and then falls back to
+  # whatever `brain` sits on PATH. On a fresh machine that is nothing, so four
+  # checks went red on a healthy install; on a machine that already had C Brain
+  # it was WORSE: the freshly installed engine reported green or red on somebody
+  # else's version, run against this HOME. Naming the engine is the case the
+  # selftest already documents — "when an engine is named, its OWN brain is the
+  # only one allowed" — and it is exactly what an installer knows.
+  if bash "$TRUNK/hooks/selftest.sh" "$CB/engine" >/tmp/c-brain-selftest.log 2>&1; then
     say "✅ selftest OK — every hook healthy"
   else
     warn "selftest failed — details: /tmp/c-brain-selftest.log"
