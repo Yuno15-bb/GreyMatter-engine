@@ -200,6 +200,15 @@ flag, nothing changes.
 
 Gains an optional engine path. Called with none, it behaves exactly as today.
 
+**And `install.sh` now always names it** (2026-08-26). With no argument the
+selftest resolves the CLI through the trunk, then through PATH — neither of which
+belongs to the version being installed. A fresh machine has no `brain` on PATH at
+that moment, so the installer's own verification went red on a healthy tree; a
+machine that already had C Brain gave it the OTHER installation's engine to test.
+The rule the header states — when an engine is named, its own `brain` is the only
+one allowed — is exactly what an installer is in a position to guarantee, so it
+does. `brain update` already named the candidate it was about to switch to.
+
 ## Migration of existing installs
 
 Measured, not assumed — replayed in a sandbox with a laboratory origin, the real

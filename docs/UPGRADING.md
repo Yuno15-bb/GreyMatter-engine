@@ -75,6 +75,15 @@ After v1.29.0, C Brain no longer uses your checkout as the installed engine.
   says which versions remain, rather than landing somewhere else.
 - **The trunk is not touched.** As before, and now structurally: no git command
   in the update path names the trunk.
+- **`install.sh --dry-run` is inert, and reaches the end.** Reviewed 2026-08-26,
+  because this release is the one people will want to preview before running it:
+  until then the preview created `~/.c-brain` before it had read its own flag,
+  and then died at "Engine linked into the trunk" with no message and exit 2.
+- **The installer's closing verification tests the version it just built.** It
+  used to fall back to whichever `brain` was on PATH — nothing at all on a clean
+  machine, so a healthy install ended on "some hooks are broken"; the other
+  installation's engine on a machine that already had C Brain. Nothing else in
+  the upgrade path changes: the warning above still applies exactly as written.
 
 ### If you work ON C Brain
 

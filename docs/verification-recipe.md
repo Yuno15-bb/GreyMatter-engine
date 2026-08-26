@@ -83,6 +83,41 @@ re-install over notes it must read `▸ Your trunk is already growing.` instead.
 line had no test at all until 2026-08-16: it announced an empty trunk to somebody
 holding 23 notes, and then offered `brain demo`, which writes into a live trunk.
 
+`✅ selftest OK` is only worth reading because the installer hands the selftest
+the engine it has just built. Until 2026-08-26 it called it with no argument, so
+the selftest looked for the CLI at `$TRUNK/brain` — which the installer does not
+create — and then fell back to whatever `brain` sat on PATH. On a clean machine
+that is nothing, and a healthy install ended on "some hooks are broken"; on a
+machine that already had C Brain, the line above was reporting on the OTHER
+installation's engine. Read this expectation on a machine that has never had
+C Brain, and once on a machine that has.
+
+## 1 bis. The preview must leave the machine exactly as it found it
+
+```bash
+T=/tmp/iso-dry; rm -rf $T; mkdir -p $T
+HOME=$T bash ./install.sh --dry-run --no-launchd --no-capsule; echo "rc=$?"
+[ -e $T/.c-brain ] || [ -e $T/.claude ] && { echo "WROTE:"; find $T; } || echo "inert"
+```
+
+**Expected**: it runs to the end, `rc=0`, `inert`.
+
+**Not** "the folder is empty" — and the difference is the whole reason the check
+is written this way. The Python interpreter drops its own bytecode cache under
+`$T/Library/Caches` the first time the installer calls it, so a `find $T` comes
+back with a few dozen lines that install.sh never wrote. An expectation stated as
+"nothing at all" is one a reader learns to wave through. What is asserted is what
+the installer OWNS: `~/.c-brain` and `~/.claude`.
+
+This is the first thing a careful reader runs, before deciding whether to run the
+real one, and it failed both halves at once: it created `~/.c-brain` before it had
+even parsed the flag, then stopped dead at "Engine linked into the trunk" — no
+message, exit 2, because a `VAR=$(grep …)` on a file the dry run never builds
+takes the whole shell down under `set -e`.
+
+A preview that writes is not a preview. A preview that stops early is a promise
+about an install nobody previewed.
+
 ## 2. Non-destructive and idempotent
 
 Write a `settings.json` holding a model, a theme and a personal hook, then:
