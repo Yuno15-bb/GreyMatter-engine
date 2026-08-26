@@ -37,9 +37,20 @@ SOURCE="$(cd "$(dirname "$0")" && pwd -P)"
 # with `pwd -P`, so one side resolved and the other not made a legitimate
 # install look like somebody else's directory. Caught by the end-to-end test on
 # its first run, which is precisely the kind of gap no component test can see.
+# ⚠ AND IT CREATES NOTHING. Canonicalising by `mkdir -p` then `cd` ran BEFORE
+# the flags were parsed, so `--dry-run` — whose whole contract is to be inert —
+# left a `~/.c-brain` behind on a machine that had never installed anything, and
+# the CI step that checks exactly that went red. Resolving $HOME and appending
+# the name gives the same canonical path without writing: the symlink that has
+# to be resolved on macOS (`/var` → `/private/var`) is in $HOME, not in the last
+# component. The `cd "$CB"` branch is kept for the case the plain concatenation
+# cannot cover — a `~/.c-brain` that is itself a link somewhere else.
 CB="$HOME/.c-brain"
-mkdir -p "$CB" 2>/dev/null || true
-CB="$(cd "$CB" 2>/dev/null && pwd -P || echo "$HOME/.c-brain")"
+if [ -d "$CB" ]; then
+  CB="$(cd "$CB" && pwd -P)"
+else
+  CB="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")/.c-brain"
+fi
 TRUNK="$CB/trunk"
 VERSIONS="$CB/versions"
 RUNTIME="$CB/runtime"
@@ -310,7 +321,17 @@ fi
 # definition, also read by update.sh (to tell engine dirt from user work) and by
 # brain_doctor (to report it). Three consumers, one list — see that file for why.
 step "Engine linked into the trunk"
-ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$ENGINE/cbrain/engine-paths.txt" 2>/dev/null)
+# THREE READS, IN THIS ORDER, AND NONE OF THEM MAY ABORT THE SCRIPT.
+# `VAR=$(grep …)` under `set -e` kills the run when grep exits non-zero — and a
+# missing file is exit 2. Under `--dry-run` the version is never built, so
+# $ENGINE does not exist and the installer died right here, silently, at
+# "Engine linked into the trunk". The `|| true` is what makes the fallback below
+# reachable at all.
+# The SOURCE is the second read rather than the hardcoded list, because that is
+# where a real install would take the list from: a dry run that described a
+# different set of links than the install it previews is worse than no preview.
+ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$ENGINE/cbrain/engine-paths.txt" 2>/dev/null || true)
+[ -n "$ENGINE_PATHS" ] || ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$SOURCE/cbrain/engine-paths.txt" 2>/dev/null || true)
 [ -n "$ENGINE_PATHS" ] || ENGINE_PATHS="hooks agents capsule planet companion tests"
 for d in $ENGINE_PATHS; do
   link "$CB/engine/$d" "$TRUNK/$d"
