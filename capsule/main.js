@@ -18,22 +18,106 @@ const os = require('os');
 let win;
 
 // --- Single instance: one capsule, never a zombie window ------------------
-// ⚠ KNOWN FRICTION, observed 2026-08-17, NOT fixed here on purpose. A second
-//   capsule quits INSTANTLY and SILENTLY: no message, no exit code anyone sees,
-//   nothing in any log. It cost half an hour of chasing a capsule that "would
-//   not start" before the lock turned out to be the reason. It bites whoever
-//   runs two trunks on one machine — a private install and a package checkout,
-//   which is exactly the author's setup — and anyone debugging the orb, since
-//   the fix is invisible while an older instance still holds the lock.
+//
+// FIXED 2026-09-19. The friction below was real and is kept as written, because
+// it says what made the silence expensive. What it got WRONG is its own last
+// line: "a line on stderr saying which instance already holds it" is not
+// enough, because THE REFUSED INSTANCE HAS NO IDEA WHO REFUSED IT. Electron's
+// lock lives in `app.getPath('userData')`, a path derived from the application
+// NAME alone, so every trunk on the machine — a private install, a package
+// checkout, a test scratchpad — shares ONE lock without knowing it. The holder
+// therefore has to announce itself, and the marker has to sit NEXT TO THE LOCK
+// rather than in `state/`: two trunks have two `state/` directories and a
+// single `userData`, so a marker filed under `state/` would be invisible to
+// the very process being turned away.
+//
+// ⚠ KNOWN FRICTION, observed 2026-08-17. A second capsule quits INSTANTLY and
+//   SILENTLY: no message, no exit code anyone sees, nothing in any log. It cost
+//   half an hour of chasing a capsule that "would not start" before the lock
+//   turned out to be the reason. It bites whoever runs two trunks on one
+//   machine — a private install and a package checkout, which is exactly the
+//   author's setup — and anyone debugging the orb, since the fix is invisible
+//   while an older instance still holds the lock.
 //   Worse for observation: on macOS the window server keeps ghost layers of
 //   these transparent always-on-top windows, so a killed instance can still be
 //   on screen. Screenshots of the orb are not a reliable sensor.
-//   Left as is because it is not what stops a fresh install from working; the
-//   sensible fix is a line on stderr saying which instance already holds it.
+const IDENTITY = path.join(app.getPath('userData'), 'instance.json');
+
+function announceSelf() {
+  try {
+    fs.mkdirSync(path.dirname(IDENTITY), { recursive: true });
+    fs.writeFileSync(IDENTITY, JSON.stringify({
+      pid: process.pid,
+      since: Date.now(),
+      dir: path.resolve(__dirname),
+    }));
+  } catch (e) {}
+  // ⚠ The marker is NOT removed on quit, tempting as that looks: between the
+  //   old instance leaving and the new one arriving, the deletion usually lands
+  //   AFTER the replacement has written its own marker, and would erase the
+  //   identity of whoever actually holds the lock. Staleness is handled on
+  //   READ instead, by checking the announced pid is still alive.
+}
+
+function alive(pid) {
+  // Signal 0 kills nothing; it asks "does this pid exist?". EPERM means "it
+  // exists but it is not mine" — alive all the same.
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return e.code === 'EPERM'; }
+}
+
+function since(ms) {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 90) return `${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 90) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return h < 48 ? `${h}h ${m % 60}min` : `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+function explainRefusal() {
+  let id = null;
+  try { id = JSON.parse(fs.readFileSync(IDENTITY, 'utf8')); } catch (e) {}
+
+  // Three situations, three sentences. A MISSING marker and a STALE one do not
+  // mean the same thing, and neither one licenses naming a holder by guesswork.
+  if (!id || !id.pid) {
+    return ['Capsule: another instance already holds the lock, and it did not announce itself.',
+            `   No marker at ${IDENTITY}`,
+            '   — that is what a capsule started before 2026-09-19 looks like.',
+            '   To find it:  pgrep -fl "capsule/node_modules"', ''].join('\n');
+  }
+  if (!alive(id.pid)) {
+    return [`Capsule: the lock is taken, but the announced pid (${id.pid}) is gone.`,
+            '   Something holds it without having announced itself in its place.',
+            '   To find it:  pgrep -fl "capsule/node_modules"', ''].join('\n');
+  }
+
+  const here = path.resolve(__dirname);
+  const lines = [
+    'Capsule: one instance is already running, so this launch stands aside.',
+    `   pid ${id.pid} · up ${since(id.since)}`,
+    `   directory: ${id.dir}`,
+  ];
+  if (id.dir !== here) {
+    lines.push(`   ⚠️  that is NOT the capsule of this directory (${here}).`,
+               '       The lock is shared across the whole machine: one capsule at a',
+               '       time, whichever trunk it came from.');
+  }
+  lines.push('   It has just been asked to show itself again.',
+             `   To replace it:  kill ${id.pid}   then relaunch.`, '');
+  return lines.join('\n');
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  process.stderr.write(explainRefusal());
+  // ⚠ Exit 0 on purpose. A second launch has not failed: Electron delivers
+  //   `second-instance` to the one already running, which shows itself again.
+  //   The defect was the silence, never the exit code.
   app.quit();
 } else {
+  announceSelf();
   app.on('second-instance', () => {       // a 2nd launch → re-show the existing one
     if (win) { win.showInactive(); }
   });

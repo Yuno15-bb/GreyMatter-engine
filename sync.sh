@@ -88,6 +88,7 @@ empreinte_source() {
          ! -path "*/capsule/index.html" ! -path "*/capsule/index-v2.html" \
          ! -path "*/capsule/dock-geometry.js" \
          ! -path "*/capsule/test_dock_geometry.js" \
+         ! -path "*/capsule/test_verrou_parle.sh" \
          ! -path "*/capsule/main.js" \
          ! -path "*/planet/*.json" \
          ! -path "*/planet/launch-mother.sh" \
@@ -225,8 +226,18 @@ sync_dir agents
 # et la géométrie du Dock qui la faisait s'asseoir dessus ne sont plus chargées
 # par personne ici — les garder, c'était publier du code mort, et le traduire à
 # chaque version. Elles restent vivantes dans le tronc de l'auteur.
+# ⚠ Le banc du verrou d'instance unique est exclu DANS LES DEUX SENS, et c'est
+# deux noms différents pour une seule raison. `test_verrou_parle.sh` est celui
+# de l'auteur : il mesure SON main.js, en français, avec la créature et l'orbe.
+# `test_lock_speaks.sh` est celui d'ici : il mesure le main.js du paquet, en
+# anglais, avec l'orbe seul. Un test suit le fichier qu'il mesure ; main.js
+# étant gelé des deux côtés, son banc l'est aussi. Sans la première exclusion,
+# la copie écraserait le banc anglais par le français ; sans la seconde,
+# `--delete` l'effacerait purement et simplement, puisqu'il n'existe pas dans
+# le tronc source. Même piège que `test_dock_geometry.js` au-dessus.
 sync_dir capsule 'node_modules' 'assets' 'lottie' 'index-v2.html' 'main.js' 'hand' \
-                 'index.html' 'dock-geometry.js' 'test_dock_geometry.js'
+                 'index.html' 'dock-geometry.js' 'test_dock_geometry.js' \
+                 'test_verrou_parle.sh' 'test_lock_speaks.sh'
 
 # --- 5. Planète -----------------------------------------------------------
 # EXCLU : *.json — TOUTES les données régénérées de la planète, pas seulement
