@@ -396,10 +396,26 @@ def launch_agent(sid, n, to_distill):
     if os.path.exists(venv_py):
         # HF_HUB_OFFLINE=1: the embeddings model is already cached locally → we avoid
         # a network round trip to the HF Hub on every pass (faster, works offline).
-        lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed_cli}" build >> "{LOG}" 2>&1 || true')
+        # ⚠️ `|| true` TOUT SEUL A CACHÉ CE DÉFAUT PENDANT UN MOIS. Il faut que la chaîne
+        # continue — l'indexation sémantique est optionnelle, elle ne doit pas empêcher le
+        # commit — mais « continuer » et « ne rien dire » sont deux choses différentes. Un
+        # échec ici ne laissait pas UNE ligne dans le journal, et la Planète, elle, continuait
+        # d'annoncer « proximity = meaning, every note » (C bis A7, mesuré le 2026-09-19).
+        # Un refus qui s'annonce est un résultat ; un refus muet est un mensonge différé.
+        lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed_cli}" build >> "{LOG}" 2>&1'
+                     f' || echo "⚠️  semantic RECALL index not rebuilt (brain_embed build failed)"'
+                     f' >> "{LOG}"')
         # Recompute the SEMANTIC map (state/embed2.json) from the fresh index,
         # then regenerate planet/graph.json so the "meaning" view (key S) reflects current content.
-        lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed2_cli}" >> "{LOG}" 2>&1 || true')
+        lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed2_cli}" >> "{LOG}" 2>&1'
+                     f' || echo "⚠️  semantic MAP not recomputed (brain_embed2 failed) —'
+                     f' the planet keeps the previous positions and says so" >> "{LOG}"')
+    else:
+        # Le cas LÉGITIME, dit à voix haute. Les embeddings sont optionnels par dessein
+        # (docs/design-doc.md) ; ce qui ne l'est pas, c'est qu'un tronc sans eux ressemble en
+        # tout point à un tronc dont le calcul a échoué.
+        lines.append(f'echo "· semantic module not installed (.venv absent) — BM25 only,'
+                     f' the planet shows structure" >> "{LOG}"')
     # Recompute the working memory (usage heat + co-activation links) from the
     # logs de recall/lecture, AVANT graph_export (qui lit coactivation.json). Pur stdlib.
     lines.append(f'"{py}" "{coact_cli}" >> "{LOG}" 2>&1 || true')

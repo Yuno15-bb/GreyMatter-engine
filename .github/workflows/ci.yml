@@ -81,6 +81,25 @@ jobs:
       # never written is `undefined`: one section silently missing from every
       # panel. It happened to en_clair, at six read sites, for as long as it existed.
       - run: python3 tests/planet_contract.py --check
+      # And the map must not ANNOUNCE a meaning it does not have. Embeddings are
+      # optional by design, so the ordinary state of a fresh install is: no vectors
+      # at all — and the viewer still opened on "MEANING IN VOLUME — every note"
+      # over a cloud where not one note had one. Measured on the rendered screen.
+      # `node` is pinned rather than borrowed from the runner image: the label is
+      # an ES module, and a bench that silently skips is the defect it tests for.
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: python3 tests/planet_semantic_honesty.py
+      # The three sabotages. Each MUST fail; a green here is the alarm.
+      - name: the semantic label cannot lie
+        run: |
+          set -euo pipefail
+          for s in label-frozen-on-meaning coverage-counted-on-the-cache old-graph-assumed-ready; do
+            if python3 tests/planet_semantic_honesty.py --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the bench green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
       # And what the write hook does to a note the moment it lands: masking,
       # Inbox, unknown type, and the golden rule that it never blocks. Three of
       # those effects are wrapped in try/except, so a broken one is silent.

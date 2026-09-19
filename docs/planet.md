@@ -50,6 +50,26 @@ behind a key — and the map turned out to be the thing worth landing on.
 
 `Esc` backs out of a region you entered.
 
+### When there is no meaning to show
+
+Placing notes by resemblance needs vectors, and those come from the semantic
+module, which is **optional by design** — a plain install ships BM25 search and
+no embeddings at all. So the honest answer to "what does the meaning view show
+on a fresh trunk?" is: nothing yet, and it now says so.
+
+The banner reads the trunk's real state instead of a fixed sentence. It claims
+*"proximity = meaning, every note"* only when every note actually carries a
+vector; while an indexing pass is catching up it shows the count
+(*"412 of 430 notes placed by meaning"*); with no module it says it is showing
+**structure**; and if the cache is there but unreadable, or matches none of your
+current notes, it says THAT rather than falling back quietly.
+
+This is worth spelling out because it was wrong for a month: the map opened on
+the meaning view announcing every note, over a cloud where not one note had a
+vector. Every point sat at its structural position, and the failed recompute was
+swallowed by a `|| true`. `tests/planet_semantic_honesty.py` now holds the five
+states, and the maintenance log says out loud when an index is not rebuilt.
+
 ---
 
 ## Reading a point

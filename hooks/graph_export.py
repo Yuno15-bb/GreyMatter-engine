@@ -77,12 +77,28 @@ def load_challenges():
 
 
 def load_embed2():
-    """Semantic 2D positions { rel_path: [x,y] } — a cache produced offline (numpy).
-    Read with NO dependency: graph_export stays pure stdlib (it runs on every note written)."""
+    """Semantic 3D positions { rel_path: [x,y,z] } — a cache produced offline (numpy).
+    Read with NO dependency: graph_export stays pure stdlib (it runs on every note written).
+
+    RETURNS (positions, state, detail) — AND THAT IS THE WHOLE POINT OF THIS SIGNATURE.
+    It used to return `{}` on any exception, which conflated three situations a reader must
+    be able to tell apart: the module was never installed (legitimate — embeddings are
+    optional by design, docs/design-doc.md), the cache is there and unreadable (a real
+    failure), and the cache is there and fine. The viewer then announced "MEANING IN VOLUME
+    — proximity = meaning, every note" over a map where NOT ONE note had a vector, because
+    an empty dict says nothing about why it is empty. Measured 2026-09-19 on the shipped
+    package: 0 of 10 notes placed by meaning, and the map OPENS on that view.
+    """
+    if not os.path.exists(EMBED2):
+        return {}, "absent", ("state/embed2.json has never been produced — the semantic "
+                              "module is optional and was not run")
     try:
-        return json.load(open(EMBED2, encoding="utf-8")).get("pos", {})
-    except Exception:
-        return {}
+        pos = json.load(open(EMBED2, encoding="utf-8")).get("pos", {})
+    except Exception as e:                      # unreadable, truncated, not JSON
+        return {}, "broken", f"state/embed2.json is present but unreadable: {e}"
+    if not isinstance(pos, dict):
+        return {}, "broken", "state/embed2.json has no usable `pos` mapping"
+    return pos, "ready", ""
 
 
 def load_coact():
@@ -211,7 +227,7 @@ def scan():
     raw_links = []   # (src_id, target_name)
     link_types = {}  # (src_id, target_name) -> "based_on" | "contradicts" | "replaces"
     unknown_relations = 0   # qualifications lost to a type outside RELATION_TYPES
-    embed2 = load_embed2()         # semantic positions keyed by note path
+    embed2, sem_state, sem_detail = load_embed2()   # semantic positions + WHY, keyed by note path
     heat, coact_edges, live, live_window_min = load_coact()   # heat + usage links + live activity
     challenges = load_challenges()             # the challenger's verdict per note
     beliefs = load_beliefs()                   # the author's dated convictions (the taste layer)
@@ -368,6 +384,10 @@ def scan():
         n["frontier"] = (n["primary_project"] is not None
                          and sum(1 for v in m.values() if v >= FRONTIER_MIN) >= 2)
 
+    # THE COVERAGE IS COUNTED ON THE NOTES, not on the size of the cache: an entry that
+    # matches no current note places nobody, and a cache of 400 stale keys would otherwise
+    # read as full health.
+    sem_covered = sum(1 for n in nodes.values() if n.get("embed2"))
     return {
         "generated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%S"),
         "counts": {"nodes": len(nodes), "links": len(links),
@@ -393,6 +413,24 @@ def scan():
         "links": links,
         # USAGE links (co-activation): notes activated together in a session, unlike declared links
         "coact": [e for e in coact_edges if e[0] in ids and e[1] in ids],
+        # THE SEMANTIC CAPACITY, DECLARED — not assumed. The viewer used to read the
+        # absence of vectors as "nothing to say" and kept its nominal wording; from here
+        # it is told, in so many words, how many notes are actually placed by meaning and
+        # why the others are not. `covered == 0` WITH a readable cache is not "in
+        # progress": the cache exists and matches none of the current notes (stale keys,
+        # a moved trunk), which is a failure a reader must see, not a silence.
+        "semantic": {
+            "state": (sem_state if sem_state != "ready" else
+                      "ready" if nodes and sem_covered == len(nodes) else
+                      "partial" if sem_covered else "broken"),
+            "covered": sem_covered,
+            "total": len(nodes),
+            "detail": (sem_detail if sem_detail else
+                       "" if sem_covered == len(nodes) else
+                       f"state/embed2.json matches none of the {len(nodes)} notes — stale cache"
+                       if not sem_covered else
+                       f"{len(nodes) - sem_covered} note(s) written since the last indexing pass"),
+        },
     }
 
 
