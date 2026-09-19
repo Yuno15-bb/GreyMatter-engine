@@ -341,10 +341,15 @@ done
 step "The \`brain\` command"
 link "$CB/engine/brain" "$HOME/.local/bin/brain"
 case ":$PATH:" in
-  *":$HOME/.local/bin:"*) say "~/.local/bin is on PATH" ;;
-  *) warn "~/.local/bin is NOT on your PATH. Add to your ~/.zshrc:"
+  *":$HOME/.local/bin:"*) PATH_OK=1; say "~/.local/bin is on PATH" ;;
+  *) PATH_OK=0
+     warn "~/.local/bin is NOT on your PATH. Add to your ~/.zshrc:"
      warn "  export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
 esac
+# THIS WARNING IS THREE HUNDRED LINES FROM THE LAST SCREEN, so on a fresh macOS it
+# has scrolled away by the time anyone reads the closing block — which then offered
+# four commands beginning with `brain`, none of which resolve. Reported as C bis A4.
+# The verdict is kept in PATH_OK and spoken again at the end, where it is acted on.
 
 # ─── 5. Agents visible to Claude Code ───────────────────────────────────
 # Trap #1: without this link the agents exist but Claude Code cannot see
@@ -652,8 +657,9 @@ else
   # selftest already documents — "when an engine is named, its OWN brain is the
   # only one allowed" — and it is exactly what an installer knows.
   if bash "$TRUNK/hooks/selftest.sh" "$CB/engine" >/tmp/c-brain-selftest.log 2>&1; then
-    say "✅ selftest OK — every hook healthy"
+    SELFTEST_OK=1; say "✅ selftest OK — every hook healthy"
   else
+    SELFTEST_OK=0
     warn "selftest failed — details: /tmp/c-brain-selftest.log"
     tail -5 /tmp/c-brain-selftest.log | sed 's/^/     /'
   fi
@@ -662,7 +668,25 @@ else
 fi
 
 echo
-echo "✅ C Brain installed."
+# THE CLOSING VERDICT IS NOT A CONSTANT. It used to print "✅ C Brain installed."
+# whatever had happened above — including right after "❌ hooks broken" — and then
+# offer four commands that could not run. A closing screen that cannot go red is a
+# decoration, not a report: it is the same defect as a test that never fails.
+if [ "${PATH_OK:-1}" = "0" ]; then
+  echo "⚠️  C Brain is installed — but the \`brain\` command is not reachable yet."
+  echo
+  echo "   ~/.local/bin is not on your PATH, so every command below answers"
+  echo "   \"command not found\" until that is fixed. One line, once:"
+  echo
+  echo "       echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
+  echo
+  echo "   Or reach it by its full path right now:  ~/.local/bin/brain status"
+elif [ "${SELFTEST_OK:-1}" = "0" ]; then
+  echo "⚠️  C Brain is installed, but its own verification did not pass."
+  echo "   Details: /tmp/c-brain-selftest.log — re-run it with \`brain selftest\`."
+else
+  echo "✅ C Brain installed."
+fi
 echo
 # Offered FIRST, not as a footnote: an empty trunk on first launch shows nothing
 # of what the tool can do. That is the screen where people give up.
