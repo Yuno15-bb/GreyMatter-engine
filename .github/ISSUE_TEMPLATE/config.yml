@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/Yuno15-bb/c-brain/security/advisories/new
+    url: https://github.com/Yuno15-bb/GreyMatter-engine/security/advisories/new
     about: Please report privately, never in a public issue. See SECURITY.md.
   - name: How the repository is built
-    url: https://github.com/Yuno15-bb/c-brain/blob/main/CONTRIBUTING.md
+    url: https://github.com/Yuno15-bb/GreyMatter-engine/blob/main/CONTRIBUTING.md
     about: "`main` is a translation of `fr`. Read this before patching engine files."

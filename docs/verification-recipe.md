@@ -73,7 +73,7 @@ which was invisible when copying.
 
 ```bash
 T=/tmp/iso-c-brain; rm -rf $T; mkdir -p $T/.claude $T/Desktop
-git clone https://github.com/Yuno15-bb/c-brain $T/dev-c-brain
+git clone https://github.com/Yuno15-bb/GreyMatter-engine $T/dev-c-brain
 HOME=$T bash $T/dev-c-brain/install.sh --no-launchd
 ```
 

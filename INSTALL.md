@@ -16,7 +16,7 @@
 Paste this into your CLI (Claude Code or another command-line agent):
 
 ```
-Install C Brain: clone https://github.com/Yuno15-bb/c-brain into ~/dev/c-brain, read its INSTALL.md,
+Install C Brain: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
@@ -25,7 +25,7 @@ That's it. The agent clones, installs, and hands you back the selftest result.
 ## The manual way
 
 ```bash
-git clone https://github.com/Yuno15-bb/c-brain ~/dev/c-brain
+git clone https://github.com/Yuno15-bb/GreyMatter-engine ~/dev/c-brain
 cd ~/dev/c-brain
 ./install.sh
 ```

@@ -1,8 +1,8 @@
 # C Brain
 
-[![CI](https://github.com/Yuno15-bb/c-brain/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/c-brain/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Yuno15-bb/c-brain?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/c-brain/releases/latest)
-[![Licence](https://img.shields.io/github/license/Yuno15-bb/c-brain?color=8a8f98)](LICENSE)
+[![CI](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Yuno15-bb/GreyMatter-engine?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/GreyMatter-engine/releases/latest)
+[![Licence](https://img.shields.io/github/license/Yuno15-bb/GreyMatter-engine?color=8a8f98)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
 
 **C Brain turns each session with your CLI agent into memory it can reuse —
@@ -102,7 +102,7 @@ came out — lives in the author's trunk, not here.
 **As a Claude Code plugin** — the short way, and the one that updates itself:
 
 ```
-/plugin marketplace add Yuno15-bb/c-brain
+/plugin marketplace add Yuno15-bb/GreyMatter-engine
 /plugin install c-brain@c-brain
 ```
 
@@ -117,7 +117,7 @@ would leave you with a window that never opens.
 unattended maintenance:
 
 ```
-Install C Brain: clone https://github.com/Yuno15-bb/c-brain into ~/dev/c-brain, read its INSTALL.md,
+Install C Brain: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
