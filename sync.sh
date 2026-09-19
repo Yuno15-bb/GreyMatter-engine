@@ -263,10 +263,14 @@ sync_dir planet '*.json' 'launch-mother.sh' 'archive'
 sync_dir companion '__pycache__' '*.pyc'
 
 # --- 7. Tests --------------------------------------------------------------
-# EXCLUS : les tests propres au PAQUET (manifeste de plugin, anglais seul).
-# Ils n'ont pas d'équivalent dans le Brain vivant ; --delete les emporterait.
+# EXCLUS : les tests propres au PAQUET (manifeste de plugin, anglais seul,
+# installeur). Ils n'ont pas d'équivalent dans le Brain vivant ; --delete les
+# emporterait. Pas besoin de les exclure aussi de l'empreinte, contrairement à
+# `capsule/test_verrou_parle.sh` : celle-ci ne parcourt que le Brain, et un
+# fichier qui n'existe QUE dans le paquet n'y apparaît jamais.
 sync_dir tests 'plugin_manifest.py' 'english_only.py' 'update_tag_family.sh' \
   'recall_benchmark.py' 'recall_cache.py' 'update_rollback.sh' 'plugin_install.sh' \
+  'e2e_occupied_surfaces.sh' \
   '__pycache__' '*.pyc'
 
 # --- 8. Statusline (vit dans ~/.claude, pas dans le tronc) ----------------

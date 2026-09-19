@@ -105,13 +105,82 @@ save() {
 
 run() { [ "$DRY" = "1" ] && { say "(dry-run) $*"; return 0; }; "$@"; }
 
+# ─── WHOSE SURFACE IS THIS? ──────────────────────────────────────────────────
+#
+# THE INCIDENT. On 2026-08-19 this installer ran on a machine that already had
+# an author's installation. It repointed `~/.claude/agents` at its own trunk and
+# overwrote `~/.claude/statusline.py`. It printed "backed up:" and "+", scrolled
+# on, and exited 0. The other installation went on calling agents that were no
+# longer where it had put them: 118 `agent not found` in 39 hours, its
+# distillation dead, and not one line anywhere saying a foreign surface had been
+# taken. The timestamped backup WAS made, and it is what allowed the repair. The
+# defect is the SILENT TAKEOVER, not a missing backup.
+#
+# THE RULE, and it is the one cbrain/launchd-lib.sh already applies to a Label.
+# Ownership is a RECORDED FACT, never inferred — not from the name of the file,
+# not from "it looks like something C Brain writes", not from "an older C Brain
+# probably put it there". And the record already existed: `manifest.txt`, which
+# every run appends to AFTER a placement has succeeded. It was written for the
+# uninstaller and never read by the installer. The absence of a record is not a
+# proof of ownership either, so an unrecorded surface is refused BY NAME and
+# nothing is changed.
+#
+# WHERE THE GATE APPLIES — and where it must NOT. Inside `$CB` this installation
+# is the owner by definition: that directory IS the installation, and gating it
+# would make a legitimate re-install refuse its own engine. The gate is for the
+# surfaces on which two installations can collide because they are SHARED with
+# the rest of the machine: `~/.claude/agents`, `~/.claude/statusline.py`,
+# `~/.local/bin/brain`.
+REFUSED_SURFACES=0
+
+surface_owned() {   # <path> → 0 if a previous run of THIS installation placed it
+  [ -f "$MANIFEST" ] || return 1
+  grep -qxF "link|$1" "$MANIFEST" 2>/dev/null && return 0
+  grep -qxF "file|$1" "$MANIFEST" 2>/dev/null
+}
+
+# WHAT IS THERE, read off the disk — never guessed. A refusal that cannot say
+# what it found leaves the reader to check by hand, which is where they give up.
+surface_what() {    # <path> → one line, no newline
+  if [ -L "$1" ]; then
+    printf 'a link pointing at %s' "$(readlink "$1")"
+  elif [ -d "$1" ]; then
+    printf 'a directory holding %s item(s)' "$(ls -A "$1" 2>/dev/null | wc -l | tr -d ' ')"
+  else
+    printf 'a file of %s bytes, last modified %s' \
+      "$(wc -c < "$1" 2>/dev/null | tr -d ' ')" \
+      "$(date -r "$1" '+%Y-%m-%d %H:%M' 2>/dev/null || echo 'unknown')"
+  fi
+}
+
+# One voice for every surface. It names the path, says what occupies it, states
+# that nothing was changed, spells out what C Brain loses by not taking it, and
+# ends on the one gesture that resolves it — because a refusal with no next step
+# is just an obstacle.
+surface_refuse() {  # <path> <what C Brain wanted to put there> [consequence]
+  warn "OCCUPIED, and not by this installation: $1"
+  warn "  There is already $(surface_what "$1")."
+  warn "  This installation has no record of putting it there, so NOTHING was"
+  warn "  changed: whatever uses it keeps working."
+  if [ -n "${3:-}" ]; then warn "  What C Brain loses: $3"; fi
+  warn "  It wanted to put $2 here. To hand it over, move the current one aside:"
+  warn "    mv \"$1\" \"$1.before-c-brain\"     then re-run ./install.sh"
+  REFUSED_SURFACES=$((REFUSED_SURFACES + 1))
+  return 3
+}
+
 # Places a symlink idempotently: already correct → nothing is touched.
-link() {  # link <target> <link>
+link() {  # link <target> <link> [what C Brain loses if the surface is refused]
   local target="$1" path="$2"
   if [ -L "$path" ] && [ "$(readlink "$path")" = "$target" ]; then
     say "= $path (already linked)"; return 0
   fi
   if [ -e "$path" ] || [ -L "$path" ]; then
+    case "$path" in
+      "$CB"/*) : ;;   # inside our own root — ours by definition, see above
+      *) surface_owned "$path" \
+           || { surface_refuse "$path" "a link to $target" "${3:-}"; return 3; } ;;
+    esac
     save "$path"
     run rm -rf "$path"
   fi
@@ -339,7 +408,10 @@ done
 
 # ─── 4. The `brain` command ───────────────────────────────────────────────
 step "The \`brain\` command"
-link "$CB/engine/brain" "$HOME/.local/bin/brain"
+# `|| :` because a refusal (exit 3) is a REPORTED OUTCOME, not a crash: the rest
+# of C Brain installs, and the closing screen counts what was left alone.
+link "$CB/engine/brain" "$HOME/.local/bin/brain" \
+     "the \`brain\` command will keep starting the installation already on PATH" || :
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) PATH_OK=1; say "~/.local/bin is on PATH" ;;
   *) PATH_OK=0
@@ -356,7 +428,8 @@ esac
 # them. No error, just an autonomous loop spinning on nothing.
 step "Agents visible to the CLI agent"
 if [ "$HAS_CLAUDE_CODE" = "1" ]; then
-  link "$TRUNK/agents" "$HOME/.claude/agents"
+  link "$TRUNK/agents" "$HOME/.claude/agents" \
+       "Claude Code will not see C Brain's agents — but it keeps seeing the ones already there" || :
 else
   say "(skipped — ~/.claude missing)"
 fi
@@ -372,10 +445,19 @@ if [ "$HAS_CLAUDE_CODE" = "1" ]; then
     note settings "$HOME/.claude/settings.json"
   fi
   if [ -f "$ENGINE/statusline.py" ]; then
-    save "$HOME/.claude/statusline.py"
-    run cp "$ENGINE/statusline.py" "$HOME/.claude/statusline.py"
-    note file "$HOME/.claude/statusline.py"
-    say "+ status line installed"
+    # Same gate as `link`, spelled out because this one is a plain copy. This is
+    # the OTHER half of the 2026-08-19 incident: the author's status line was
+    # overwritten by this exact `cp`, and the only trace was "backed up:".
+    if [ -e "$HOME/.claude/statusline.py" ] \
+       && ! surface_owned "$HOME/.claude/statusline.py"; then
+      surface_refuse "$HOME/.claude/statusline.py" "its own status line" \
+        "the bar at the bottom of Claude Code keeps showing what it shows today" || :
+    else
+      save "$HOME/.claude/statusline.py"
+      run cp "$ENGINE/statusline.py" "$HOME/.claude/statusline.py"
+      note file "$HOME/.claude/statusline.py"
+      say "+ status line installed"
+    fi
   fi
 else
   say "(skipped — no Claude Code: C Brain will work on demand)"
@@ -672,6 +754,16 @@ echo
 # whatever had happened above — including right after "❌ hooks broken" — and then
 # offer four commands that could not run. A closing screen that cannot go red is a
 # decoration, not a report: it is the same defect as a test that never fails.
+# A REFUSAL SCROLLS AWAY TOO. Each one was printed where it happened, which on a
+# fresh macOS is several screens above the end — the very defect C bis A4 named
+# for the PATH warning. So the count comes back here, before the verdict, and it
+# comes back whatever else went right.
+if [ "${REFUSED_SURFACES:-0}" -gt 0 ]; then
+  echo "⚠️  $REFUSED_SURFACES surface(s) were left to their current owner."
+  echo "   C Brain installed everything else and works. Scroll up: each one is"
+  echo "   named, with what it costs and the one command that hands it over."
+  echo
+fi
 if [ "${PATH_OK:-1}" = "0" ]; then
   echo "⚠️  C Brain is installed — but the \`brain\` command is not reachable yet."
   echo

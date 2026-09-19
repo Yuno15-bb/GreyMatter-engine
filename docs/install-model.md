@@ -103,6 +103,42 @@ replay relinks the engine afterwards with `rm` + `ln -s`, so the real switch was
 happening non-atomically, in another file, by accident. The end-to-end test found
 it on its second run; no component test could have.
 
+### Nor the surfaces it shares with the rest of the machine
+
+Three paths do not belong to the installation that writes them: `~/.claude/agents`,
+`~/.claude/statusline.py` and `~/.local/bin/brain`. They live outside `~/.c-brain`,
+one machine can hold several C Brains, and the first one there is using them.
+
+On 2026-08-19 an install ran on a machine that already had the author's. It
+repointed the agents link at its own trunk and overwrote the status line, printed
+`backed up:` and `+`, and exited 0. The other installation went on calling agents
+that were no longer where it had left them: **118 `agent not found` in 39 hours**,
+its distillation dead, and no line anywhere saying a foreign surface had been
+taken. The timestamped backup was real, and it is what allowed the repair — the
+defect is the silent takeover, not a missing backup.
+
+The answer is the launchd answer, one surface over. Ownership is a **recorded
+fact** and never inferred — not from the name of the file, not from "it looks
+like something C Brain writes". The record already existed and was simply never
+read: `manifest.txt`, appended to after every successful placement, written for
+the uninstaller.
+
+| Situation | What the installer does |
+|---|---|
+| nothing is there | places it, then records it |
+| it is there **and** recorded | backs it up and replaces it, silently — a re-install must not become a wall |
+| it is there and **not** recorded | names it, says what occupies it and what C Brain loses, changes nothing |
+
+A refusal is a reported outcome, not a crash: everything else installs, and the
+closing screen counts what was left alone — a message printed three screens up
+has scrolled away, which is the defect C bis A4 named for the PATH warning. The
+next step is the one the refusal prints, `mv <path> <path>.before-c-brain`
+followed by a re-run, and `tests/e2e_occupied_surfaces.sh` runs that gesture
+rather than describing it.
+
+Inside `~/.c-brain` there is no gate. That directory **is** the installation, and
+gating it would make a legitimate re-install refuse its own engine.
+
 ## Behaviour, command by command
 
 ### `install.sh` (normal)
@@ -124,7 +160,8 @@ it on its second run; no component test could have.
    250 MB instead of 11.6 MB.
 6. Write `state/engine-managed`, remove `state/engine-dev`.
 7. Point `engine` at `versions/<id>`, then do everything the installer already
-   does: trunk, mounts, CLI, hooks, launchd, planet, shortcut, verification.
+   does: trunk, mounts, CLI, hooks, launchd, planet, shortcut, verification —
+   leaving alone every shared surface it cannot prove it placed.
 
 Idempotent: re-running with the same source rebuilds nothing if
 `.cbrain-manifest` already matches.
