@@ -204,9 +204,22 @@ def main():
     #    gate added for `brain update` refuses on a dirty engine, absolutely. The
     #    capsule fix would then block every future update, silently and for good.
     #    The two worksites only stay independent because git ignores this path.
-    ignored = subprocess.run(["git", "-C", ROOT, "check-ignore", "capsule/node_modules"],
+    #    ⚠ ASKED ABOUT A FILE, NOT ABOUT THE DIRECTORY, and the difference is not
+    #    cosmetic. The rule in .gitignore is `capsule/node_modules/`, and a pattern
+    #    ending in a slash only matches a DIRECTORY — which `git check-ignore` can
+    #    only recognise by looking at the disk. Measured 2026-09-20 in a throwaway
+    #    repo: with nothing on disk, `capsule/node_modules` does NOT match while
+    #    `capsule/node_modules/electron/package.json` does; create the directory
+    #    and both match. The old probe therefore answered "not ignored" on every
+    #    fresh clone — the very situation it exists to protect — and answered it
+    #    in the same words it would use if the rule had been deleted. It was green
+    #    here only because this author's own clone has the runtime installed, and
+    #    it went red the first time a CI runner ran it. The probe is now the path
+    #    the repair actually writes, which is a file and needs no disk.
+    probe = f"capsule/node_modules/electron/dist/{PLATFORM_PATH}"
+    ignored = subprocess.run(["git", "-C", ROOT, "check-ignore", probe],
                              capture_output=True, text=True).returncode == 0
-    print(f"  node_modules ignored by git      {'yes' if ignored else 'NO'}")
+    print(f"  what the repair writes, ignored  {'yes' if ignored else 'NO'}")
     if not ignored:
         trouble.append("capsule/node_modules is not gitignored: the repair would leave the "
                        "engine dirty, and `brain update` refuses on a dirty engine — the "
