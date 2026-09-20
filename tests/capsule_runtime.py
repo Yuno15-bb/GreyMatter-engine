@@ -38,6 +38,7 @@ Run:
 """
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -99,10 +100,32 @@ def run_repair(home, engine):
     body = extract_function("capsule_repair")
     if body is None:
         return None, "capsule_repair is gone from install.sh"
-    script = f'set -u\nENGINE="{engine}"\n{body}\ncapsule_repair\n'
-    p = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
-                       timeout=120, env=dict(os.environ, HOME=home))
-    return p.returncode, p.stderr
+    env = dict(os.environ, HOME=home)
+
+    def run(trace):
+        opts = "set -xu" if trace else "set -u"
+        script = f'{opts}\nENGINE="{engine}"\n{body}\ncapsule_repair\n'
+        return subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                              timeout=120, env=env)
+
+    p = run(trace=False)
+    if p.returncode == 0:
+        return 0, ""
+    # ⚠ A RED THAT DOES NOT NAME ITS CAUSE IS UNREADABLE, and `capsule_repair`
+    #   has EIGHT ways of returning 1 — not Darwin, no node_modules, no unzip,
+    #   no node, no version, an architecture it does not ship, no archive in the
+    #   cache, a failed unpack. Reported as a bare `1` they are indistinguishable,
+    #   and on 2026-09-20 a CI runner went red on one of them with no way to tell
+    #   which. So a failure is replayed under xtrace and the last command the
+    #   shell ran before giving up is carried back in the report.
+    t = run(trace=True)
+    steps = [l.lstrip("+ ") for l in t.stderr.splitlines()
+             if l.startswith("+") and "return" not in l]
+    # The last TWO, because the line that fails is often an assignment whose
+    # value is already gone — `ver=` says nothing, `node -p … → ver=` says
+    # everything. Truncated: a trace line carries a whole temporary path.
+    tail = " → ".join(x[:70] for x in steps[-2:])
+    return p.returncode, (tail if tail else p.stderr.strip())
 
 
 def main():
@@ -136,13 +159,15 @@ def main():
         after_ok = answers(binary)
 
         print(f"  broken runtime answers first     {'yes' if before else 'no'}")
-        print(f"  repair returns                   {rc}")
+        print(f"  repair returns                   {rc}"
+              + (f"   (gave up on: {err})" if rc else ""))
         print(f"  runtime answers after repair     {'yes' if after_ok else 'NO'}")
         if rc is None:
             trouble.append(err)
         elif not after_ok:
             trouble.append("after the repair the runtime still does not answer: a fresh "
-                           "install would ship a capsule whose window never opens")
+                           "install would ship a capsule whose window never opens"
+                           + (f" — the repair gave up on `{err}`" if err else ""))
 
         # 2. path.txt exactly as electron writes it. A trailing newline makes
         #    electron's own isInstalled() disagree and re-run the broken download
@@ -218,12 +243,25 @@ def main():
               '  local bin="$ENGINE/capsule/node_modules/electron/dist/%s"\n'
               '  [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1\n'
               '}' % PLATFORM_PATH)
+        # WHICH bash, written into the report. This case measures a line the
+        # SHELL writes about a job it has reaped, not anything the binary prints,
+        # so the shell is half the instrument and an unnamed instrument makes the
+        # measurement unreadable. macOS ships bash 3.2 at /bin/bash while a build
+        # runner may well put a 5.x first on PATH, and `run()` resolves `bash`
+        # through PATH like everybody else.
+        shell = shutil.which("bash") or "bash"
+        sv = subprocess.run([shell, "--version"], capture_output=True, text=True).stdout
+        m = re.search(r"version (\S+)", sv)
+        shell_id = f"{shell} {m.group(1) if m else '?'}"
+        print(f"  the shell that reports the crash {shell_id}")
+
         rc_nu, err_nu = run(nu, "nu")
         print(f"  unguarded probe is noisy         {'yes' if err_nu.strip() else 'NO'}"
               f" ({len(err_nu)} B)")
         if not err_nu.strip():
-            trouble.append("the stub does not make the shell talk, so this case cannot tell "
-                           "a working guard from a missing one — it must abort, not exit")
+            trouble.append(f"{shell_id} said nothing at all about a job it reaped on a "
+                           "signal, so this case cannot tell a working guard from a missing "
+                           "one: the CALIBRATION failed, and nothing here judges capsule_ok")
 
         body = extract_function("capsule_ok")
         if body is None:

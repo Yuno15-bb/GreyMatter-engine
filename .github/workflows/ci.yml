@@ -165,11 +165,20 @@ jobs:
       - name: the capsule functions, exercised
         run: |
           set -euo pipefail
-          out="$(python3 tests/capsule_runtime.py)"
-          printf '%s\n' "$out"
-          case "$out" in
-            *skipped*) echo "❌ capsule_runtime opted out on a runner that must run it"; exit 1 ;;
-          esac
+          # ⚠ THE REPORT IS PRINTED BEFORE IT IS JUDGED, and that is the whole
+          #   point of the shape below. Until 2026-09-20 this step read
+          #   `out="$(python3 …)"`: under `set -e` a red bench aborts the step AT
+          #   THE ASSIGNMENT, so the report the bench had just written died inside
+          #   the variable. The first time this step ever went red on a GitHub
+          #   runner it printed NOTHING — ten lines of measurement and a named
+          #   cause, none of them readable, and the only way to learn anything was
+          #   to change the workflow and push again. `tee` puts the lines in the
+          #   log as they are produced, and `pipefail` keeps the bench's own exit
+          #   code, so a red is still a red.
+          python3 tests/capsule_runtime.py | tee "$RUNNER_TEMP/capsule.out"
+          if grep -q skipped "$RUNNER_TEMP/capsule.out"; then
+            echo "❌ capsule_runtime opted out on a runner that must run it"; exit 1
+          fi
 
       - name: dry run writes nothing
         run: |
