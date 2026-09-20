@@ -66,8 +66,13 @@
      une interface ; elle épouse l'objet, elle ne le détoure pas. Et elle donne
      le contraste que le texte ne peut pas se donner à lui-même, sur un bureau
      clair comme sur un bureau sombre. */
+  /* ⚠ 2026-09-20 — OPAQUE, PLUS DE .95 (L'utilisateur : « tout ce qui a écris sous les
+     orbs doit etre opaque »). Le blanc à 95 % laissait passer le bureau entre
+     les lettres : sur un fond d'écran clair, le libellé virait au gris sale.
+     Un texte posé sur une scène qu'on ne maîtrise pas se donne son opacité,
+     il ne l'emprunte pas au fond. */
   #dit { position:absolute; left:50%; bottom:14.5px; transform:translateX(-50%);
-         white-space:nowrap; color:rgba(255,255,255,.95);
+         white-space:nowrap; color:#fff;
          /* 2026-08-08 — +1,5 px sur les deux lignes à la demande de l'auteur. Le
             libellé monte AUSSI : ne grossir que la ligne du dessous inverserait
             la hiérarchie que la casse est seule à porter. */
@@ -160,11 +165,59 @@
   #fiche.vu { opacity:1; }
   /* Les trois points disent que ça CONTINUE — une passe d'agent dure des
      minutes pendant lesquelles le libellé, lui, ne change jamais. */
-  #dit .pt { opacity:.25; animation:pt 1.35s ease-in-out infinite; }
+  /* ⚠ 2026-09-20 — LES POINTS NE CLIGNOTENT PLUS EN TRANSPARENCE. Ils disaient
+     « ça continue » en descendant à 25 % d'opacité ; c'est exactement ce que
+     l'auteur a refusé (« doit etre opaque »). Le même message passe par le
+     MOUVEMENT : trois points pleins qui sautent l'un après l'autre, comme
+     l'indicateur de frappe de Messages. Rien ne devient translucide, et la
+     continuité reste lisible. */
+  #dit .pt { display:inline-block; opacity:1;
+             animation:pt 1.35s ease-in-out infinite; }
   #dit .pt:nth-child(2) { animation-delay:.18s; }
   #dit .pt:nth-child(3) { animation-delay:.36s; }
-  @keyframes pt { 0%,70%,100% { opacity:.25 } 35% { opacity:1 } }
-  @media (prefers-reduced-motion: reduce) { #dit .pt { animation:none; opacity:.6 } }
+  @keyframes pt { 0%,70%,100% { transform:translateY(0) }
+                  35%         { transform:translateY(-1.2px) } }
+  @media (prefers-reduced-motion: reduce) { #dit .pt { animation:none; transform:none } }
+
+  /* ── LE NOM DU VAISSEAU BRILLE ────────────────────────────────────────────
+     Demande de l'auteur le 2026-09-20 : « le nom des agents doit briller avec cet
+     effet autour des lettres », avec en référence la bibliothèque `metal-fx`
+     (preset « chromatic »). Capture du rendu réel regardée avant d'écrire :
+     un liseré d'UN pixel qui court autour de la forme, et sur ce liseré la
+     couleur se sépare en rose, vert et cyan — l'intérieur, lui, ne change pas.
+     Ce que fait leur shader : une aberration chromatique (les canaux rouge et
+     bleu décalés de part et d'autre) sur une teinte bleu froid #88ccff.
+     Ici pas de WebGL pour trois mots de 9 px : les mêmes fanges sont posées
+     en ombres portées colorées, décalées d'un demi-pixel de chaque côté, et
+     l'angle de ce décalage TOURNE en 5 s — c'est ce lent voyage qui fait lire
+     « métal » plutôt que « texte mal imprimé ».
+     ⚠ Ne s'applique qu'au NOM : les points et la ligne du dessous restent nets.
+     Les deux couches sombres sont en FIN de pile, donc sous les couleurs : le
+     contraste sur bureau clair reste tenu sans éteindre les franges. */
+  #dit .nom.brille {
+    text-shadow:
+      .55px 0 .6px rgba(255,110,165,.9), -.55px 0 .6px rgba(110,225,255,.92),
+      0 .55px .9px rgba(150,255,195,.5),  0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),       0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),        0 0 2.5px rgba(4,7,12,.6);
+    animation:chrome 5s linear infinite; }
+  @keyframes chrome {
+    0%,100% { text-shadow:
+      .55px 0 .6px rgba(255,110,165,.9), -.55px 0 .6px rgba(110,225,255,.92),
+      0 .55px .9px rgba(150,255,195,.5),  0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),       0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),        0 0 2.5px rgba(4,7,12,.6); }
+    33% { text-shadow:
+      -.28px .48px .6px rgba(255,110,165,.9), .28px -.48px .6px rgba(110,225,255,.92),
+      -.48px -.28px .9px rgba(150,255,195,.5), 0 0 1.5px rgba(255,255,255,.75),
+      0 0 5px rgba(136,204,255,.95),           0 0 11px rgba(136,204,255,.56),
+      0 1px 1.5px rgba(4,7,12,.9),             0 0 2.5px rgba(4,7,12,.6); }
+    66% { text-shadow:
+      -.28px -.48px .6px rgba(255,110,165,.9), .28px .48px .6px rgba(110,225,255,.92),
+      .48px .28px .9px rgba(150,255,195,.5),   0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),            0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),             0 0 2.5px rgba(4,7,12,.6); } }
+  @media (prefers-reduced-motion: reduce) { #dit .nom.brille { animation:none } }
 
   /* ── LE PAVÉ — les lignes réellement écrites, DANS l'orbe ──────────────────
      Reprise du `drawCodeBg` de l'ancienne capsule, avec les deux corrections
@@ -465,12 +518,15 @@ function classe(l) {
    rien écrire : « rien n'a été écrit » ne veut pas dire « rien ne se passe ».
    On retombe donc sur le fichier que CET agent exécute — le comportement de
    l'ancienne capsule, gardé ici comme filet et non comme source principale. */
+/* Depuis le 2026-09-20 les 8 agents sont regroupés en 4 VAISSEAUX. Le fichier de
+   repli est celui de la FAMILLE ; plusieurs activités tombent donc sur le même,
+   ce qui est exact : c'est bien ce fichier-là que l'agent exécute. */
 const SOURCE_AGENT = {
-  distilling:'agents/distillateur.md', gardening:'agents/jardinier.md',
-  filing:'agents/jardinier.md', correcting:'agents/jardinier.md',
-  mapping:'agents/jardinier.md', architecting:'agents/architecte.md',
-  challenging:'agents/challenger.md', archiving:'agents/archiviste.md',
-  synthesizing:'agents/synthetiseur.md', auditing:'hooks/brain_upkeep.py',
+  distilling:'agents/narcissus.md', gardening:'agents/narcissus.md',
+  filing:'agents/narcissus.md', correcting:'agents/narcissus.md',
+  mapping:'agents/narcissus.md', architecting:'agents/sulaco.md',
+  challenging:'agents/sulaco.md', archiving:'agents/sulaco.md',
+  synthesizing:'agents/anesidora.md', auditing:'hooks/brain_upkeep.py',
   committing:'hooks/auto_maintain.py', working:'hooks/auto_maintain.py' };
 const cacheAgent = {};
 function lignesAgent(etat) {
@@ -641,7 +697,12 @@ function lire() {
   if (occupe) {
     // textContent effacerait les points : on repose le libellé puis les trois
     // spans, qui portent chacun leur propre décalage d'animation.
-    dit.replaceChildren(document.createTextNode(VAISSEAUX[etat] || NOMS[etat] || etat.toUpperCase()));
+    // Le nom vit dans son propre span : la brillance chromatique ne doit
+    // toucher que lui, jamais les trois points qui le suivent.
+    const nom = document.createElement('span');
+    nom.className = VAISSEAUX[etat] ? 'nom brille' : 'nom';
+    nom.textContent = VAISSEAUX[etat] || NOMS[etat] || etat.toUpperCase();
+    dit.replaceChildren(nom);
     for (let i = 0; i < 3; i++) {
       const pt = document.createElement('span');
       pt.className = 'pt'; pt.textContent = '.';

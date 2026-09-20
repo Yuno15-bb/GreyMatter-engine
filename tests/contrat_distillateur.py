@@ -2,7 +2,7 @@
 """
 contrat_distillateur.py — ce que le distillateur DOIT écrire, rendu exécutable.
 
-LE PROBLÈME QU'IL RÉSOUT. Le distillateur est un prompt (agents/distillateur.md), donc on
+LE PROBLÈME QU'IL RÉSOUT. Le distillateur est un prompt (agents/narcissus.md, section « MISSION — distillateur »), donc on
 ne peut pas le tester comme une fonction. Mais son CONTRAT, lui, est déterministe : pour
 une source donnée, il n'y a qu'un bloc `provenance:` correct. Ce fichier écrit ce bloc, et
 vérifie qu'il passe le contrôleur d'invariants. Le prompt peut alors pointer une référence

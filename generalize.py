@@ -26,12 +26,25 @@ ROOT = Path(__file__).resolve().parent
 RULES = ROOT / "rules.json"
 
 
+# LES OUTILS NE SE GÉNÉRALISENT PAS EUX-MÊMES (20/09/2026).
+# rules.json CONTIENT les motifs à traiter : c'est son métier. Une règle dont
+# les globs atteignent `**/*.json` le réécrit donc lui-même, et son `pattern`
+# devient son `replace` — la règle survit en apparence, mais elle ne remplace
+# plus rien. Mesuré : `/Users/…` → `/Users/<nom>/` des deux côtés, trois règles
+# d'anonymisation du dossier personnel muettes, commitées sans un seul rouge.
+# leakcheck.py porte la même exclusion depuis toujours (`SKIP_NAMES`) ; elle
+# manquait ici, dans l'outil jumeau.
+SKIP_NAMES = {"rules.json", "generalize.py", "leakcheck.py"}
+
+
 def targets(patterns):
     """Fichiers du dépôt visés par une liste de globs, dédupliqués et triés."""
     seen = {}
     for g in patterns:
         for p in ROOT.glob(g):
-            if p.is_file() and ".git" not in p.parts and "node_modules" not in p.parts:
+            if (p.is_file() and ".git" not in p.parts
+                    and "node_modules" not in p.parts
+                    and p.name not in SKIP_NAMES):
                 seen[p] = True
     return sorted(seen)
 

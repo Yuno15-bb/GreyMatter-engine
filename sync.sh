@@ -183,7 +183,7 @@ sync_file "$SRC/brain" "brain"
 # --- 2. Hooks -------------------------------------------------------------
 # EXCLUS : desktop_sync.py + son plist (sauvegarde du Bureau de l'auteur vers SON
 # GitHub — perso, et destructeur chez un tiers), et le .plist non-template qui
-# porte /Users/mac en dur (seul le .template part).
+# porte le dossier personnel de l'auteur en dur (seul le .template part).
 #
 # EXCLU AUSSI : hooks.json. Il n'existe QUE dans le paquet — c'est le manifeste
 # de hooks du plugin Claude Code, pas un fichier du Brain vivant. rsync tourne
@@ -285,6 +285,7 @@ sync_dir tests 'plugin_manifest.py' 'english_only.py' 'update_tag_family.sh' \
   'docs_aligned.py' \
   'golden_recall.py' 'golden_recall.json' \
   'heldout' 'resultats.json' \
+  'regles_non_muettes.py' \
   '__pycache__' '*.pyc'
 
 # --- 8. Registre des familles thématiques ---------------------------------

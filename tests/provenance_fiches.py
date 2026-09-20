@@ -11,7 +11,7 @@ et **uniquement aux fiches nouvelles**. Les 472 fiches historiques restent intac
   • une fiche AJOUTÉE dans le commit courant doit en déclarer une.
   • une fiche AJOUTÉE qui PRÉTEND connaître son origine (kind ≠ unknown) doit porter
     l'extrait exact qui la fonde — c'est E1, « pas d'extrait, pas de fait », posé dans
-    agents/distillateur.md le 2026-09-18.
+    agents/narcissus.md (mission distillateur) le 2026-09-18.
 
 E1, ET POURQUOI IL S'ARRÊTE À `unknown`. Une fiche qui déclare `kind: unknown` dit qu'elle
 ne sait pas d'où elle vient : elle n'a rien à citer, et lui réclamer un extrait la

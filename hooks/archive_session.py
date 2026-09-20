@@ -62,6 +62,10 @@ def redact(s): return SECRET.sub("«SECRET-MASQUÉ»", s or "")
 # À REMPLIR avec TES projets — c'est elle qui range tes sessions archivées.
 # Vide, tout tombe dans « À TRIER », ce qui reste correct mais peu utile.
 # Exemple :
+#   # Table de classement des sessions : mot-clé (minuscules) → nom de projet.
+# À REMPLIR avec TES projets — c'est elle qui range tes sessions archivées.
+# Vide, tout tombe dans « À TRIER », ce qui reste correct mais peu utile.
+# Exemple :
 #   PROJ = {
 #       'facture': 'Compta', 'devis': 'Compta',
 #       'shader': 'Graphismes', 'wallpaper': 'Graphismes',

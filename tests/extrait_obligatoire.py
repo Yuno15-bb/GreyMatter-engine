@@ -2,7 +2,7 @@
 """
 extrait_obligatoire.py — E1 « pas d'extrait, pas de fait », rendu réfutable.
 
-CE QU'IL PROUVE. `agents/distillateur.md` demande depuis le 2026-09-18 que chaque fait
+CE QU'IL PROUVE. `agents/narcissus.md`, section « MISSION — distillateur », demande depuis le 2026-09-18 que chaque fait
 porte l'extrait exact de sa source. Une consigne est une prose, et **une prose ne rougit
 jamais** : tant qu'aucun contrôle ne refuse une fiche sans extrait, la règle n'existe que
 sur le papier. Ce banc monte un tronc jetable, y ajoute des fiches, et vérifie que le

@@ -234,7 +234,7 @@
     "**/*.js",
     "**/*.html"
    ],
-   "pattern": "-Users-<nom>",
+   "pattern": "-Users-Dylanp",
    "replace": "-Users-<nom>",
    "expect": 2,
    "why": "Dossier transcripts de Claude Code, dérivé du home. Le nom réel n'a rien à faire dans un exemple."
@@ -250,7 +250,7 @@
     "**/*.js",
     "**/*.html"
    ],
-   "pattern": "/Users/<ancien-nom>",
+   "pattern": "/Users/Dylanp",
    "replace": "/Users/<ancien-nom>",
    "expect": 2,
    "why": "Chemin absolu de l'ancien compte, cité en exemple de piège."
@@ -563,7 +563,7 @@
     "**/*.js",
     "**/*.html"
    ],
-   "pattern": "/Users/<nom>/",
+   "pattern": "/Users/mac/",
    "replace": "/Users/<nom>/",
    "expect": 3,
    "why": "Deux regles couvraient deja l'ANCIEN compte de l'auteur (`/Users/<ancien-nom>`) et aucune le compte COURANT. Le 2026-09-20, trois chemins absolus sont sortis dans tests/sabotages.json — un fichier `.json`, extension que les deux regles existantes ne visaient meme pas. Une regle ecrite pour un incident precis ne couvre que cet incident : elle a ete elargie aux .json, .js et .html en meme temps que celle-ci a ete ajoutee."

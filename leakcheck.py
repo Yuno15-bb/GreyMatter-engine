@@ -47,7 +47,11 @@ MARKERS = [
     ("adresse mail",            r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
     ("téléphone",               r"(?<![\d.])0[1-9](?:[ .-]?\d{2}){4}(?![\d.])"),
     ("adresse postale",         r"\b\d{1,3}\s+(?:rue|avenue|impasse|chemin|boulevard|route)\s+\w+"),
-    ("chemin personnel",        r"/Users/[A-Za-z0-9_.-]+/"),
+    # Le `/` final manquait : `/Users/mac en dur`, écrit dans un commentaire de
+    # sync.sh, passait sous le marqueur alors que c'est EXACTEMENT ce que la
+    # règle d'anonymisation efface ailleurs. Un motif écrit pour la forme du
+    # premier incident ne voit pas la seconde.
+    ("chemin personnel",        r"/Users/[A-Za-z0-9_.-]+"),
     ("clé Anthropic",           r"sk-ant-[A-Za-z0-9_\-]{8,}"),
     ("jeton GitHub",            r"gh[pousr]_[A-Za-z0-9]{16,}"),
     ("jeton JWT",               r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
