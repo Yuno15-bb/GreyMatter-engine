@@ -10,9 +10,19 @@ every action, and the capsule reads it twice a second.
 ## Running it
 
 ```bash
-cd ~/.c-brain/trunk/capsule
-npm install      # the first time (downloads Electron)
-npm start
+brain capsule           # open it
+brain capsule stop      # close it
+brain capsule status    # is it running, and from where
+```
+
+`brain capsule` starts the Electron binary directly, so it works whether or not
+`npm` is on your PATH. Launching it twice does not put a second orb on screen:
+the one already running is brought back instead.
+
+The installer does the `npm install` for you. By hand, if you need it:
+
+```bash
+cd ~/.c-brain/trunk/capsule && npm install && npm start
 ```
 
 - The creature **sleeps** (zzz) when nothing is happening.

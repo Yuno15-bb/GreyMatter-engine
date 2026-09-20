@@ -113,6 +113,7 @@ Then, day to day:
 brain status          where the trunk stands
 brain recall <word>   search your memory
 brain doctor          tree health
+brain capsule         open the floating orb  (stop · status)
 brain selftest        verify the installation
 ```
 

@@ -138,12 +138,23 @@ if b and time.time() < b:
     # first launch shows nothing of what the tool can do.
     bash "$SELF"/cbrain/demo.sh "${@:2}"
     ;;
+  capsule)
+    # The only verb that puts a WINDOW on screen. It existed nowhere: the
+    # installer installed the capsule, proved its binary answered, and never
+    # said how to open it — the one documented gesture was an `npm start` inside
+    # a directory the leading dot hides from Finder. Decided 2026-09-20, C bis
+    # entry B3: a CLI verb rather than a second Desktop bundle, because the
+    # capsule's reader is already in a terminal, and because install.sh's own
+    # note says the capsule's future is not more Electron plumbing.
+    bash "$SELF"/cbrain/capsule.sh "${@:2}"
+    ;;
   version)
     cat "$HOME/.c-brain/VERSION" 2>/dev/null || echo "(unknown version)"
     ;;
   *)
-    echo "Usage: brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|version>"
+    echo "Usage: brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|capsule|version>"
     echo "        (credit: can the agents spend? — --unblock lifts a block that has become false)"
+    echo '      (capsule: opens the floating orb — stop closes it, status locates it)'
     echo "       (recall accepts --semantic for the embeddings backend)"
     echo "        (update is AUTOMATIC every session — --auto-off to turn it off)"
     exit 1

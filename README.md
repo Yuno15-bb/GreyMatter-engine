@@ -260,6 +260,7 @@ brain recall <word>   search your memory
 brain doctor          tree health (dead links, inconsistencies)
 brain review          full audit of the trunk
 brain next            your resume points
+brain capsule         open the floating orb  (stop · status)
 brain selftest        verify the installation
 brain update          update the engine  (--check · --rollback)
                       automatic every session: --auto-off / --auto-on
@@ -278,8 +279,8 @@ pretending otherwise.
 
 **Linux is not supported yet, and the gap is smaller than it looks.** Reading
 the code rather than guessing: macOS is assumed in exactly four places — the
-platform check in `install.sh`, the `launchd` job templates, the `.command`
-Desktop launcher, and the Finder `xattr` tag. Claude Code is assumed in one
+platform check in `install.sh`, the `launchd` job templates, the Desktop app
+bundle, and the Finder `xattr` tag. Claude Code is assumed in one
 file, `merge_settings.py`. Everything else — the trunk, recall, the agents, the
 `brain` CLI, the hooks themselves — is portable Python and shell already.
 
