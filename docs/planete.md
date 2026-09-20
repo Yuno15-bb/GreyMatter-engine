@@ -57,7 +57,7 @@ mais collée à cinq autres en vue *sens*, c'est un lien que tu n'as pas encore 
 
 | Pastille | Sens | D'où ça vient |
 |---|---|---|
-| ⚠ | **avis du challenger** — cette fiche a été contestée | l'agent `challenger` |
+| ⚠ | **avis du challenger** — cette fiche a été contestée | la mission `challenger`, à bord du SULACO |
 | ✦ | **conviction** — une position tenue, pas un simple fait | convictions curées |
 | ↻ | **à reprendre** — un fil resté ouvert dans la fiche | marqueurs de reprise |
 | ▷ | **rejouable** — la fiche porte une capture 3D | `.glb` associé |

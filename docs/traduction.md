@@ -96,8 +96,15 @@ personne n'écrit. Voici les paires ; on complète le tableau, on ne re-tranche 
 **Ce qui n'est PAS renommé** : les noms de FICHIER des hooks
 (`fraicheur_fiches.py`, `on_fiche_write.py` — `sync.sh` les copie par leur nom et
 `hooks/hooks.json` les liste), et les clés de frontmatter déjà anglaises
-(`name`, `description`, `born_from`, `redirectsTo`, `last_validated`). Les
-fichiers d'agents, eux, SONT renommés (`jardinier.md` → `gardener.md`).
+(`name`, `description`, `born_from`, `redirectsTo`, `last_validated`). **Les
+fichiers d'agents ne sont plus renommés non plus.** Ils l'étaient
+(`jardinier.md` → `gardener.md`) jusqu'au 20/09/2026, et ça a coûté cher : le
+19/08, cent dix-huit lancements d'agents ont échoué sans un mot parce que
+`distillateur` et `distiller` étaient deux identifiants pour la même chose.
+Depuis, les quatre vaisseaux portent des NOMS PROPRES — NOSTROMO, NARCISSUS,
+SULACO, ANESIDORA — et un nom propre ne se traduit pas. C'est la règle posée
+par l'ADR-0013 : seule la présentation dépend de la langue, jamais
+l'identifiant.
 
 ## Deux outils, une garantie — et le trou entre les deux
 

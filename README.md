@@ -36,7 +36,7 @@ historique de conversation, qui ne fait que s'allonger.
 | 🔎 **Rappel automatique** | à chaque question, les fiches pertinentes sont injectées dans le contexte |
 | 📈 **Il apprend de l'usage** | ce qui t'a servi remonte — avec une place réservée aux fiches jamais vues, pour ne pas tourner en rond |
 | 🕰️ **Il connaît son âge** | les fiches jamais revérifiées entrent dans une file de revue, datée par l'historique git |
-| 🤖 **8 agents** | ils distillent, rangent, relient, contestent, synthétisent, élaguent, réparent, surveillent la machine |
+| 🤖 **4 vaisseaux, 8 missions** | quatre noms à retenir ; derrière eux, huit rôles étroits qui distillent, rangent, relient, contestent, synthétisent, élaguent, réparent, surveillent la machine |
 | 🔁 **Boucle fermée** | fin de session → archivage → distillation → rangement, sans rien demander |
 | ⬆️ **Mises à jour** | le moteur s'actualise **tout seul** à chaque session ; **tes fiches ne sont jamais touchées** |
 
@@ -102,7 +102,8 @@ seule (elle installe la version **anglaise** : le plugin suit `main`) :
 /plugin install c-brain@c-brain
 ```
 
-Ça te donne toute la mémoire : le tronc, le rappel automatique, les huit agents,
+Ça te donne toute la mémoire : le tronc, le rappel automatique, les quatre vaisseaux
+et leurs huit missions,
 la commande `brain`, et trois commandes que tu peux taper — `/c-brain:recall`,
 `/c-brain:distill`, `/c-brain:doctor`. Le tronc `~/.c-brain/trunk` est créé à ta première
 session, et on te le dit. Ça n'installe **pas** la capsule, la planète ni les

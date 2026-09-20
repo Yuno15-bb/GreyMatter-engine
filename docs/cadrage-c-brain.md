@@ -62,7 +62,7 @@ Sur un `HOME` isolé (test) puis une machine tierce :
 | Installation | `git clone && ./install.sh` — **0 geste manuel** hors mot de passe admin, < 10 min |
 | Santé | `brain selftest` **vert**, `brain doctor` sans erreur |
 | Hooks actifs | une session Claude Code de test déclenche recall + archivage (prouvé par `state/`, pas par la doc) |
-| Agents résolus | les 8 agents listés par Claude Code (le piège du 22/07 est détecté par l'installeur) |
+| Agents résolus | les 4 vaisseaux listés par Claude Code (le piège du 22/07 est détecté par l'installeur) |
 | Capsule | fenêtre Electron qui s'anime sur un changement de `state/status.json` |
 | Planète | double-clic sur le `.command` → globe servi sur `localhost:8765` |
 | Statusline | ligne d'état visible dans Claude Code, même rendu que chez Dylan |
@@ -174,7 +174,7 @@ c-brain/
   leakcheck.py        # 0 marqueur, sinon exit 1 (bloque le commit)
   brain               # CLI (status|doctor|audit|review|recall|next|selftest|update|push…)
   hooks/              # 28 hooks + .plist.template  (desktop-sync EXCLU)
-  agents/             # 8 agents .md, généralisés (aucun nom de client/projet perso)
+  agents/             # 4 vaisseaux .md + le guide, 8 missions dedans, généralisés
   capsule/            # Electron, sans node_modules, sans assets morts
   planet/             # index.html, launch.sh, graph_export.py, media/  (graph.json EXCLU)
   companion/          # panneau live des diffs
