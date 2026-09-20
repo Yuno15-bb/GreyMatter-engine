@@ -109,8 +109,15 @@ def sabotage(src, name):
 
     if name == "label-frozen-on-meaning":
         # The defect itself: the nominal wording, whatever the state.
+        # ⚠ ANCHORED ON CODE, NEVER ON A COMMENT. This used to match the comment
+        # that trails `default:`, which is French in the trunk and is meant to be
+        # translated on the way out — so the English release carried a French
+        # string inside a test, tests/english_only.py went red on main, and the
+        # day someone DID translate that comment the sabotage would have matched
+        # nothing at all. `    default:` occurs exactly once and says the same
+        # thing in every language; the count check above still guards it.
         patch("planet/semantic-label.js",
-              "    default:   // 'absent' et tout état inconnu",
+              "    default:",
               "    default:\n      return { titre: '[ TRUNK MAP — MEANING ]',\n"
               "               bandeau: '✦ MEANING IN VOLUME — proximity = meaning, every note · S structure' };\n"
               "    case '_never':   // SABOTAGE")
