@@ -164,6 +164,11 @@ grep, and only reading catches them.
 verify the capsule could not be run, and nobody noticed because nobody ran it.
 What follows is the mechanism that was then built, and exercised.
 
+Day to day you do not need any of this: `brain capsule` opens it, `brain capsule
+stop` closes it, `brain capsule status` says whether one is running and from
+where. What follows is the VERIFICATION, which asks a harder question than "is
+there an orb": does the renderer hold the text the hooks just wrote.
+
 ```bash
 export CBRAIN_PROBE_OUT=$T/probe.json      # opt-in; nothing is written without it
 HOME=$T "$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
@@ -185,8 +190,15 @@ sensor rather than a constant.
 > substitute for one another. The pixel half is `tests/a1_capsule_pixel.sh`, and
 > it refuses to run until it has proved its own sensor can see.
 
-> `--user-data-dir` is mandatory: without it the second instance quits silently
-> because of the single-instance lock, and you think the capsule is broken.
+> `--user-data-dir` is mandatory, and what it actually does is move the LOCK.
+> Electron's single-instance lock lives in `userData`, so pointing that elsewhere
+> gives this probe its own lock and leaves a capsule you already have on screen
+> completely alone. Without the flag the second launch stands aside — since
+> 2026-09-19 it says so on stderr, naming the pid, the uptime and the directory
+> holding the lock, instead of the silent exit 0 that used to read as "broken".
+> ⚠️ The corollary, measured 2026-09-20: the lock is **not** machine-wide. Two
+> installations whose `capsule/package.json` carry different names have different
+> `userData`, so both run at once. `capsule/test_lock_speaks.sh` section D.
 
 > If Electron will not start, do **not** reach for `npm install` again — that is
 > the step that fails. Measured on 2026-08-17 (Node 26, npm 11): the archive

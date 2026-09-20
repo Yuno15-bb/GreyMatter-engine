@@ -42,6 +42,18 @@ python3 leakcheck.py           # must be CLEAN — it blocks publication otherwi
 python3 tests/english_only.py  # main only: no French in user-visible strings
 ```
 
+If you touched the capsule, also run its two benches — **the CI cannot**, because
+it installs with `--no-capsule` and a hosted runner has no Electron:
+
+```bash
+python3 tests/capsule_runtime.py     # no Electron needed: drives install.sh's own functions
+./capsule/test_lock_speaks.sh        # needs a real Electron · puts a second orb on screen ~15s
+```
+
+`test_lock_speaks.sh` had no caller at all until 2026-09-20, and it spent that
+time asserting, in one of its own labels, that the single-instance lock was
+shared machine-wide. It is not — see its section D.
+
 The CI runs both, plus a full install / selftest / uninstall on macOS and every
 migration replayed twice. It is a small workflow and it runs in under a minute —
 read `.github/workflows/ci.yml` to see exactly what is asserted.

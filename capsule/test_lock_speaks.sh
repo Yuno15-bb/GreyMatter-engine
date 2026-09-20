@@ -33,11 +33,13 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ELECTRON="$HERE/node_modules/.bin/electron"
 TMP="$(mktemp -d)"
 FAILURES=0
-PID_NODE=""; PID_APP=""
+PID_NODE=""; PID_APP=""; PID_D_NODE=""; PID_D_APP=""
 
 cleanup() {
   [ -n "$PID_APP" ] && kill "$PID_APP" 2>/dev/null
   [ -n "$PID_NODE" ] && kill "$PID_NODE" 2>/dev/null
+  [ -n "$PID_D_APP" ] && kill "$PID_D_APP" 2>/dev/null
+  [ -n "$PID_D_NODE" ] && kill "$PID_D_NODE" 2>/dev/null
   rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -78,7 +80,7 @@ check "…and nothing goes to stdout (normal output stays clean)" \
 check "…it names a pid, and that pid really is running a capsule" \
       "$([ -n "$PID_SAID" ] && ps -p "$PID_SAID" -o command= 2>/dev/null | grep -q capsule && echo 1 || echo 0)" \
       "announced pid « $PID_SAID » → $(ps -p "${PID_SAID:-0}" -o command= 2>/dev/null | head -c 90)"
-check "…it names the DIRECTORY it runs from (the lock is shared machine-wide)" \
+check "…it names the DIRECTORY it runs from, not just a pid" \
       "$(print -r -- "$MSG" | grep -qF "$HERE" && echo 1 || echo 0)" "$MSG"
 check "…and it says what to do about it" \
       "$(print -r -- "$MSG" | grep -q "kill $PID_SAID" && echo 1 || echo 0)" "$MSG"
@@ -112,9 +114,42 @@ else
 fi
 rm -f "$HERE/main-sabotaged.js"
 
+print -r -- "── D. the scope of the lock: one userData, not one machine ──"
+# WHY THIS CASE EXISTS. Section A's label used to end with "(the lock is shared
+# machine-wide)", and this bench was the proof that it is not — without noticing.
+# Every launch above is forced onto ONE throwaway `--user-data-dir` precisely so
+# it cannot touch a capsule already running: that isolation only works because
+# the lock follows userData. MEASURED outside the bench on 2026-09-20: the
+# author's trunk (package name `claude-brain-capsule`) and the shipped package
+# (`c-brain-capsule`) had two orbs on screen at the same time. A different
+# package name is a different userData is a different lock.
+#
+# The true statement, which section A now carries and main.js now prints: ONE
+# capsule per installation. Two differently-named installations make two.
+#
+# ITS CALIBRATION IS SECTION A, and that is why no extra sabotage is needed here.
+# A launches onto the SAME userData and must be REFUSED; D launches onto another
+# and must NOT be. If the lock ever became machine-wide, D's second launch would
+# be refused and both of its checks would go red. The pair is the measurement.
+"$ELECTRON" "$HERE/main.js" --user-data-dir="$TMP/ud2" >/dev/null 2>"$TMP/d.err" &
+PID_D_NODE=$!
+for i in $(seq 1 60); do
+  [ -s "$TMP/ud2/instance.json" ] && break
+  sleep 0.3
+done
+PID_D_APP="$(sed -n 's/.*"pid":\([0-9]*\).*/\1/p' "$TMP/ud2/instance.json" 2>/dev/null)"
+check "a second userData takes its OWN lock: two capsules alive at once" \
+      "$([ -n "$PID_D_APP" ] && [ "$PID_D_APP" != "$PID_APP" ] \
+          && kill -0 "$PID_APP" 2>/dev/null && kill -0 "$PID_D_APP" 2>/dev/null \
+          && echo 1 || echo 0)" \
+      "section A pid « $PID_APP » · section D pid « $PID_D_APP »"
+check "…and it was never refused — its stderr stays empty" \
+      "$([ ! -s "$TMP/d.err" ] && echo 1 || echo 0)" "$(head -c 160 "$TMP/d.err")"
+
 print -r -- ""
 if [ "$FAILURES" = "0" ]; then
-  print -r -- "✅ the second capsule's refusal names the instance holding the lock, and the sabotage mutes it."
+  print -r -- "✅ the refusal names the instance holding the lock, the sabotage mutes it, and the lock's"
+  print -r -- "   scope is one userData — not the machine."
   exit 0
 fi
 print -r -- "❌ $FAILURES check(s) failed."

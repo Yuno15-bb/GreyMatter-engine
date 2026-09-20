@@ -157,7 +157,11 @@ gating it would make a legitimate re-install refuse its own engine.
    live in anybody's working repository.
 5. Link `runtime/electron` into `versions/<id>/capsule/node_modules`. Electron is
    installed once, not once per version — otherwise each version would cost
-   250 MB instead of 11.6 MB.
+   250 MB instead of 11.6 MB. That single copy is also a single point of failure:
+   npm's own extraction can leave it truncated while exiting 0, so `install.sh`
+   checks the binary rather than the exit code and unpacks the downloaded archive
+   itself when it has to (`capsule_ok` / `capsule_repair`, held by
+   `tests/capsule_runtime.py`).
 6. Write `state/engine-managed`, remove `state/engine-dev`.
 7. Point `engine` at `versions/<id>`, then do everything the installer already
    does: trunk, mounts, CLI, hooks, launchd, planet, shortcut, verification —

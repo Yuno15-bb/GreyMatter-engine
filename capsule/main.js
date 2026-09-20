@@ -99,10 +99,20 @@ function explainRefusal() {
     `   pid ${id.pid} · up ${since(id.since)}`,
     `   directory: ${id.dir}`,
   ];
+  // ⚠ THE SCOPE OF THE LOCK, corrected 2026-09-20. These lines used to say the
+  //   lock was "shared across the whole machine: one capsule at a time, whichever
+  //   trunk it came from". It is not. Electron's single-instance lock lives in
+  //   `userData`, whose folder is named after this package — so two capsules whose
+  //   package.json carry different names each take their OWN lock and run side by
+  //   side. MEASURED that day: the author's trunk (`claude-brain-capsule`) and the
+  //   shipped package (`c-brain-capsule`) had two orbs on screen at once.
+  //   test_lock_speaks.sh proved the same thing without noticing: every launch it
+  //   makes is forced onto one throwaway `--user-data-dir` PRECISELY so it cannot
+  //   disturb a capsule already running. Section D now asserts it out loud.
   if (id.dir !== here) {
     lines.push(`   ⚠️  that is NOT the capsule of this directory (${here}).`,
-               '       The lock is shared across the whole machine: one capsule at a',
-               '       time, whichever trunk it came from.');
+               '       One capsule per installation, not per machine: a second one',
+               '       installed elsewhere under a different name gets its own lock.');
   }
   lines.push('   It has just been asked to show itself again.',
              `   To replace it:  kill ${id.pid}   then relaunch.`, '');
