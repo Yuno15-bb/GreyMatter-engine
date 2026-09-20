@@ -468,11 +468,23 @@ step "Capsule (Electron window)"
 capsule_ok() {  # does Electron ACTUALLY respond?
   local bin="$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
   # ⚠ The whole point is to run a binary that may be broken, and a half-extracted
-  # Electron does not exit — it ABORTS. The shell then reports "Abort trap: 6" on
-  # ITS OWN stderr, past the redirection on the command, so the install printed a
-  # crash trace one line before announcing success. The subshell catches the
-  # shell's own job report; the check itself is unchanged.
-  [ -x "$bin" ] && ( "$bin" --version >/dev/null 2>&1 ) 2>/dev/null
+  # Electron does not exit — it ABORTS. The message "Abort trap: 6" is not written
+  # by that binary: bash writes it, about a job it has just reaped, to the stderr
+  # bash had when it reaped. So no redirection placed ON the command can reach it,
+  # and the install printed a crash trace one line before announcing success.
+  #
+  # The first attempt here wrapped the call in a subshell whose stderr went to
+  # /dev/null. MEASURED 2026-09-20 with a stub that does `kill -ABRT $$`: that
+  # made it WORSE — 77 bytes of trace became 94, because bash executes a lone
+  # command inside `( )` in the subshell process itself, so the subshell IS the
+  # job, and the outer bash reports it by quoting the parenthesis AND the
+  # redirection. The comment claiming it was caught was never checked against a
+  # binary that really aborts; the bench that now does is tests/capsule_runtime.py.
+  #
+  # What works is redirecting the SHELL's stderr for the duration of the check,
+  # which a `{ }` group does without forking: bash's own report then lands inside
+  # the redirection. A boolean probe has nothing to say on stderr anyway.
+  { [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1; } 2>/dev/null
 }
 
 # ─── Repairing an Electron that npm reported as installed ────────────────────

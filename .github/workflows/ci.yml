@@ -146,6 +146,25 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
+      # The capsule functions, read out of install.sh itself rather than copied:
+      # the repair for an Electron that npm reports as installed and never
+      # extracted, and the guard that keeps the shell's own "Abort trap: 6" out
+      # of a successful install. This bench existed since 2026-08-17 and NOTHING
+      # ran it — which is how a guard that had never worked shipped for a month
+      # under a comment saying it did. It needs neither Electron nor the network:
+      # it drives the extracted functions against a 2 KB stub. It self-skips off
+      # macOS arm64, and this runner is macOS arm64 — so the skip is checked for
+      # rather than trusted: a bench that quietly opts out is a green that tests
+      # nothing, which is the exact shape of the defect above.
+      - name: the capsule functions, exercised
+        run: |
+          set -euo pipefail
+          out="$(python3 tests/capsule_runtime.py)"
+          printf '%s\n' "$out"
+          case "$out" in
+            *skipped*) echo "❌ capsule_runtime opted out on a runner that must run it"; exit 1 ;;
+          esac
+
       - name: dry run writes nothing
         run: |
           set -euo pipefail

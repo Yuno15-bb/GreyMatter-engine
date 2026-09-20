@@ -187,6 +187,60 @@ def main():
                        "engine dirty, and `brain update` refuses on a dirty engine — the "
                        "capsule fix would block every update from then on")
 
+    # 6. THE CRASH TRACE MUST NOT REACH THE READER — and the check must still fail.
+    #
+    #    "Abort trap: 6" is not written by the binary. Bash writes it, about a job
+    #    it has just reaped, to the stderr bash held at that moment. No redirection
+    #    placed on the command can reach it. Measured 2026-09-20: the subshell that
+    #    was shipped as the fix made the trace LONGER (77 bytes -> 94), because bash
+    #    runs a lone command inside `( )` in the subshell process itself, so the
+    #    subshell IS the job the outer shell reports on.
+    #
+    #    THE CALIBRATION IS THE POINT. A stub that merely exits non-zero makes this
+    #    pass without proving anything. So the bare probe is run FIRST and must be
+    #    NOISY; only then does silence from the real function mean something.
+    with tempfile.TemporaryDirectory() as tmp:
+        engine = os.path.join(tmp, "engine")
+        binary = os.path.join(engine, "capsule", "node_modules", "electron",
+                              "dist", PLATFORM_PATH)
+        os.makedirs(os.path.dirname(binary))
+        with open(binary, "w") as f:
+            f.write("#!/bin/sh\nkill -ABRT $$\n")   # dies of SIGABRT, like the real one
+        os.chmod(binary, 0o755)
+
+        def run(body_or_probe, call):
+            script = 'set -u\nENGINE="%s"\n%s\n%s\n' % (engine, body_or_probe, call)
+            p = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                               timeout=60)
+            return p.returncode, p.stderr
+
+        nu = ('nu() {\n'
+              '  local bin="$ENGINE/capsule/node_modules/electron/dist/%s"\n'
+              '  [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1\n'
+              '}' % PLATFORM_PATH)
+        rc_nu, err_nu = run(nu, "nu")
+        print(f"  unguarded probe is noisy         {'yes' if err_nu.strip() else 'NO'}"
+              f" ({len(err_nu)} B)")
+        if not err_nu.strip():
+            trouble.append("the stub does not make the shell talk, so this case cannot tell "
+                           "a working guard from a missing one — it must abort, not exit")
+
+        body = extract_function("capsule_ok")
+        if body is None:
+            trouble.append("capsule_ok is gone from install.sh")
+        else:
+            rc_ok, err_ok = run(body, "capsule_ok")
+            print(f"  guarded probe is silent          {'yes' if not err_ok.strip() else 'NO'}"
+                  f" ({len(err_ok)} B)")
+            print(f"  broken binary still refused      {'yes' if rc_ok else 'NO'}")
+            if err_ok.strip():
+                trouble.append("capsule_ok lets the shell print %r: a fresh install shows a "
+                               "crash trace one line before announcing success"
+                               % err_ok.strip()[:80])
+            if not rc_ok:
+                trouble.append("capsule_ok returns success over a binary that aborts: "
+                               "silencing the trace must not silence the verdict")
+
     if trouble:
         print("\n❌ a fresh install can still ship a capsule that cannot start:")
         for t in trouble:
