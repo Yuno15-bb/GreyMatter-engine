@@ -1,11 +1,11 @@
-# C Brain
+# GreyMatter
 
 [![CI](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Yuno15-bb/GreyMatter-engine?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/GreyMatter-engine/releases/latest)
 [![Licence](https://img.shields.io/github/license/Yuno15-bb/GreyMatter-engine?color=8a8f98)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
 
-**C Brain turns each session with your CLI agent into memory it can reuse —
+**GreyMatter turns each session with your CLI agent into memory it can reuse —
 distilled into a note, filed, linked, and handed back automatically the next
 time it matters. From any project, and without leaving your machine.**
 
@@ -25,7 +25,7 @@ time it matters. From any project, and without leaving your machine.**
 </table>
 
 Your agent is brilliant within a session and amnesic between two. Solve
-something on Monday, explain it again on Thursday. C Brain is the part that
+something on Monday, explain it again on Thursday. GreyMatter is the part that
 remembers.
 
 The more work piles up, the more useful the tree gets — the opposite of a
@@ -117,7 +117,7 @@ would leave you with a window that never opens.
 unattended maintenance:
 
 ```
-Install C Brain: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
@@ -148,7 +148,10 @@ and lets `uninstall.sh` remove everything while leaving your knowledge intact.
 
 Both live behind a leading dot, out of the way. Your notes should not: the
 install puts a **`C Brain` shortcut in your home folder**, tagged, so the one
-part that is yours is the one part you can see.
+part that is yours is the one part you can see. That folder, the `~/.c-brain`
+paths and the `/c-brain:` commands keep the engine's original name: they are
+addresses, and an address that changes breaks every install that already
+follows it.
 
 <p align="center">
   <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged C Brain folder, with an arrow pointing at it" width="900">
@@ -272,7 +275,7 @@ brain version         installed version
 **macOS.** launchd, Electron and `open` are used.
 
 **Claude Code** for the full experience: it is what fires the hooks (recall,
-archiving, autonomous maintenance, status line). With another CLI agent, C Brain
+archiving, autonomous maintenance, status line). With another CLI agent, GreyMatter
 installs and works **on demand** — trunk, agents, `brain`, planet, capsule — but
 without the closed loop. The installer detects this and says so, rather than
 pretending otherwise.

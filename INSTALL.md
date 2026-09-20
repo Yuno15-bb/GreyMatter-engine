@@ -1,6 +1,6 @@
-# Installing C Brain
+# Installing GreyMatter
 
-> ### ⚠️ Already running C Brain v1.28.1 or earlier?
+> ### ⚠️ Already running GreyMatter v1.28.1 or earlier?
 > **Read [docs/UPGRADING.md](docs/UPGRADING.md) before you upgrade.** The updater
 > shipped with older releases may reset uncommitted changes in your engine
 > checkout, once, during the move to v1.29.0. One command tells you whether it
@@ -16,7 +16,7 @@
 Paste this into your CLI (Claude Code or another command-line agent):
 
 ```
-Install C Brain: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
@@ -31,7 +31,7 @@ cd ~/dev/c-brain
 ```
 
 Options: `--dry-run` (writes nothing, shows what would happen) ·
-`--dev` (for working ON C Brain: links the engine to your checkout and turns
+`--dev` (for working ON GreyMatter: links the engine to your checkout and turns
 automatic engine updates off for it) ·
 `--no-launchd` (no scheduled jobs) · `--no-capsule` (no Electron) · `--no-shortcut`
 (no `C Brain` shortcut in your home folder).
@@ -80,12 +80,12 @@ It deletes nothing, sends nothing over the network, and reads none of your data.
 
 ## If you don't use Claude Code
 
-C Brain still installs, and gives you the trunk, the agents, the `brain` CLI, the
+GreyMatter still installs, and gives you the trunk, the agents, the `brain` CLI, the
 planet and the capsule.
 
 **What you won't get**: the closed loop. Recall at the start of a session,
 archiving at the end, autonomous maintenance — all go through the hooks in
-`~/.claude/settings.json`, which are specific to Claude Code. Elsewhere, C Brain
+`~/.claude/settings.json`, which are specific to Claude Code. Elsewhere, GreyMatter
 works **on demand**: `brain recall`, `brain status`, agents invoked explicitly.
 The installer detects this and tells you — it does not pretend.
 
@@ -127,6 +127,6 @@ before.
 ~/dev/c-brain/uninstall.sh
 ```
 
-**Your trunk and your notes are never deleted.** Removed: the C Brain hooks (the
+**Your trunk and your notes are never deleted.** Removed: the GreyMatter hooks (the
 rest of `settings.json` untouched), the engine symlinks, the `brain` command, the
 Desktop launcher, the scheduled jobs. Backups stay in `~/.c-brain/backups/`.
