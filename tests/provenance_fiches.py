@@ -9,6 +9,17 @@ et **uniquement aux fiches nouvelles**. Les 472 fiches historiques restent intac
     fait — pas d'autorité, pertinence intacte. C'est le comportement voulu.
   • une fiche qui DÉCLARE une provenance doit la déclarer correctement, où qu'elle soit.
   • une fiche AJOUTÉE dans le commit courant doit en déclarer une.
+  • une fiche AJOUTÉE qui PRÉTEND connaître son origine (kind ≠ unknown) doit porter
+    l'extrait exact qui la fonde — c'est E1, « pas d'extrait, pas de fait », posé dans
+    agents/distillateur.md le 2026-09-18.
+
+E1, ET POURQUOI IL S'ARRÊTE À `unknown`. Une fiche qui déclare `kind: unknown` dit qu'elle
+ne sait pas d'où elle vient : elle n'a rien à citer, et lui réclamer un extrait la
+pousserait à en inventer un. L'exigence ne tombe donc que sur les fiches qui REVENDIQUENT
+une source. Appui mesuré : le memory tool d'Anthropic refuse un `str_replace` dont la
+chaîne ne correspond pas au caractère près — une reformulation ne se vérifie pas, un
+extrait si. Et l'audit Mem0 (issue 4573, 10 134 entrées) montre qu'un fait halluciné une
+fois se ré-extrait ensuite indéfiniment : l'extrait est ce qui casse cette boucle.
 
 Pourquoi pas de rattrapage sur l'existant : il n'existe aucune correspondance mécanique
 fiable pour reconstruire l'origine d'une fiche de juin. `metadata.type` dit le GENRE
@@ -24,7 +35,7 @@ détectable ailleurs que dans une fixture.
 Lancer :
   python3 tests/provenance_fiches.py              # état du tronc, informatif
   python3 tests/provenance_fiches.py --check      # barrière : les déclarations doivent être valides
-  python3 tests/provenance_fiches.py --nouvelles  # + exige une provenance sur les fiches AJOUTÉES
+  python3 tests/provenance_fiches.py --nouvelles  # + provenance ET extrait sur les fiches AJOUTÉES
 """
 import argparse
 import glob
@@ -85,7 +96,7 @@ def main():
     kinds = {n: kind_effectif(_lire_bloc(fm, "provenance") or {})
              for n, (_, fm) in toutes.items()}
 
-    declarent, fautives, manquantes = [], [], []
+    declarent, fautives, manquantes, sans_extrait = [], [], [], []
     for nom, (rel, fm) in sorted(toutes.items()):
         prov = _lire_bloc(fm, "provenance")
         if not prov:
@@ -103,6 +114,11 @@ def main():
         fautes = controler(fm, parent)
         if fautes:
             fautives.append((rel, fautes))
+        # E1 — l'extrait n'est exigé que des fiches NEUVES qui revendiquent une origine.
+        # `unknown` en est dispensé : il n'a rien à citer (voir l'en-tête).
+        if (a.nouvelles and rel in neuves and prov.get("kind") != "unknown"
+                and not str(prov.get("extrait") or "").strip()):
+            sans_extrait.append(rel)
 
     print(f"Provenance sur le tronc — {len(toutes)} fiches\n")
     print(f"  déclarent une provenance : {len(declarent)}")
@@ -121,7 +137,15 @@ def main():
         print("\n   Une fiche nouvelle déclare son origine. Si elle est inconnue,")
         print("   écris-la : `provenance:\\n  kind: unknown`. Ne suppose jamais.")
 
-    if a.check and (fautives or manquantes):
+    if sans_extrait:
+        print(f"\n❌ {len(sans_extrait)} fiche(s) ajoutée(s) sans extrait (E1) :")
+        for rel in sans_extrait[:10]:
+            print(f"     {rel}")
+        print("\n   Une fiche qui nomme sa source en recopie la phrase, mot pour mot :")
+        print("   `provenance:\\n  extrait: \"la phrase exacte\"`. Si tu ne peux pas la")
+        print("   coller, tu n'écris pas le fait — ou tu déclares `kind: unknown`.")
+
+    if a.check and (fautives or manquantes or sans_extrait):
         return 1
     if a.check:
         print("\n✅ aucune provenance déclarée n'est invalide")

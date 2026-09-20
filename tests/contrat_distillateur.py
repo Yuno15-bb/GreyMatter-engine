@@ -21,6 +21,14 @@ Lancer :
   python3 tests/contrat_distillateur.py
   python3 tests/contrat_distillateur.py --check
   python3 tests/contrat_distillateur.py --sans-provenance   # SABOTAGE : l'ancien format
+  python3 tests/contrat_distillateur.py --sans-extrait      # SABOTAGE : E1 non tenu
+
+E1 — L'EXTRAIT, DEPUIS LE 2026-09-18. Le distillateur ne se contente plus de nommer sa
+source : il en recopie la phrase, mot pour mot, dans `provenance.extrait`. La raison est
+mécanique, pas morale — une reformulation ne se vérifie pas, un extrait se recherche au
+caractère près. Seul `kind: unknown` en est dispensé : une origine perdue n'a rien à
+citer, et lui réclamer un extrait la pousserait à en inventer un. Le refus au moment du
+commit est prouvé à part, par tests/extrait_obligatoire.py.
 """
 import argparse
 import os
@@ -31,7 +39,7 @@ sys.path.insert(0, ICI)
 from provenance_invariants import controler  # noqa: E402
 
 
-def bloc_provenance(cas, ecrire=True):
+def bloc_provenance(cas, ecrire=True, extrait=True):
     """Le bloc `provenance:` / `authority:` canonique pour une source donnée.
 
     `ecrire=False` est le SABOTAGE : on produit l'ancien format, sans provenance —
@@ -50,6 +58,10 @@ def bloc_provenance(cas, ecrire=True):
         # la provenance est une affirmation, pas une trace.
         lignes.append(f'  ref: "{ref}"')
         lignes.append(f"  captured_at: {cas['captured_at']}")
+        # E1 : la phrase exacte de la source. `extrait=False` est le SABOTAGE — le
+        # distillateur qui nomme sa source sans jamais la citer.
+        if extrait:
+            lignes.append(f'  extrait: "{cas["extrait"]}"')
     if cas.get("derived_from"):
         lignes.append(f"  derived_from: [{cas['derived_from']}]")
 
@@ -75,13 +87,16 @@ def bloc_provenance(cas, ecrire=True):
 # s'est mis à juger.
 CAS = [
     {"nom": "source web", "kind": "web", "ref": "https://exemple.test/billet",
+     "extrait": "le billet dit : « le cache reste chaud 30 s »",
      "captured_at": "2026-08-16", "derived_from": "source-issue-du-web",
      "confidence": "low", "attendu_validated": False},
     {"nom": "décision de l'auteur", "kind": "user_decision",
      "ref": "l'auteur, 2026-08-16 : « on garde BM25 »", "captured_at": "2026-08-16",
+     "extrait": "on garde BM25",
      "scope": "project", "confidence": "high", "attendu_validated": True},
     {"nom": "expérience interne rejouable", "kind": "internal_experience",
      "ref": "tests/golden_recall.py", "captured_at": "2026-08-16",
+     "extrait": "P@1 0.67 · P@3 0.87 · MRR 0.77",
      "commande": "python3 tests/golden_recall.py --check",
      "confidence": "high", "attendu_validated": True},
     {"nom": "origine inconnue", "kind": "unknown", "captured_at": "2026-08-16",
@@ -90,6 +105,7 @@ CAS = [
     # cas qui distingue « j'ai observé » de « je peux le prouver à quelqu'un d'autre ».
     {"nom": "expérience interne sans rejeu", "kind": "internal_experience",
      "ref": "observé en session", "captured_at": "2026-08-16",
+     "extrait": "le hook a refusé le commit sans rien afficher",
      "confidence": "medium", "attendu_validated": False},
 ]
 
@@ -99,15 +115,25 @@ def main():
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--sans-provenance", action="store_true",
                     help="SABOTAGE : le distillateur d'avant, qui n'écrit rien")
+    ap.add_argument("--sans-extrait", action="store_true",
+                    help="SABOTAGE : il nomme sa source mais ne la cite jamais (E1)")
     a = ap.parse_args()
     ecrire = not a.sans_provenance
+    extrait = not a.sans_extrait
 
-    titre = "" if ecrire else "   ⚠️ SABOTAGE : ancien format, sans provenance"
+    titre = ""
+    if not ecrire:
+        titre = "   ⚠️ SABOTAGE : ancien format, sans provenance"
+    elif not extrait:
+        titre = "   ⚠️ SABOTAGE : source nommée, jamais citée"
     print(f"Contrat du distillateur — {len(CAS)} sources{titre}\n")
     echecs = 0
     for c in CAS:
-        bloc = bloc_provenance(c, ecrire)
+        bloc = bloc_provenance(c, ecrire, extrait)
         fautes = controler(bloc) if bloc else ["aucun bloc provenance produit"]
+        # E1 : tout ce qui n'est pas `unknown` revendique une source, donc la cite.
+        if bloc and c["kind"] != "unknown" and 'extrait: "' not in bloc:
+            fautes.append("E1 : source nommée sans extrait recopié")
         validee = "validated: true" in bloc
         if validee is not c["attendu_validated"]:
             fautes.append(f"validated={validee}, attendu {c['attendu_validated']}")

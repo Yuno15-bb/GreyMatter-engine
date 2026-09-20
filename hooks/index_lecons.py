@@ -16,7 +16,14 @@ Ce qui a été SAUVÉ avant de rendre ce fichier jetable (sinon on perdait le ju
 """
 import glob, json, os, re, sys
 
-BRAIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, légitime
+from brain_racine import brain_root
+
+# I-1 (2026-08-21). Avant : la racine du DÉPÔT du script servait d'identité du Brain —
+# racine de CODE prise pour racine de BRAIN. Ce module ÉCRIT `lessons/INDEX.md` : sur la
+# mauvaise racine, il réécrit l'index d'un autre arbre. Migré SANS être exécuté sur le
+# tronc : la preuve est faite sur clones jetables, la collecte held-out est en cours.
+BRAIN = brain_root(__file__)
 INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 
 
@@ -33,16 +40,24 @@ def champ(fm, nom):
 
 def lire_lecons():
     out = []
-    for p in sorted(glob.glob(os.path.join(BRAIN, "lessons", "*.md"))):
-        nom = os.path.basename(p)[:-3]
-        if nom == "INDEX":
+    # Cherche les tags dans toute l'arborescence (sauf sessions/, audits/, .git/, vision/, etc.)
+    # car une leçon peut être physiquement un projet mais aussi une leçon par ses tags.
+    # vision/ est exclue : ce sont des documents sources de continuité, pas des leçons
+    excludes = {".git", "audits", "sessions", "capsule", "companion", "tools", "archive", ".claude", "planet", "vision"}
+    for p in sorted(glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True)):
+        # Exclut les dossiers spécialisés et l'INDEX lui-même
+        rel = os.path.relpath(p, BRAIN)
+        if any(rel.startswith(ex) for ex in excludes) or os.path.basename(p) == "INDEX.md":
             continue
         fm = frontmatter(p)
         t = re.search(r"^tags:\s*\[(.*?)\]", fm, re.M)
+        if not t:  # Seules les fiches avec tags sont des leçons
+            continue
+        nom = os.path.basename(p)[:-3]
         out.append({
             "nom": nom,
             "desc": champ(fm, "description"),
-            "tags": [x.strip() for x in t.group(1).split(",") if x.strip()] if t else [],
+            "tags": [x.strip() for x in t.group(1).split(",") if x.strip()],
             "star": champ(fm, "star").lower() == "true",
         })
     return out

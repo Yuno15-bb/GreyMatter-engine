@@ -1,77 +1,409 @@
 {
-  "_lisez_moi": "Le registre des SABOTAGES. Règle du dépôt depuis le 2026-08-16 : tout banc branché au pre-commit doit avoir ici la preuve qu'il sait rougir, avec le geste exact et le rouge observé. Un banc dont personne n'a vu le rouge n'est pas une barrière, c'est une décoration — et il passera au vert le jour où le mécanisme qu'il surveille deviendra inerte. cf. lessons/test-d-equivalence-vert-aussi-quand-le-code-est-inerte.md",
-  "_pourquoi_pas_execute_a_chaque_commit": "Plusieurs sabotages écrivent sur le disque (déposer un .md, modifier config/ranking.json). Les rejouer à chaque commit ferait courir un risque pour un gain nul : ce sont des PREUVES DATÉES, pas des tests. Ils se rejouent à la main quand on touche au banc concerné, ou quand on doute.",
-  "_en_json_pas_en_md": "tests/ est indexé par le rappel. Un registre en Markdown ici entrerait dans le corpus — l'invariant que tests/pas_de_fuite_evaluation.py fait respecter.",
-  "sabotages": [
-    {
-      "banc": "tests/golden_recall.py",
-      "surveille": "la qualité du classement du rappel sur le corpus réel",
-      "geste": "BM25 rendu sourd à la fréquence des termes : k1=0.01, b=0 (en mémoire, aucun fichier touché)",
-      "rouge_observe": "P@1 0.67 → 0.20 · P@3 0.80 → 0.27 · MRR 0.73 → 0.22 · exit 0 → 1",
-      "date": "2026-08-15"
-    },
-    {
-      "banc": "config/ranking.json (chemin d'influence du classement)",
-      "surveille": "que la configuration est réellement lue, et pas décorative",
-      "geste": "deux sabotages, un par chemin : alpha 0,2 → 0,9 (calcul) et poids_nom 3 → 9 (indexation, donc derrière le cache)",
-      "rouge_observe": "alpha : 29 requêtes sur 30 changent · poids_nom : 30 sur 30, ce qui prouve en plus que l'empreinte du cache prend la config",
-      "date": "2026-08-15",
-      "note": "Un sabotage PAR CHEMIN d'influence, jamais par fichier. Le second n'est pas un doublon du premier : il teste le seul chemin capable d'avaler une modification en silence."
-    },
-    {
-      "banc": "tests/provenance_invariants.py",
-      "surveille": "les invariants I1→I7 sur le frontmatter d'une fiche",
-      "geste": "réparation ciblée : chaque fixture en violation est réparée sur son SEUL défaut",
-      "rouge_observe": "V2, V3, V4, V6, V9 refusées → valides après réparation ; V7 cesse d'être refusée quand le parent passe de web à user_decision",
-      "date": "2026-08-16",
-      "note": "Prouve que chaque règle porte SON cas — aucune ne passe pour active pendant que sa voisine travaille."
-    },
-    {
-      "banc": "tests/authority_conflicts.py",
-      "surveille": "la résolution d'autorité entre deux connaissances contradictoires",
-      "geste": "--sans-scope et --scope-large : le domaine est ignoré ou élargi à tout le monde",
-      "rouge_observe": "conflict_resolution_accuracy 1.00 → 0.85 · authority_selection_accuracy 1.00 → 0.75 · scope_violation_rate 0.00 → 0.15 · exit 0 → 1",
-      "date": "2026-08-16",
-      "note": "⚠️ LE PREMIER SABOTAGE N'A PAS ROUGI. Sur les 11 cas d'origine, les poids de classe décidaient de tout et le scope était décoratif. Deux cas discriminants (C12, C13) ont été ajoutés, où le côté hors scope gagnerait sur les poids. C'est le jeu qui était faible, pas le résolveur."
-    },
-    {
-      "banc": "tests/pas_de_fuite_evaluation.py",
-      "surveille": "qu'aucune donnée d'évaluation n'entre dans le corpus récupérable",
-      "geste": "déposer un fichier .md dans tests/ — le geste exact que quelqu'un fera dans six mois",
-      "rouge_observe": "fichier détecté et nommé, exit 0 → 1 ; retiré → exit 0",
-      "date": "2026-08-16",
-      "note": "Le premier relevé lisait le code de sortie de `tail` à travers un pipe et annonçait exit 0 sous sabotage. Le contrôle était bon, l'instrument ne l'était pas."
-    },
-    {
-      "banc": "tests/propagation_provenance.py",
-      "surveille": "que la transformation ne blanchit pas une origine (I7)",
-      "geste": "--sans-propagation : la transformation repart d'une provenance neuve, comme le ferait un distillateur qui « range » sans conserver",
-      "rouge_observe": "4/4 chaînes conformes → 0/4 · exit 0 → 1 · trois symptômes distincts : kind promu, origine perdue, profondeur de chaîne à zéro",
-      "date": "2026-08-16"
-    },
-    {
-      "banc": "kind_effectif — source unique partagée (tests/provenance_invariants.py)",
-      "surveille": "que le résolveur d'autorité ET la propagation consomment la MÊME lecture de I7",
-      "geste": "remplacer kind_effectif par une constante ('internal_experience') et rejouer les deux bancs",
-      "rouge_observe": "résolveur 14/14 → 13/14 (C14 bascule en UNRESOLVED) · propagation 4/4 → 1/4",
-      "date": "2026-08-16",
-      "note": "⚠️ LE PREMIER PASSAGE N'A ROUGI QUE D'UN CÔTÉ : le résolveur restait à 13/13 parce que le filtre de scope et le bonus `validated` portaient tous ses cas — la fonction n'y était pas éprouvée. C14 a été ajouté (mêmes ingrédients, rôles inversés, aucun autre discriminant) pour que seule la lecture des `basis` puisse trancher. Un sabotage qui ne rougit que chez un consommateur ne prouve rien sur l'autre."
-    },
-    {
-      "banc": "tests/provenance_fiches.py",
-      "surveille": "la provenance sur les VRAIES fiches — déclarations valides partout, provenance exigée sur les fiches AJOUTÉES",
-      "geste": "deux gestes, un par règle : (1) un tronc jouet (BRAIN_HOME) où une fiche descend d'une fiche `web` et se déclare `internal_experience` ; (2) commiter une fiche neuve sans bloc provenance",
-      "rouge_observe": "(1) refusée avec « I7 : descend d'une fiche 'web' » — exit 1, puis exit 0 après retrait · (2) commit refusé, exit 1 ; la même fiche AVEC provenance passe, exit 0",
-      "date": "2026-08-16",
-      "note": "Le parent est lu SUR LE PARENT, sur disque : une fiche ne décide pas de l'origine dont elle descend. Le tronc jouet évite de créer de fausses fiches dans le tronc vivant pour tester le contrôle — même isolation par BRAIN_HOME que le banc de valeur."
-    },
-    {
-      "banc": "tests/contrat_distillateur.py",
-      "surveille": "que le producteur de fiches écrit un bloc provenance acceptable pour les 4 cas autorisés",
-      "geste": "--sans-provenance : le distillateur d'AVANT, qui n'écrit rien",
-      "rouge_observe": "5/5 sources conformes → 0/5 · exit 0 → 1",
-      "date": "2026-08-16",
-      "note": "Le distillateur est un prompt, donc intestable comme fonction. Son CONTRAT, lui, est déterministe : ce banc l'écrit et le passe au contrôleur d'invariants. Le prompt pointe cette référence exécutable au lieu de décrire un format en prose — une prose ne rougit jamais."
-    }
-  ]
+ "_lisez_moi": "Le registre des SABOTAGES. Règle du dépôt depuis le 2026-08-16 : tout banc branché au pre-commit doit avoir ici la preuve qu'il sait rougir, avec le geste exact et le rouge observé. Un banc dont personne n'a vu le rouge n'est pas une barrière, c'est une décoration — et il passera au vert le jour où le mécanisme qu'il surveille deviendra inerte. cf. lessons/test-d-equivalence-vert-aussi-quand-le-code-est-inerte.md",
+ "_pourquoi_pas_execute_a_chaque_commit": "Plusieurs sabotages écrivent sur le disque (déposer un .md, modifier config/ranking.json). Les rejouer à chaque commit ferait courir un risque pour un gain nul : ce sont des PREUVES DATÉES, pas des tests. Ils se rejouent à la main quand on touche au banc concerné, ou quand on doute.",
+ "_en_json_pas_en_md": "tests/ est indexé par le rappel. Un registre en Markdown ici entrerait dans le corpus — l'invariant que tests/pas_de_fuite_evaluation.py fait respecter.",
+ "sabotages": [
+  {
+   "banc": "tests/golden_recall.py",
+   "surveille": "la qualité du classement du rappel sur le corpus réel",
+   "geste": "BM25 rendu sourd à la fréquence des termes : k1=0.01, b=0 (en mémoire, aucun fichier touché)",
+   "rouge_observe": "P@1 0.67 → 0.20 · P@3 0.80 → 0.27 · MRR 0.73 → 0.22 · exit 0 → 1",
+   "date": "2026-08-15"
+  },
+  {
+   "banc": "config/ranking.json (chemin d'influence du classement)",
+   "surveille": "que la configuration est réellement lue, et pas décorative",
+   "geste": "deux sabotages, un par chemin : alpha 0,2 → 0,9 (calcul) et poids_nom 3 → 9 (indexation, donc derrière le cache)",
+   "rouge_observe": "alpha : 29 requêtes sur 30 changent · poids_nom : 30 sur 30, ce qui prouve en plus que l'empreinte du cache prend la config",
+   "date": "2026-08-15",
+   "note": "Un sabotage PAR CHEMIN d'influence, jamais par fichier. Le second n'est pas un doublon du premier : il teste le seul chemin capable d'avaler une modification en silence."
+  },
+  {
+   "banc": "tests/provenance_invariants.py",
+   "surveille": "les invariants I1→I7 sur le frontmatter d'une fiche",
+   "geste": "réparation ciblée : chaque fixture en violation est réparée sur son SEUL défaut",
+   "rouge_observe": "V2, V3, V4, V6, V9 refusées → valides après réparation ; V7 cesse d'être refusée quand le parent passe de web à user_decision",
+   "date": "2026-08-16",
+   "note": "Prouve que chaque règle porte SON cas — aucune ne passe pour active pendant que sa voisine travaille."
+  },
+  {
+   "banc": "tests/authority_conflicts.py",
+   "surveille": "la résolution d'autorité entre deux connaissances contradictoires",
+   "geste": "--sans-scope et --scope-large : le domaine est ignoré ou élargi à tout le monde",
+   "rouge_observe": "conflict_resolution_accuracy 1.00 → 0.85 · authority_selection_accuracy 1.00 → 0.75 · scope_violation_rate 0.00 → 0.15 · exit 0 → 1",
+   "date": "2026-08-16",
+   "note": "⚠️ LE PREMIER SABOTAGE N'A PAS ROUGI. Sur les 11 cas d'origine, les poids de classe décidaient de tout et le scope était décoratif. Deux cas discriminants (C12, C13) ont été ajoutés, où le côté hors scope gagnerait sur les poids. C'est le jeu qui était faible, pas le résolveur."
+  },
+  {
+   "banc": "tests/pas_de_fuite_evaluation.py",
+   "surveille": "qu'aucune donnée d'évaluation n'entre dans le corpus récupérable",
+   "geste": "déposer un fichier .md dans tests/ — le geste exact que quelqu'un fera dans six mois",
+   "rouge_observe": "fichier détecté et nommé, exit 0 → 1 ; retiré → exit 0",
+   "date": "2026-08-16",
+   "note": "Le premier relevé lisait le code de sortie de `tail` à travers un pipe et annonçait exit 0 sous sabotage. Le contrôle était bon, l'instrument ne l'était pas."
+  },
+  {
+   "banc": "tests/propagation_provenance.py",
+   "surveille": "que la transformation ne blanchit pas une origine (I7)",
+   "geste": "--sans-propagation : la transformation repart d'une provenance neuve, comme le ferait un distillateur qui « range » sans conserver",
+   "rouge_observe": "4/4 chaînes conformes → 0/4 · exit 0 → 1 · trois symptômes distincts : kind promu, origine perdue, profondeur de chaîne à zéro",
+   "date": "2026-08-16"
+  },
+  {
+   "banc": "kind_effectif — source unique partagée (tests/provenance_invariants.py)",
+   "surveille": "que le résolveur d'autorité ET la propagation consomment la MÊME lecture de I7",
+   "geste": "remplacer kind_effectif par une constante ('internal_experience') et rejouer les deux bancs",
+   "rouge_observe": "résolveur 14/14 → 13/14 (C14 bascule en UNRESOLVED) · propagation 4/4 → 1/4",
+   "date": "2026-08-16",
+   "note": "⚠️ LE PREMIER PASSAGE N'A ROUGI QUE D'UN CÔTÉ : le résolveur restait à 13/13 parce que le filtre de scope et le bonus `validated` portaient tous ses cas — la fonction n'y était pas éprouvée. C14 a été ajouté (mêmes ingrédients, rôles inversés, aucun autre discriminant) pour que seule la lecture des `basis` puisse trancher. Un sabotage qui ne rougit que chez un consommateur ne prouve rien sur l'autre."
+  },
+  {
+   "banc": "tests/provenance_fiches.py",
+   "surveille": "la provenance sur les VRAIES fiches — déclarations valides partout, provenance exigée sur les fiches AJOUTÉES",
+   "geste": "deux gestes, un par règle : (1) un tronc jouet (BRAIN_HOME) où une fiche descend d'une fiche `web` et se déclare `internal_experience` ; (2) commiter une fiche neuve sans bloc provenance",
+   "rouge_observe": "(1) refusée avec « I7 : descend d'une fiche 'web' » — exit 1, puis exit 0 après retrait · (2) commit refusé, exit 1 ; la même fiche AVEC provenance passe, exit 0",
+   "date": "2026-08-16",
+   "note": "Le parent est lu SUR LE PARENT, sur disque : une fiche ne décide pas de l'origine dont elle descend. Le tronc jouet évite de créer de fausses fiches dans le tronc vivant pour tester le contrôle — même isolation par BRAIN_HOME que le banc de valeur."
+  },
+  {
+   "banc": "tests/corpus_partage.py",
+   "surveille": "que la définition du corpus reste UNIQUE — aucun moteur ne s'en écrit une copie",
+   "geste": "réintroduire une copie locale de SKIP_DIRS dans hooks/brain_embed.py, exactement le geste qui a produit l'incident",
+   "rouge_observe": "« brain_embed.py redéfinit localement SKIP_DIRS (ligne 28) », exit 0 → 1 ; copie retirée → exit 0",
+   "date": "2026-08-16",
+   "note": "⚠️ DEUX ENSEIGNEMENTS. (1) La comparaison à l'exécution N'A PAS rougi : 397 documents des deux côtés malgré la copie locale, parce que `_skip` est importé et n'a jamais lu la copie — elle était du code mort. Un sabotage plus méchant (redéfinir aussi `_skip`) l'aurait fait diverger. C'est pourquoi la BARRIÈRE est le contrôle STATIQUE, et la comparaison à l'exécution seulement un observable : le statique attrape le nom, qu'il soit vivant ou pas. (2) J'ai d'abord relevé « exit=0 » sous sabotage en lisant le code de sortie de `tail` à travers un tuyau — LA MÊME erreur déjà consignée ci-dessous pour pas_de_fuite_evaluation, répétée deux mois plus tard. Un piège documenté n'immunise pas contre lui : relever un code de sortie sans tuyau, toujours."
+  },
+  {
+   "banc": "tools/git-hooks/pre-commit — son propre contrôle de fraîcheur",
+   "surveille": "que le hook INSTALLÉ dans .git/hooks/ soit identique à sa version suivie",
+   "geste": "ajouter une ligne à tools/git-hooks/pre-commit sans lancer l'installateur, puis commiter",
+   "rouge_observe": "« COMMIT REFUSÉ — le hook installé diffère de sa version suivie. Ce que tu viens d'éditer dans tools/git-hooks/ ne s'exécute PAS. » exit 1 ; après ./tools/git-hooks/installer.sh → exit 0",
+   "date": "2026-08-16",
+   "note": "⚠️ PORTÉE HONNÊTE, VÉRIFIÉE PAR L'EXPÉRIENCE : ce contrôle vit DANS la copie installée, donc une copie périmée ANTÉRIEURE ne le contient pas et ne peut pas se dénoncer. Observé le jour même : avec l'ancienne copie encore en place, le commit affichait « 7 bancs » et laissait passer l'édition — la preuve du trou, et sa borne. Il attrape toute divergence FUTURE, jamais celle qui l'a précédé ; le rattrapage initial reste manuel, une fois. Le symlink aurait supprimé le trou mais a été ÉCARTÉ avant, dans installer.sh : un lien vers un fichier suivi rend le garde modifiable par un simple `git checkout`. Décision conservée, pas rouverte."
+  },
+  {
+   "banc": "tests/detection_conflits.py — le JEU lui-même",
+   "surveille": "que les pièges annoncés par le jeu en soient réellement",
+   "geste": "aucun : le contrôle a rougi TOUT SEUL au premier passage, avant qu'un sabotage soit écrit",
+   "rouge_observe": "8 cas annoncés « recouvrement-fort » mesuraient sous la médiane — D09 0,19 · D12 0,21 · D16 0,12 · D18 0,14 · D19 0,19 · D21 0,20 · D24 0,19 · D34 0,17 ; exit 0 → 1",
+   "date": "2026-08-16",
+   "note": "⚠️ LE CAS LE PLUS UTILE DE LA SÉRIE, et il n'a demandé aucun sabotage : le jeu de test s'est accusé lui-même. Les 8 cas ont été soit relabellisés (le piège annoncé n'existait pas), soit RÉÉCRITS pour devenir le piège qu'ils prétendaient être (D11, D19, D34 remontés de 0,25/0,19/0,17 à 0,44/0,69/0,75). Le critère a changé au passage : une MÉDIANE est un seuil mouvant — la moitié du jeu passe dessous par construction, donc le contrôle punissait la taille du jeu, pas la qualité des étiquettes. Remplacée par deux bandes absolues (≥0,35 et ≤0,05) plus un contrôle de SÉPARATION entre les deux familles."
+  },
+  {
+   "banc": "tests/detection_conflits.py — les chemins de la baseline B2",
+   "surveille": "que chaque étape de la précédence (marqueur · portée · temps · refus) porte réellement des cas",
+   "geste": "--sans-scope · --sans-temporalite · --sans-marqueur · --force-contradiction · --recouvrement-seul",
+   "rouge_observe": "scope : acc 0,64 → 0,53, D19/D20/D21/D23 basculent · temps : 0,64 → 0,56, D24/D25/D26 basculent · marqueur : 0,64 → 0,53, D28→D31 basculent, et D30 devient IDENTIQUE à D26 · refus : 0,64 → 0,61, D32 → CONTRADICTION · recouvrement seul : 0,64 → 0,25, 19 cas basculent",
+   "date": "2026-08-16",
+   "note": "Le rouge de --sans-marqueur est le plus parlant : D30 tombe exactement sur D26, la moitié jumelle qui ne diffère QUE par le marqueur de remplacement. C'est la preuve, par bascule, qu'aucun signal lexical ne sépare SUPERSESSION de TEMPORAL_DIFFERENCE — la classe ne se lit pas dans le texte."
+  },
+  {
+   "banc": "tests/contrat_distillateur.py",
+   "surveille": "que le producteur de fiches écrit un bloc provenance acceptable pour les 4 cas autorisés",
+   "geste": "--sans-provenance : le distillateur d'AVANT, qui n'écrit rien",
+   "rouge_observe": "5/5 sources conformes → 0/5 · exit 0 → 1",
+   "date": "2026-08-16",
+   "note": "Le distillateur est un prompt, donc intestable comme fonction. Son CONTRAT, lui, est déterministe : ce banc l'écrit et le passe au contrôleur d'invariants. Le prompt pointe cette référence exécutable au lieu de décrire un format en prose — une prose ne rougit jamais."
+  },
+  {
+   "banc": "tools/git-hooks/pre-commit (garde F2, référence mesurée)",
+   "surveille": "la mutation d'une référence mesurée par le chemin normal ou automatique",
+   "geste": "sonde ajoutée à golden_recall.json / a84_temoins.json / a86_classe2.json / banc-retrieval/resultats.json / heldout/PROTOCOLE.json, puis commit normal, puis sous BRAIN_SKIP_BANCS, BRAIN_SKIP_TEMOINS, BRAIN_FIXTURE_DELIBEREE, puis via hooks/commit_par_zone.py",
+   "rouge_observe": "REFUS dans les 5 cas et sous les 4 exemptions, HEAD inchangé ; contrôles négatifs (lessons/INDEX.md, capsule/lottie/palette.json, config/ranking.json, tests/sabotages.json) PASSENT",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/git-hooks/pre-commit (garde F2, liste d'exemptions)",
+   "surveille": "l'élargissement silencieux de tools/temoins-bancs.json",
+   "geste": "sonde ajoutée puis commit normal, puis sous BRAIN_SKIP_TEMOINS, puis sous BRAIN_BASELINE_DELIBEREE",
+   "rouge_observe": "REFUS dans les 3 cas ; seule BRAIN_TEMOIN_DELIBERE franchit",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/plancher_cas.py (F2-I2, non-affaiblissement)",
+   "surveille": "la DIMINUTION du nombre de cas d'un artefact de référence, à référence inchangée",
+   "geste": "un seul cas retiré de chacune des 4 fixtures_*.json (16→15, 14→13, 4→3, 36→35), commit sous BRAIN_FIXTURE_DELIBEREE",
+   "rouge_observe": "REFUS « juge MOINS de cas » dans les 4 cas. ⚠️ Première version : la même porte ouvrait mutation ET affaiblissement — le commit PASSAIT malgré le message. Porte séparée (BRAIN_MOINS_DE_CAS), remesuré rouge. Sans le garde, les 4 bancs restaient VERTS et muets ; authority_conflicts affichait accuracy 1.00 sur ZÉRO cas.",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/verifier_temoins.py (F2-P3, témoins permanents)",
+   "surveille": "un témoin déclaré qui n'est PLUS divergent — exemption plus large que la réalité",
+   "geste": "incident du 20/08 rejoué : baseline descendue à P@1 0,60 et rangs.q13 → null, AVEC BRAIN_BASELINE_DELIBEREE=1",
+   "rouge_observe": "commit REFUSÉ — « TÉMOIN PÉRIMÉ : q13-timeline-bm25 ». La porte de mutation franchie ne suffit pas : le banc devenu vert rend le témoin périmé, détecté dans le même commit. BRAIN_TEMOIN_PERIME=1 franchit. Tronc réel : exit 0, aucun blocage.",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/git-hooks/pre-commit (I-3 / L0)",
+   "surveille": "l'ancrage explicite du Brain mesuré par l'orchestrateur du commit",
+   "geste": "clone frais ; commit avec l'ancrage, puis ancrage RETIRÉ du pre-commit installé, même commit",
+   "rouge_observe": "AVEC : « ✅ 8 bancs au vert » sur le CLONE, et F2-P3 signale aussitôt « TÉMOIN PÉRIMÉ q13 » — le changement de cible est DIT, pas avalé. SANS : « ❌ RÉGRESSION — q13 hors top-3 », c'est-à-dire le verdict du TRONC AUTEUR rendu sur un commit du clone. Contrôle négatif : dans le tronc, golden reste ROUGE et verifier_temoins exit 0, rien ne change.",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/git-hooks/post-commit + post-merge (I-3 / L0 bis)",
+   "surveille": "quel arbre le hook qui ÉCRIT régénère (planet/graph.json)",
+   "geste": "commit dans un clone, tronc et clone distinguables ; puis ancrage retiré du post-commit installé",
+   "rouge_observe": "AVEC : graphe du clone créé, tronc intact — contenu ET mtime. SANS : graphe du clone JAMAIS créé et graphe du TRONC RÉÉCRIT. Le mauvais arbre était décrit.",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "mcp/serveur.mjs (I-3 / L0 ter)",
+   "surveille": "l'identité du Brain transmise aux enfants du serveur MCP, qui ÉCRIT des fiches",
+   "geste": "Brain A servi, Brain B atteint par ~/claude-brain via HOME factice, contenus distincts ; spawn avec puis sans env BRAIN_HOME. cwd=A dans LES DEUX cas.",
+   "rouge_observe": "ÉCRITURE — AVEC : fiche classée dans A, B intact. SANS : ni A ni B modifiés, la fiche est PERDUE en silence. LECTURE — sans ancrage l'enfant calcule BRAIN=B alors que cwd=A ; avec ancrage, BRAIN=A. Preuve que le cwd n'a jamais porté l'identité.",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "tools/launchd_gouvernance.py --verifie (L2.0)",
+   "surveille": "la chaîne source versionnée → rendu → plist installé, l'adoption A6, et la conformité I-3 des LaunchAgents",
+   "geste": "sur COPIES des poses : BRAIN_HOME supprimé · modifié vers un autre Brain · pointé via symlink non canonique · clé Label modifiée · commentaire XML seul modifié (contrôle négatif) · gabarit modifié sans réinstallation · label non adopté passé à --installe",
+   "rouge_observe": "ROUGE et clé NOMMÉE pour : BRAIN_HOME absent/modifié/non-canonique (EnvironmentVariables), Label (Label), gabarit modifié (StartInterval). VERT pour le contrôle positif ET pour le commentaire XML seul — la comparaison est sémantique, pas octet à octet. --installe sur une pose non adoptée : exit 2, refus nommé, fichier intact. ⚠️ Instrument recalibré deux fois avant de mordre : détourner HOME pour le bancer détournait AUSSI le rendu de __HOME__, et tout rougissait, contrôle positif compris. Cible rendue injectable (LAUNCHD_AGENTS_DIR).",
+   "date": "2026-08-20"
+  },
+  {
+   "banc": "lot C/D' — I-1 des consommateurs (capteur_fraicheur, plancher_cas)",
+   "surveille": "qu'un consommateur honore un BRAIN_HOME DIVERGENT de sa racine de code",
+   "geste": "code exécuté depuis le TRONC, BRAIN_HOME=<clone B>, HOME→<C>, cwd étranger, B atteint par symlink, BRAIN_HOME absent puis vide ; plus contre-épreuve : ancienne ligne `BRAIN = HOME / \"claude-brain\"` restaurée",
+   "rouge_observe": "S1-S8 verts après migration, dont S8 négatif (BACKUPS reste au FOYER : /Users/<nom>/backups-dgc, pas déplacé dans le Brain). CONTRE-ÉPREUVE : avec l'ancienne ligne, ETAT = /Users/<nom>/claude-brain/... — BRAIN_HOME divergent IGNORÉ ; correctif rétabli → honoré. Le correctif est donc la cause. ⚠️ Premier essai de contre-épreuve non concluant : un regex de substitution avait silencieusement échoué et le fichier restait correct — refait par découpe de lignes.",
+   "date": "2026-08-21"
+  },
+  {
+   "banc": "tools/settings_projection.py --verifie (L1.0)",
+   "surveille": "la projection C Brain dans ~/.claude/settings.json — fichier PARTAGÉ, dont C Brain ne possède que 15 hooks sur 18",
+   "geste": "sur COPIES (CLAUDE_SETTINGS) : hook supprimé · commande modifiée · BRAIN_HOME retiré · clé utilisateur étrangère ajoutée puis MODIFIÉE · source versionnée changée sans reprojection · settings.json absent · JSON invalide · BRAIN_HOME via symlink · inject_recall",
+   "rouge_observe": "ROUGE : hook supprimé (14/15 nommé), commande modifiée, BRAIN_HOME retiré, source périmée. VERT et clé PRÉSERVÉE : ajout d'une clé étrangère ; une valeur utilisateur modifiée (theme=light-perso) N'EST PAS restaurée. REFUS explicite : fichier absent (ne crée pas), JSON invalide (n'écrase pas, fichier intact). BRAIN_HOME projeté canonique depuis un symlink. inject_recall NON préfixé et non déplacé. ⚠️ DEUX défauts trouvés par le diff de pré-installation, avant toute écriture : (1) le projecteur SUPPRIMAIT 4 timeout — une source qui ne modélise que command/type détruit le reste ; (2) il changeait l'ORDRE, faisant passer inject_recall après shadow_live — modification indirecte de l'exception held-out. Corrigés : capture de toutes les clés, remplacement EN PLACE.",
+   "date": "2026-08-21"
+  },
+  {
+   "banc": "tests/i1_obeissance.py + lot I-1 (ronde_annonce, brain_status, index_lecons)",
+   "surveille": "qu'une donnée du Brain suive BRAIN_HOME, et qu'une ressource de CODE ou de FOYER ne soit pas déplacée avec elle",
+   "geste": "CODE=A, BRAIN_HOME=B, HOME=C, cwd=D distinguables ; plus BRAIN_HOME absent, vide, et via symlink ; plus l'exécution réelle d'index_lecons ; plus la contre-épreuve à l'ancienne résolution",
+   "rouge_observe": "3 sondes de calibration : sys.path/__file__ mais Brain correct → I1-OK · littéral → I1-FAIL · aucune donnée Brain → I1-N/A. Lot : les 3 modules passent I1-OK sous A/B/C/D, absent ≡ vide, symlink → realpath canonique. index_lecons ÉCRIT dans B (sonde indexée) et le TRONC reste intact — contenu ET mtime. Contre-épreuve : l'ancienne résolution IGNORE B. ⚠️ L'instrument a exigé DEUX corrections avant de mesurer : il ne voyait pas son propre sabotage (préfixe au lieu de segments), puis il accusait 4 modules sains dont les chemins tombaient sous ~/.claude/ (homonymes de zones du Brain).",
+   "date": "2026-08-21"
+  },
+  {
+   "banc": "hooks/i2_profil.py — profil d'état des bancs normatifs (I-2 lot 1)",
+   "surveille": "qu'un banc ANNONCE l'état sous lequel il a rendu son verdict, et n'annonce que ce qu'il a réellement lu",
+   "geste": "golden sans puis avec recall-utilite · invariants_brain sans state/ · banc sans état local · fichier technique ouvert",
+   "rouge_observe": "S1 golden SANS le fichier : il n'est PAS nommé. S2 AVEC : nommé comme dépendance causale MESURÉE. S5 invariants_brain : I2-E, dépendance d'ordre et mutation annoncées sans être corrigées. S8 casse_disque_git : I2-A, reproductibilité « inconnu » (sous-processus git) — jamais true par défaut, aucun faux rouge. ⚠️ DEUX défauts trouvés par les sabotages : (1) open() est audité à la TENTATIVE, donc un fichier ABSENT était déclaré lu — exactement le mensonge que le lot doit empêcher ; (2) le profil imprimait sur STDOUT et a fait rougir tests/racine_canonique.py, qui sonde des modules en lisant leur sortie. Corrigés : filtre d'existence, et diagnostic sur stderr.",
+   "date": "2026-08-21"
+  },
+  {
+   "banc": "tests/banc_course_git.py (bras nu)",
+   "surveille": "que les courses git observées le 25/08 se reproduisent SANS protection",
+   "geste": "contrôle T — A seul, sans acteur concurrent ; puis panneau réduit aux variantes inoffensives (T, S6)",
+   "rouge_observe": "T saboté (A ne stage rien) → exit 2 « BANC NON CALIBRÉ » ; panneau réduit → exit 2 « NON CONCLUANT ». Le verdict sait donc refuser dans les deux sens, il ne peut pas qu'affirmer.",
+   "date": "2026-08-25",
+   "note": "⚠️ Ce banc ne rend JAMAIS 0. 1 = course reproduite (attendu du bras nu), 2 = non concluant, 3 = inexécutable. Aucune sortie ne peut être lue comme « pas d'incident »."
+  },
+  {
+   "banc": "tests/banc_course_git.py (bras protégé)",
+   "surveille": "que git_guard empêche les incidents qui se reproduisaient 10/10 sans lui",
+   "geste": "l'instrumentation elle-même est le sabotage à contrôler : sous garde NEUTRE, le panneau doit rendre EXACTEMENT les chiffres du témoin nu",
+   "rouge_observe": "6 variantes déterministes identiques au témoin. S3, déclarée non déterministe (ordonne=False), varie 3→9/10 sous l'ANCIEN code comme sous le nouveau — sa dispersion vient du scénario, pas de l'instrumentation.",
+   "date": "2026-08-26",
+   "note": "Le critère du bras protégé n'est pas « rien ne se reproduit » : c'est « ce qui se reproduisait n/n sans protection tombe à 0/n avec ». Sans le témoin nu sur le disque, le banc refuse de qualifier (exit 2)."
+  },
+  {
+   "banc": "tests/sabotages_git_guard.py",
+   "surveille": "le MÉCANISME du verrou : atomicité, propriété, TTL, zombie, identité, journal",
+   "geste": "5 sabotages de la primitive. L'atomicité se sabote SUR LE DISQUE (O_EXCL → tester/dormir/écrire) parce que le contrôle lance de vrais sous-processus qu'un monkeypatch en mémoire n'atteint pas.",
+   "rouge_observe": "atomicité cassée → 8 gagnants sur 8 au lieu de 1 · TTL autorisant la reprise d'un vivant → « VOL » · identité remplacée par « anonyme » → refus non journalisés · libération sans vérif du propriétaire → « VOL PAR LIBÉRATION » · journal muet → champs absents. 5/5.",
+   "date": "2026-08-26",
+   "note": "Le premier essai de l'atomicité est resté VERT : le monkeypatch en mémoire n'atteignait pas les sous-processus. Un faux vert de l'auteur, pas de la primitive — d'où le sabotage sur disque. Et le sabotage 5 lui-même était faux au départ : ses 8 processus mouraient aussitôt acquis, donc 4 « gagnants » étaient le comportement CORRECT d'une reprise de zombie. Il mesurait « 8 processus qui meurent », pas « 8 acquisitions simultanées »."
+  },
+  {
+   "banc": "hooks/git_guard.py — la règle du TTL",
+   "surveille": "qu'un verrou VIVANT n'est jamais volé parce qu'il est ANCIEN",
+   "geste": "verrou daté de 10×TTL (3000 s) détenu par un processus réellement vivant",
+   "rouge_observe": "état « tenu », raison « verrou_ancien_mais_vivant », acquisition REFUSÉE, fichier de verrou intact. Sous sabotage (le TTL autorise la reprise) : « VOL : le verrou d'un processus vivant a été pris parce qu'il était ancien ».",
+   "date": "2026-08-26",
+   "note": "TTL = 300 s, MESURÉ : une transaction add+commit avec les hooks réels prend 2,0–2,7 s sur un clone du tronc, mais un push porte timeout=180 dans sync_depots.py. 300 s couvre le cas le plus long. Les 20 min de brain_guard sont l'échelle d'une maintenance, pas d'une opération git — les recopier n'aurait rien justifié."
+  },
+  {
+   "banc": "tests/commit_par_zone_gouverne.py",
+   "surveille": "que le producteur RÉEL migré passe par git_guard et ne peut pas revenir en arrière",
+   "geste": "git_guard rendu introuvable : commit_par_zone.py copié seul dans un dossier sans git_guard.py, lancé en sous-processus sur un dépôt jetable",
+   "rouge_observe": "« git_guard indisponible (ModuleNotFoundError) — AUCUN commit », HEAD inchangé, index intact. Aucun repli vers git direct. Sans le refus, ce cas poserait un commit non gouverné et le banc rougirait.",
+   "date": "2026-08-26",
+   "note": "Deux défauts trouvés PAR CE BANC, pas par relecture. (1) commit_par_zone commitait state/git.lock et state/git-journal.jsonl en zone « racine » — un verrou VIVANT figé dans l'historique. Le tronc ignore state/ (.gitignore:7, 0 fichier suivi) donc la production n'était pas touchée : c'est la FIXTURE qui mentait. Corrigé des deux côtés — fixture fidèle + exclusion défensive dans le producteur. (2) L'injection par le hook pre-commit percait le pathspec : avec --only, git EXPORTE GIT_INDEX_FILE vers son index temporaire, donc l'intrus écrivait dans l'index du commit en cours — pouvoir qu'aucun processus concurrent ne possède. Séparé en 2a (acteur externe, GIT_INDEX_FILE désarmé → pathspec tient) et 2b (limite CONNUE : un hook qui stage n'est pas borné ; le pre-commit du tronc ne stage rien, vérifié)."
+  },
+  {
+   "banc": "tests/sync_depots_gouverne.py",
+   "surveille": "que sync_depots ne publie que sous git_guard, avec fast-forward vérifié et ref distante RELUE",
+   "geste": "5 sabotages du chemin de publication, sur distants jetables : verrou détenu par un tiers · un tiers pousse d'abord (distant divergent) · hook pre-receive qui refuse le push · git_guard réellement retiré de la scène · --auto avec 2 commits en attente",
+   "rouge_observe": "verrou tenu → « rien n'est publié, rien n'est forcé » · distant divergent → « n'est pas un ancêtre », commit du tiers INTACT, aucun --force · pre-receive refuse → aucun faux succès, ref inchangée, verrou libéré, HEAD local intact · git_guard absent → « indisponible », aucune publication, aucun verrou laissé · --auto → ref distante inchangée, signal cohérent à 2 commits",
+   "date": "2026-08-27",
+   "note": "TROIS faux verts de l'auteur, corrigés. (1) La scène ne portait pas hooks/commit_par_zone.py : sync_depots plantait à l'import et 3 cas affichaient « ref distante inchangée » — vert obtenu parce que le script était mort. Garde ajouté : une sortie vide fait rougir. (2) La scène copiait git_guard.py, donc le cas « git_guard indisponible » mesurait une absence qui n'existait pas. (3) Le sabotage des 8 acquisitions employait un sleep(0.6) fixe : vert seul, rouge sous charge — il mesurait la machine. Remplacé par une barrière qui attend la présence RÉELLE des 8 processus. 3 tirs sous charge : 3 verts."
+  },
+  {
+   "banc": "hooks/git_guard.py — journaliser() insensible aux données",
+   "surveille": "qu'aucune donnée journalisée ne puisse casser le journal",
+   "geste": "publier() passait extra={'depot': …} — collision avec le paramètre du même nom",
+   "rouge_observe": "« journaliser() got multiple values for argument 'depot' » : TypeError levée AVANT le corps, donc avant tout try/except, remontant depuis acquerir() APRÈS l'écriture atomique du verrou mais AVANT l'entrée du `with` — donc sans finally pour libérer. Verrou orphelin, journal vide, publication muette et silencieuse.",
+   "date": "2026-08-27",
+   "note": "Deux correctifs, pas un : les paramètres de journaliser() sont préfixés d'un `_` pour qu'aucune clé de données ne les percute, ET acquerir() retire son propre verrou si le journal échoue — gouverner sans trace n'est pas gouverner."
+  },
+  {
+   "banc": "tests/identite_skills.py",
+   "surveille": "qu'un fichier physique SKILL.md s'indexe sous l'identité logique <slug> du dossier parent",
+   "geste": "deux sabotages. (a) frontmatter d'un skill faussé : name: a11y → PAS-LE-BON-SLUG. (b) `skills` retiré de LINKED_DIRS du doctor, pour vérifier que le banc ne se contente pas d'une déclaration.",
+   "rouge_observe": "(a) « skills/a11y/SKILL.md : name='PAS-LE-BON-SLUG' ≠ identité 'a11y' » — le doctor contrôle donc réellement les skills. (b) exit 1, « skills hors LINKED_DIRS — il ne serait pas contrôlé du tout » + « SABOTAGE INVISIBLE ».",
+   "date": "2026-08-27",
+   "note": "⚠️ FAUX VERT DE L'AUTEUR, corrigé : la première assertion acceptait « ou la chaîne 'a11y' apparaît quelque part » — or a11y figurait DÉJÀ dans la liste des doublons, donc elle serait passée SANS aucune détection. Remplacée par la ligne exacte attendue. La cause de la casse du 25-26/08 est instruite : ce n'était pas une maladresse d'agent mais une contrainte contradictoire — `skills` dans LINKED_DIRS + règle générale `name == basename` + `[a-z0-9-]+` rendaient SKILL.md impossible à satisfaire ; renommer était le SEUL moyen de taire le doctor."
+  },
+  {
+   "banc": "tests/reconciliation_nominative.py",
+   "surveille": "que `--seulement` n'applique QUE les identités nommées et que l'autorisation ne s'élargisse jamais seule",
+   "geste": "4 sabotages du mode : filtre retiré · détection du changement d'ACTE désactivée · liste vide traitée comme « tout » · garde anti-débordement retiré (avec le cas 10 qui le met réellement en jeu).",
+   "rouge_observe": "filtre retiré → « des opérations non nommées sont passées » · acte changé non détecté → « l'acte a changé et c'est passé » · liste vide → tout appliqué · garde retiré → « débordement non détecté » + « manifeste laissé modifié ». 3/3 des sabotages ayant un cas qui les met en jeu rougissent.",
+   "date": "2026-08-27",
+   "note": "DEUX DÉCOUVERTES PAR SABOTAGE. (1) Retirer le garde anti-débordement laissait le banc VERT : aucun cas ne le mettait en jeu, il était décoratif. D'où le cas 10, qui rend la resynchronisation globale inconditionnelle dans une COPIE jetable de l'outil et vérifie que le garde attrape le débordement. (2) Retirer la restauration après débordement laissait aussi le banc vert — parce que le contrôle s'exécute AVANT l'unique écriture : c'était du code mort. Le vrai risque était ailleurs : `json.dump` tronquait le fichier cible avant d'écrire. Remplacé par une écriture atomique (fichier temporaire + os.replace). ⚠️ NON ÉPROUVÉ : aucun cas ne simule une panne en pleine écriture, donc l'atomicité est une défense en profondeur non mesurée — le sabotage correspondant reste vert et le dit."
+  },
+  {
+   "banc": "tests/robots_sans_passe_droit.py",
+   "surveille": "qu'aucun robot du Brain ne se relance avec le passe-droit, ni avec une commande git, rm ou mv autorisée",
+   "geste": "deux sabotages dans une copie de hooks/ et tests/ : (1) remettre --dangerously-skip-permissions dans la commande de brain_upkeep.py ; (2) ajouter \"git *\" aux commandes du mécanicien dans robots_permissions.py",
+   "rouge_observe": "(1) « brain_upkeep.py contient encore --dangerously-skip-permissions », exit 0 → 1 · (2) « mecanicien : commande interdite autorisée « Bash(git *) » », exit 0 → 1",
+   "date": "2026-09-15",
+   "note": "Banc STATIQUE : il ne prouve pas que Claude refuse. Le refus réel a été éprouvé le même jour dans une copie du Brain, par les deux lanceurs, avec contre-épreuve rouge : ~/claude-brain-sauvegarde-hors-arbre/2026-09-15-reparation-carte/conditions-1-2-3/"
+  },
+  {
+   "banc": "capsule/test_verrou_parle.sh",
+   "surveille": "le refus de la 2ᵉ capsule : il doit NOMMER l'instance qui tient le verrou, au lieu de mourir sans rien dire",
+   "geste": "la ligne `process.stderr.write(refusExplique());` remplacée par un commentaire — le refus redevient muet, le reste du fichier restant valide (une erreur de syntaxe aurait fait rougir sur la trace d'Electron, pas sur la nôtre)",
+   "rouge_observe": "stderr 0 octet, contrôle A1 en échec, exit 0 → 1. Sans sabotage : 5 lignes nommant le pid, la variante, l'ancienneté, le dossier, et le `kill` à faire.",
+   "date": "2026-09-19",
+   "note": "Banc NON branché au pre-commit : il lance un vrai Electron (~12 s) et fait apparaître une 2ᵉ capsule à l'écran quelques secondes. Il se rejoue à la main dès qu'on touche au verrou d'instance unique. Le verrou est isolé par `--user-data-dir` — la capsule vivante n'est ni tuée ni interrogée."
+  },
+  {
+   "banc": "tests/e2e_occupied_surfaces.sh (paquet ~/c-brain)",
+   "surveille": "l'installeur qui passe sur une installation déjà là : il doit NOMMER chaque surface partagée qu'il n'a pas posée lui-même, et n'y toucher à rien",
+   "geste": "trois sabotages, chacun rejoué en CI et obligé d'échouer — `silent-overwrite` retire la garde de `link()`, `silent-statusline` fait tomber la condition de la garde de la ligne d'état, `summary-swallowed` supprime le décompte de l'écran de fin",
+   "rouge_observe": "7 contrôles rouges · 4 · 2. Sans sabotage : 16 verts, trois surfaces nommées à l'écran, aucune remplacée, sortie 0.",
+   "date": "2026-09-19",
+   "note": "⚠️ La PREMIÈRE version de `silent-statusline` était un NON-GESTE : elle insérait `if false; then` et laissait la vraie condition sur un `elif`, donc la garde tournait encore et le banc restait vert — un harnais qui certifie son propre rougissement sans rien changer. Corrigé en faisant tomber la condition elle-même, et écrit dans le fichier à l'endroit de l'erreur. Banc hors pre-commit : ~11 s, quatre installations complètes dans des $HOME jetables ; pas de launchd (`--core-only`), pas de Bureau (`--no-shortcut`)."
+  },
+  {
+   "banc": "tests/planet_semantic_honesty.py (les trois arbres : ~/claude-brain, c-brain-fr, paquet ~/c-brain)",
+   "surveille": "la Planète n'a pas le droit d'ANNONCER un sens qu'elle n'a pas : les mots « SENS EN VOLUME » et « toutes les fiches » ne s'affichent que si chaque fiche porte vraiment un vecteur",
+   "geste": "trois sabotages, rejoués en CI et obligés d'échouer — `label-frozen-on-meaning` remet la formulation nominale quel que soit l'état, `coverage-counted-on-the-cache` compte les clés du cache au lieu des fiches réellement posées, `old-graph-assumed-ready` fait passer un vieux graph.json pour sain",
+   "rouge_observe": "4 contrôles rouges · 3 · 3, sortie 1 à chaque fois. Sans sabotage : 33 verts, les cinq états dits correctement, sortie 0.",
+   "date": "2026-09-19",
+   "note": "Le défaut mesuré À L'ÉCRAN sous Chrome headless le 19/09 : l'écran d'accueil du paquet livré affichait « ✦ SENS EN VOLUME — proximité = sens, toutes les fiches » avec 0 fiche sur 10 portant un vecteur, et 0 sur 36 dans un tronc installé. Les embeddings sont optionnels par dessein — le défaut est l'ANNONCE, pas l'absence. ⚠️ Deux quasi-fautes du banc lui-même : « le titre ne contient pas SENS » rougissait sur « PAS ENCORE DE SENS », car une DÉNÉGATION contient le mot qu'elle nie (on vise désormais l'affirmation nue « — LE SENS ] ») ; et un contrôle écrit `A or état == 'partial'` ne pouvait jamais rougir pour partial. Le banc lit les libellés dans `planet/semantic-label.js` sous node, sans navigateur, pour tourner en CI. Après correctif, la Planète de l'auteur affiche « ◐ INDEXATION — 711 fiches sur 722 posées par le sens »."
+  },
+  {
+   "banc": "tests/utilite_hors_rang.py (garde-fou vivant du mécanisme M5, 13ᵉ du pre-commit)",
+   "surveille": "l'usage d'une fiche n'a plus le droit de toucher au RANG : il est annoté, jamais classant. Ni un multiplicateur dans le score, ni un tri d'affichage par nombre d'ouvertures",
+   "geste": "deux sabotages, posés à l'installation de M5 le 19/09 — remettre le multiplicateur d'utilité dans le score, et la porte de service que l'ADR nommait au §14.3 : un simple tri d'affichage par ouvertures, qui ne touche à AUCUN score",
+   "rouge_observe": "24 requêtes sur 24 changent d'ordre avec le multiplicateur remis ; 18 sur 24 avec le seul tri d'affichage. Restauré : 24/24 inchangées. Sans sabotage, le banc joue 24 requêtes sur 723 fiches, fausse les compteurs, l'ordre servi ne bouge pas — et sa contre-épreuve montre que l'ancienne règle en aurait bougé 24 sur 24.",
+   "date": "2026-09-19",
+   "note": "Inscrit au registre le 19/09, alors que les deux rouges dataient du matin même : le banc était posé et le pre-commit l'appelait, mais RIEN dans le registre ne disait quel sabotage avait été essayé ni quel rouge avait été vu. ⚠️ La porte de service est la leçon : un tri d'AFFICHAGE ne touche aucun score et passe donc sous un garde-fou qui ne surveille que le calcul — 18 requêtes sur 24 changeaient d'ordre sans qu'un seul score bouge. Ne pas confondre avec tests/banc_a8_utilite.py, qui est une SIMULATION comparant des variantes, sans sabotage et sans pouvoir de blocage."
+  },
+  {
+   "banc": "tests/doctor_surfaces.py (17ᵉ du pre-commit)",
+   "surveille": "ce que `brain doctor` a le droit de TAIRE. Trois choses : une liste coupée à 12 doit dire combien elle cache ; une mesure qui a vieilli au-delà de trois jours doit être signalée AVEC son âge, alors qu'un ou deux jours sont le rythme normal et qu'un tronc sans cache n'a rien à se reprocher ; et le verdict global d'un vérificateur externe ne doit jamais être compté comme un de ses constats.",
+   "geste": "trois sabotages joués un par un sur hooks/brain_doctor.py, banc relancé entre chaque, fichier restauré : (1) retirer le suffixe « … +N non montré(s) » de la ligne d'impression ; (2) porter le seuil d'âge de la ronde de 3 jours à 3000, ce qui rend le contrôle inatteignable sans le supprimer ; (3) retirer le filtre d'indentation qui sépare les constats du vérificateur de sa ligne de verdict.",
+   "rouge_observe": "un rouge par sabotage, au bon endroit à chaque fois. (1) « 15 entrées, 12 montrées → le marqueur devrait dire +3, il dit +0 ». (2) « mesure vieille de 9 j : le doctor ne dit rien » — les cas 0 j et 2 j restent verts, donc le seuil n'a pas été déplacé, il a été supprimé. (3) « 6 écart(s) indenté(s) chez le projecteur, 7 comptés par le doctor (1 ligne(s) de verdict en colonne 0) ». Restauré : rc=0 sur les trois cas.",
+   "date": "2026-09-20",
+   "note": "Né de l'entrée B1 de C bis (friction #7 du chantier B, « distinguer l'état transitoire de l'anomalie — À ARBITRER »). La mesure a retourné la question : sur le vrai tronc, les 57 « orphelins » n'étaient PAS des fiches neuves en attente de leur premier lien, c'était un seul défaut d'identité. Il n'y avait pas d'état transitoire à séparer, il y avait un instrument cassé — et son bruit cachait le skill saboté exprès par tests/identite_skills.py, qui tombait au 13ᵉ rang d'une liste coupée à 12. ⚠️ Le sabotage (2) est le plus instructif : déplacer un seuil ne se voit pas si le banc n'éprouve QUE le cas qui doit rougir. Les deux cas verts (0 j, 2 j) et le cas sans cache sont ce qui distingue « seuil déplacé » de « seuil supprimé »."
+  },
+  {
+   "banc": "tests/capsule_runtime.py, cas 6 (paquet ~/c-brain) — câblé en CI le même jour",
+   "surveille": "qu'une installation qui RÉUSSIT n'imprime pas une trace de plantage. `capsule_ok` démarre exprès un binaire qui peut être cassé ; un Electron à moitié extrait ne sort pas, il AVORTE, et « Abort trap: 6 » n'est pas écrit par ce binaire — c'est bash qui l'écrit, à propos d'un job qu'il vient de récolter, sur la stderr qu'il avait à cet instant. Trois propriétés : la sonde nue doit être BRUYANTE (calibration), la sonde gardée doit être MUETTE, et le binaire cassé doit rester REFUSÉ.",
+   "geste": "trois sabotages joués un par un, banc relancé entre chaque, fichier restauré : (1) remettre dans install.sh le garde réellement livré pendant un mois — un sous-shell dont la stderr part à /dev/null ; (2) remplacer le bouchon `kill -ABRT $$` par un `exit 134`, qui a le même code de sortie mais ne fait pas parler le shell ; (3) ajouter `return 0` à la fin de `capsule_ok`, pour taire le verdict en même temps que la trace.",
+   "rouge_observe": "un rouge par sabotage, au bon endroit. (1) « guarded probe is silent NO (95 B) » et la trace citée en clair — le correctif livré ne corrigeait rien, il ALLONGEAIT la trace de 78 à 95 octets, parce que bash exécute une commande seule dans `( )` dans le processus du sous-shell lui-même. (2) « unguarded probe is noisy NO (0 B) » → « le bouchon ne fait pas parler le shell, ce cas ne peut pas distinguer un garde qui marche d'un garde absent ». (3) « broken binary still refused NO » → « taire la trace ne doit pas taire le verdict ». Restauré : rc=0.",
+   "date": "2026-09-20",
+   "note": "Né de l'entrée B2 de C bis. ⚠️ Le sabotage (2) est ici la CALIBRATION, et sans lui le cas entier serait décoratif : un bouchon qui sort en 134 au lieu d'avorter fait passer le test quel que soit le garde. C'est la leçon du jour appliquée à elle-même — le garde était en place depuis le 2026-08-17 sous un commentaire affirmant qu'il attrapait le rapport du shell, et RIEN n'a jamais lancé ce banc : aucun appelant dans le dépôt, aucune ligne de CI. Un mécanisme correct dont la sortie n'a pas de lecteur, exactement comme la ronde d'état de B1 et comme tools/settings_projection.py. La CI refuse désormais que le banc se saute en silence."
+  },
+  {
+   "banc": "tests/docs_aligned.py, section 2 « un compte écrit en prose contrôlé contre le code » (paquet ~/c-brain)",
+   "surveille": "qu'un NOMBRE figé dans la documentation ne puisse pas rester vert après que le code a bougé. Le document d'architecture annonçait « CLI, 17 sous-commandes » et les listait ; mesuré sur trois commits, c'était VRAI du 15/08 (748f93a) jusqu'à cbd4ae9 le 20/09, où `brain capsule` en a fait dix-huit. La section de fraîcheur du même banc surveille pourtant `brain` pour ce document : elle était bien rouge, mais son rouge dit « NON RELU », jamais « FAUX », et il s'efface dès qu'une édition quelconque touche le document — cinq commits l'ont fait depuis août. Le contrôle compare donc le NOMBRE et les NOMS : un compte seul resterait juste avec la mauvaise liste.",
+   "geste": "trois sabotages joués un par un, banc relancé entre chaque, document restauré depuis une copie : (1) remettre le document à « 17 sous-commandes » en retirant `capsule` de sa liste, ce qui rejoue le VRAI bug ; (2) garder le nombre 18 mais couper la liste à 17 ; (3) annoncer 19 et y glisser un verbe que le CLI n'a jamais eu.",
+   "rouge_observe": "un rouge par sabotage, au bon endroit. (1) « the code has 18, the doc 17 · absent from the doc: capsule ». (2) « says 18 for the CLI's subcommands but lists 17 of them ». (3) « the code has 18, the doc 19 · in the doc only: orbe ». Restauré : « 18, and the same names on both sides », et le document repasse au vert dans les deux sections.",
+   "date": "2026-09-20",
+   "note": "Née de l'entrée B3 de C bis, en rangeant après coup. ⚠️ Le chiffre n'était PAS un vieux gel : c'est mon propre commit du matin qui l'a rendu faux, et ma première hypothèse — qu'il datait de l'ajout de `brain review` — est réfutée par la même mesure, le CLI en annonçait déjà 17 au 15/08. La leçon est ailleurs : effacer un drapeau de fraîcheur est une ÉDITION, pas une VÉRIFICATION. Le registre ne porte qu'une entrée exprès — seuls les faits à source mécanique unique y ont leur place ; un compte qui demande du jugement reste dans la section de fraîcheur, qui mesure la péremption et non la vérité."
+  },
+  {
+   "banc": "capsule/test_lock_speaks.sh, section D « la portée du verrou : un dossier de données, pas une machine » (paquet ~/c-brain)",
+   "surveille": "que le refus affiché à une deuxième capsule dise la VÉRITÉ sur la portée du verrou d'instance unique d'Electron. Jusqu'au 20/09 `capsule/main.js` affirmait « le verrou est partagé sur toute la machine, une capsule à la fois, quel que soit le tronc d'où elle vient ». C'est faux : le verrou vit dans le dossier de données, dont le nom est celui du paquet — MESURÉ ce jour-là, `claude-brain-capsule` (pid 1362) et `c-brain-capsule` (pid 38844) tenaient deux orbes à l'écran en même temps.",
+   "geste": "⚠️ AUCUN sabotage ajouté, et c'est délibéré : LA CALIBRATION DE LA SECTION D EST LA SECTION A. A lance sur le MÊME dossier de données et doit être REFUSÉE ; D lance sur un autre et ne doit PAS l'être. Si le verrou devenait un jour réellement partagé par la machine, le deuxième lancement de D serait refusé et ses deux contrôles rougiraient. La paire EST la mesure, et un sabotage de plus n'ajouterait rien.",
+   "rouge_observe": "Vert observé sur la paire : section A refuse (5 contrôles), section D obtient deux orbes vivantes simultanément et une stderr vide (2 contrôles), rc=0. Le pid 1362 d'une capsule tierce était vivant avant et après le banc — le banc ne dérange pas ce qui tourne.",
+   "date": "2026-09-20",
+   "note": "Née de l'entrée B3 de C bis. ⚠️ Ce banc était le QUATRIÈME mécanisme correct sans aucun lecteur trouvé dans la journée, après le refus de la ronde d'état, `tools/settings_projection.py --verifie` et `tests/capsule_runtime.py` — et le pire des quatre : il PROUVAIT la portée réelle du verrou (il isole chaque lancement sur un dossier jetable précisément parce que le verrou suit ce dossier) tout en AFFIRMANT le contraire dans une de ses étiquettes, quatre-vingt-dix lignes plus haut, vert sur les deux phrases. Il a désormais un lecteur nommé dans CONTRIBUTING.md, qui dit aussi que la CI ne peut pas être ce lecteur : elle installe avec `--no-capsule` et un coureur hébergé n'a pas d'Electron. SABOTAGE TENTÉ ET SANS EFFET, déclaré plutôt que caché : retirer le filtre `--type=` de cbrain/capsule.sh ne rougit RIEN, parce que `pgrep` rend les pids en ordre croissant et que le processus principal démarre toujours avant ses auxiliaires ; le cas où le filtre servirait — un principal mort laissant ses auxiliaires derrière — n'a pas été reproduit."
+  },
+  {
+   "banc": "tests/review_contract.py (paquet ~/c-brain) — sept contrôles sur la phrase de résumé de l'audit global, `hooks/brain_review.py`",
+   "surveille": "que le rapport NOMME la mesure qu'il imprime, et DISE qu'il n'a pas regardé quand la topologie manque. Deux programmes peuvent fournir un compte de fiches et ils ne comptent pas le même ensemble : brain_topology compte les fiches TISSÉES DANS LE GRAPHE — cinq zones (agents, lessons, life, meta, projects), frontmatter avec un `name:`, README et cartes structurelles exclus, 726 mesuré le 20/09 ; brain_doctor compte les FICHIERS MARKDOWN DU DÉPÔT — douze zones, skills/ (112) et tools/ (97) compris, 946. Écart de 220 sous le même mot. Le banc exécute le VRAI build() + to_markdown() dans un tronc jetable (BRAIN_HOME), jamais sur un vrai tronc.",
+   "geste": "S1 — remettre le défaut de dictionnaire d'origine : `\"n_notes\": topo.get(\"n_notes\", doctor.get(\"notes\"))` à la place de `topo.get(\"n_notes\")`, avec state/topology.json absent. C'est le VRAI bug, à l'identique. S2 — neutraliser le garde-fou de rendu : dans to_markdown(), `if r.get(\"n_notes\") is None:` → `if False:`, ce qui force la phrase inconditionnelle d'avant.",
+   "rouge_observe": "S1 : « 946 notes woven · None links · None component(s) · topology measured on None » — 4 contrôles rouges (le rapport ne dit pas qu'il n'a pas regardé · un compte de fiches est imprimé alors qu'aucun n'a été mesuré · le mot None est offert comme mesure · le compte du docteur est montré comme s'il était celui de la topologie). S2 : « None notes woven · None links · None component(s) · topology measured on None » — 3 contrôles rouges. Restauré : rc=0, les 7 verts. ⚠️ UNE PREMIÈRE TENTATIVE DE S2 EST ÉCARTÉE ET NE COMPTE PAS : elle découpait l'ancienne ligne de rendu et produisait un SyntaxError — le banc rougissait pour la mauvaise raison et ne prouvait rien sur la propriété. Un sabotage qui fait planter le programme n'est pas un sabotage valide.",
+   "date": "2026-09-20",
+   "note": "Née de l'entrée B4 de C bis, dont les deux chiffres étaient faux : le carnet disait « review compte 10, doctor compte 13 », c'est aujourd'hui l'inverse (13 rubriques agrégées contre 10 émises), et ce ne sont pas deux détecteurs du même concept — la docstring de brain_review.py écrit la séparation des pouvoirs : le docteur mesure, l'audit agrège. La propriété vérifiée ici est celle que `tests/doctor_contract.py` énonce déjà pour le docteur (« rien à signaler » et « je n'ai pas regardé » s'impriment presque pareil), appliquée au rapport qui le CONSOMME. Lecteur nommé : l'intégration continue du paquet, juste après doctor_contract. ⚠️ NON COUVERT : le tronc ~/claude-brain reçoit la même réparation (clés françaises n_fiches / n_liens / n_fichiers_depot, vérifiée à la main sur un BRAIN_HOME jetable, les deux branches observées) mais n'a PAS de banc à lui — rien n'y rougirait si le défaut de dictionnaire revenait. Les onze autres rubriques du rapport ne sont pas couvertes non plus."
+  },
+  {
+   "banc": "tests/projection_source_fraiche.py — quatre propriétés sur `config/claude-hooks.json`, la SOURCE de la projection des hooks Claude Code",
+   "surveille": "qu'un mode d'exception ne se désarme pas tout seul. La source porte des retraits temporaires décidés pour une campagne, chacun avec sa condition de levée écrite en français — et aucun programme ne sait lire une condition en français. A · chaque script déclaré existe · B · chaque marqueur `i3` est un de ceux que le projecteur comprend (`ancre` ou `differe`) · C · un mode encore ARMÉ porte un `_revu_le` d'au plus 30 jours · D · un mode LEVÉ porte un `_leve_le`. Le banc n'exige pas le bon jugement : il exige qu'un jugement ait eu lieu et qu'il porte une date. Il ne lit PAS ~/.claude/settings.json — c'est l'état d'une machine, et `settings_projection.py --verifie` est l'instrument de cette question-là.",
+   "geste": "Sur une copie jetable de la source (arbre temporaire, hooks/ tools/ companion/ liés en symlink, le vrai tronc jamais écrit). S1 — RÉARMER `_aveuglement_annotation` (`actif: true`) et lui retirer ses dates : c'est le VRAI bug, à l'identique, celui qui a tenu vingt-six jours. S2 — remplacer un marqueur `i3` par une valeur que le projecteur ne connaît pas : `\"ancre\"` → `\"ancré\"` (avec l'accent) sur `brain_anticipate.py`. S3 — retirer `_leve_le` d'un mode levé, en le laissant `actif: false`. S4 — déclarer un hook `fantome.py` qui n'existe pas dans SessionStart.",
+   "rouge_observe": "S1 : « ⛔ C · un mode d'exception est encore armé et personne n'est revenu le regarder depuis plus de 30 jours … · _aveuglement_annotation — armé depuis 2026-08-21, aucun `_revu_le` ». S2 : « ⛔ B · marqueur `i3` inconnu du projecteur … · SessionStart · brain_anticipate.py --hook → 'ancré' ». S3 : « ⛔ D · un mode a été levé sans date … · _aveuglement_annotation — levé sans `_leve_le` daté ». S4 : « ⛔ A · la source déclare un hook dont le script n'existe pas … · SessionStart · fantome.py ». Les quatre rc=1. Restauré : rc=0, « ✅ source de projection saine — 17 hooks déclarés, tous présents, 2 mode(s) d'exception dont 1 armé(s) et revu(s) depuis moins de 30 jours ».",
+   "date": "2026-09-20",
+   "note": "Née du réalignement demandé par l'auteur (« réaligne et on continue »). L'écart n'était pas que les réglages avaient dérivé loin de la source : c'est la SOURCE qui portait un mode armé vingt-six jours après que sa condition de levée a été remplie (campagne L1 close le 2026-08-25, acte 5d3025f7). `settings_projection.py --diff` proposait donc encore de retirer `inject_recall.py`, c'est-à-dire de couper le rappel à la demande (`?brain`) dans toutes les sessions. Un outil d'alignement aligne sur sa source : si la source est périmée, s'aligner est une régression. Leçon élargie plutôt que dupliquée : [[un-drapeau-de-chantier-eteint-un-usage-voisin]] — un drapeau ne coupe pas seulement plus large qu'il ne vise, il dure aussi plus longtemps. Lecteur nommé : le pre-commit du tronc (`tools/git-hooks/pre-commit`, tableau BANCS, 18 entrées). ⚠️ UN PREMIER ROUGE EST ÉCARTÉ ET NE COMPTE PAS : le premier arbre jetable n'avait pas de `companion/`, et la propriété A a rougi sur trois scripts (post_diff, session_close, pre_snapshot) qui existent bel et bien — un décor de test incomplet rougit pour la mauvaise raison, exactement comme un sabotage qui fait planter le programme. ⚠️ NON COUVERT : le second mode, `_isolation_corpus_annotation`, est tout aussi périmé (même campagne) et ce qu'il protège est déjà cassé — `gel_corpus_l1.py verifier` rend 741 écarts — mais il n'est PAS levé : le lever rebranche deux écrivains automatiques en fin de session, dont un qui lance des agents détachés et dépense des jetons. C'est la décision de l'auteur, pas celle d'une session ; elle est consignée dans son `_revu_le`. Le banc ne regarde pas non plus si la projection installée sur CETTE machine correspond à la source."
+  },
+  {
+   "banc": "tests/motif_process_ancre.py — tout motif passé à `pgrep`/`pkill` dans le code du Brain est ancré sur la racine, jamais sur un nom d'arbre écrit en dur",
+   "surveille": "que « aucun processus » reste une mesure et ne devienne pas une conclusion. Chercher un processus a une CIBLE : quand la cible est un fragment de chemin qui nomme un arbre, la mesure est juste dans cet arbre-là et silencieusement fausse partout ailleurs. Le banc lit les sources de 6 zones (hooks, tools, tests, capsule, companion, cbrain), suit chaque motif jusqu'à SON AFFECTATION — en Python par l'AST, en shell et en JavaScript en retrouvant la variable citée sur la ligne d'appel — et rougit si le motif contient `claude-brain/`, `c-brain/`, `.c-brain/`, `/Users/` ou `/home/`. Un motif volontairement large et sans nom d'arbre (`pgrep -fl \"capsule/node_modules\"`, qui cherche n'importe quelle instance sur le Mac) est légitime et passe.",
+   "geste": "Sur un arbre jetable (copies de hooks/auto_maintain.py, capsule/main.js, capsule/banc/cycle.sh, BRAIN_HOME pointé dessus ; le vrai tronc jamais écrit). S1 — remettre le VRAI bug : `MOTIF_CAPSULE = \"claude-brain/capsule/node_modules/electron\"` à la place de `os.path.join(BRAIN, \"capsule\", \"node_modules\", \"electron\")`. S2 — écrire un chemin absolu de cette machine directement dans la ligne d'appel de cycle.sh. S3 — nommer le tronc INSTALLÉ en dur, `\".c-brain/trunk/capsule/node_modules/electron\"`, qui est exactement ce que porte le paquet publié. S4 — TÉMOIN NÉGATIF : laisser en place le motif large `pgrep -fl \"capsule/node_modules\"` de capsule/main.js et vérifier qu'il NE rougit PAS.",
+   "rouge_observe": "S1 : « ⛔ … · hooks/auto_maintain.py:97 — MOTIF_CAPSULE = 'claude-brain/capsule/node_modules/electron'  (passé à pgrep ligne 175) » et la même ligne pour pkill 191, rc=1. S2 : « · capsule/banc/cycle.sh:11 — #     pgrep -f \"/Users/<nom>/claude-brain/capsule\" … », rc=1. S3 : « MOTIF_CAPSULE = '.c-brain/trunk/capsule/node_modules/electron' (passé à pgrep ligne 175) », rc=1. S4 : rc=0, le motif large passe. Restauré : rc=0, « ✅ motifs de processus ancrés — 6 motif(s) suivis dans 4 fichier(s) qui appellent pgrep/pkill, aucun ne nomme un arbre en dur ».",
+   "date": "2026-09-20",
+   "note": "⚠️ LE SABOTAGE A D'ABORD RÉFUTÉ LE BANC, ET C'EST LE FAIT LE PLUS UTILE DE CETTE ENTRÉE. La première version ne lisait que les LIGNES contenant le mot `pgrep`. Or le vrai défaut s'écrit sur DEUX lignes : `MOTIF_CAPSULE = \"…\"` en tête de module, `subprocess.run([\"pgrep\", \"-f\", MOTIF_CAPSULE])` cent lignes plus bas. S1 — le vrai bug remis à l'identique — laissait le banc VERT. Un banc qui ne rougit pas sur le défaut dont il est né ne protège de rien ; la détection a été refaite pour suivre la variable jusqu'à son affectation, et S1 rougit maintenant à la bonne ligne. Le défaut réparé, lui : `hooks/auto_maintain.py` cherchait la capsule avec un fragment nommant `claude-brain/`, et le paquet publié porte `c-brain/trunk/` — qui vise l'installé `~/.c-brain/trunk` et ne matche ni `~/c-brain` ni le plan de travail `~/c-brain-fr`. Là, pgrep rend 0 sur une capsule vivante, le code conclut « rien ne tourne » et en relance une par-dessus. Calibré à la main dans les deux sens sur la capsule VIVANTE du 20/09 (pids 1350/1362) : motif ancré → 4 pids sur ce tronc, rc=1 sur un tronc voisin sans capsule. Troisième passage de la famille décrite par [[pkill-motif-approximatif-mesure-une-instance-perimee]]. Lecteur nommé : le pre-commit du tronc (19 entrées). ⚠️ NON COUVERT : le banc ne vérifie pas que le motif ancré MATCHE vraiment sa cible — ça se calibre à la main sur une cible vivante puis absente. Il ne vérifie pas non plus que le code lit le CODE DE RETOUR de pgrep (0 trouvé · 1 rien · 2+ échec, avec une sortie vide dans les deux derniers cas) : `auto_maintain.py` refuse désormais de conclure sur rc≥2, les autres appels n'ont pas ce garde. Et le paquet ~/c-brain n'a ni ce banc ni cette réparation."
+  },
+  {
+   "banc": "~/c-brain/tests/e2e_install_update.sh, section 1bis — un moteur est bâti sur le COMMIT : installer une deuxième fois depuis une source dont l'arbre de travail est sale doit rendre le MÊME moteur, sous le MÊME nom, et ne rien reconstruire",
+   "surveille": "que le nom d'une version décrive la chose nommée. `install.sh` ajoutait `-dirty` au numéro de version dès que le clone source portait des modifications non commitées — alors que `build_version()` exporte avec `git archive HEAD` et laisse ce travail dehors exprès. Le suffixe étiquetait donc le MOTEUR avec une propriété de sa SOURCE. Quatre assertions : le lien `engine` porte le même nom qu'avant, `versions/` n'a pas grossi, l'installeur a dit « already installed and intact » (le chemin rapide a servi), et l'utilisateur a été PRÉVENU que son travail non commité n'est pas dans le moteur. ⚠️ Ce banc vit dans le PAQUET PUBLIÉ, pas dans le tronc : il n'est pas branché au pre-commit de ~/claude-brain mais au travail `install` de la CI macOS de ~/c-brain, ajouté le même jour.",
+   "geste": "S1 — remettre le vrai code d'avant : `VERSION_ID=\"$VERSION_ID-dirty\"` juste après `SOURCE_DIRTY=1`. C'est le sabotage `--sabotage dirty-renames-engine`, appliqué à la SOURCE avant que le dépôt d'essai n'existe, donc présent dans v1.0.0, v1.1.0 et le clone de l'utilisateur. S2 — TÉMOINS NÉGATIFS : les sept sabotages préexistants (no-ownership, dev-updated, switch-before-selftest, rollback-missing, update-touches-trunk, source-mutated, host-brain-leak) rejoués pour vérifier que la section neuve ne rougit sous aucun d'eux. S3 — CONTRE-ÉPREUVE DE L'ÉCHAPPATOIRE : pointer `E2E_EXTRA_PATH` sur un dossier contenant un faux `brain`.",
+   "rouge_observe": "S1 : rc=1, « ❌ the working tree renamed the engine: v1.0.0 → v1.0.0-dirty », « ❌ versions/ grew 1 → 2 for ONE commit », « ❌ the fast path did not fire — the installer rebuilt an engine it already had » — 3 assertions sur 4. La quatrième (« the user is TOLD their uncommitted work is not in the engine ») reste VERTE, et c'est juste : l'avertissement ne dépend pas du nommage. S2 : les sept rougissent toujours, chacun sur UNE assertion (host-brain-leak sur sept, comme avant), et aucun ne touche les quatre neuves — le garde est spécifique au défaut dont il est né. S3 : vert, « the `brain` on PATH resolves into this test's own versions/ ». Normal : l'échappatoire AJOUTE en queue de PATH, le `brain` installé gagne toujours ; le leurre ne peut pas masquer, plutôt qu'il n'est attrapé. Passe normale : rc=0, 4 assertions neuves vertes.",
+   "date": "2026-09-20",
+   "note": "MESURÉ AVANT DE RÉPARER, et c'est ce qui a tranché. `~/.c-brain/versions/` portait DEUX dossiers pour le même commit 686f2ac — un bâti le 17/08 à 20:09, l'autre le 18/08 à 00:42 avec `-dirty` — et leurs exports `git archive HEAD` sont OCTET POUR OCTET IDENTIQUES. Reproduction déterministe dans un clone jetable : arbre propre → `v1.28.1-57-gf5930df` ; un fichier SUIVI modifié → le même nom plus `-dirty` ; un fichier NON suivi → pas sale du tout. Le coût n'était pas cosmétique : deux noms pour un contenu rendent la branche « already installed and intact » INATTEIGNABLE pour quiconque travaille dans son clone, soit ~11,6 Mo reconstruits à chaque installation. Ce dont l'utilisateur avait besoin n'a jamais été un nom, c'était d'être PRÉVENU — l'avertissement est dit à voix haute, une fois, là où le moteur se bâtit, et seulement pour une installation gérée (`--dev` lie le checkout, la phrase y serait fausse). ⚠️ L'AUTRE MOITIÉ DE CETTE ENTRÉE : ce banc s'appelle « THE FIRST END-TO-END CONTRACT », il est né le 2026-08-17 contre « green component by component is not a correct product », et la CI ne l'avait JAMAIS exécuté une seule fois. Même forme exacte que `tests/capsule_runtime.py`, dont le commentaire de CI dit déjà « this bench existed since 2026-08-17 and NOTHING ran it ». Un garde que personne ne lance est un commentaire. Branché au travail macOS avec ses huit sabotages. ⚠️ NON COUVERT : que le moteur INSTALLÉ corresponde à son commit après coup — seulement qu'installer deux fois depuis un commit donne un moteur. Et le tronc ~/claude-brain n'a ni ce banc ni cette réparation : `install.sh` n'y existe pas. Voisines : [[un-controle-qui-cite-une-version-se-perime-a-la-version-suivante]], [[une-routine-qui-echoue-en-silence-ne-se-compte-que-dans-son-journal]]."
+  },
+  {
+   "banc": "~/claude-brain/tests/invariants_brain.py — `test_memory_garde_sa_marge_de_chargement` ÉLARGI AUX DEUX AXES, plus `test_le_plafond_mesure_dit_sous_quel_harnais` ; ils verrouillent la section 6 de `hooks/brain_doctor.py`, qui surveille la carte MEMORY.md contre les limites de chargement du harnais.",
+   "surveille": "que la carte reste SOUS LES DEUX PLAFONDS du harnais, et non sous un seul. La mesure du 2026-08-25 ([[carte-capacite-remesure-2026-08-25]]) en a trouvé deux, indépendants, et le PREMIER ATTEINT tronque : 200 lignes d'un côté, ~24,4 Ko de l'autre — 201 lignes coupent QUELLE QUE SOIT la taille. Jusqu'au 2026-09-20 le garde-fou ne modélisait QUE les octets (`MEMORY_WARN_BYTES = 20_000`), alors que la dimension qui a réellement invalidé la projection D3 est celle des LIGNES (292 contre 200) : relever le seul seuil d'octets aurait laissé le docteur VERT sur une carte réellement tronquée. Deuxième chose surveillée : que le seuil dise SOUS QUEL HARNAIS il a été mesuré — le plafond appartient à Claude Code, pas à nous, il peut bouger d'une version à l'autre, et le mode d'échec reste silencieux (l'avertissement n'est visible que du modèle, jamais un code de sortie, jamais un refus). D'où `MEMORY_LIMITS_MEASURED_ON` et `harness_version()`, qui lit la version SANS lancer de processus (le lien `claude` → `…/versions/<version>`, sinon `lastOnboardingVersion` dans `~/.claude.json`).",
+   "geste": "S1 — `MEMORY_WARN_LINES` abaissé à 100 sous la carte réelle (137 lignes) : l'axe NEUF doit parler seul. S2 — `MEMORY_WARN_BYTES` abaissé à 10 000 : l'axe ANCIEN doit parler encore, l'élargissement n'a le droit de rien éteindre. S3 — `carte_plafond_non_remesure` retiré de `INFORMATIFS` : la péremption redeviendrait bloquante, ce qu'ADR-0016 interdit. S4 — `MEMORY_LIMITS_MEASURED_ON` remis à `\"inconnu\"` : un seuil sans la version qui l'a mesuré ne peut pas se périmer visiblement. Les quatre sont joués par monkeypatch sur le module importé, sans toucher au fichier. ÉTALONNAGE, séparément : une carte d'essai de 201 lignes pesant 1 297 octets, écrite dans un `BRAIN_HOME` jetable — très loin sous 20 000 octets, donc SEUL l'axe des lignes peut parler, et c'est ainsi qu'on sait que c'est bien lui qu'on entend. BORNE : 165 lignes silencieux, 166 rouge.",
+   "rouge_observe": "Sain : les deux tests VERTS. S1 : ROUGE — « MEMORY.md fait 137 lignes ». S2 : ROUGE — « MEMORY.md pèse 19980 octets ». S3 : ROUGE. S4 : ROUGE. Étalonnage sous `BRAIN_HOME` jetable : « ⚠️  MEMORY.md trop de lignes (1): MEMORY.md : 201 lignes > 165 (limite mesurée 200 lignes, troncature SILENCIEUSE au-delà) », et le garde-fou d'octets reste MUET — l'axe neuf parle seul, comme l'étalonnage l'exige. Sur l'arbre réel le docteur imprime la ligne informative attendue : « ℹ️  Plafond de chargement mesuré sous un autre harnais (1): limites mesurées sous Claude Code 2.1.245, harnais actuel 2.1.278 — les deux seuils reposent sur une mesure d'une autre version », sans faire sortir le docteur en 1. Passe normale : `python3 -m unittest tests.invariants_brain` → Ran 17 tests, OK.",
+   "date": "2026-09-20",
+   "note": "C'EST L'ENTRÉE C5 DU CARNET C BIS, et elle s'est confirmée elle-même : le harnais a EFFECTIVEMENT bougé entre la mesure et aujourd'hui, 2.1.245 → 2.1.278, trente-trois versions. La ligne qui le dit est INFORMATIVE et pas rouge, exprès : une notice de péremption se déclenche à chaque mise à jour de Claude Code, et un rouge que personne ne peut éteindre honnêtement est un anti-motif ([[adr-0016-un-banc-rouge-ne-se-rebaseline-pas]]). Les deux seuils gardent la même prudence des deux côtés, ~17 % sous la limite mesurée : 200 × 0,825 ≈ 165, comme 24 000 × 0,83 ≈ 20 000. ⚠️ NON COUVERT : la frontière exacte en octets n'a JAMAIS été mesurée — le harnais publie « limit: 24.4KB », 24 000 passent et 30 000 tronquent, c'est tout ce qu'on sait, et ça ne s'écrit pas comme un fait. Non couvert aussi : ce garde-fou surveille la carte VIVANTE, pas la PROJECTION du manifeste — le budget proposé au §B/§C de `tools/cartes/CHANTIER-BUDGET-CARTE-2026-08-25.md` (`budget_lignes` 165, `budget_octets` 22 000) porte sur un autre objet et reste NON APPLIQUÉ, cette entrée ne le tranche pas. Et rien ici ne re-mesure le plafond sous 2.1.278 : le docteur dit que la mesure a vieilli, il ne dit pas de combien. Voisines : [[carte-capacite-remesure-2026-08-25]], [[carte-capacite-2026-08-18]], [[un-controle-qui-cite-une-version-se-perime-a-la-version-suivante]]."
+  },
+  {
+   "banc": "~/claude-brain/tests/paire_session_transcript.py — quatre propriétés jouées POUR DE VRAI dans un faux dossier personnel jetable (HOME et BRAIN_HOME détournés avant l'import, copie des trois hooks, deux dossiers de projet). Elles verrouillent `transcript_for()` et la branche de reprise de `hooks/auto_maintain.py`, plus l'en-tête écrit par `write_timeline()` dans `hooks/archive_session.py`.",
+   "surveille": "qu'un identifiant de session et son transcript NE SE SÉPARENT JAMAIS. Le dossier qui porte les transcripts est nommé d'après le répertoire d'où la session a été OUVERTE, pas d'après $HOME : mesuré le 2026-09-20, `~/.claude/projects/` porte HUIT dossiers et 733 transcrits, et celui que `expanduser(\"~\")` reconstruit n'en contient que 155. Reconstruire ce chemin vise donc juste dans le cas courant et rate en silence partout ailleurs — jamais un code d'erreur, jamais un refus. Trois choses sont surveillées : (1) le résolveur retrouve une session ouverte depuis un autre dossier ; (2) un identifiant inconnu rend None et JAMAIS un chemin fabriqué, parce que « je n'ai pas trouvé » et « voilà un fichier » sont deux réponses différentes et que la seconde fait lire le vide sans le dire ; (3) la reprise d'une session sortie de la file appareille l'identifiant repris avec SON transcript et SON compte de messages, pas avec ceux de la session qui se termine. Quatrième propriété, d'honnêteté : l'index des sessions DIT ce qu'il ne lit pas, avec le compte et le nom des dossiers laissés dehors, au lieu de se déclarer « sans perte de l'intégralité de nos sessions ».",
+   "geste": "S1 « resolveur-mono-dossier » — dans la copie d'`auto_maintain.py`, `return ailleurs[0] if ailleurs else None` remplacé par `return None` : le résolveur retombe sur le seul dossier dérivé de $HOME. S2 « chemin-invente » — `if os.path.exists(direct):` remplacé par `if True:` : le chemin reconstruit est rendu même quand le fichier n'existe pas. S3 « reprise-garde-le-chemin » — la ligne `tp = transcript_for(sid)` de la branche de reprise SUPPRIMÉE : c'est exactement l'état du code jusqu'au 2026-09-20. S4 « index-muet » — dans `archive_session.py`, `hors = transcripts_hors_index()` remplacé par `hors = []` : l'en-tête reperd son aveu. Chaque sabotage est une substitution de texte DÉCLARÉE, vérifiée unique dans le fichier réel : si le code bouge sous le sabotage, le banc le dit au lieu de passer vert. Rejouer : `python3 tests/paire_session_transcript.py --sabotages`.",
+   "rouge_observe": "S1 → « le résolveur n'a pas retrouvé une session ouverte depuis un AUTRE dossier : il rend None au lieu de '<…>'. Une telle session est archivée puis jamais distillée, en silence. » · S2 → « un identifiant inconnu a rendu un chemin au lieu de « je n'ai pas trouvé » : '<…>' (ce fichier n'existe pas). » · S3 → « la reprise a transporté le transcript de la session qui se TERMINE sous l'identifiant de la session REPRISE : '<courant>' au lieu de '<ailleurs>'. Le distillateur reçoit une paire incohérente — des fiches attribuées à une session qu'elles ne décrivent pas. » · S4 → « l'index ne dit pas ce qu'il laisse dehors : un dossier entier de transcrits n'est pas lu et rien ne le signale. »",
+   "date": "2026-09-20",
+   "note": "Entrée C7 de C bis. Le défaut nommé par C7 en août (le compteur de messages retombait à 0 pour une session ouverte ailleurs, 87 sessions de 20 à 221 messages perdues) était DÉJÀ réparé le 2026-08-19 ; ce qui restait vivant, c'est la branche de reprise, qui transportait `tp` — le chemin de la session qui se termine — sous l'identifiant d'une session tirée de la file. Défaut LATENT : il ne sort que quand la file n'est pas vide, et `state/.distill.txt` montre que le dernier lancement réel était cohérent. Statut INFÉRÉ depuis le code, reproduit au banc, jamais observé en vrai. NON COUVERT : (a) ce que le distillateur FAIT de la paire — `launch_agent` est remplacé par un mouchard, on regarde ce qu'on lui tend ; (b) les quatre autres endroits qui reconstruisent encore le chemin mono-dossier (`brain_audit.py`, `brain_guard.py`, `robots_permissions.py`, et le balayage de `rebuild_timeline`) — trois sont des diagnostics, le quatrième est volontairement restreint, et l'élargir serait une RÉGRESSION puisque 371 des 376 transcrits du plus gros dossier sont des sessions de maintenance automatique, tenues hors de la timeline humaine depuis le 2026-08-03 par la garde ANTI-RÉCURSION ; (c) rien ne tourne sur la VRAIE machine : le banc joue un laboratoire."
+  },
+  {
+   "banc": "~/claude-brain/tests/rappel_a_la_demande.py — élargi le 2026-09-20. Le banc existait depuis la coupure du rappel automatique (2026-09-09) ; il jouait le hook `inject_recall.py` pour de vrai, dans un faux Brain de dix-huit fiches, et vérifiait que le bloc <brain-recall> ne sort QUE sur demande. Ce qu'il ne vérifiait pas : à quelle BARRE le hook venait de se mesurer.",
+   "surveille": "que l'interrupteur de marche arrière `BRAIN_RECALL_AUTO=1` remette L'ANCIEN comportement, et pas une version plus bavarde que lui. Il y a deux barres de pertinence dans ce hook : `MIN_SCORE` à 4.0 pour un rappel qu'on n'a pas demandé, `MIN_SCORE_DEMANDE` à 1.0 quand l'auteur demande explicitement — parce qu'une question posée mérite une réponse même faible, tandis qu'une fiche qui s'invite doit être franchement pertinente. Or `demande_explicite()` répondait « oui » dès que l'interrupteur était armé : un seul nom portait DEUX questions, « est-ce qu'on affiche ? » et « quelle barre ? », et l'interrupteur emportait les deux. Il rendait donc la parole au rappel à 1.0, quatre fois plus indulgent que le comportement qu'il prétendait rétablir. Trois propriétés sont maintenant tenues : (1) armé, le rappel parle, mais la ligne de journal porte `seuil: 4.0` et `demande: false` ; (2) armé sans rien trouver, il se TAIT — le « Rien de pertinent trouvé » reste réservé à une vraie demande, sinon chaque message de la journée repartirait avec un bloc, exactement le bruit qui a fait couper le rappel ; (3) les deux constantes déclarées dans la source valent bien 4.0 et 1.0, relues par le banc sans importer le hook.",
+   "geste": "S1 « sans la porte » — `if results and afficher:` remplacé par `if results:` : le bavardage d'avant le 09/09 revient sur un message ordinaire. S2 « sans nettoyer() » — `requete = nettoyer(prompt) if demande else prompt` ramené à `requete = prompt` ET `seuil` figé à `MIN_SCORE` : les mots de la question (« cherche », « brain ») remontent leurs propres fiches et chassent la vraie réponse. S3 « sans la règle » — les arguments `seuil=` et `demande=` retirés de l'appel à `journaliser_forme` : la ligne du journal redevient illisible, comme les 1 819 lignes d'avant le 19/09. S4 « le raccourci » (AJOUTÉ le 20/09) — la branche `if os.environ.get(\"BRAIN_RECALL_AUTO\") == \"1\": return True` REMISE dans `demande_explicite()` : c'est le défaut tel qu'il vivait, reproduit à l'identique. Rejouer : `python3 tests/rappel_a_la_demande.py`.",
+   "rouge_observe": "S4 → sous `BRAIN_RECALL_AUTO=1`, la ligne de journal redescend à `seuil: 1.0` au lieu de 4.0 ; le contrôle « …à la barre automatique, pas à celle des demandes explicites » rougit. Mesure du défaut avant correction, sur un faux Brain de deux fiches : un message ordinaire, interrupteur armé, affichait un bloc à 2,69 — un score qu'aucun rappel automatique n'aurait montré avant le 09/09. S1 → un bloc sort sur un message ordinaire. S2 → `brain-recherche` et `brain-fiches` apparaissent dans la réponse à la place de la fiche demandée. S3 → la ligne du journal n'a plus de champ `seuil`.",
+   "date": "2026-09-20",
+   "note": "Entrée A1 de C bis. La mesure d'août tenait toujours — sur un petit corpus, la question naturelle plafonne sous 4.0 et il faut réciter le titre pour franchir la barre — mais sa CONSÉQUENCE était tombée : depuis le 09/09 le rappel ne s'affiche plus que sur demande, et la demande se juge à 1.0. `MIN_SCORE = 4.0` ne gouvernait donc plus qu'un chemin dont la sortie n'était affichée nulle part : une constante morte qui avait l'air vivante, et c'est exactement ce qui a permis à la promesse écrite de rester fausse sans jamais rougir. L'ancien contrôle disait seulement « un bloc est apparu » — vrai avec les DEUX barres, il ne verrouillait rien. NON COUVERT : (a) le banc joue un corpus de dix-huit fiches où presque toute correspondance dépasse 4.0, donc il ne peut PAS démontrer par le score qu'un candidat entre 1.0 et 4.0 reste muet — il le démontre par la barre journalisée, ce qui est la règle et non son effet ; (b) rien ne mesure si 4.0 est la bonne valeur, question distincte et toujours ouverte ; (c) personne n'utilise `BRAIN_RECALL_AUTO=1` en production aujourd'hui, le défaut était donc latent, INFÉRÉ du code puis reproduit au banc."
+  },
+  {
+   "banc": "~/claude-brain/tests/en_clair_obligatoire.py — créé le 2026-09-20. Il exige que toute fiche du corpus de rappel portant un `name:` contienne la ligne exactement `## En clair`, sauf celles déclarées dans tests/en_clair_dette.txt. La dette ne peut que fondre : le banc rougit AUSSI quand une fiche listée a reçu son bloc, ou quand une entrée de la liste ne désigne plus aucune fiche.",
+   "surveille": "la convention posée par l'auteur le 2026-08-14 (meta/fiche-format-en-clair.md) : un bloc en français courant, sans jargon, en tête de fiche, pour qu'un externe comprenne sans contexte. Rien ne l'imposait jusqu'ici, et elle s'effritait par la fiche neuve : mesuré le 2026-09-20 AVANT réparation, 49 fiches du corpus sur 718 n'avaient pas de bloc, dont les 20 fiches de septembre. Le banc surveille aussi le PIÈGE DU TITRE DÉCORÉ — « ## En clair — à lire avant… » : deux fiches étaient dans ce cas, le bloc existait et l'extracteur (hooks/graph_export.py) ne le voyait pas. Un humain lisait « c'est fait », la machine lisait « il n'y a rien ».",
+   "geste": "S-a « le bloc disparaît » — sur projects/ui-components/ui-animation-ressources-gifs-2026-09-18.md, `## En clair` renommé en `## Résumé`. S-b « le titre se décore » — le même titre remplacé par `## En clair — à lire avant tout`, le texte du bloc intact. S-c « la dette ne fond pas » — un bloc inséré dans lessons/chaine-de-confiance-app-tierce-capteur-sensible.md, qui reste listée dans la dette. S-d « l'entrée fantôme » — la ligne `lessons/fiche-qui-n-existe-pas.md` ajoutée à la dette.",
+   "rouge_observe": "S-a → code 1, « 1 fiche(s) sans bloc « ## En clair » et hors dette : · projects/ui-components/ui-animation-ressources-gifs-2026-09-18.md ». S-b → code 1, « 1 fiche(s) avec un titre DÉCORÉ, invisible pour l'afficheur ». S-c → code 1, « 1 fiche(s) ont reçu leur bloc mais restent dans la dette ». S-d → code 1, « 1 entrée(s) de la dette ne désignent plus aucune fiche du corpus ». Chaque fichier restauré derrière, banc revenu au vert : « 718 fiches · 678 portent « ## En clair » (94 %) · dette déclarée : 40 ».",
+   "date": "2026-09-20",
+   "note": "S-b est le sabotage qui compte, parce que c'est le seul que la relecture humaine ne trouve pas : le bloc EST là. Le banc mesure ce que la machine lit — le motif exact de hooks/graph_export.py — et non ce que l'œil reconnaît. Ce que le banc ne sait PAS juger : la qualité du bloc. Trois mots sous le bon titre passent au vert ; aucun instrument ici ne dit si un externe comprendrait. La dette de 40 leçons est un travail de rédaction en volume, candidat au second poste (Codex)."
+  },
+  {
+   "banc": "~/claude-brain/tests/invariants_brain.py — invariant ajouté le 2026-09-20 : `test_tout_agent_appele_existe_sur_la_surface_que_claude_code_lit`. Il réunit les noms d'agents réellement appelés (brain_upkeep.ORDER, brain_upkeep.TASKS, et MODEL_L1 lu À LA SOURCE dans auto_maintain.py puisqu'il est déclaré dans une fonction) et vérifie que chacun a son fichier `.md` dans le dossier où pointe `~/.claude/agents` — la surface que Claude Code lit, pas le dossier du dépôt.",
+   "surveille": "l'incident du 2026-08-19 : l'installeur anglais a repointé le symlink `~/.claude/agents` vers un dossier où les agents portent des noms traduits. Les deux installations restaient cohérentes avec elles-mêmes ; seul le raccord mentait. Résultat mesuré : 74 `--agent 'distillateur' not found` et 44 pour `architecte`, 118 échecs en 39 heures, dans un journal que personne ne lit. Aucun capteur ne comparait « les noms qu'on appelle » à « les noms qui existent là où on va les chercher ». Il applique aussi l'invariant d'ADR-0013 : un identifiant interne ne se traduit jamais.",
+   "geste": "deux contre-épreuves, et aucune ne touche la machine. (1) EN PLACE, dans le test lui-même : on fabrique un dossier temporaire où il manque exactement un agent, et le détecteur doit le nommer — sans ça, le vert d'une machine bien câblée ne prouverait rien. (2) HORS TEST, rejouée le 20/09 : on pointe le même détecteur sur `~/c-brain/agents`, le dossier anglais réel, c'est-à-dire la configuration exacte de l'incident.",
+   "rouge_observe": "(1) le détecteur nomme l'agent absent et le test rougit si la liste rendue diffère. (2) sur `~/c-brain/agents` : 5 des 6 agents appelés sont introuvables — architecte, archiviste, distillateur, jardinier, mecanicien. Seul `challenger` survit, ce qui retrouve exactement la mesure d'août (« 1 agent sur 8 dont le nom survit aux deux langues ») : ce n'était pas de la robustesse, c'était une coïncidence orthographique. Sur la vraie surface de cette machine, aucun manquant, l'invariant est vert (18 tests, OK).",
+   "date": "2026-09-20",
+   "note": "Le test SAUTE quand `~/.claude/agents` n'existe pas — sur un clone ou en CI il n'y a rien à raccorder, et un rouge là-bas parlerait de la machine, pas du dépôt. La contre-épreuve (1), elle, tourne toujours : le détecteur est prouvé mordant même quand la surface est absente."
+  }
+ ]
 }

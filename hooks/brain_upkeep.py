@@ -37,9 +37,10 @@ import os, sys, json, time, shutil, subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from brain_status import write_status
+    from brain_status import write_status, journal_agent
 except Exception:
     def write_status(*a, **k): pass
+    def journal_agent(*a, **k): return None
 try:
     import brain_guard as guard          # résilience quota/compte (même garde que la couche 1)
 except Exception:
@@ -225,7 +226,37 @@ def _last_cost_line():
     return last
 
 
+def _cout_du_segment(offset):
+    """Ce que le passage qui vient de finir a coûté — et RIEN d'autre.
+
+    On lit cost.jsonl À PARTIR de l'octet retenu avant le lancement. Prendre « la
+    dernière ligne » du fichier attribuerait à cet agent le coût d'une distillation
+    écrite en parallèle : cost.jsonl est un journal PARTAGÉ, en ajout seul."""
+    out = {}
+    try:
+        with open(COST, "r", encoding="utf-8", errors="replace") as f:
+            f.seek(offset)
+            for ligne in f:
+                try:
+                    o = json.loads(ligne)
+                except Exception:
+                    continue
+                if "total_cost_usd" not in o:
+                    continue
+                out = {"cout_usd": round(o.get("total_cost_usd") or 0, 4),
+                       "session_id": o.get("session_id"),
+                       "jetons_sortie": (o.get("usage") or {}).get("output_tokens"),
+                       "erreur": True if o.get("is_error") else None}
+    except Exception:
+        pass
+    return {k: v for k, v in out.items() if v is not None}
+
+
 def run(sid=""):
+    # Le gel se lit ICI aussi (2026-09-15). Avant, seul auto_maintain le lisait : lancé à la
+    # main, ce module réveillait un robot pendant le gel.
+    if os.path.exists(os.path.join(STATE, "FREEZE")):
+        return
     now = time.time()
     # O1 — quels agents ont leur cooldown OUVERT ? Si aucun, on s'arrête AVANT toute
     # dépense : pas de régénération de capteur, pas d'appel LLM. Coût strictement nul.
@@ -247,14 +278,34 @@ def run(sid=""):
         return
     reason = d["agents"][agent]["reason"]
     write_status("busy", ACT.get(agent, "gardening"), f"{agent}: {reason}", source="agent")
-    cmd = [claude, "-p", "--model", MODEL.get(agent, "sonnet"),
-           "--output-format", "json", "--dangerously-skip-permissions",
-           "--agent", agent, TASKS[agent]]
+    # 19/09 — la ligne NOMINATIVE que status.json ne peut pas porter (il n'a qu'un état
+    # global, écrasé au passage suivant). Voir brain_status.journal_agent.
+    modele = MODEL.get(agent, "sonnet")
+    t0 = journal_agent(agent, "debut", raison=reason,
+                       activite=ACT.get(agent, "gardening"), modele=modele) or time.time()
+    # Plus de passe-droit depuis le 2026-09-15 : chaque robot n'a que ses outils nommés,
+    # voir robots_permissions.py. Si les droits ne se construisent pas, on ne lance rien.
+    try:
+        from robots_permissions import drapeaux
+        droits = drapeaux(agent, BRAIN)
+    except Exception:
+        journal_agent(agent, "fin", debut=t0, duree_s=round(time.time() - t0, 1),
+                      verdict="droits-indisponibles")
+        return
+    cmd = [claude, "-p", "--model", modele,
+           "--output-format", "json", *droits, TASKS[agent]]
+    try:
+        offset = os.path.getsize(COST)
+    except OSError:
+        offset = 0
+    code = None
     try:
         with open(COST, "a") as cf, open(LOG, "a") as lf:
-            subprocess.run(cmd, cwd=BRAIN, stdin=subprocess.DEVNULL,
-                           stdout=cf, stderr=lf, timeout=900)
+            code = subprocess.run(cmd, cwd=BRAIN, stdin=subprocess.DEVNULL,
+                                  stdout=cf, stderr=lf, timeout=900).returncode
     except Exception:
+        journal_agent(agent, "fin", debut=t0, duree_s=round(time.time() - t0, 1),
+                      verdict="interrompu", **_cout_du_segment(offset))
         return  # best-effort : un échec de veille ne perd aucune donnée
     # F1 — ne GRAVE le cooldown 12 h que si l'agent a VRAIMENT réussi. Un échec
     # quota/login sort en code 0 avec is_error=true (pas d'exception Python) : sans ce
@@ -268,6 +319,15 @@ def run(sid=""):
             ok = True   # en cas de doute on grave (évite une boucle si interpret casse)
     if ok:
         record_run(agent, now)
+    # Vu au banc du 19/09 : `subprocess.run` ne lève RIEN sur un code de sortie non nul,
+    # si bien que le journal écrivait « ok » pour un agent qui venait d'échouer. Un
+    # panneau nourri par ce verdict-là aurait menti en vert.
+    if code:
+        verdict = f"echec-code-{code}"
+    else:
+        verdict = "ok" if ok else "quota-ou-login"
+    journal_agent(agent, "fin", debut=t0, duree_s=round(time.time() - t0, 1),
+                  verdict=verdict, **_cout_du_segment(offset))
 
 
 if __name__ == "__main__":

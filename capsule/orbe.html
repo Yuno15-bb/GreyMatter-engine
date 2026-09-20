@@ -118,7 +118,7 @@
        bloc de deux libellés. */
   /* ── PASTILLE « RESTE À TRAITER » (2026-08-14, demande de l'auteur) ────────────
      Combien de fiches attendent encore le jardinier. La source de vérité est
-     l'Inbox de MEMORY.md — celle que `on_fiche_write.py` alimente tout seul.
+     la file state/a-classer.md — celle que `on_fiche_write.py` alimente tout seul.
      Posée en HAUT À DROITE : le bas de la fenêtre est déjà pris par le libellé
      et la ligne de fiche, et le centre par le pavé.
      Pas d'ombre portée en ellipse (retirée en 2026-08-04) : on tient le
@@ -333,6 +333,18 @@ const NOMS = { mapping:'MAPPING', auditing:'AUDITING', architecting:'ARCHITECTIN
   challenging:'CHALLENGING', filing:'FILING', archiving:'ARCHIVING',
   gardening:'GARDENING', correcting:'CORRECTING', working:'WORKING',
   distilling:'DISTILLING', synthesizing:'SYNTHESIZING', committing:'COMMITTING' };
+/* ⚠ 20/09 — DYLAN A RENOMMÉ LES AGENTS EN QUATRE VAISSEAUX (« on met les nouveaux
+   noms », fiche renommage-agents-familles-2026-09-20). Quand l'activité appartient
+   à un vaisseau, le libellé porte SON NOM et l'action descend dans la ligne du
+   dessous : « NOSTROMO » puis « auditing · hooks and links ». La règle « l'orbe dit
+   ce qui se fait » reste entière pour ce que la session fait elle-même — working,
+   committing, correcting n'ont pas d'auteur parmi les vaisseaux, ils gardent leur
+   -ING. La table suit `hooks/brain_upkeep.py` (ACT) et `hooks/brain_status.py` :
+   auditing = mécanicien, mapping/filing = jardinier. */
+const VAISSEAUX = { auditing:'NOSTROMO',
+  mapping:'NARCISSUS', filing:'NARCISSUS', gardening:'NARCISSUS', distilling:'NARCISSUS',
+  challenging:'SULACO', architecting:'SULACO', archiving:'SULACO',
+  synthesizing:'ANESIDORA' };
 
 const dit   = document.getElementById('dit');
 const fiche = document.getElementById('fiche');
@@ -604,7 +616,9 @@ function lire() {
   //   serait figée sur la première fiche de chaque passe. Même classe de défaut
   //   que le pavé qui ne se rallumait pas.
   if (occupe) {
-    const quoi = surQuoi(st.detail);
+    const sur = surQuoi(st.detail);
+    // un vaisseau au libellé → l'action passe ici, devant le « sur quoi »
+    const quoi = VAISSEAUX[etat] ? (sur ? etat + ' · ' + sur : etat) : sur;
     if (fiche._t !== quoi) { fiche.textContent = quoi; fiche._t = quoi; }
     fiche.classList.toggle('vu', !!quoi);
   } else { fiche.classList.remove('vu'); }
@@ -627,7 +641,7 @@ function lire() {
   if (occupe) {
     // textContent effacerait les points : on repose le libellé puis les trois
     // spans, qui portent chacun leur propre décalage d'animation.
-    dit.replaceChildren(document.createTextNode(NOMS[etat] || etat.toUpperCase()));
+    dit.replaceChildren(document.createTextNode(VAISSEAUX[etat] || NOMS[etat] || etat.toUpperCase()));
     for (let i = 0; i < 3; i++) {
       const pt = document.createElement('span');
       pt.className = 'pt'; pt.textContent = '.';
@@ -639,14 +653,23 @@ function lire() {
   majCadence();
 }
 setInterval(lire, 700);
+/* Exposé pour le TOURNAGE PAS À PAS (banc/film.cjs, FILM_PAS). Là-bas l'horloge
+   de la page est gelée et avancée d'un soixantième de seconde à la fois : si le
+   changement d'état attendait le minuteur ci-dessus, il tomberait n'importe où
+   dans une fenêtre de 0,7 s et chaque état n'occuperait plus le même nombre
+   d'images. Le film appelle donc la lecture lui-même, juste après avoir écrit
+   status.json. Rien d'autre ne s'en sert, et la page se comporte pareil sans. */
+window.__lire = lire;
 lire();
 
 /* ── COMBIEN DE FICHES RESTENT À TRAITER ────────────────────────────────────
    Demande de l'auteur (2026-08-14) : « à chaque fois que l'orbe est lancé, elle
    doit afficher une petite pastille notifiant combien de fiches elle doit
    encore traiter ».
-   Source de vérité : l'Inbox de MEMORY.md, alimentée automatiquement par
-   `hooks/on_fiche_write.py` (« déposée auto, à classer par le jardinier »).
+   Source de vérité : `state/a-classer.md`, alimenté automatiquement par
+   `hooks/on_fiche_write.py`. Jusqu'au 2026-09-15 c'était l'Inbox de MEMORY.md ; elle en
+   est sortie parce qu'une seule ligne d'Inbox faisait refuser tous les commits (budget
+   de la carte + ADR-0015).
    C'est le SEUL endroit qui dit ce qui attend, et il est déjà tenu à jour —
    on ne recompte rien, on lit.
    ⚠ Cadence lente exprès : `lire()` tourne à 700 ms pour l'état de l'agent,
@@ -654,18 +677,13 @@ lire();
    minute coûterait sans rien apprendre. 20 s suffisent, plus un appel au
    lancement pour que la pastille soit juste dès la première image. */
 const RESTANT_EL = document.getElementById('restant');
-const MEMOIRE = path.join(os.homedir(), '.c-brain', 'trunk', 'MEMORY.md');
-const INBOX_TITRE = '## \u{1F195} Inbox';
+const A_CLASSER = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'a-classer.md');
 
 function compterEnAttente() {
   let t;
-  try { t = fs.readFileSync(MEMOIRE, 'utf8'); } catch (e) { return null; }
-  const i = t.indexOf(INBOX_TITRE);
-  if (i < 0) return 0;                       // pas d'Inbox = rien en attente
-  let bloc = t.slice(i + INBOX_TITRE.length);
-  const suivant = bloc.indexOf('\n## ');      // on s'arrête à la section suivante
-  if (suivant >= 0) bloc = bloc.slice(0, suivant);
-  return bloc.split('\n').filter(l => l.trim().startsWith('- [')).length;
+  try { t = fs.readFileSync(A_CLASSER, 'utf8'); }
+  catch (e) { return e.code === 'ENOENT' ? 0 : null; }   // pas de file = rien en attente
+  return t.split('\n').filter(l => l.trim().startsWith('- [')).length;
 }
 
 /* Le compteur affiche « 2/4 » : où on en est dans le LOT en cours.

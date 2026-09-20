@@ -37,3 +37,13 @@ cd ~/claude-brain/capsule
 - **Tuer par chemin complet ET vérifier le compte** avant toute mesure :
   `pgrep -f "claude-brain/capsule" | xargs kill -9` puis recompter. Un motif
   approximatif échoue en silence et on mesure une instance périmée.
+
+## Piège du 20/09 — l'état est PARTAGÉ entre toutes les sessions Claude
+`film.cjs` et `cycle.sh` pilotent l'orbe par `state/status.json`. Or chaque session Claude
+ouverte (quatre en parallèle ce jour-là) y estampille `busy / working` à chacun de ses appels
+d'outil, via le hook `brain_battement.py`. Un tournage s'est fait polluer à 13,7 s : WORKING
+s'est invité dans les trois secondes de repos. « Ne rien exécuter pendant » ne suffit donc
+pas — les autres sessions, on ne les contrôle pas. **Tourner dans un tronc miroir** :
+`HOME=<miroir> BRAIN_HOME=<miroir>/claude-brain`, où le miroir symlinke tout le tronc sauf
+`state/`, qui est à nous. `orbe.html` résout tout par `os.homedir()` et `brain_status.py`
+par `BRAIN_HOME` : les deux suivent, et le bureau de l'auteur ne clignote même plus.

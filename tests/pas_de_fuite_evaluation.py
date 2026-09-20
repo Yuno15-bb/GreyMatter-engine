@@ -31,8 +31,22 @@ import argparse
 import os
 import sys
 
+
 ICI = os.path.dirname(os.path.abspath(__file__))
 BRAIN = os.path.dirname(ICI)
+
+# ── I-2 · PROFIL D'ÉTAT (lot 1, 2026-08-21) ──────────────────────────────────
+# Ce banc ANNONCE désormais sous quel état il a rendu son verdict. Rien d'autre ne
+# change : ni score, ni ordre, ni état. Un verdict rouge reste rouge ; un verdict
+# vert avec dépendance déclarée ne devient pas meilleur. La déclaration fait passer
+# une dépendance de SILENCIEUSE (I2-D) à ANNONCÉE (I2-C) — elle ne la rend pas saine.
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks"))
+    import i2_profil
+    i2_profil.demarrer("pas_de_fuite_evaluation")
+except Exception:
+    pass            # un banc ne doit jamais échouer à cause de son propre diagnostic
+
 sys.path.insert(0, os.path.join(BRAIN, "hooks"))
 
 import brain_recall as br  # noqa: E402

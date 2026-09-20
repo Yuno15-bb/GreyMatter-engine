@@ -3,8 +3,8 @@
 Hook PostToolUse (Write|Edit) du C Brain — garde mécanique instantanée.
 À CHAQUE fiche déposée dans le tronc, sans LLM, sans boucle, sans bloquer :
   1. masque tout secret en clair
-  2. garantit que la fiche est dans la carte MEMORY.md + lessons/INDEX.md
-     (sinon -> Inbox "à classer")
+  2. vérifie que la fiche est dans la carte MEMORY.md + lessons/INDEX.md
+     (sinon -> state/a-classer.md ; la carte elle-même n'est jamais écrite ici, ADR-0015)
   3. signale si le frontmatter manque
 
 Anti-boucle : ce script édite les fichiers en I/O direct Python (pas via l'outil
@@ -24,7 +24,6 @@ BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 MAP_RELS = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-INBOX_HEADER = "## 🆕 Inbox — fiches à classer (auto)"
 
 # Vocabulaire des types de fiche. CINQ valeurs, pas quatre : `lesson` a été ajouté
 # le 2026-08-13 parce que 32 fiches l'utilisaient déjà et que c'est la catégorie la
@@ -129,6 +128,60 @@ def main(data):
     except Exception:
         pass
 
+    # --- 1 ter. vocabulaire de l'ADR-0019 : OBSERVER À L'ÉCRITURE, jamais bloquer ---
+    # Décidé par l'auteur le 2026-09-17 : le sujet est obligatoire sur les fiches NEUVES seulement.
+    # Cette règle ne peut pas se tenir chez le docteur, qui voit les 686 fiches d'un coup et
+    # accuserait les 51 anciennes sans sujet ; elle se tient au SEUL moment où « neuve » a un
+    # sens — celui où la fiche est écrite. Même forme que le contrôle 1 bis juste au-dessus :
+    # on consigne, on ne répare pas, on ne bloque pas.
+    #
+    # Le vocabulaire n'est pas recopié, il est IMPORTÉ : `TYPES_RELATION` et son lecteur
+    # viennent de hooks/graph_export.py, les 12 sujets de meta/topics.json via topics_fiche.
+    # Une troisième copie serait une troisième chose à faire diverger — c'est exactement la
+    # dérive que l'ADR-0019 vient de mesurer (309 liens qualifiés sur 563 jetés en silence).
+    #
+    # CE JOURNAL A UN LECTEUR NOMMÉ, et c'est la condition pour l'écrire : l'ADR-0019 pose
+    # comme hypothèse réfutable qu'obliger `lie_a` à porter sa raison produit des raisons
+    # réellement écrites. L'expérience qui la réfute est « compter, deux semaines après le
+    # 17/09, les fiches écrites APRÈS cette date qui manquent à la règle » — et seul un
+    # journal daté à l'écriture sait distinguer ces fiches-là des anciennes.
+    if rel.split(os.sep)[0] in ("projects", "lessons", "meta", "life"):
+        try:
+            import time
+            import topics_fiche
+            from graph_export import TYPES_RELATION, _REL_BLOC, relations_brutes
+            fm = re.match(r"^---\n(.*?)\n---", txt, re.S)
+            ecarts = []
+            if fm:
+                topic, secondaires = topics_fiche.lire(txt)
+                if not topic:
+                    ecarts.append({"champ": "sujet", "ecart": "absent"})
+                elif isinstance(topic, list):     # clé `topic:` écrite deux fois — cf. topics_fiche.lire
+                    ecarts.append({"champ": "sujet", "ecart": "dedouble", "valeur": ", ".join(topic)})
+                elif topic not in topics_fiche.ids_canoniques():
+                    ecarts.append({"champ": "sujet", "ecart": "hors-vocabulaire", "valeur": topic})
+                bloc_rel = _REL_BLOC.search(fm.group(1) + "\n")
+                if bloc_rel:
+                    for typ, cible, raison in relations_brutes(bloc_rel.group(1)):
+                        if typ not in TYPES_RELATION:
+                            ecarts.append({"champ": "relation", "ecart": "type-hors-vocabulaire",
+                                           "valeur": typ, "cible": cible})
+                        elif typ == "lie_a" and not raison:
+                            ecarts.append({"champ": "relation", "ecart": "lie_a-sans-raison",
+                                           "cible": cible})
+            if ecarts:
+                journal = os.path.join(BRAIN, "state", "vocabulaire-a-l-ecriture.jsonl")
+                os.makedirs(os.path.dirname(journal), exist_ok=True)
+                with open(journal, "a", encoding="utf-8") as f:
+                    for e in ecarts:
+                        f.write(json.dumps(dict(e, ts=int(time.time()), path=rel),
+                                           ensure_ascii=False) + "\n")
+                premier = ecarts[0]
+                write_status("busy", "correcting",
+                             f"{premier['champ']} {premier['ecart']} dans {name}")
+        except Exception:
+            pass
+
     # slug / nom pour la détection de présence dans la carte
     m = re.search(r'^name:\s*(.+)$', txt, re.M)
     slug = m.group(1).strip() if m else None
@@ -146,22 +199,30 @@ def main(data):
     card = mem + "\n" + lessons_index
     linked = (rel in card) or (fname in card) or (slug and f"[[{slug}]]" in card) \
              or (slug and f"({rel})" in card)
-    # F2 — pendant une passe de maintenance (CLAUDE_BRAIN_GARDENING=1), c'est le
-    # jardinier qui possède la carte : il range les fiches dans MEMORY/lessons INDEX et vide
-    # l'Inbox. Déposer en parallèle dans l'Inbox créerait une course (re-déposer une
-    # fiche qu'il vient de classer). On garde le masquage des secrets et le capteur de
-    # cohérence (au-dessus, toujours actifs) mais on saute le dépôt Inbox ici.
-    if not linked and os.environ.get("CLAUDE_BRAIN_GARDENING") != "1":
-        title = slug or fname
-        line = f"- [{title}]({rel}) — déposée auto, à classer par le [[jardinier]]"
-        if INBOX_HEADER in mem:
-            mem = mem.replace(INBOX_HEADER, INBOX_HEADER + "\n" + line, 1)
-        else:
-            mem = mem.rstrip() + f"\n\n---\n\n{INBOX_HEADER}\n\n*Le hook dépose ici toute fiche non encore cartographiée ; le jardinier les range ensuite dans la bonne section.*\n\n{line}\n"
-        try:
-            open(MEMORY, "w", encoding="utf-8").write(mem)
-        except Exception:
-            pass
+    # LA FILE N'EST PLUS DANS MEMORY.md (2026-09-15). Ce dépôt date du 21/06, d'avant deux
+    # décisions qui l'ont rendu impossible : le budget de 20 000 octets de la carte, et
+    # ADR-0015 (le manifeste fait autorité, toute entrée de carte est validée par un humain).
+    # Mesuré le 15/09 sur une copie : MEMORY.md à 90 octets du budget, UNE ligne d'Inbox la
+    # passait à 20 003 octets et le pre-commit refusait tout commit, toutes zones confondues.
+    # La fiche attend donc dans state/a-classer.md ; le jardinier PROPOSE sa place dans
+    # state/a-valider.md ; un humain l'inscrit dans la carte et réconcilie le manifeste.
+    # Plus de course avec le jardinier (il ne touche plus la carte) : le dépôt vaut aussi
+    # pendant une passe de maintenance, sinon les fiches écrites par un robot seraient perdues de vue.
+    if not linked:
+        a_classer = os.path.join(BRAIN, "state", "a-classer.md")
+        deja = ""
+        for p in (a_classer, os.path.join(BRAIN, "state", "a-valider.md")):
+            try:
+                deja += open(p, encoding="utf-8").read()
+            except Exception:
+                pass
+        if f"({rel})" not in deja:
+            title = slug or fname
+            try:
+                with open(a_classer, "a", encoding="utf-8") as f:
+                    f.write(f"- [{title}]({rel}) — pas encore dans la carte\n")
+            except Exception:
+                pass
 
 def refresh_doctor():
     """Rafraîchit state/doctor.json en arrière-plan (détaché, jamais bloquant)."""

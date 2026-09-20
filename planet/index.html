@@ -433,6 +433,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { capaciteSemantique, etiquetteSens, etiquette3d } from './semantic-label.js';
 // post-process « data-poésie » (réf. Anadol/Lieberman) : bloom doux = luminance organique
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -1136,6 +1137,11 @@ function buildLegend(data){
 // interrupteur pour ça, c'est un réglage de plus à penser pour une information qu'on veut
 // toujours. La pilule ⚡ et la touche U disparaissent avec lui.
 let view=1, viewTarget=1, sem=1, semTarget=1, usage=1, usageTarget=1;
+// CE QUE LA CARTE SAIT D'ELLE-MÊME, relu à chaque graph.json. `sem` dit la vue DEMANDÉE ;
+// ceci dit ce que la donnée permet réellement d'en faire. Les deux étaient confondues : la vue
+// demandée suffisait à afficher « proximité = sens, toutes les fiches » sur un nuage où pas une
+// fiche n'avait de vecteur (mesuré à l'écran le 2026-09-19, 0 sur 10 dans le paquet livré).
+let semCap = { state:'absent', covered:0, total:0, detail:'' };
 addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V'){ viewTarget = viewTarget>0.5?0:1; if(viewTarget<0.5) semTarget=0; }  // retour planète = structure
   if(e.key==='s'||e.key==='S'){ semTarget = semTarget>0.5?0:1; if(semTarget>0.5) viewTarget=1; }      // le sens n'a de sens qu'à plat
@@ -1854,6 +1860,7 @@ async function poll(){
     // On compare ce qui EXIGE une reconstruction — les fiches, leurs liens, leurs marqueurs — et
     // pas ce qui change tout seul. La chaleur et l'activité en direct s'appliquent EN PLACE :
     // ce sont des nombres posés sur des objets qui existent déjà.
+    semCap = capaciteSemantique(data);
     const sig = data.nodes.map(n => n.id + ':' + (n.tags||[]).join('.') + ':'
                   + [n.challenge, n.conviction, n.resume, n.regle, n.media, n.frontier]
                       .map(v => v ? 1 : 0).join('')).join('|')
@@ -1894,6 +1901,7 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                      get region_ouverte(){ return focusRegion; },
                      // vue courante + capsule : sans ça, un contrôle ne peut rien dire de ce
                      // qui est réellement affiché — il ne saurait que relire le fichier source.
+                     get semantique(){ return semCap; },
                      get vue(){ return { view:+view.toFixed(2), sem:+sem.toFixed(2),
                                          mode: view<0.5 ? '3d' : (sem>0.5 ? 'sens' : 'struct') }; },
                      // `familles` = les amas du mode COURANT. La capsule en porte deux jeux
@@ -2250,12 +2258,14 @@ function tick(now){
   // jamais : en structure, à plat ou dans une région, l'en-tête annonçait toujours le
   // sens. Trouvé le 2026-08-15 en REGARDANT les captures du README, pas le code — un
   // libellé faux ne lève aucune erreur, il se contente d'être lu.
+  // Le libellé du SENS n'est plus écrit ici : il est calculé dans semantic-label.js à partir de
+  // ce que l'exporteur a MESURÉ, pour qu'un contrôle puisse le lire sans ouvrir un navigateur.
+  const _sensTag = etiquetteSens(semCap);
   const _t = view<0.5 ? (focusRegion ? `[ RÉGION — ${focusRegion.toUpperCase()} ]` : '[ PLANÈTE DU TRONC ]')
-                      : (sem>0.5 ? '[ CARTE DU TRONC — LE SENS ]' : '[ CARTE DU TRONC — LA STRUCTURE ]');
+                      : (sem>0.5 ? _sensTag.titre : '[ CARTE DU TRONC — LA STRUCTURE ]');
   if(titleEl && titleEl.textContent !== _t) titleEl.textContent = _t;   // écrit seulement s'il change
-  vtag.textContent = view<0.5 ? (focusRegion ? `◉ ${focusRegion} EN VOLUME — glisser pour tourner · Échap pour ressortir`
-                                              : '◉ 3D — S pour le sens')
-    : (sem>0.5 ? '✦ SENS EN VOLUME — proximité = sens, toutes les fiches · S structure'
+  vtag.textContent = view<0.5 ? etiquette3d(semCap, focusRegion)
+    : (sem>0.5 ? _sensTag.bandeau
                : '▦ STRUCTURE — les 20 familles, posées à plat · clic sur une famille = en volume');
   syncModeButtons();
   composer.render();                            // rendu via le post-process (bloom + output)

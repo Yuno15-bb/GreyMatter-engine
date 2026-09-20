@@ -18,6 +18,17 @@
     </array>
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- I-3 (2026-08-20) : l'identité du Brain se TRANSMET, elle ne se devine pas.
+             Sans cette variable, l'enfant retombe sur ~/claude-brain — le tronc de
+             l'utilisateur courant — quel que soit le Brain que ce service est censé
+             servir. Un chemin absolu dans ProgramArguments désigne le CODE à exécuter,
+             jamais le Brain à mesurer : mesuré le 2026-08-20 sur 18 hooks de session,
+             tous invoqués par chemin absolu, aucun n'ancrait quoi que ce soit.
+             `__BRAIN__` est rendu par la racine CANONIQUE (realpath) à l'installation,
+             et non par `__HOME__/.c-brain/trunk` : le symlink ~/.claude/projects/…/memory
+             donne deux chemins pour un seul arbre. -->
+        <key>BRAIN_HOME</key>
+        <string>__BRAIN__</string>
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>

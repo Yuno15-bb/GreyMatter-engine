@@ -22,6 +22,14 @@
          autonome au reset quota était inopérante. On donne un PATH complet. -->
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- I-3 (2026-08-21, lot C/D'). Cette pose était volontairement laissée SANS
+             ancrage tant que son enfant ignorait BRAIN_HOME : injecter l'identité à un
+             programme qui ne la lit pas produit une conformité NOMINALE, plus trompeuse
+             que l'absence. L'enfant est désormais conforme I-1 (mesuré : BRAIN_HOME
+             divergent de la racine de code est honoré), donc l'ancrage a un effet réel.
+             `__BRAIN__` est rendu par la racine CANONIQUE (realpath). -->
+        <key>BRAIN_HOME</key>
+        <string>__BRAIN__</string>
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>

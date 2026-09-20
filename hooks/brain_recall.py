@@ -215,7 +215,7 @@ _DEFAUTS = {
     "version": "ranking-v1-defaut",
     "index": {"poids_nom": 3, "poids_description": 3, "poids_pont_familles": 1},
     "bm25": {"k1": 1.5, "b": 0.75},
-    "utilite": {"alpha": 0.2},
+    "utilite": {"alpha": 0.0},   # M5 : hors classement (ADR-0018)
     "exploration": {"denominateur": 3, "seuil_peu_proposee": 3},
 }
 _CONFIG_CACHE = None
@@ -367,15 +367,16 @@ def _read_corpus(files):
 # Ce qui a DÉJÀ servi remonte. Le journal de rappel existait depuis des mois et personne ne
 # le relisait : `inject_recall.py` l'ouvrait en « a » et rien ne le lisait — 2,3 % des
 # fiches proposées étaient réellement ouvertes, et rien ne corrigeait ce taux.
-# Le multiplicateur est logarithmique : 1 succès pèse beaucoup, le 10ᵉ presque plus. Une
-# fiche utilisée 3 fois ne doit pas écraser la pertinence lexicale, juste la départager.
-# α MESURÉ, PAS CHOISI AU HASARD. Il n'y a pas de vérité terrain pour l'optimiser ; on
-# mesure donc sa SENSIBILITÉ. Sur 10 requêtes, part du top-3 occupée par des fiches à
-# historique : α=0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30 (et une seule requête
-# sur dix garde son top-3 d'origine). Au-delà de ~0,3 l'historique dicte le classement et
-# le lexical n'est plus le juge. 0,2 = l'usage départage sans dominer.
-# Les deux valeurs vivent maintenant dans config/ranking.json, avec leur justification.
-# Ces noms restent pour ne pas casser ce qui les importe (tests, sondes, banc).
+# ⚠️ α N'EST PLUS UN PARAMÈTRE DE CLASSEMENT depuis le 2026-09-19 (ADR-0018, M5).
+# Il l'a été du 2026-08 au 2026-09-19 : le score valait bm25 × (1 + α·ln(1+hits)), et α
+# avait été MESURÉ, pas choisi — part du top-3 occupée par des fiches à historique, sur
+# 10 requêtes : α=0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30.
+# Ce qui a fermé le dossier n'est pas la valeur mais la RÉSOLUTION de l'instrument : sous
+# 1 % d'écart lexical — la seule bande où un départage aurait le droit d'agir — l'ordre
+# s'inverse une fois sur deux quand le corpus bouge. Dans cette bande, rien ne distingue
+# le service du bruit, donc le bonus y est injustifiable, pas seulement petit.
+# La constante reste lue ici pour ne pas casser ce qui l'importe (tests gelés, sondes),
+# et vaut 0 dans config/ranking.json : même réintroduite par erreur, elle serait inerte.
 ALPHA = config()["utilite"]["alpha"]
 SEUIL_PEU_PROPOSEE = config()["exploration"]["seuil_peu_proposee"]
 _UTILITE_CACHE = None
@@ -468,7 +469,11 @@ class BM25:
         """Le classement AVEC sa décomposition — la source unique de search() et de --explain.
 
         Retourne une liste de dicts ordonnée, un par résultat retenu :
-          doc · bm25 · detail_bm25 · hits · facteur_utilite · score · exploration · rang
+          doc · bm25 · detail_bm25 · hits · dernier · facteur_utilite · score ·
+          exploration · rang
+
+        Depuis M5 (ADR-0018) `score` EST `bm25` : `hits` et `dernier` sont des
+        annotations d'usage, servies à côté du résultat et jamais dedans.
 
         `search()` n'en garde que (score, doc) pour ne rien casser chez ses appelants.
         """
@@ -487,13 +492,17 @@ class BM25:
             vivants = [t for t in scored if t[1]["name"] not in morts]
             scored = vivants or scored        # jamais de résultat vide à cause du filtre
         util = _utilite() if feedback else {}
-        alpha = config()["utilite"]["alpha"]
         ajuste = []
         for s, d, i in scored:
-            hits = util.get(d["path"], {}).get("hit", 0)
-            facteur = 1 + alpha * math.log(1 + hits)
-            ajuste.append({"doc": d, "idx": i, "bm25": s, "hits": hits,
-                           "facteur_utilite": facteur, "score": s * facteur,
+            # ADR-0018, mécanisme M5 — INSTALLÉ le 2026-09-19, décidé le 2026-08-30.
+            # L'usage ne multiplie plus, ne départage plus, ne sélectionne plus : le rang
+            # est le score lexical, et rien d'autre. `facteur_utilite` reste publié, figé
+            # à 1,0, parce que des instruments gelés lisent la clé (tools/admin-L1) ; il
+            # ne peut plus varier, donc il ne peut plus déplacer une fiche.
+            u = util.get(d["path"], {})
+            ajuste.append({"doc": d, "idx": i, "bm25": s,
+                           "hits": u.get("hit", 0), "dernier": u.get("dernier"),
+                           "facteur_utilite": 1.0, "score": s,
                            "exploration": False})
         ajuste.sort(key=lambda r: r["score"], reverse=True)
 
@@ -544,9 +553,10 @@ def _imprimer_explication(records, query, as_json):
     """« Pourquoi cette fiche, et pourquoi à cette place ? »
 
     HONNÊTETÉ DU SCHÉMA. On n'invente pas de composantes qui n'existent pas dans le
-    calcul. Aujourd'hui le score est MULTIPLICATIF (bm25 × facteur d'utilité), pas une
-    somme de bonus — donc `utilite` est publié comme le DELTA qu'il ajoute réellement,
-    et sa nature est nommée. De même :
+    calcul. Depuis M5 (ADR-0018, 2026-09-19) le score n'a plus qu'UNE composante, `bm25`.
+    L'usage a donc quitté `composantes` pour `usage` : le laisser parmi les composantes
+    à +0,00 aurait suggéré un terme qui vaut zéro aujourd'hui, alors qu'il n'existe plus.
+    De même :
       • le pont des familles n'est PAS un terme du score : il est fondu dans le texte
         indexé, donc dans `bm25`. On publie les mots de la requête qui viennent de lui,
         ce qui répond à la vraie question (« cette fiche doit-elle sa place à ses propres
@@ -568,11 +578,14 @@ def _imprimer_explication(records, query, as_json):
             "score_final": round(r["score"], 4),
             "composantes": {
                 "bm25": round(r["bm25"], 4),
-                "utilite": round(r["score"] - r["bm25"], 4),
+            },
+            "usage": {
+                "ouvertures_apres_suggestion": r["hits"],
+                "derniere": r.get("dernier"),
             },
             "nature": {
-                "utilite": f"MULTIPLICATIF ×{r['facteur_utilite']:.4f} "
-                           f"(alpha={cfg['utilite']['alpha']}, hits={r['hits']})",
+                "utilite": "HORS CLASSEMENT (ADR-0018, M5) — annotation d'usage : "
+                           "elle décrit le résultat, elle ne le déplace jamais",
                 "pont_familles": "fondu dans bm25, jamais un terme séparé",
                 "exploration": "place réservée, jamais un bonus de score",
             },
@@ -589,9 +602,11 @@ def _imprimer_explication(records, query, as_json):
     for e in sortie:
         drapeau = "  ⟵ place d'exploration" if e["place_exploration"] else ""
         print(f"  #{e['rang']}  [{e['score_final']:6.2f}] {e['fiche']}{drapeau}")
-        c = e["composantes"]
-        print(f"        bm25 {c['bm25']:6.2f}   utilité {c['utilite']:+6.2f}"
-              f"   ({e['nature']['utilite']})")
+        c, u = e["composantes"], e["usage"]
+        quand = f", dern. {u['derniere']}" if u["derniere"] else ""
+        print(f"        bm25 {c['bm25']:6.2f}   ← le rang, en entier")
+        print(f"        usage : {u['ouvertures_apres_suggestion']} ouverture(s) après "
+              f"suggestion{quand} — hors classement")
         if e["detail_bm25"]:
             termes = "  ".join(f"{t} {v:.2f}" for t, v in list(e["detail_bm25"].items())[:6])
             print(f"        termes : {termes}")
@@ -622,6 +637,9 @@ def main():
     explain = "--explain" in args
     if explain:
         args.remove("--explain")
+    lignes = "--lignes" in args          # passages au lieu de descriptions (hooks/brain_lignes.py)
+    if lignes:
+        args.remove("--lignes")
     k = 5
     if "-k" in args:
         i = args.index("-k")
@@ -631,23 +649,42 @@ def main():
             pass
     query = " ".join(args).strip()
     if not query:
-        print('Usage : brain_recall.py [-k N] [--json] [--explain] "ta requête"'); sys.exit(1)
+        print('Usage : brain_recall.py [-k N] [--json] [--explain] [--lignes] "ta requête"'); sys.exit(1)
+
+    if lignes:
+        import brain_lignes
+        moteur = BM25(load_corpus())
+        res = moteur.classer(query, max(k, brain_lignes.REGLAGES["k"]))
+        if not res:
+            print(f"Aucune fiche pertinente pour : {query}"); return
+        print(brain_lignes.rendre(moteur, tokenize, query, res), end="")
+        return
 
     if explain:
         _imprimer_explication(BM25(load_corpus()).classer(query, k), query, as_json)
         return
 
-    results = BM25(load_corpus()).search(query, k)
+    # `classer` et non `search` : depuis M5 (ADR-0018) l'usage est une ANNOTATION servie à
+    # côté du résultat, et `search` ne rend que (score, doc) — elle la perdrait. Elle n'est
+    # affichée QUE si la fiche a déjà été ouverte : une ligne « 0 ouverture » sur chaque
+    # résultat serait du texte relu à chaque échange pour ne rien dire (sobriété en octets).
+    # Le format compact injecté (`--lignes`) ne la porte pas, pour la même raison.
+    results = BM25(load_corpus()).classer(query, k)
     if as_json:
-        print(json.dumps([{"path": d["path"], "name": d["name"],
-                           "desc": d["desc"], "score": round(s, 3)}
-                          for s, d in results], ensure_ascii=False, indent=2))
+        print(json.dumps([{"path": r["doc"]["path"], "name": r["doc"]["name"],
+                           "desc": r["doc"]["desc"], "score": round(r["score"], 3),
+                           "usage": {"ouvertures_apres_suggestion": r["hits"],
+                                     "derniere": r.get("dernier")}}
+                          for r in results], ensure_ascii=False, indent=2))
         return
     if not results:
         print(f"Aucune fiche pertinente pour : {query}"); return
     print(f"🔎 Top {len(results)} pour « {query} » :\n")
-    for s, d in results:
-        print(f"  [{s:5.2f}] {d['name']}  ({d['path']})")
+    for r in results:
+        d = r["doc"]
+        quand = f", dern. {r['dernier']}" if r.get("dernier") else ""
+        usage = f"   · déjà ouverte {r['hits']}×{quand}" if r["hits"] else ""
+        print(f"  [{r['score']:5.2f}] {d['name']}  ({d['path']}){usage}")
         if d["desc"]:
             print(f"          {d['desc'][:110]}")
 

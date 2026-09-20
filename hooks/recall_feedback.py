@@ -28,14 +28,14 @@ CE QU'IL NE FAIT PAS, DÉLIBÉRÉMENT.
   • Aucune suppression. Ce fichier ne touche à aucune fiche.
 
 Sorties :
-  state/recall-utilite.json                  {chemin: {sugg, hit}} — lu par brain_recall
+  state/recall-utilite.json                  {chemin: {sugg, hit, dernier}} — lu par brain_recall
   state/souvent-proposee-jamais-ouverte.json  observation brute, PAS un verdict (cf. plus bas)
 
 Usage :
   recall_feedback.py            recalcule les deux fichiers
   recall_feedback.py --rapport  recalcule et imprime un résumé lisible
 """
-import os, sys, json, collections
+import os, sys, json, collections, datetime
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 ETAT = os.path.join(BRAIN, "state")
@@ -76,14 +76,22 @@ def calculer():
     for d in _lire("read_log.jsonl"):
         lectures[(d["path"], d["sid"])].append(d["ts"])
 
+    # ADR-0018 / M5 (2026-09-19) : l'usage ne classe plus, il ANNOTE. Une annotation qui
+    # ne dit pas QUAND ne vaut rien — « ouverte 5 fois » peut dater de trois mois. La date
+    # se calcule ici, dans la boucle qui tient déjà les horodatages : le rappel, lui, lit
+    # un nombre déjà écrit et ne paie rien de plus à chaque prompt.
     utilite = {}
     for chemin, sids in suggestions.items():
-        hits = sum(
-            1 for sid in sids
-            if any(ts >= premiere[(chemin, sid)] - TOLERANCE_S
-                   for ts in lectures.get((chemin, sid), ()))
-        )
-        utilite[chemin] = {"sugg": len(sids), "hit": hits}
+        derniers = []
+        for sid in sids:
+            vues = [ts for ts in lectures.get((chemin, sid), ())
+                    if ts >= premiere[(chemin, sid)] - TOLERANCE_S]
+            if vues:                          # même règle qu'avant : au moins une lecture
+                derniers.append(max(vues))    # qui suit la suggestion, à la tolérance près
+        utilite[chemin] = {"sugg": len(sids), "hit": len(derniers)}
+        if derniers:
+            utilite[chemin]["dernier"] = datetime.datetime.fromtimestamp(
+                max(derniers)).strftime("%Y-%m-%d")
 
     a_revoir = sorted(
         ({"path": c, "sugg": v["sugg"]} for c, v in utilite.items()

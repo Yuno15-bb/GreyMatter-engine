@@ -8,9 +8,14 @@ ou via `brain next`.
 
 Le cerveau qui tend la fiche AVANT qu'on la cherche. Sort toujours 0.
 """
-import os, re, sys, glob
+import os, re, sys, glob, subprocess
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+# Fiches JAMAIS candidates, quelle que soit la casse du système de fichiers.
+# ETAT-DES-PROJETS.md est un TABLEAU DE BORD généré, pas une fiche de travail : il
+# contient « ce qu'il faut reprendre », donc il se détecte lui-même et squatte la
+# première place (2026-08-13). Même statut que MEMORY.md.
+EXCLUS_TOUJOURS = frozenset(("memory.md", os.path.join("projects", "etat-des-projets.md").lower()))
 SKIP_PARTS = (".git", "node_modules", "capsule", "sessions/archive", "corpus", "audits")
 # marqueurs forts (vrais points de reprise) puis faibles (todo génériques)
 STRONG = re.compile(r"(REPRENDRE ICI|POINT DE REPRISE|À REPRENDRE|REPRENDRE"
@@ -104,6 +109,47 @@ def snippet(text, m):
     return re.sub(r"\s+", " ", line)[:180]
 
 
+class CapabiliteIndisponible(Exception):
+    """git absent, ou tronc hors dépôt : le classement des reprises est IMPOSSIBLE.
+
+    Jamais un repli silencieux sur `mtime`. Un repli muet rendrait une liste
+    plausible et fausse — exactement le faux nominal que le Brain s'interdit.
+    L'appelant doit DIRE que la capacité manque, pas proposer autre chose.
+    """
+
+
+def _dates_git(racine):
+    """{chemin relatif -> horodatage du dernier commit qui l'a touché}.
+
+    UN SEUL relevé pour tout le dépôt (mesuré le 20/08 : 66 ms, 2147 chemins),
+    et non un `git log` par fiche. `git log` étant antéchronologique, la
+    PREMIÈRE date vue pour un chemin est la plus récente.
+    """
+    try:
+        r = subprocess.run(["git", "-C", racine, "rev-parse", "--is-inside-work-tree"],
+                           capture_output=True, text=True, timeout=20)
+    except (FileNotFoundError, subprocess.SubprocessError) as e:
+        raise CapabiliteIndisponible("git introuvable : %s" % e)
+    if r.returncode != 0 or r.stdout.strip() != "true":
+        raise CapabiliteIndisponible("%s n'est pas un dépôt git" % racine)
+    r = subprocess.run(["git", "-C", racine, "log", "--format=@%ct", "--name-only",
+                        "--no-renames", "-z", "HEAD"],
+                       capture_output=True, text=True, timeout=180)
+    if r.returncode != 0:
+        raise CapabiliteIndisponible("git log a échoué : %s" % r.stderr.strip()[:120])
+    out, ts = {}, None
+    for champ in r.stdout.split("\0"):
+        for ligne in champ.split("\n"):
+            ligne = ligne.strip()
+            if not ligne:
+                continue
+            if ligne.startswith("@"):
+                ts = int(ligne[1:])
+            elif ts is not None:
+                out.setdefault(ligne, ts)
+    return out
+
+
 def collect():
     out = []
     for p in glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True):
@@ -113,7 +159,12 @@ def collect():
         # ETAT-DES-PROJETS.md est un TABLEAU DE BORD généré, pas une fiche de travail :
         # il contient « ce qu'il faut reprendre », donc il se détectait lui-même et
         # squattait la première place des reprises (2026-08-13). Même statut que MEMORY.md.
-        if rel in ("MEMORY.md", os.path.join("projects", "ETAT-DES-PROJETS.md")) \
+        # ⚠️ COMPARAISON INSENSIBLE À LA CASSE (2026-08-20). Elle était littérale, et
+        # `planet/graph.json` portait `projects/etat-des-projets.md` quand le disque
+        # porte `ETAT-DES-PROJETS.md` : sur un système de fichiers insensible à la
+        # casse, la même fiche a deux orthographes et l'exclusion en rate une.
+        # Le tableau de bord se rallumait alors dans les reprises qu'il résume.
+        if rel.lower() in EXCLUS_TOUJOURS \
                 or any(part in rel.split(os.sep) for part in SKIP_PARTS):
             continue
         zone = rel.split(os.sep)[0]
@@ -129,13 +180,38 @@ def collect():
             out.append({"path": rel, "mtime": os.path.getmtime(p),
                         "name": name.group(1).strip() if name else os.path.basename(rel)[:-3],
                         "reprise": snippet(txt, m)})
-    out.sort(key=lambda x: x["mtime"], reverse=True)
+    # ── LE CLASSEMENT (2026-08-20) ───────────────────────────────────────────
+    # `mtime` a été la clé jusqu'ici. C'est une propriété du SYSTÈME DE FICHIERS,
+    # pas de la connaissance : un `git clone`, un `checkout`, un `stash pop` ou un
+    # `rsync` la réécrivent en bloc. MESURÉ le 20/08 : sur un clone frais, les 60
+    # candidats partagent un seul mtime — le top-4 devenait un départage arbitraire,
+    # et le badge ↻ de la planète (un INSTANTANÉ) ne pouvait plus concorder avec ce
+    # que le démarrage de session propose (un RECALCUL).
+    #
+    # La clé est donc la date du dernier commit qui a touché la fiche : elle décrit
+    # l'état VERSIONNÉ, elle voyage avec le dépôt, et une maintenance qui ne change
+    # rien ne la bouge pas. Départage déclaré AVANT la mesure : chemin croissant.
+    # Un candidat non suivi par git n'a pas de date : il passe après tous les autres,
+    # jamais départagé en douce par son mtime. `mtime` reste dans chaque entrée —
+    # `etat_projets.py` s'en sert pour afficher un âge en jours.
+    dates = _dates_git(BRAIN)
+    out.sort(key=lambda x: (0 if dates.get(x["path"]) is not None else 1,
+                            -(dates.get(x["path"]) or 0),
+                            x["path"]))
     return out
 
 
 def main():
-    items = collect()[:TOP_REPRISES]
     mode_hook = "--hook" in sys.argv
+    try:
+        items = collect()[:TOP_REPRISES]
+    except CapabiliteIndisponible as e:
+        # Une capacité absente se DIT. Se taire ici reviendrait à annoncer « aucune
+        # reprise en attente », qui est une réponse plausible et fausse.
+        sortie = ("<brain-reprises> Reprises indisponibles : %s </brain-reprises>"
+                  if mode_hook else "🧭 Reprises indisponibles : %s")
+        print(sortie % e)
+        return
     if not items:
         # En HOOK, ne rien dire : un tronc vide ne doit pas ajouter une ligne à
         # chaque prompt. En COMMANDE, le dire — `brain next` est une commande

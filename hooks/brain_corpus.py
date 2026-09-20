@@ -56,6 +56,16 @@ SKIP_DIRS = {
     # ranger l'historique au froid n'a aucun sens s'il continue de concurrencer
     # le présent dans la recherche. Sur disque et dans git, hors du rappel.
     "archive",
+    # `vision/` = documents SOURCES de vision et de continuité (le MASTER
+    # C Brain/GMatter, 2026-08-19). Ce ne sont pas des fiches de savoir : ce sont
+    # des récits longs qui expliquent POURQUOI le système existe. Un seul d'entre
+    # eux pèse plus que 20 fiches et touche tout le vocabulaire du projet — indexé,
+    # il remonterait sur presque chaque requête et écraserait la fiche précise que
+    # l'on cherche (même mécanique que `archive/` mesurée le 2026-08-14).
+    # Ils restent atteignables par leur POINTEUR dans MEMORY.md et par la fiche
+    # courte qui leur sert de porte d'entrée, elle indexée.
+    # Verrouillé par tests/vision_hors_corpus.py.
+    "vision",
 }
 SKIP_PREFIX = ("sessions",)
 SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}

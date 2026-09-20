@@ -13,6 +13,7 @@ Conçu pour être appelé :
 Déterministe et sans dépendance externe. Sort toujours 0 (ne bloque jamais un hook).
 """
 import os, re, json, sys
+import subprocess
 from collections import Counter
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
@@ -74,12 +75,28 @@ def load_challenges():
 
 
 def load_embed2():
-    """Positions 2D sémantiques { rel_path: [x,y] } — cache produit hors-ligne (numpy).
-    Lu SANS dépendance : graph_export reste pur-stdlib (appelé à chaque écriture de fiche)."""
+    """Positions 3D sémantiques { rel_path: [x,y,z] } — cache produit hors-ligne (numpy).
+    Lu SANS dépendance : graph_export reste pur-stdlib (appelé à chaque écriture de fiche).
+
+    REND (positions, état, détail) — ET C'EST TOUT L'INTÉRÊT DE CETTE SIGNATURE.
+    Avant, un `except Exception: return {}` confondait trois situations qu'un lecteur doit
+    pouvoir distinguer : le module n'a jamais été installé (légitime — les embeddings sont
+    optionnels par dessein, docs/design-doc.md), le cache est là et illisible (une vraie
+    panne), le cache est là et bon. La Planète annonçait alors « SENS EN VOLUME — proximité
+    = sens, toutes les fiches » sur une carte où PAS UNE fiche n'avait de vecteur, parce
+    qu'un dictionnaire vide ne dit rien de la raison de son vide. Mesuré à l'écran le
+    2026-09-19 sur le paquet livré : 0 fiche sur 10, et la carte S'OUVRE sur cette vue.
+    """
+    if not os.path.exists(EMBED2):
+        return {}, "absent", ("state/embed2.json n'a jamais été produit — le module "
+                              "sémantique est optionnel et n'a pas tourné")
     try:
-        return json.load(open(EMBED2, encoding="utf-8")).get("pos", {})
-    except Exception:
-        return {}
+        pos = json.load(open(EMBED2, encoding="utf-8")).get("pos", {})
+    except Exception as e:                      # illisible, tronqué, pas du JSON
+        return {}, "broken", f"state/embed2.json est là mais illisible : {e}"
+    if not isinstance(pos, dict):
+        return {}, "broken", "state/embed2.json n'a pas de table `pos` exploitable"
+    return pos, "ready", ""
 
 
 def load_coact():
@@ -119,11 +136,38 @@ LINK = re.compile(r'\[\[([^\]]+)\]\]')          # [[nom-de-fiche]]
 # reprises proposées au démarrage de session. Une seule source, donc plus de divergence
 # possible entre ce que le Brain propose et ce que la carte montre.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-try:
-    import brain_anticipate
-    reprises = {it["path"] for it in brain_anticipate.collect()[:brain_anticipate.TOP_REPRISES]}
-except Exception:
-    reprises = set()          # jamais bloquer l'export du graphe pour un badge
+def _head_courant():
+    """Le HEAD du tronc, ou None si le tronc n'est pas un dépôt."""
+    try:
+        r = subprocess.run(["git", "-C", BRAIN, "rev-parse", "HEAD"],
+                           capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def load_reprises():
+    """Les fiches en tête des reprises proposées (badge ↻), et la raison si le calcul échoue.
+
+    APPELÉE PAR scan(), PLUS AU CHARGEMENT DU MODULE (17/09). `brain_anticipate.collect()`
+    parcourt tout l'arbre : mesuré à 281 ms, et ces 281 ms étaient payées par TOUT importateur
+    du module — le docteur, les bancs, et depuis ce matin le hook qui relit chaque fiche à
+    l'écriture — alors que le seul lecteur du résultat est le graphe. Le hook les payait dans
+    son temps de PREMIER PLAN, celui que l'utilisateur attend, là où il prend soin de détacher ses
+    rafraîchissements. Même forme que load_coact, load_challenges et les autres chargeurs
+    au-dessus : une fonction, appelée là où son résultat sert.
+    """
+    try:
+        import brain_anticipate
+        return {it["path"] for it in brain_anticipate.collect()[:brain_anticipate.TOP_REPRISES]}, None
+    except Exception as e:
+        # Jamais bloquer l'export du graphe pour un badge — mais un badge éteint parce
+        # que la capacité manque et un badge éteint parce qu'il n'y a rien à reprendre
+        # sont deux états DIFFÉRENTS. Le graphe porte donc la raison, et l'invariant la
+        # lit plutôt que de comparer deux ensembles vides et de se croire vert.
+        indisponible = "%s: %s" % (type(e).__name__, e)
+        print("⚠️  badge ↻ non calculé — %s" % indisponible, file=sys.stderr)
+        return set(), indisponible
 DASH = re.compile(r'\s+[—–]\s+')                # tiret cadratin/demi-cadratin entouré d'espaces
 
 # poids des appartenances (modèle continent/ville/frontière) — voir respirabilite & volet-3
@@ -248,11 +292,12 @@ def scan():
     nodes = {}      # id -> {id, name, domain, group, desc, file}
     raw_links = []   # (src_id, target_name)
     types_liens = {}  # (src_id, target_name) -> "base_sur" | "contredit" | "remplace"
-    embed2 = load_embed2()         # positions sémantiques par chemin de fiche (Étage 1)
+    embed2, sem_state, sem_detail = load_embed2()   # positions sémantiques + POURQUOI (Étage 1)
     heat, coact_edges, live, live_window_min = load_coact()   # chaleur + liens d'usage + activité en direct (Étage 2)
     challenges = load_challenges()             # avis du challenger par fiche (Étage 3)
     beliefs = load_beliefs()                   # convictions datées de l'auteur du tronc (Étage 3 : couche goût)
     media = load_media()                       # captures rejouables par fiche (Étage 4)
+    reprises, reprises_indisponibles = load_reprises()   # fiches en tête des reprises (badge ↻)
 
     for domain in DOMAINS:
         root = os.path.join(BRAIN, domain)
@@ -398,8 +443,19 @@ def scan():
         n["frontier"] = (n["primary_project"] is not None
                          and sum(1 for v in m.values() if v >= FRONTIER_MIN) >= 2)
 
+    # LA COUVERTURE SE COMPTE SUR LES FICHES, pas sur la taille du cache : une entrée qui
+    # ne correspond à aucune fiche actuelle ne place personne, et un cache de 400 clés
+    # périmées se lirait sinon comme une santé parfaite.
+    sem_covered = sum(1 for n in nodes.values() if n.get("embed2"))
     return {
         "generated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%S"),
+        # LE HEAD QUE CE GRAPHE DÉCRIT (2026-08-20). Le badge ↻ est un INSTANTANÉ ;
+        # les reprises proposées au démarrage sont un RECALCUL. Depuis que le
+        # classement suit la date de commit, les deux concordent tant qu'ils parlent
+        # du même HEAD — et divergent légitimement dès qu'un commit passe. Sans ce
+        # champ, « périmé » et « incohérent » sont indiscernables.
+        "head": _head_courant(),
+        "reprises_indisponibles": reprises_indisponibles,
         "counts": {"nodes": len(nodes), "links": len(links),
                    "projects": len(projects),
                    "frontier": sum(1 for n in nodes.values() if n.get("frontier")),
@@ -422,12 +478,77 @@ def scan():
         "links": links,
         # liens d'USAGE (co-activation) : fiches activées ensemble en session, ≠ liens déclarés (Étage 2)
         "coact": [e for e in coact_edges if e[0] in ids and e[1] in ids],
+        # LA CAPACITÉ SÉMANTIQUE, DÉCLARÉE — pas supposée. L'afficheur lisait l'absence de
+        # vecteurs comme « rien à signaler » et gardait sa formulation nominale ; on lui dit
+        # désormais, en toutes lettres, combien de fiches sont réellement posées par le sens
+        # et pourquoi les autres ne le sont pas. `covered == 0` AVEC un cache lisible n'est
+        # pas « en cours » : le cache existe et ne correspond à aucune fiche actuelle (clés
+        # périmées, tronc déplacé), ce qu'un lecteur doit VOIR, pas deviner.
+        "semantic": {
+            "state": (sem_state if sem_state != "ready" else
+                      "ready" if nodes and sem_covered == len(nodes) else
+                      "partial" if sem_covered else "broken"),
+            "covered": sem_covered,
+            "total": len(nodes),
+            "detail": (sem_detail if sem_detail else
+                       "" if sem_covered == len(nodes) else
+                       f"state/embed2.json ne correspond à aucune des {len(nodes)} fiches — cache périmé"
+                       if not sem_covered else
+                       f"{len(nodes) - sem_covered} fiche(s) écrite(s) depuis la dernière indexation"),
+        },
     }
 
 
-TYPES_RELATION = ("base_sur", "contredit", "remplace")
+# ── LE VOCABULAIRE DES RELATIONS — fermé, décidé par l'auteur le 2026-09-17 (ADR-0019) ──
+# Quatre types qui disent chacun une chose précise, plus UN fourre-tout qui doit dire pourquoi.
+# Le fourre-tout existe parce que le refuser ne supprime pas le besoin, il le pousse vers des
+# mots inventés que l'export jette en silence : mesuré le 17/09, `voisin_de` — qui n'existe
+# dans aucun vocabulaire — portait 239 liens, 42 % du total, et disparaissait sans un mot.
+#   base_sur   cette fiche PRÉSUPPOSE l'autre
+#   precise    cette fiche affine l'autre sans la contredire (37 liens l'utilisaient déjà)
+#   contredit  les deux ne peuvent pas être vraies ensemble
+#   remplace   l'autre est morte, celle-ci prend la suite (SEUL type actif : sort du rappel)
+#   lie_a      tout le reste — n'est complet qu'accompagné de sa raison, en une phrase
+TYPES_RELATION = ("base_sur", "precise", "contredit", "remplace", "lie_a")
+
+# DEUX FORMES, parce que les deux étaient déjà écrites dans le tronc le 17/09 :
+#     base_sur: [a, b]         la forme courte — 558 liens ;
+#     base_sur:                la forme bloc (liste YAML) — 5 fiches, et elle était jetée EN
+#       - a                    SILENCE, l'analyseur n'acceptant que les crochets ;
+#     lie_a:                   la forme bloc porte en plus la raison, après deux-points.
+#       - a: parce que …
+# `- a: raison` est du YAML valide (une liste d'associations), donc un lecteur YAML réel ne
+# s'étrangle pas dessus le jour où il en passe un.
 _REL_BLOC = re.compile(r"^relations:\s*$(.*?)(?=^\S|\Z)", re.M | re.S)
 _REL_LIGNE = re.compile(r"^\s+(\w+)\s*:\s*\[([^\]]*)\]", re.M)
+_REL_TETE = re.compile(r"^\s+(\w+)\s*:\s*$")
+_REL_ITEM = re.compile(r"""^\s+-\s+["']?([^:"'\n]+?)["']?\s*(?::\s*(\S.*?))?\s*$""")
+
+
+def relations_brutes(bloc):
+    """[(type, cible, raison|None)] pour TOUT ce qui est écrit sous `relations:`, sans filtrer
+    sur TYPES_RELATION. C'est ce que lit le docteur pour NOMMER les types que l'export va
+    jeter : il ne peut le dire que s'il voit d'abord ce qui est écrit, y compris l'inconnu."""
+    out, courant = [], None
+    for ligne in bloc.split("\n"):
+        m = _REL_LIGNE.match(ligne)
+        if m:
+            courant = None
+            for c in m.group(2).split(","):
+                c = c.strip().strip('"\'')
+                if c:
+                    out.append((m.group(1), c, None))
+            continue
+        m = _REL_TETE.match(ligne)
+        if m:
+            courant = m.group(1)
+            continue
+        m = _REL_ITEM.match(ligne) if courant else None
+        if m:
+            out.append((courant, m.group(1).strip(), (m.group(2) or "").strip() or None))
+        elif ligne.strip():
+            courant = None
+    return out
 
 
 def _relations(text):
@@ -440,9 +561,9 @@ def _relations(text):
     if not bloc:
         return {}
     out = {}
-    for typ, cibles in _REL_LIGNE.findall(bloc.group(1)):
+    for typ, cible, _raison in relations_brutes(bloc.group(1)):
         if typ in TYPES_RELATION:
-            out[typ] = [c.strip().strip('"\'') for c in cibles.split(",") if c.strip()]
+            out.setdefault(typ, []).append(cible)
     return out
 
 

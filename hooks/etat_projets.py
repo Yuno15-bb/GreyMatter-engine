@@ -54,7 +54,7 @@ import sys
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 HOME = os.path.expanduser("~")
-FICHE = os.path.join(BRAIN, "projects", "ETAT-DES-PROJETS.md")
+FICHE = os.path.join(BRAIN, "projects", "etat-des-projets.md")
 # Dans projects/ et pas state/ : state/ est ignoré par git, la liste des décisions
 # dues par l'auteur ne survivrait pas à un `git clone`. C'est du savoir, pas de l'état machine.
 DECISIONS = os.path.join(BRAIN, "projects", "decisions-dylan.json")
@@ -187,6 +187,21 @@ def rendre(reps, reprs, decs) -> str:
     L.append("")
     L.append(f"*Regénéré le {ts.strftime('%Y-%m-%d à %H:%M')}. Ne pas éditer à la main : "
              "le prochain passage écrase tout.*")
+    L.append("")
+
+    L.append("## En clair")
+    L.append("")
+    L.append("Cette page est le tableau de bord de TOUS les projets de l'auteur, refait tout seul "
+             "deux fois par jour. Personne ne l'écrit à la main : le passage suivant remplace "
+             "tout ce qu'on y aurait tapé.")
+    L.append("")
+    L.append("Elle sépare deux choses qu'il ne faut pas confondre. Ce qui est **mesuré** vient "
+             "directement des dépôts de code sur la machine — du travail jamais enregistré, des "
+             "enregistrements jamais envoyés ailleurs, un projet sans aucune copie hors du Mac. "
+             "Ce qui est **déclaré** vient des fiches que j'écris, et vaut ce que vaut la fiche.")
+    L.append("")
+    L.append("On la lit pour une seule question : est-ce qu'un travail risque de disparaître, "
+             "et est-ce qu'une décision attend l'auteur ?")
     L.append("")
 
     L.append("## ⚠️ Ce qui demande un geste")

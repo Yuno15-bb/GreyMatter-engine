@@ -21,7 +21,33 @@ BRAIN = (os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 # Nom du dossier transcripts = $HOME avec "/" -> "-" (convention Claude Code).
 # NE JAMAIS coder le nom d'utilisateur en dur ici (a cassé silencieusement la
 # distillation lors de la migration d'un compte utilisateur vers un autre, cf. [[restauration-machine-2026-07-22]]).
-PROJECTS_DIR = os.path.join(os.path.expanduser("~/.claude/projects"), os.path.expanduser("~").replace(os.sep, "-"))
+PROJECTS_ROOT = os.path.expanduser("~/.claude/projects")
+PROJECTS_DIR = os.path.join(PROJECTS_ROOT, os.path.expanduser("~").replace(os.sep, "-"))
+
+
+def transcripts_hors_index():
+    """Ce que cet index NE LIT PAS, compté dossier par dossier.
+
+    ⚠ LE NOM DU DOSSIER VIENT DU DOSSIER D'OÙ LA SESSION A ÉTÉ OUVERTE, pas de $HOME :
+      `rebuild_timeline` n'en balaie qu'UN, et l'en-tête annonçait pourtant « index sans
+      perte de l'intégralité de nos sessions ». Mesuré le 2026-09-20 : 155 transcrits lus
+      sur 733, sept dossiers jamais ouverts. **Les élargir serait une régression**, pas une
+      réparation : 371 des 376 transcrits du plus gros dossier sont des sessions de
+      maintenance automatique, et les mêler aux vraies est exactement le défaut réparé le
+      2026-08-03 (voir la garde ANTI-RÉCURSION dans `main`). Ce qui n'est pas acceptable,
+      c'est que l'index se taise. Il dit donc ce qu'il laisse dehors, avec le compte."""
+    hors = []
+    try:
+        for d in sorted(os.listdir(PROJECTS_ROOT)):
+            chemin = os.path.join(PROJECTS_ROOT, d)
+            if chemin == PROJECTS_DIR or not os.path.isdir(chemin):
+                continue
+            n = len(glob.glob(os.path.join(chemin, "*.jsonl")))
+            if n:
+                hors.append((d, n))
+    except OSError:
+        pass
+    return hors
 SESSIONS = os.path.join(BRAIN, "sessions")
 ARCHIVE = os.path.join(SESSIONS, "archive")
 CACHE = os.path.join(SESSIONS, ".index.json")
@@ -100,10 +126,21 @@ def rebuild_timeline():
 
 def write_timeline(cache):
     rows = sorted(cache.values(), key=lambda e: e["ts"])
-    out = ["# 🕰️ Timeline — toutes les sessions Claude Code\n",
-           "Index **sans perte** de l'intégralité de nos sessions. Transcripts bruts : "
-           f"`{PROJECTS_DIR}/<id>.jsonl`. Tenu à jour automatiquement par le hook SessionEnd. "
-           "Secrets masqués automatiquement.\n"]
+    hors = transcripts_hors_index()
+    out = ["# 🕰️ Timeline — les sessions ouvertes depuis le dossier personnel\n",
+           f"Index **sans perte de ce qu'il lit** : les {len(rows)} sessions dont le "
+           f"transcript vit dans `{PROJECTS_DIR}/`. Tenu à jour automatiquement par le "
+           "hook SessionEnd. Secrets masqués automatiquement.\n"]
+    if hors:
+        total = sum(n for _, n in hors)
+        detail = ", ".join(f"`{d}` ({n})" for d, n in sorted(hors, key=lambda x: -x[1]))
+        out.append(
+            f"⚠️ **Et {total} transcripts qu'il ne lit PAS**, dans {len(hors)} autres "
+            f"dossiers : {detail}. Le nom du dossier vient de l'endroit d'où la session a "
+            "été ouverte, pas de `$HOME` — l'essentiel de ce qui est ici sont les sessions "
+            "de maintenance automatique, tenues dehors depuis le 2026-08-03 pour ne pas "
+            "les mêler aux vraies. Ce compte est là pour que le jour où une VRAIE session "
+            "est ouverte depuis un autre dossier, elle se voie au lieu de disparaître.\n")
     cur = None
     for e in rows:
         mois = e["date"][:7]
@@ -144,6 +181,16 @@ def write_archive_note(data, cache):
     ent = cache.get(pid, {})
     cwd = data.get("cwd", "")
     reason = data.get("reason", "?")
+    # C7 : le chemin fourni par Claude Code fait autorité sur toute reconstruction.
+    _tp = data.get("transcript_path")
+    _tp_path = _tp or f"{PROJECTS_DIR}/{sid}.jsonl"
+    _tp_topic = _tp_n = None
+    if _tp and os.path.exists(_tp):
+        try:
+            _r = parse_transcript(_tp)
+            _tp_topic, _tp_n = _r[1], _r[2]
+        except Exception:
+            pass
     git = capture_git_diff(cwd)
     date = ent.get("date") or f"{datetime.now():%Y-%m-%d}"
     proj = ent.get("proj", classify(cwd))
@@ -157,11 +204,11 @@ def write_archive_note(data, cache):
         "metadata:\n  type: reference",
         "---\n",
         f"# Session {date} — {proj}\n",
-        f"- **Sujet** : {ent.get('topic','(non capté)')}",
-        f"- **Messages** : {ent.get('n','?')}",
+        f"- **Sujet** : {ent.get('topic') or _tp_topic or '(non capté)'}",
+        f"- **Messages** : {ent['n'] if ent.get('n') is not None else (_tp_n if _tp_n is not None else '?')}",
         f"- **Fin** : `{reason}`",
         f"- **Dossier** : `{cwd}`",
-        f"- **Transcript brut** : `{PROJECTS_DIR}/{sid}.jsonl`",
+        f"- **Transcript brut** : `{_tp_path}`",
     ]
     if git:
         lines.append(f"\n## Diff git (`{git['branch']}`)\n")

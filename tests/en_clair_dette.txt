@@ -1,0 +1,53 @@
+# DETTE « ## En clair » — liste des fiches du corpus de rappel qui n'ont pas encore
+# leur bloc en français courant. Tenue par tests/en_clair_obligatoire.py.
+#
+# CETTE LISTE NE FAIT QUE FONDRE. Le banc rougit dans les deux sens : une fiche neuve
+# sans bloc et hors liste est refusée ; une fiche de la liste qui a reçu son bloc doit
+# en sortir. On n'ajoute donc PAS une ligne ici pour faire passer un commit — on écrit
+# le bloc.
+#
+# État au 2026-09-20 : 40 leçons, toutes antérieures au 2026-09-20. Les 20 fiches de
+# septembre et les 9 fiches d'index/méta ont été écrites à la main ce jour-là. Les
+# leçons restantes sont un travail de rédaction en volume : leur titre porte déjà
+# l'essentiel, ce qui manque est le récit. Candidates à partir sur le second poste
+# (Codex), cf. meta/la-copie-lourde-part-sur-codex.md.
+lessons/chaine-de-confiance-app-tierce-capteur-sensible.md
+lessons/controle-vert-doit-atteindre-le-mecanisme-teste.md
+lessons/diagnostic-nommer-la-cause-commune-pas-chaque-symptome.md
+lessons/erreur-non-bloquante-avalee-bloque-un-statut-pour-toujours.md
+lessons/ferme-la-permission-avant-de-regler-la-constante.md
+lessons/generalize-py-apostrophe-casse-python-verifier-compilation.md
+lessons/le-build-local-n-est-pas-la-commande-de-la-ci.md
+lessons/le-lisere-vertical-colore-est-banni.md
+lessons/ne-protege-pas-un-banc-d-essai-avec-un-reglage-produit.md
+lessons/notion-select-ecrit-une-valeur-inconnue-cree-loption.md
+lessons/open-est-audite-a-la-tentative-pas-au-succes.md
+lessons/orphan-persiste-si-seul-lien-markdown-pas-wikilink.md
+lessons/page-sans-balise-viewport-se-met-en-page-a-980px.md
+lessons/pgrep-depuis-une-session-claude-ne-voit-pas-sa-propre-session.md
+lessons/quand-une-regle-de-produit-s-inverse-le-capteur-se-retourne-il-ne-se-supprime-pas.md
+lessons/regenerer-sous-un-nom-neuf-pour-eviter-le-cache-du-lecteur-pdf.md
+lessons/servir-une-pwa-en-http-sur-le-reseau-local-desactive-les-api-de-contexte-securise.md
+lessons/un-contexte-sur-conditionne-crypto-randomuuid.md
+lessons/un-controle-qui-cite-une-version-se-perime-a-la-version-suivante.md
+lessons/un-diagnostic-ne-doit-pas-polluer-le-canal-que-lit-un-autre-instrument.md
+lessons/un-filtre-de-test-ecrit-sur-un-mot-attrape-aussi-le-titre.md
+lessons/un-garde-fou-anti-doublon-marque-succes-sans-avoir-ecrit.md
+lessons/un-geocodeur-rend-une-autre-adresse-reelle-pas-une-erreur.md
+lessons/un-instrument-qui-recharge-ne-voit-pas-un-defaut-de-rafraichissement.md
+lessons/un-media-non-ferme-deplace-le-style-il-ne-le-casse-pas.md
+lessons/un-navigateur-ferme-en-plein-banc-est-une-charge-machine.md
+lessons/un-poids-ne-se-juge-pas-dans-l-absolu-mais-contre-le-mur-de-l-hebergeur.md
+lessons/un-portage-copie-les-champs-et-perd-les-notes-de-l-auteur.md
+lessons/un-releve-qui-doit-survivre-va-dans-le-depot-jamais-au-scratchpad.md
+lessons/un-repli-non-enferme-dans-sa-largeur-gagne-au-dessus-par-specificite.md
+lessons/un-sha-cite-dans-un-prompt-de-reprise-est-un-temoin-date.md
+lessons/un-test-qui-rougit-sous-charge-machine-n-est-pas-une-preuve.md
+lessons/une-capture-pleine-page-fige-ce-qui-colle-et-le-superpose.md
+lessons/une-conclusion-heritee-du-meme-chantier-ne-se-rouvre-jamais.md
+lessons/une-doublure-qui-viole-une-contrainte-du-produit-fait-mentir-le-controle.md
+lessons/une-galerie-de-captures-ne-compare-rien-tant-que-le-fond-bouge.md
+lessons/une-mesure-de-geometrie-ne-voit-pas-une-page-vide.md
+lessons/une-passe-globale-annule-un-accent-local.md
+lessons/une-propriete-notion-files-secrit-en-bloc.md
+lessons/xattr-assetsd-retrouve-l-app-d-import-meme-kmditemwherefroms-vide.md

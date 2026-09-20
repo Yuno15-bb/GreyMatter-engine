@@ -148,8 +148,23 @@ def build():
     review = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M"),
         "topology_generated_at": topo.get("generated_at"),
-        "n_fiches": topo.get("n_fiches", doctor.get("fiches")),
+        # ⚠️ DEUX COMPTEURS, DEUX ENSEMBLES DIFFÉRENTS — corrigé le 2026-09-20 (C bis, B4).
+        #   Cette ligne lisait `topo.get("n_fiches", doctor.get("fiches"))`, ce qui a l'air
+        #   d'un défaut anodin et n'en est pas : les deux nombres ne comptent pas la même
+        #   chose. brain_topology compte LES FICHES TISSÉES DANS LE GRAPHE — cinq zones
+        #   (agents, lessons, life, meta, projects), frontmatter avec un `name:`, README et
+        #   cartes structurelles exclus. brain_doctor compte LES FICHIERS MARKDOWN DU DÉPÔT
+        #   — douze zones, skills/ et tools/ compris. MESURÉ ce jour-là : 726 contre 946,
+        #   un écart de 220, imprimés sous le même mot « fiches » sans que rien ne dise que
+        #   la mesure avait changé. Reproduit en cachant topology.json : la ligne de résumé
+        #   passait de « 726 fiches · 2968 liens · 1 composante(s) » à
+        #   « 945 fiches · None liens · None composante(s) · topologie mesurée le None ».
+        #   Donc : pas de substitution. Sans topologie ces champs restent None et le rapport
+        #   DIT qu'il n'a pas regardé, la seule chose que l'ancienne ligne ne savait pas
+        #   exprimer. Le compte du docteur est gardé, sous son propre nom, pour ce qu'il est.
+        "n_fiches": topo.get("n_fiches"),
         "n_liens": topo.get("n_liens"),
+        "n_fichiers_depot": doctor.get("fiches"),
         # — topology (l'architecte tisse / reclasse) —
         "liens_manquants": topo.get("liens_manquants", []),
         "isolees": topo.get("isolees", []),
@@ -186,8 +201,19 @@ def to_markdown(r):
     L = []
     a = L.append
     a(f"# Audit global du tronc — {r['generated_at']}")
-    a(f"\n{r['n_fiches']} fiches · {r['n_liens']} liens · {r['n_composantes']} composante(s)"
-      f" · topologie mesurée le {r.get('topology_generated_at','?')}\n")
+    if r.get("n_fiches") is None:
+        # « Rien à signaler » et « je n'ai pas regardé » ne doivent pas s'écrire pareil — la
+        # propriété que tests/doctor_contract.py énonce pour le docteur, appliquée ici.
+        a("\n⚠️  Topologie non mesurée : ce rapport ne contient ni compte de fiches, ni de"
+          " liens, ni de composantes. Relancer brain_review.py sans --stale pour la mesurer.")
+        if r.get("n_fichiers_depot"):
+            a(f"    (brain_doctor compte {r['n_fichiers_depot']} fichiers markdown dans le"
+              " dépôt — un autre ensemble : il inclut skills/, tools/ et les cartes.)\n")
+        else:
+            a("")
+    else:
+        a(f"\n{r['n_fiches']} fiches · {r['n_liens']} liens · {r['n_composantes']} composante(s)"
+          f" · topologie mesurée le {r.get('topology_generated_at','?')}\n")
 
     a("## 🔴 À traiter (par ordre d'impact)\n")
     rows = [

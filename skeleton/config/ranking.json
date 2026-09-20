@@ -20,13 +20,13 @@
   },
 
   "utilite": {
-    "_pourquoi": "Multiplicateur d'usage : score × (1 + alpha × log(1 + hits)), où hits = fiche suggérée PUIS réellement ouverte dans la même session. Logarithmique — le 1er succès pèse beaucoup, le 10e presque plus.",
-    "alpha": 0.2,
-    "_pourquoi_0_2": "MESURÉ, pas choisi. Part du top-3 occupée par des fiches à historique, sur 10 requêtes : alpha=0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30. Au-delà de ~0,3 l'historique DICTE le classement et le lexical n'est plus le juge. 0,2 = l'usage départage sans dominer. Cf. meta/decisions/adr-0003-feedback-utilite-alpha-0-2.md"
+    "_statut": "HORS CLASSEMENT depuis 2026-09-19 — ADR-0018, mecanisme M5 installe. L'usage ne multiplie plus le score : il est servi comme annotation (nombre d'ouvertures apres suggestion, date de la derniere) a cote du resultat, jamais dedans. Banc qui l'interdit de revenir : tests/utilite_hors_rang.py",
+    "alpha": 0.0,
+    "_pourquoi_zero": "La cle reste pour ne pas casser les lecteurs geles, et vaut 0 : meme si quelqu'un reintroduisait la multiplication par erreur, elle serait inerte. Historique : alpha valait 0,2, MESURE et non choisi (part du top-3 occupee par des fiches a historique, sur 10 requetes : 0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30). Ce qui a ferme le dossier n'est pas la valeur mais la RESOLUTION : sous 1 % d'ecart lexical, l'ordre s'inverse une fois sur deux quand le corpus bouge, donc dans la seule bande ou le departage aurait le droit d'agir, rien ne distingue le service du bruit. Cf. meta/decisions/adr-0018-utilite-hors-classement-2026-08-30.md et adr-0003-feedback-utilite-alpha-0-2.md"
   },
 
   "exploration": {
-    "_pourquoi": "Places réservées aux fiches peu vues, pour casser la boucle auto-renforçante que le multiplicateur d'utilité crée mécaniquement. ⚠️ INDISSOCIABLE de utilite.alpha : mettre alpha > 0 sans exploration EST le défaut, pas la fonctionnalité. Cf. meta/decisions/adr-0004-exploration-une-place-sur-trois.md",
+    "_pourquoi": "Places réservées aux fiches peu vues. ⚠️ SA JUSTIFICATION A CHANGE le 2026-09-19 : il ne casse plus la boucle auto-renforcante du multiplicateur d'utilite, qui n'existe plus (ADR-0018, M5). Ce qui subsiste et vaut par soi-meme : la COUVERTURE — aucune fiche neuve ne devient invisible, le rappel ne sert pas eternellement le meme sous-ensemble. Cette fonction n'a AUCUN banc a ce jour : le creneau est donc maintenu PROVISOIREMENT (ADR-0018 §15). Il se declare (exploration: true), il ne substitue rien en silence. Cf. meta/decisions/adr-0004-exploration-une-place-sur-trois.md",
     "denominateur": 3,
     "_denominateur": "1 place sur N. À 3 et k=3, une place sur trois. Le quota des systèmes de recommandation (5-10 %) serait NUL ici : sur k=3, 5 % arrondit à zéro et la règle serait décorative.",
     "seuil_peu_proposee": 3,

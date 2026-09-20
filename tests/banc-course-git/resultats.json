@@ -1,0 +1,2282 @@
+{
+ "_lisez_moi": "Témoin négatif d'ADR-0017 phase 2A : le comportement du dépôt SANS git_guard. Preuve DATÉE, pas test de santé. La phase 2B rejoue le même panneau avec la protection.",
+ "date": "2026-08-26T01:33:24",
+ "git": "git version 2.54.0 (Apple Git-157)",
+ "protection": "aucune",
+ "verdict": {
+  "calibre": true,
+  "repetitions": 10,
+  "reproductions_qualifiantes": {
+   "commit_vide": [],
+   "perimetre_contamine": [
+    "S4"
+   ],
+   "echec_operation_de_a": [
+    "S1",
+    "S5"
+   ]
+  },
+  "reproductions_non_fideles": {
+   "commit_vide": [
+    "S2"
+   ],
+   "perimetre_contamine": [],
+   "echec_operation_de_a": []
+  }
+ },
+ "variantes": {
+  "T": {
+   "commit_vide": 0,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 0,
+   "head_a_bouge": 10,
+   "commit_attribuable_a_a": 10,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "CONTRÔLE — A seul, aucun acteur concurrent",
+   "fidele": true,
+   "ordonne": true,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "d05c53f7d705bae6c69a593bc0bb23f5fdc2331a",
+     "head_apres": "a56c469e93f79d00900c53cc65cf542b566ff87a",
+     "head_a_bouge": true,
+     "commit": "a56c469e93f79d00900c53cc65cf542b566ff87a",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "head_a_bouge": true,
+     "commit": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "head_a_bouge": true,
+     "commit": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "head_a_bouge": true,
+     "commit": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "head_a_bouge": true,
+     "commit": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "head_a_bouge": true,
+     "commit": "00591bd2246684e5282a1488b94f8f6f6ac766b0",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "e3664b9e166db96d70d18a0bf9856c836fe00c3f",
+     "head_apres": "d5d25679e9807d01451318754542d9a89dc2f445",
+     "head_a_bouge": true,
+     "commit": "d5d25679e9807d01451318754542d9a89dc2f445",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "head_a_bouge": true,
+     "commit": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "head_a_bouge": true,
+     "commit": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "head_a_bouge": true,
+     "commit": "e3bdb76a06e96f0ced7066fabfeb26159eb20432",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    }
+   ]
+  },
+  "S1": {
+   "commit_vide": 0,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 10,
+   "head_a_bouge": 0,
+   "commit_attribuable_a_a": 0,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "A stage → B reset → A commit (commande fidèle)",
+   "fidele": true,
+   "ordonne": true,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_apres": "1d665e4835a394f72842c9c2d9749cfaa024fbc2",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_apres": "a46280446d5a535325274d8927110dfd2cb38758",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_apres": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    }
+   ]
+  },
+  "S2": {
+   "commit_vide": 10,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 0,
+   "head_a_bouge": 10,
+   "commit_attribuable_a_a": 10,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "idem S1 mais avec --allow-empty",
+   "fidele": false,
+   "ordonne": true,
+   "commande": "git commit -q --allow-empty -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_apres": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "head_a_bouge": true,
+     "commit": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_apres": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "head_a_bouge": true,
+     "commit": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_apres": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "head_a_bouge": true,
+     "commit": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "4cf4cdb6a29f94d4f592f3c937017c82c90875ce",
+     "head_apres": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "head_a_bouge": true,
+     "commit": "dc1747a2f31c28d5ddffbb9a8978b4e632eeb0ad",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "d41303a894d19f8152cfe7d334fdd9928e9b744a",
+     "head_apres": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "head_a_bouge": true,
+     "commit": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "d41303a894d19f8152cfe7d334fdd9928e9b744a",
+     "head_apres": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "head_a_bouge": true,
+     "commit": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "d41303a894d19f8152cfe7d334fdd9928e9b744a",
+     "head_apres": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "head_a_bouge": true,
+     "commit": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "d41303a894d19f8152cfe7d334fdd9928e9b744a",
+     "head_apres": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "head_a_bouge": true,
+     "commit": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "d41303a894d19f8152cfe7d334fdd9928e9b744a",
+     "head_apres": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "head_a_bouge": true,
+     "commit": "3570e98ec5fbf45701b30254f4bc017384fedecd",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "a2acb24c264d7d8f5b7aca760d077f5556f9c010",
+     "head_a_bouge": true,
+     "commit": "a2acb24c264d7d8f5b7aca760d077f5556f9c010",
+     "tree": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": true,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    }
+   ]
+  },
+  "S3": {
+   "commit_vide": 0,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 5,
+   "head_a_bouge": 5,
+   "commit_attribuable_a_a": 5,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "commit et reset relâchés ensemble (index.lock)",
+   "fidele": true,
+   "ordonne": false,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "head_a_bouge": true,
+     "commit": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 128,
+      "b": null
+     }
+    },
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "head_a_bouge": true,
+     "commit": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "head_a_bouge": true,
+     "commit": "0bbe4b939c59f7b002b548c53df0c32728b5f6f7",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_apres": "ea593ade010d573f8fa08e9f9796443bc37c277c",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 128,
+      "b": null
+     }
+    },
+    {
+     "parent": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_apres": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 128,
+      "b": null
+     }
+    },
+    {
+     "parent": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_apres": "8ed7bab6199ebde2e28e777340219be37aea4735",
+     "head_a_bouge": true,
+     "commit": "8ed7bab6199ebde2e28e777340219be37aea4735",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    },
+    {
+     "parent": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_apres": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 128,
+      "b": null
+     }
+    },
+    {
+     "parent": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_apres": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_a_bouge": false,
+     "commit": null,
+     "tree": null,
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [],
+     "commit_vide": false,
+     "perimetre_contamine": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 128,
+      "b": null
+     }
+    },
+    {
+     "parent": "001924039d7155e6dc116e1967a53e61c41c8420",
+     "head_apres": "8ed7bab6199ebde2e28e777340219be37aea4735",
+     "head_a_bouge": true,
+     "commit": "8ed7bab6199ebde2e28e777340219be37aea4735",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": false,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": null
+     }
+    }
+   ]
+  },
+  "S4": {
+   "commit_vide": 0,
+   "perimetre_contamine": 10,
+   "echec_operation_de_a": 0,
+   "head_a_bouge": 10,
+   "commit_attribuable_a_a": 10,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "A stage f1 → B stage f2 → A commit (périmètre)",
+   "fidele": true,
+   "ordonne": true,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "head_a_bouge": true,
+     "commit": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "head_a_bouge": true,
+     "commit": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "head_a_bouge": true,
+     "commit": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "head_a_bouge": true,
+     "commit": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "head_a_bouge": true,
+     "commit": "ae022af1ce7a43adaad54601ecda2d6f4799ec70",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "887cad16d93032b5257d2c9ad01e42ee399d7c5e",
+     "head_apres": "33d554e1c4c1bfdfd69deb6e2f429c4ee768cfd1",
+     "head_a_bouge": true,
+     "commit": "33d554e1c4c1bfdfd69deb6e2f429c4ee768cfd1",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1b4938bc4b04527875b53c4683c990d51ba1b3dc",
+     "head_apres": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "head_a_bouge": true,
+     "commit": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1b4938bc4b04527875b53c4683c990d51ba1b3dc",
+     "head_apres": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "head_a_bouge": true,
+     "commit": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1b4938bc4b04527875b53c4683c990d51ba1b3dc",
+     "head_apres": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "head_a_bouge": true,
+     "commit": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "1b4938bc4b04527875b53c4683c990d51ba1b3dc",
+     "head_apres": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "head_a_bouge": true,
+     "commit": "9fe6f5f77d53dd31ec1878773e8d5d1d3eeb7134",
+     "tree": "59ecfcc8cdef0a57e57d17df76ff6ffce5abcb53",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md",
+      "f2.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": true,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    }
+   ]
+  },
+  "S5": {
+   "commit_vide": 0,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 10,
+   "head_a_bouge": 10,
+   "commit_attribuable_a_a": 0,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "A stage → B commite → A commit (HEAD bouge sous A)",
+   "fidele": true,
+   "ordonne": true,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "6f805283126294400b9df48861649097c63099e8",
+     "head_a_bouge": true,
+     "commit": "6f805283126294400b9df48861649097c63099e8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "6f805283126294400b9df48861649097c63099e8",
+     "head_a_bouge": true,
+     "commit": "6f805283126294400b9df48861649097c63099e8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "6f805283126294400b9df48861649097c63099e8",
+     "head_a_bouge": true,
+     "commit": "6f805283126294400b9df48861649097c63099e8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "6f805283126294400b9df48861649097c63099e8",
+     "head_a_bouge": true,
+     "commit": "6f805283126294400b9df48861649097c63099e8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "6f805283126294400b9df48861649097c63099e8",
+     "head_a_bouge": true,
+     "commit": "6f805283126294400b9df48861649097c63099e8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "539d8cb8f1dbdb3ad8ea88032c074931d1d3f2a1",
+     "head_apres": "7c14673ce99a6fa8e1e333a022581509bed2eb38",
+     "head_a_bouge": true,
+     "commit": "7c14673ce99a6fa8e1e333a022581509bed2eb38",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "c3408839d0ad414991ff708f7758f5f0650ce8ec",
+     "head_apres": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "head_a_bouge": true,
+     "commit": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "c3408839d0ad414991ff708f7758f5f0650ce8ec",
+     "head_apres": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "head_a_bouge": true,
+     "commit": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "c3408839d0ad414991ff708f7758f5f0650ce8ec",
+     "head_apres": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "head_a_bouge": true,
+     "commit": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    },
+    {
+     "parent": "c3408839d0ad414991ff708f7758f5f0650ce8ec",
+     "head_apres": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "head_a_bouge": true,
+     "commit": "cfc19a8748b8044825fc654c5beb455cba393bce",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": false,
+     "echec_operation_de_a": true,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 1,
+      "b": 0
+     }
+    }
+   ]
+  },
+  "S6": {
+   "commit_vide": 0,
+   "perimetre_contamine": 0,
+   "echec_operation_de_a": 0,
+   "head_a_bouge": 10,
+   "commit_attribuable_a_a": 10,
+   "staging_confirme": 10,
+   "acteur_b_refuse": 0,
+   "titre": "S4 mais `git commit -- <plan>` (périmètre porté)",
+   "fidele": true,
+   "ordonne": true,
+   "commande": "git commit -q -F -",
+   "plan_de_a": [
+    "f1.md"
+   ],
+   "repetitions": 10,
+   "tirs": [
+    {
+     "parent": "c3408839d0ad414991ff708f7758f5f0650ce8ec",
+     "head_apres": "bd5a486e70a3781761000ee1f1b7130551e10a26",
+     "head_a_bouge": true,
+     "commit": "bd5a486e70a3781761000ee1f1b7130551e10a26",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "e776898a4b9dd912da13b2d02feb01756a08f8a7",
+     "head_apres": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "head_a_bouge": true,
+     "commit": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "e776898a4b9dd912da13b2d02feb01756a08f8a7",
+     "head_apres": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "head_a_bouge": true,
+     "commit": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "e776898a4b9dd912da13b2d02feb01756a08f8a7",
+     "head_apres": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "head_a_bouge": true,
+     "commit": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "e776898a4b9dd912da13b2d02feb01756a08f8a7",
+     "head_apres": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "head_a_bouge": true,
+     "commit": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "e776898a4b9dd912da13b2d02feb01756a08f8a7",
+     "head_apres": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "head_a_bouge": true,
+     "commit": "732ba823b5616ae51c8a211e02eab5b6cea6ac17",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "33e1b2eb2e5f858256471e00046ada9ec7ca4906",
+     "head_apres": "f41407f7e2226aed666ca159da68beff247734b8",
+     "head_a_bouge": true,
+     "commit": "f41407f7e2226aed666ca159da68beff247734b8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "33e1b2eb2e5f858256471e00046ada9ec7ca4906",
+     "head_apres": "f41407f7e2226aed666ca159da68beff247734b8",
+     "head_a_bouge": true,
+     "commit": "f41407f7e2226aed666ca159da68beff247734b8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "33e1b2eb2e5f858256471e00046ada9ec7ca4906",
+     "head_apres": "f41407f7e2226aed666ca159da68beff247734b8",
+     "head_a_bouge": true,
+     "commit": "f41407f7e2226aed666ca159da68beff247734b8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    },
+    {
+     "parent": "33e1b2eb2e5f858256471e00046ada9ec7ca4906",
+     "head_apres": "f41407f7e2226aed666ca159da68beff247734b8",
+     "head_a_bouge": true,
+     "commit": "f41407f7e2226aed666ca159da68beff247734b8",
+     "tree": "302df82e74d4616559b05ffb830b1910399709b8",
+     "tree_parent": "7d20dc6ec2fe8f56dd20104c62a14b6d78db6f24",
+     "fichiers": [
+      "f1.md"
+     ],
+     "commit_vide": false,
+     "commit_attribuable_a_a": true,
+     "echec_operation_de_a": false,
+     "plan_de_a": [
+      "f1.md"
+     ],
+     "index_apres_add": [
+      "f1.md"
+     ],
+     "staging_confirme": true,
+     "index_apres_acteur_b": [
+      "f1.md",
+      "f2.md"
+     ],
+     "b_a_agi_apres_le_staging": true,
+     "perimetre_contamine": false,
+     "acteur_b_refuse": false,
+     "protection": "aucune",
+     "codes_secondaires": {
+      "a": 0,
+      "b": 0
+     }
+    }
+   ]
+  }
+ }
+}

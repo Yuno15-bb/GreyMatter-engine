@@ -23,7 +23,15 @@ import json
 import os
 import sys
 
-BRAIN = os.path.expanduser("~/.c-brain/trunk")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, légitime
+from brain_racine import brain_root
+
+# I-1 (2026-08-21). Avant : `os.path.expanduser("~/.c-brain/trunk")` — un littéral qu'AUCUNE
+# variable ne détournait. Ce module était le dernier I1-FAIL à maintenir un orchestrateur
+# DÉJÀ conforme en E0* : son hook SessionStart porte BRAIN_HOME depuis L1.0, et l'enfant
+# l'ignorait. Un parent qui transmet correctement une identité que l'enfant jette produit
+# une conformité nominale — plus trompeuse que l'absence d'ancrage.
+BRAIN = brain_root(__file__)
 ANNONCE = os.path.join(BRAIN, "state", "ronde-a-annoncer.json")
 
 # Au-delà, la ronde ne vaut plus la peine d'être annoncée : elle décrit un état dépassé, et

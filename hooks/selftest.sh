@@ -124,6 +124,13 @@ else ko "l'usage de brain annonce une sous-commande qui n'existe pas (c'est CE t
 fi
 fi
 
+# 8. Le rappel ne parle QUE sur demande (décision l'auteur 2026-09-09) — et la recherche,
+#    elle, reste vivante. Le test porte ses deux sabotages : sans eux, une remise en
+#    marche du bavardage automatique ne rougirait nulle part.
+python3 tests/rappel_a_la_demande.py >/dev/null 2>&1 \
+  && ok "rappel à la demande (invariant + 2 sabotages)" \
+  || ko "rappel à la demande — le hook parle tout seul, ou la recherche est cassée (python3 tests/rappel_a_la_demande.py)"
+
 echo
 [ $fail -eq 0 ] && echo "✅ selftest OK — tous les hooks sains" || echo "❌ selftest : des hooks sont cassés"
 exit $fail
