@@ -237,10 +237,23 @@ PREVIOUS_ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P || true)"
 # for a version directory — which is precisely what makes the DOCUMENTED
 # `git clone && ./install.sh` produce an updatable install with no extra gesture
 # from the user, and no change to a single line of INSTALL.md.
+SOURCE_DIRTY=0
 if git -C "$SOURCE" rev-parse --git-dir >/dev/null 2>&1; then
   VERSION_ID="$(git -C "$SOURCE" describe --tags --always 2>/dev/null || echo "untagged")"
-  [ -n "$(git -C "$SOURCE" status --porcelain --untracked-files=no 2>/dev/null)" ] \
-    && VERSION_ID="$VERSION_ID-dirty"
+  # ⚠ NO `-dirty` SUFFIX — removed 2026-09-20, and the reason is the whole point.
+  #   `build_version()` exports with `git archive HEAD`: the engine IS the commit,
+  #   and the source's uncommitted work is deliberately left out of it. Suffixing
+  #   the version therefore labelled the ENGINE with a property of the SOURCE.
+  #   Measured on this machine: `~/.c-brain/versions/` held TWO directories for
+  #   the same commit 686f2ac, one named `…-dirty`, and the two exports were
+  #   BYTE-IDENTICAL. The suffix bought a redundant ~11.6 MB engine per dirty
+  #   install and made the `already installed and intact` branch below unreachable
+  #   for anyone working in their clone — the fast path could never fire.
+  #   What the user actually needed was never a name: it was being TOLD their work
+  #   is not in the engine. That is said out loud, once, where the engine is built.
+  if [ -n "$(git -C "$SOURCE" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    SOURCE_DIRTY=1
+  fi
 else
   # Downloaded as a zip rather than cloned: no history to name it by. Datestamp
   # it and say so — an install must not fail because the user chose the button
@@ -285,6 +298,14 @@ else
     say "(dry-run) would build $ENGINE from $SOURCE"
   else
     mkdir -p "$VERSIONS"
+    # SAID HERE AND NOWHERE ELSE: this is the one place where an engine is about
+    # to be built, or found already built, out of the commit rather than out of
+    # what is on disk. Saying it at the version-id stage would also fire for
+    # `--dev`, which links the checkout itself and for which it would be false.
+    if [ "$SOURCE_DIRTY" = "1" ]; then
+      warn "your source has uncommitted changes, and they are NOT in this engine"
+      warn "the engine is built from the commit $VERSION_ID — commit, then re-run"
+    fi
     if [ -f "$ENGINE/.cbrain-manifest" ] && verify_manifest "$ENGINE" >/dev/null 2>&1; then
       say "= $VERSION_ID already installed and intact"
     else

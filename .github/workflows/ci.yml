@@ -226,6 +226,41 @@ jobs:
             echo "✅ sabotage $s reddens"
           done
 
+      # THE FIRST END-TO-END CONTRACT, and until 2026-09-20 nothing ran it. It
+      # was written on 2026-08-17 against "green component by component is not a
+      # correct product", and then sat in tests/ for a month while CI checked the
+      # components it exists to distrust — the same shape as the capsule bench
+      # above, whose comment says so in as many words. A guard nobody runs is a
+      # comment. It is wired here, on the one runner that can host it.
+      - name: install → update → rollback, end to end
+        run: |
+          set -euo pipefail
+          # ⚠ THE BENCH BUILDS ITS PATH FROM NOTHING — that is fault B1's guard,
+          # and it must stay that way. But it reaches for node at /opt/homebrew/bin
+          # only, which is where this author's Mac keeps it; a runner may not.
+          # The selftest inside the bench would then fail for a reason that has
+          # nothing to do with installing, and the log would read as a broken
+          # updater. So node's real directory is handed over explicitly, and
+          # NOTHING else: the host's ~/.local/bin stays out, and the bench's own
+          # leak assertion still proves the `brain` it exercises is its own.
+          NODE_BIN="$(command -v node || true)"
+          [ -n "$NODE_BIN" ] || { echo "❌ no node on this runner at all"; exit 1; }
+          export E2E_EXTRA_PATH="$(dirname "$NODE_BIN")"
+          echo "node for the bench: $NODE_BIN"
+          bash tests/e2e_install_update.sh
+          # And the sabotages, each of which must FAIL. A green is the alarm.
+          # `dirty-renames-engine` is the youngest: it puts back the `-dirty`
+          # suffix retired on 2026-09-20, which named an engine after its
+          # source's working tree while `git archive HEAD` had left that work out.
+          for s in no-ownership dev-updated switch-before-selftest \
+                   rollback-missing update-touches-trunk source-mutated \
+                   host-brain-leak dirty-renames-engine; do
+            if bash tests/e2e_install_update.sh --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+
       - name: demo leaves no trace
         run: |
           set -euo pipefail

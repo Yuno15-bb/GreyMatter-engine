@@ -42,7 +42,7 @@ done
 # `--sabotage swtich-before-selftest` would quietly perturb nothing, go green,
 # and be recorded as proof that the sabotage reddens — the harness lying about
 # itself, which is the most expensive kind of green there is.
-SABOTAGES="no-ownership dev-updated switch-before-selftest rollback-missing update-touches-trunk source-mutated host-brain-leak"
+SABOTAGES="no-ownership dev-updated switch-before-selftest rollback-missing update-touches-trunk source-mutated host-brain-leak dirty-renames-engine"
 if [ -n "$SABOTAGE" ]; then
   case " $SABOTAGES " in
     *" $SABOTAGE "*) : ;;
@@ -136,6 +136,13 @@ case "$SABOTAGE" in
   # The updater writes into the user's notes.
   update-touches-trunk)
     sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\nrm -rf \"$HOME/.c-brain/trunk/lessons\"\n", 1)' ;;
+  # The version id takes the source's working-tree state into its NAME again —
+  # the literal code this file's section 1bis was written to retire. `git archive
+  # HEAD` is untouched, so the engine built under the new name is byte-identical
+  # to the one already on disk: the sabotage costs a name, a directory, and the
+  # fast path, which is precisely the damage being asserted against.
+  dirty-renames-engine)
+    sabotage_patch install.sh 's.replace("    SOURCE_DIRTY=1\n", "    SOURCE_DIRTY=1\n    VERSION_ID=\"$VERSION_ID-dirty\"\n")' ;;
   # The updater reaches back into the source the model exists to protect.
   source-mutated)
     sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\ngit -C \"'"$LAB"'/user-clone\" checkout -q main 2>/dev/null || true\n", 1)' ;;
@@ -163,6 +170,14 @@ CB="$HOME/.c-brain"
 # ends up measuring the wrong installation. /opt/homebrew/bin is included only
 # for `node`, which the selftest needs.
 export PATH="$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
+# ⚠ THE ONE ESCAPE HATCH, AND WHAT IT IS NOT FOR. `/opt/homebrew/bin` above is
+# where node lives on this author's Mac; a CI runner may keep it somewhere else,
+# and the bench would then fail its selftest for a reason that has nothing to do
+# with what it tests. So a caller may APPEND one directory — and the guard that
+# matters is untouched: the host's ~/.local/bin is still absent, and
+# `assert_no_host_leak` below still proves the `brain` under test is this test's
+# own. Point this at node, never at a directory carrying a `brain`.
+[ -n "${E2E_EXTRA_PATH:-}" ] && export PATH="$PATH:$E2E_EXTRA_PATH"
 # The trunk's auto-save and the agents must not reach the real machine.
 export CBRAIN_NO_AUTO_UPDATE=""
 unset CLAUDE_BRAIN_GARDENING 2>/dev/null || true
@@ -224,6 +239,72 @@ fi
 
 if [ -d "$CB/source.git" ]; then ok "source mirror created"; else ko "no source mirror — updates have nowhere to fetch from"; fi
 if [ -f "$CB/engine/.cbrain-manifest" ]; then ok "the version carries an integrity manifest"; else ko "no manifest — immutability cannot be checked"; fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+echo
+echo "▸ 1bis. installing again from a DIRTY source — the engine is the COMMIT"
+# ═══════════════════════════════════════════════════════════════════════════
+# WHY THIS EXISTS (measured 2026-09-20, C bis entry C4). The installer used to
+# append `-dirty` to the version id whenever the source clone had uncommitted
+# changes. But `build_version()` exports with `git archive HEAD`: the engine is
+# the COMMIT, and the working tree is deliberately left out of it. So the suffix
+# named the engine after a property of the SOURCE, and this machine's own
+# `~/.c-brain/versions/` ended up holding two directories for the same commit
+# 686f2ac, whose exports were byte-identical.
+#
+# The cost was not cosmetic. Two names for one content means the branch that
+# says "already installed and intact" can never fire for anyone who works in
+# their clone: every re-install rebuilt ~11.6 MB it already had.
+#
+# THE PROPERTY: a second install from a source whose working tree is dirty
+# resolves to the SAME version, builds NOTHING new, and says out loud that the
+# uncommitted work is not in the engine. The last part matters most — dropping
+# the suffix must not drop the information. It moved from a name nobody reads
+# into a sentence the user is shown.
+VERSIONS_BEFORE_DIRTY="$(find "$CB/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+ENGINE_BEFORE_DIRTY="$(active_version)"
+
+echo "a change that was never committed" >> "$LAB/user-clone/README.md"
+if [ -z "$(git -C "$LAB/user-clone" status --porcelain --untracked-files=no)" ]; then
+  ko "the fixture failed: the clone is still clean, this section proves nothing"
+else
+  ( cd "$LAB/user-clone" && ./install.sh --core-only ) >"$LAB/install-dirty.log" 2>&1
+
+  ENGINE_AFTER_DIRTY="$(active_version)"
+  VERSIONS_AFTER_DIRTY="$(find "$CB/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+
+  if [ "$ENGINE_AFTER_DIRTY" = "$ENGINE_BEFORE_DIRTY" ]; then
+    ok "a dirty source resolves to the same version ($ENGINE_AFTER_DIRTY)"
+  else
+    ko "the working tree renamed the engine: $ENGINE_BEFORE_DIRTY → $ENGINE_AFTER_DIRTY"
+    info "the engine is built from the commit either way — the name describes the wrong object"
+  fi
+
+  if [ "$VERSIONS_AFTER_DIRTY" = "$VERSIONS_BEFORE_DIRTY" ]; then
+    ok "no second engine was built for the same commit ($VERSIONS_AFTER_DIRTY in versions/)"
+  else
+    ko "versions/ grew $VERSIONS_BEFORE_DIRTY → $VERSIONS_AFTER_DIRTY for ONE commit"
+  fi
+
+  if grep -q "already installed and intact" "$LAB/install-dirty.log"; then
+    ok "the second install recognised what it already had, and rebuilt nothing"
+  else
+    ko "the fast path did not fire — the installer rebuilt an engine it already had"
+    grep -E "^\s*[+=]" "$LAB/install-dirty.log" | tail -3 | sed 's/^/       /'
+  fi
+
+  if grep -q "NOT in this engine" "$LAB/install-dirty.log"; then
+    ok "the user is TOLD their uncommitted work is not in the engine"
+  else
+    ko "the installer said nothing about the uncommitted work it left out"
+  fi
+
+  # Put the clone back as it was: section 5 compares the working tree against a
+  # baseline photographed before section 1, and a leftover edit here would be
+  # reported there as "the update mutated the source" — an accusation aimed at
+  # the wrong culprit, which is the exact mistake the baseline comment warns of.
+  git -C "$LAB/user-clone" checkout -q -- README.md
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 echo
