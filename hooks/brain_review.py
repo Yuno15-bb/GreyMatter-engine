@@ -148,8 +148,24 @@ def build():
     review = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M"),
         "topology_generated_at": topo.get("generated_at"),
-        "n_notes": topo.get("n_notes", doctor.get("notes")),
+        # ⚠️ TWO COUNTERS, TWO DIFFERENT SETS — corrected 2026-09-20 (C bis, B4).
+        #   This line used to read `topo.get("n_notes", doctor.get("notes"))`, which
+        #   looks like a harmless default and is not: the two numbers do not count the
+        #   same thing. brain_topology counts NOTES WOVEN INTO THE GRAPH — five zones
+        #   (agents, lessons, life, meta, projects), frontmatter with a `name:`, README
+        #   and structural maps excluded. brain_doctor counts MARKDOWN FILES IN THE
+        #   REPOSITORY — twelve zones, skills/ and tools/ included. MEASURED on the
+        #   author's trunk that day: 726 against 946, a gap of 220, printed under the
+        #   same word "notes" with nothing saying the measurement had changed.
+        #   Reproduced by hiding topology.json: the summary line went from
+        #   "726 notes · 2968 links · 1 component(s)" to
+        #   "945 notes · None links · None component(s) · topology measured on None".
+        #   So: no substitution. A missing topology leaves these fields None and the
+        #   report SAYS it did not look, which is the one thing the old line could not
+        #   express. The doctor's count is kept, under its own name, as what it is.
+        "n_notes": topo.get("n_notes"),
         "n_links": topo.get("n_links"),
+        "n_files_in_repo": doctor.get("notes"),
         # — topology (l'architecte tisse / reclasse) —
         "missing_links": topo.get("missing_links", []),
         "isolated": topo.get("isolated", []),
@@ -186,8 +202,19 @@ def to_markdown(r):
     L = []
     a = L.append
     a(f"# Global trunk audit — {r['generated_at']}")
-    a(f"\n{r['n_notes']} notes · {r['n_links']} links · {r['n_components']} component(s)"
-      f" · topology measured on {r.get('topology_generated_at','?')}\n")
+    if r.get("n_notes") is None:
+        # "Nothing to report" and "I did not look" must not print the same way — the
+        # property tests/doctor_contract.py states for the doctor, applied here.
+        a("\n⚠️  Topology not measured: no note, link or component count in this report."
+          " Run brain_review.py without --stale to measure it.")
+        if r.get("n_files_in_repo"):
+            a(f"    (brain_doctor counts {r['n_files_in_repo']} markdown files in the"
+              " repository — a different set: it includes skills/, tools/ and the maps.)\n")
+        else:
+            a("")
+    else:
+        a(f"\n{r['n_notes']} notes woven · {r['n_links']} links · {r['n_components']} component(s)"
+          f" · topology measured on {r.get('topology_generated_at','?')}\n")
 
     a("## 🔴 To handle (by impact)\n")
     rows = [

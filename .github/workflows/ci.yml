@@ -112,6 +112,12 @@ jobs:
       # their reference from the hook that owns it — the test forbids falling
       # back on a local copy, which would make the doctor a third source of truth.
       - run: python3 tests/doctor_contract.py --check
+      # And the global audit's first sentence. Two programs can supply its count of
+      # notes and they do not count the same set — 726 woven notes against 946 markdown
+      # files on the author's trunk. It used to take one as a default for the other under
+      # one word, and printed None for the rest of the sentence. A report that cannot say
+      # "I did not look" says nothing at all.
+      - run: python3 tests/review_contract.py --check
       # And the four lines injected into EVERY session. The question is not
       # whether the regex finds things — it always does — but whether a line
       # that reaches the model earns its slot. Tested in pairs: something that
