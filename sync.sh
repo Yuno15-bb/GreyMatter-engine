@@ -268,11 +268,23 @@ sync_dir companion '__pycache__' '*.pyc'
 # n'avait simplement rien à dire sur un fichier neuf dans un dossier connu.
 # Sans équivalent publiable : un golden set sur corpus synthétique existe déjà
 # (`recall_benchmark.py`), et il ne mesure pas la même chose.
+# ⚠ `heldout` EXCLU (2026-09-20). Le held-out L1 est l'ÉTALON qui juge le moteur de
+# rappel : 60 questions et leur corrigé, scellés le 21/08. Publié, il cesse d'être un
+# étalon — n'importe qui, et n'importe quel modèle entraîné sur ce dépôt, peut
+# l'apprendre par cœur, et la mesure ne pourrait plus jamais rougir. Il arrivait dans
+# le paquet sans que rien ne le dise : ni suivi sur `fr`, ni sur `main`, arrêté par le
+# leakcheck pour une tout autre raison (un sigle client). Ce n'est pas une fuite de
+# données personnelles, c'est la destruction silencieuse d'un instrument.
+# ⚠ `resultats.json` EXCLU le même jour : c'est la SORTIE d'une passe de mesure faite
+# sur le corpus privé de l'auteur. Chez l'utilisateur il ne décrit rien, et il portait
+# des chemins de fiches clientes. L'outil part (`run.py`), ses cas partent
+# (`cas.json`), son résultat d'un jour non.
 sync_dir tests 'plugin_manifest.py' 'english_only.py' 'update_tag_family.sh' \
   'recall_benchmark.py' 'recall_cache.py' 'update_rollback.sh' 'plugin_install.sh' \
   'update_auto.sh' \
   'docs_aligned.py' \
   'golden_recall.py' 'golden_recall.json' \
+  'heldout' 'resultats.json' \
   '__pycache__' '*.pyc'
 
 # --- 8. Registre des familles thématiques ---------------------------------
