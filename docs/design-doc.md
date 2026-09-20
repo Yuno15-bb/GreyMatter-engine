@@ -235,9 +235,9 @@ c-brain/
   generalize.py       # applies rules.json AFTER the copy (chained by sync.sh)
   rules.json          # declarative rules: code blocks + text substitutions
   leakcheck.py        # zero marker, otherwise exit 1 (blocks the commit)
-  brain               # CLI, 17 subcommands (status|doctor|audit|review|recall|next|
+  brain               # CLI, 18 subcommands (status|doctor|audit|review|recall|next|
                       #   coherence|utility|credit|embed|push|metrics|selftest|backup|
-                      #   update|demo|version)
+                      #   update|demo|capsule|version)
   hooks/              # the hooks + .plist.template  (desktop-sync EXCLUDED)
   agents/             # 8 agent definitions, generalized (no client or project names)
   capsule/            # Electron, without node_modules, without dead assets

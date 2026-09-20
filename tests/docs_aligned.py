@@ -30,7 +30,7 @@ USAGE
     python3 tests/docs_aligned.py            report; exit 1 if a doc is behind
     python3 tests/docs_aligned.py --quiet    exit code only, for publish.sh
 """
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COVERAGE = os.path.join(ROOT, "docs", "_coverage.json")
@@ -51,6 +51,79 @@ def commits_since(sha, paths):
         return []
     out = git("log", "--oneline", f"{sha}..HEAD", "--", *paths)
     return [l for l in out.splitlines() if l.strip()]
+
+
+# ── Section 2: a COUNT written in prose, checked against the code ──────────────
+#
+# The freshness check above is deliberately blind to what a sentence SAYS. That
+# leaves one failure it cannot see: a number frozen into the prose. On 2026-09-20
+# `docs/design-doc.md` read "CLI, 18 subcommands" and listed them — it had said
+# "17" since the day `brain review` was added, and no commit to the CLI had made
+# it red, because the doc had been edited for other reasons since. A count is the
+# rare prose claim a script CAN verify, so it is verified here.
+#
+# Each entry names: the document, the regex that reads the claim out of it, and a
+# function that reads the same fact out of the code. Adding the next one is three
+# lines. Keep them to facts with a single mechanical source — a count that needs
+# judgement to compute does not belong here, it belongs in the freshness section.
+
+def _cli_verbs():
+    """The verbs the CLI itself advertises, read from its own Usage: line."""
+    with open(os.path.join(ROOT, "brain"), encoding="utf-8") as f:
+        for line in f:
+            m = re.search(r"Usage: brain <([^>]+)>", line)
+            if m:
+                return [v.strip() for v in m.group(1).split("|") if v.strip()]
+    return []
+
+
+def _doc_cli_verbs(text):
+    """The verbs design-doc.md claims, and the number it puts in front of them."""
+    m = re.search(r"CLI, (\d+) subcommands \(", text)
+    if not m:
+        return None, []
+    tail = text[m.end():]
+    listed = tail[:tail.index(")")] if ")" in tail else ""
+    listed = re.sub(r"[#\n]", " ", listed)
+    return int(m.group(1)), [v.strip() for v in listed.split("|") if v.strip()]
+
+
+COUNTS = [
+    ("docs/design-doc.md", "the CLI's subcommands", _doc_cli_verbs, _cli_verbs),
+]
+
+
+def check_counts():
+    """Returns (agreements, disagreements) — each a list of printable lines."""
+    good, bad = [], []
+    for doc, what, read_doc, read_code in COUNTS:
+        path = os.path.join(ROOT, doc)
+        if not os.path.isfile(path):
+            bad.append(f"{doc} — the document is missing, so its count of {what} cannot be checked")
+            continue
+        with open(path, encoding="utf-8") as f:
+            claimed_n, claimed = read_doc(f.read())
+        real = read_code()
+        if claimed_n is None:
+            bad.append(f"{doc} — no longer states a count of {what}; either restore it or drop this entry")
+            continue
+        if not real:
+            bad.append(f"{doc} — the code side of {what} read nothing; the reader is broken, not the doc")
+            continue
+        if claimed_n != len(claimed):
+            bad.append(f"{doc} — says {claimed_n} for {what} but lists {len(claimed)} of them")
+        elif set(claimed) != set(real):
+            missing = sorted(set(real) - set(claimed))
+            extra = sorted(set(claimed) - set(real))
+            detail = []
+            if missing:
+                detail.append("absent from the doc: " + ", ".join(missing))
+            if extra:
+                detail.append("in the doc only: " + ", ".join(extra))
+            bad.append(f"{doc} — {what}: the code has {len(real)}, the doc {claimed_n} · " + " · ".join(detail))
+        else:
+            good.append(f"{doc} — {what}: {len(real)}, and the same names on both sides")
+    return good, bad
 
 
 def main():
@@ -86,6 +159,7 @@ def main():
     on_disk = {f"docs/{n}" for n in os.listdir(docs_dir)
                if n.endswith(".md") and not n.startswith("_")} if os.path.isdir(docs_dir) else set()
     orphans = sorted(on_disk - set(registry.get("docs", {})))
+    counts_ok, counts_ko = check_counts()
 
     if not quiet:
         print(f"📄 docs_aligned — {len(on_disk)} document(s) under docs/")
@@ -102,13 +176,17 @@ def main():
                 print(f"        … and {len(newer) - 8} more")
         for doc in orphans:
             print(f"  ⛔ {doc} — not in docs/_coverage.json, so nothing watches it")
-        if not (behind or unwatched or orphans):
+        for line in counts_ok:
+            print(f"  ✅ {line}")
+        for line in counts_ko:
+            print(f"  ⚠️  {line}")
+        if not (behind or unwatched or orphans or counts_ko):
             print("  Every document has been reviewed since the code it describes last moved.")
         else:
             print("\n  → open the document, check the claim, edit it. The commit that edits it "
                   "is the new baseline; there is no stamp to run.")
 
-    return 1 if (behind or unwatched or orphans) else 0
+    return 1 if (behind or unwatched or orphans or counts_ko) else 0
 
 
 if __name__ == "__main__":
