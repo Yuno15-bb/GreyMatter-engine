@@ -19,6 +19,28 @@ import json, os, sys, unittest
 #    et serait écrasé à la première mise à jour.
 CODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 BRAIN = os.path.expanduser("~/.c-brain/trunk")
+
+# ── I-2 · PROFIL D'ÉTAT (lot 1, 2026-08-21) ──────────────────────────────────
+# Ce banc porte DEUX faiblesses mesurées, et le lot 1 les rend VISIBLES sans les
+# corriger — les corriger touche la séquence du pre-commit, différé au scellement.
+#   · dépendance d'ORDRE : ROUGE si `state/` n'existe pas, VERT s'il existe même VIDE.
+#     Or `state/` est créé en effet de bord par `golden_recall`, qui tourne AVANT lui
+#     dans la boucle. Ce banc ne réclame cette précondition nulle part : il en hérite.
+#     Déplacer golden_recall le ferait rougir sans que personne n'y touche.
+#   · MUTATION : `_has_work` écrit `state/coherence.json` du Brain mesuré, lit le
+#     capteur, puis restaure dans un `finally`. Contenu rendu, mtime réécrit. Le
+#     `finally` couvre l'exception, pas un SIGKILL.
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks"))
+    import i2_profil
+    i2_profil.demarrer(
+        "invariants_brain",
+        ordre=["`state/` doit exister — créé en effet de bord par golden_recall, "
+               "lancé avant dans la boucle du pre-commit"],
+        mutations=["state/coherence.json — saboté puis restauré ; résidu possible "
+                   "si le processus est tué entre les deux (non mesurable, INCONNU)"])
+except Exception:
+    pass
 sys.path.insert(0, os.path.join(CODE, "hooks"))
 
 MALFORMED = [{"note": "✓ arbitré, faux positif", "note2": "✓ idem"}]
@@ -89,11 +111,103 @@ class DocEtCodeDAccord(unittest.TestCase):
             self.assertIn(agent, bloc,
                           f"{agent} est réveillé en auto mais absent de la doc de la veille")
 
+    def test_le_readme_annonce_le_bon_compte_de_vaisseaux_et_de_missions(self):
+        """INVARIANT : la première phrase que lit un nouvel arrivant dit VRAI.
+
+        Le paquet public portait pour ça une règle de généralisation,
+        `compte-agents-perime` : le guide s'annonçait « 7 agents » alors que le
+        dossier en contenait 8, et la règle recollait le bon chiffre à la sortie.
+        Un correctif en aval ne rougit jamais et ne protège que le paquet — le
+        tronc, lui, continuait de mentir. Le compte se vérifie donc ICI, à la
+        source, où il peut passer au rouge.
+        """
+        import re, robots_permissions
+        desc = re.search(r"^description:\s*(.*)$",
+                         open(os.path.join(BRAIN, "agents", "readme.md"),
+                              encoding="utf-8").read(), re.M).group(1)
+        vaisseaux = sorted(set(robots_permissions.FAMILLE.values()))
+        annonce = re.search(r"(\d+) vaisseaux.*?(\d+) missions", desc)
+        self.assertIsNotNone(
+            annonce, "le guide n'annonce plus « N vaisseaux … N missions » : "
+                     "le compte n'est plus vérifiable, donc plus protégé")
+        self.assertEqual(
+            (int(annonce.group(1)), int(annonce.group(2))),
+            (len(vaisseaux), len(robots_permissions.FAMILLE)),
+            f"le guide annonce {annonce.group(1)} vaisseaux et {annonce.group(2)} "
+            f"missions ; la table en déclare {len(vaisseaux)} et "
+            f"{len(robots_permissions.FAMILLE)}")
+        for v in vaisseaux:
+            self.assertIn(v.upper(), desc,
+                          f"{v} existe mais n'est pas nommé dans le guide")
+
     def test_tout_agent_de_ORDER_a_un_modele_et_une_tache(self):
         import brain_upkeep
         for agent in brain_upkeep.ORDER:
             self.assertIn(agent, brain_upkeep.MODEL, f"{agent} sans modèle → défaut silencieux")
             self.assertIn(agent, brain_upkeep.TASKS, f"{agent} sans mission → KeyError au réveil")
+
+    def test_tout_agent_appele_existe_sur_la_surface_que_claude_code_lit(self):
+        """INVARIANT né de l'incident du 2026-08-19 : `--agent 'distillateur' not found`,
+        74 fois, plus 44 pour `architecte` — 118 échecs en 39 heures, et pas un capteur.
+
+        Ce qui avait cassé n'est ni le code ni les fiches d'agent : c'est le SYMLINK
+        `~/.claude/agents`, repointé par l'installeur anglais vers un dossier où les
+        agents portent des noms traduits (`distiller`, `gardener`). Les deux côtés
+        étaient cohérents avec eux-mêmes ; c'est le raccord qui ne l'était plus.
+        Personne ne comparait « les noms qu'on appelle » à « les noms qui existent
+        LÀ OÙ Claude Code va les chercher ». D'où cet invariant, et pas un de plus :
+        il lit la surface réelle, pas le dossier du dépôt, parce que c'est la surface
+        qui avait menti. cf. projects/claude-brain/incident-fr-en-surfaces-auteur-2026-08-19.md
+        et meta/decisions/adr-0013-langue-configuration-centrale.md (« un identifiant
+        interne ne se traduit jamais »).
+        """
+        import re
+        import brain_upkeep
+        appeles = set(brain_upkeep.ORDER) | set(brain_upkeep.TASKS)
+        # MODEL_L1 est déclaré DANS une fonction : il se lit à la source, comme les deux
+        # barres du banc du rappel. Un agent de couche 1 absent d'ici passerait inaperçu,
+        # et c'est précisément `distillateur` qui a le plus échoué en août.
+        am = open(os.path.join(BRAIN, "hooks", "auto_maintain.py"), encoding="utf-8").read()
+        m = re.search(r"MODEL_L1\s*=\s*\{([^}]*)\}", am)
+        self.assertIsNotNone(m, "MODEL_L1 a changé de forme : le capteur ne voit plus "
+                                "la couche 1, il doit être réécrit, pas contourné")
+        appeles |= set(re.findall(r'"([a-z_]+)"\s*:', m.group(1)))
+
+        # DEPUIS LE 2026-09-20 : ce qu'on appelle n'est plus la mission, c'est le VAISSEAU.
+        # Les huit rôles survivent comme missions (mêmes outils, mêmes zones d'écriture),
+        # mais `--agent` porte la famille, et c'est donc le fichier de famille qui doit
+        # exister là où Claude Code regarde. Le trou que ce test surveille se déplace sans
+        # disparaître : une mission sans famille déclarée planterait au réveil.
+        import robots_permissions
+        orphelines = sorted(m for m in appeles if m not in robots_permissions.FAMILLE)
+        self.assertEqual(orphelines, [],
+                         "ces missions sont appelées sans vaisseau déclaré dans "
+                         "robots_permissions.FAMILLE : le réveil lèverait un KeyError")
+        appeles = {robots_permissions.FAMILLE[m] for m in appeles}
+
+        def manquants(noms, dossier):
+            return sorted(n for n in noms
+                          if not os.path.isfile(os.path.join(dossier, n + ".md")))
+
+        # CONTRE-ÉPREUVE EN PLACE. Sans elle, ce test serait vert sur une machine bien
+        # câblée sans qu'on sache s'il sait rougir. On lui donne un dossier où il manque
+        # exactement un agent, et il doit le nommer.
+        import tempfile
+        with tempfile.TemporaryDirectory() as faux:
+            for n in sorted(appeles)[1:]:
+                open(os.path.join(faux, n + ".md"), "w").close()
+            self.assertEqual(manquants(appeles, faux), [sorted(appeles)[0]],
+                             "le détecteur ne voit pas un agent absent : il ne garde rien")
+
+        surface = os.path.expanduser("~/.claude/agents")
+        if not os.path.isdir(surface):
+            self.skipTest("~/.claude/agents absent : rien à raccorder sur cette machine")
+        absents = manquants(appeles, os.path.realpath(surface))
+        self.assertEqual(absents, [], 
+                         "ces agents sont APPELÉS et introuvables là où Claude Code les "
+                         "cherche (%s → %s) : chaque réveil rendra « agent not found » "
+                         "dans un journal que personne ne lit — le défaut du 19/08."
+                         % (surface, os.path.realpath(surface)))
 
 
 class ModeleParAgentCoucheUn(unittest.TestCase):
@@ -121,9 +235,33 @@ class CarteComposeeSansPollution(unittest.TestCase):
     REL_INDEX = os.path.join("lessons", "INDEX.md")
 
     def test_memory_garde_sa_marge_de_chargement(self):
+        """LES DEUX AXES, parce que le harnais en a deux et que le premier atteint coupe.
+
+        Jusqu'au 2026-09-20 cet invariant ne regardait que les octets. La limite qui a
+        réellement invalidé la projection D3 est celle des LIGNES (292 contre 200) :
+        surveiller la seule taille laisse passer une carte tronquée en silence, et le
+        modèle est le seul à voir l'avertissement — jamais un code de sortie.
+        """
         import brain_doctor
-        size = os.path.getsize(os.path.join(BRAIN, "MEMORY.md"))
-        self.assertLessEqual(size, brain_doctor.MEMORY_WARN_BYTES)
+        blob = open(os.path.join(BRAIN, "MEMORY.md"), "rb").read()
+        lignes = blob.count(b"\n") + (1 if blob and not blob.endswith(b"\n") else 0)
+        self.assertLessEqual(len(blob), brain_doctor.MEMORY_WARN_BYTES,
+                             f"MEMORY.md pèse {len(blob)} octets")
+        self.assertLessEqual(lignes, brain_doctor.MEMORY_WARN_LINES,
+                             f"MEMORY.md fait {lignes} lignes")
+
+    def test_le_plafond_mesure_dit_sous_quel_harnais(self):
+        """Un seuil sans la version qui l'a mesuré ne peut pas se périmer visiblement.
+
+        Le plafond appartient à Claude Code : il peut bouger d'une version à l'autre,
+        et le mode d'échec est une troncature silencieuse. La version de mesure est donc
+        écrite à côté des seuils, et l'écart avec le harnais qui tourne est INFORMATIF —
+        il n'a jamais le droit de faire sortir le docteur en 1, sinon la moindre mise à
+        jour rougit un arbre sain et personne ne peut l'éteindre honnêtement (ADR-0016).
+        """
+        import brain_doctor
+        self.assertRegex(brain_doctor.MEMORY_LIMITS_MEASURED_ON, r"^\d+\.\d+\.\d+$")
+        self.assertIn("carte_plafond_non_remesure", brain_doctor.INFORMATIFS)
 
     def test_index_structurel_est_exclu_des_moteurs_de_savoir(self):
         import brain_recall
@@ -137,7 +275,7 @@ class CarteComposeeSansPollution(unittest.TestCase):
 
     def test_catalogues_infra_sont_exclus_du_rappel(self):
         import brain_recall
-        for rel in ("agents/jardinier.md", "state/a-valider.md",
+        for rel in ("agents/narcissus.md", "state/a-valider.md",
                     "capsule-v2/README.md", self.REL_INDEX):
             with self.subTest(rel=rel):
                 self.assertTrue(brain_recall._skip(rel))
@@ -228,10 +366,30 @@ class UnePierreTombaleNestPasUneTache(unittest.TestCase):
         if not os.path.exists(chemin):
             self.skipTest("graph.json pas encore généré")
         graphe = json.load(open(chemin, encoding="utf-8"))
+        # TROIS ÉTATS, PAS DEUX (2026-08-20). « Les ensembles diffèrent » recouvrait
+        # jusqu'ici trois causes très différentes : la capacité manque, l'instantané
+        # est périmé, ou il y a une vraie incohérence. Les confondre a coûté une
+        # demi-journée de diagnostic : on comparait un instantané à un recalcul en
+        # croyant comparer deux détecteurs.
+        if graphe.get("reprises_indisponibles"):
+            self.skipTest("badge ↻ non calculable : %s" % graphe["reprises_indisponibles"])
+        import subprocess
+        r = subprocess.run(["git", "-C", BRAIN, "rev-parse", "HEAD"],
+                           capture_output=True, text=True)
+        head_courant = r.stdout.strip() if r.returncode == 0 else None
+        head_graphe = graphe.get("head")
+        if head_courant and head_graphe and head_courant != head_graphe:
+            self.fail("planet/graph.json décrit le HEAD %s, le tronc est sur %s : "
+                      "l'instantané est PÉRIMÉ, pas incohérent. `commit_par_zone` "
+                      "régénère le graphe après chaque commit — si ce message "
+                      "apparaît, cette régénération a échoué et l'a dit."
+                      % (head_graphe[:12], head_courant[:12]))
         allumes = {n["file"] for n in graphe["nodes"] if n.get("resume")}
         attendus = {it["path"] for it in ba.collect()[:ba.TOP_REPRISES]}
         self.assertEqual(allumes, attendus,
-                         "le badge ↻ et les reprises proposées au démarrage ont divergé")
+                         "le badge ↻ et les reprises proposées au démarrage ont divergé "
+                         "SUR LE MÊME HEAD — ce n'est ni un manque de capacité ni un "
+                         "instantané périmé, c'est une vraie incohérence")
 
 
 if __name__ == "__main__":

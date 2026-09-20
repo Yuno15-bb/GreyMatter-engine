@@ -21,7 +21,14 @@ Usage CLI :  python3 brain_status.py <state> [activity] [detail]
 """
 import json, os, time, sys
 
-STATE_DIR = os.path.expanduser("~/.c-brain/trunk/state")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, légitime
+from brain_racine import brain_root
+
+# I-1 (2026-08-21). Surface HUMAINE de diagnostic : un outil de statut qui lit
+# silencieusement ~/.c-brain/trunk alors qu'on l'interroge sur un autre Brain rend une
+# déclaration FAUSSE avec une apparence d'autorité. Mesuré le 2026-08-20 : `brain doctor`
+# lancé dans un worktree annonçait les métriques du tronc auteur, sans le moindre signe.
+STATE_DIR = os.path.join(brain_root(__file__), "state")
 STATUS = os.path.join(STATE_DIR, "status.json")
 
 def write_status(state, activity=None, detail=None, source=None):
@@ -36,6 +43,41 @@ def write_status(state, activity=None, detail=None, source=None):
         os.replace(tmp, STATUS)  # écriture atomique
     except Exception:
         pass
+
+AGENTS_JOURNAL = os.path.join(STATE_DIR, "agents.jsonl")
+
+def journal_agent(agent, phase, **champs):
+    """Une ligne par PASSAGE D'AGENT, en ajout seul — la trace que status.json ne peut
+    pas porter.
+
+    Pourquoi ce fichier existe (19/09/2026) : status.json ne garde qu'UN état global,
+    écrasé par le passage suivant ; upkeep.json ne compte que des totaux ; cost.jsonl
+    porte le coût mais AUCUN nom d'agent. Impossible, avec ces trois-là, de dire ce
+    qu'un agent donné a fait et quand. Le panneau des huit voyants (chantier MAGI) a
+    besoin de cette ligne-là, sinon les huit cases affichent toutes la même chose.
+
+    `phase` vaut "debut" ou "fin". Best-effort comme le reste du module : n'échoue
+    jamais, ne bloque jamais un hook.
+    """
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        ligne = {"agent": agent, "phase": phase, "ts": time.time()}
+        # LE VAISSEAU EN PLUS DE LA MISSION (20/09/2026). Depuis le regroupement en
+        # familles, `agent` nomme la mission ; un affichage par vaisseau devrait sinon
+        # refaire la table de correspondance de son côté, et les deux dériveraient.
+        try:
+            from robots_permissions import FAMILLE
+            if agent in FAMILLE:
+                ligne["vaisseau"] = FAMILLE[agent]
+        except Exception:
+            pass
+        ligne.update({k: v for k, v in champs.items() if v is not None})
+        with open(AGENTS_JOURNAL, "a", encoding="utf-8") as f:
+            f.write(json.dumps(ligne, ensure_ascii=False) + "\n")
+        return ligne["ts"]
+    except Exception:
+        return None
+
 
 def touch_status():
     """HEARTBEAT : rafraîchit seulement `ts` du statut courant, sans toucher
@@ -94,6 +136,24 @@ if __name__ == "__main__":
     cmd = a[1] if len(a) > 1 else "idle"
     if cmd == "touch":
         touch_status()
+    elif cmd == "journal":
+        # `journal <mission> <debut|fin> [clé=valeur ...]` — la porte en ligne de commande
+        # de journal_agent, ouverte le 20/09/2026 pour la couche 1. auto_maintain lance le
+        # distillateur et le jardinier par un shell, pas par Python : sans ce verbe, les
+        # DEUX agents les plus sollicités n'écrivaient aucune ligne, et tout affichage par
+        # agent les déclarait « jamais vus ».
+        if len(a) < 4:
+            print("Usage : brain_status.py journal <mission> <debut|fin> [clé=valeur ...]",
+                  file=sys.stderr)
+            sys.exit(2)
+        champs = {}
+        for kv in a[4:]:
+            k, _, v = kv.partition("=")
+            try:
+                champs[k] = float(v) if v.replace(".", "", 1).isdigit() else v
+            except Exception:
+                champs[k] = v
+        journal_agent(a[2], a[3], **champs)
     elif cmd in ("show", "status"):
         sys.exit(show_status())
     elif cmd in ETATS:
