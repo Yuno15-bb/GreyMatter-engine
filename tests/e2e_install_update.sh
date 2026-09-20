@@ -144,8 +144,21 @@ case "$SABOTAGE" in
   dirty-renames-engine)
     sabotage_patch install.sh 's.replace("    SOURCE_DIRTY=1\n", "    SOURCE_DIRTY=1\n    VERSION_ID=\"$VERSION_ID-dirty\"\n")' ;;
   # The updater reaches back into the source the model exists to protect.
+  # ⚠ THE MUTATION IS A FILE APPEND, NOT A `git checkout main`, and the reason is
+  #   a measured false green. Until 2026-09-20 this sabotage ran
+  #   `git checkout -q main 2>/dev/null || true` inside the user's clone, which is
+  #   left on a DETACHED head at v1.0.0 — so moving to `main` changed HEAD and the
+  #   assertion in section 5 reddened. On this author's Mac. The branch is named by
+  #   `init.defaultBranch`, which is `main` here and `master` on a machine that has
+  #   never set it: on the first GitHub runner that ever ran this bench the checkout
+  #   found no such branch, `|| true` swallowed it, the updater mutated nothing, and
+  #   the sabotage reported the contract GREEN — a bench certifying its own
+  #   reddening, which is the one thing `sabotage_patch` exists to forbid.
+  #   A tracked file that the bench itself created cannot be renamed by anyone's
+  #   git configuration, and `git status --porcelain` sees the append on every
+  #   machine. No `|| true` either: a sabotage that cannot be applied must be loud.
   source-mutated)
-    sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\ngit -C \"'"$LAB"'/user-clone\" checkout -q main 2>/dev/null || true\n", 1)' ;;
+    sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\necho \"the updater wrote here\" >> \"'"$LAB"'/user-clone/README.md\"\n", 1)' ;;
 esac
 
 # A published history: v1.0.0, then v1.1.0 differing by one tracked file. Both
@@ -409,7 +422,14 @@ SRC_TREE_AFTER="$(git -C "$LAB/user-clone" status --porcelain --untracked-files=
 if [ "$SRC_HEAD_AFTER" = "$SRC_HEAD_BEFORE" ] && [ "$SRC_TREE_AFTER" = "$SRC_TREE_BEFORE" ]; then
   ok "the user's source clone was not moved or modified"
 else
-  ko "THE UPDATE MUTATED THE SOURCE CLONE (HEAD ${SRC_HEAD_BEFORE:0:7} → ${SRC_HEAD_AFTER:0:7})"
+  # THE RED NAMES WHICH OF THE TWO MOVED. The message used to print the HEADs
+  # alone, so a mutation of the working tree came out as "HEAD 99f3b47 → 99f3b47"
+  # — an accusation contradicted by the evidence printed beside it.
+  if [ "$SRC_HEAD_AFTER" != "$SRC_HEAD_BEFORE" ]; then
+    ko "THE UPDATE MOVED THE SOURCE CLONE (HEAD ${SRC_HEAD_BEFORE:0:7} → ${SRC_HEAD_AFTER:0:7})"
+  else
+    ko "THE UPDATE MODIFIED THE SOURCE CLONE's files (git status: ${SRC_TREE_AFTER:-none} — was: ${SRC_TREE_BEFORE:-clean})"
+  fi
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
