@@ -282,6 +282,24 @@ def load_corpus():
         os.makedirs(os.path.dirname(cache), exist_ok=True)
         # Atomique : un hook tué en pleine écriture ne doit pas laisser un
         # demi-fichier que la fois suivante lira comme faisant autorité.
+        # ... mais l'écriture atomique a un angle mort : si le hook est tué ENTRE
+        # l'ouverture et le `replace`, le `.tmp` reste, et personne ne le ramasse
+        # jamais. Deux orphelins retrouvés le 2026-09-22, 4,4 Mo, écrits le 09/09 et
+        # le 21/09 par des PID morts depuis. On balaie donc les siens avant d'écrire.
+        # Le test est la MORT DU PROCESSUS, pas l'âge du fichier : une indexation qui
+        # dure ne doit pas se faire effacer son propre brouillon par une voisine.
+        for orphelin in glob.glob(f"{cache}.*.tmp"):
+            try:
+                os.kill(int(orphelin.rsplit(".", 2)[-2]), 0)
+            except (ValueError, IndexError):
+                continue                    # nom inattendu : on n'y touche pas
+            except ProcessLookupError:
+                try:
+                    os.remove(orphelin)     # son écrivain est mort, le brouillon ne sert plus
+                except OSError:
+                    pass
+            except PermissionError:
+                continue                    # vivant, mais à un autre utilisateur
         tmp = f"{cache}.{os.getpid()}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"version": _CACHE_VERSION, "fingerprint": fp, "docs": docs}, f)

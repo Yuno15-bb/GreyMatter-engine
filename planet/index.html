@@ -1015,6 +1015,13 @@ function build(data){
     const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map:texteTex(`${r}  ${n}`),
       transparent:true, depthTest:false, depthWrite:false, opacity:0.9 }));
     lab.scale.set(LABEL_W, LABEL_H, 1);
+    // ⚠️ `depthTest:false` NE SUFFIT PAS À PASSER DEVANT. Sans profondeur, c'est l'ORDRE de
+    // dessin qui tranche, et three.js trie la passe transparente par distance : les points de la
+    // face AVANT de l'amas sont plus près de la caméra que le nom posé au-dessus, donc ils se
+    // peignent APRÈS lui. Vu sur la capture du 21/09 : « handplanet » se lisait « nandplanet »,
+    // « méta 46 » disparaissait sous ses propres carrés. `renderOrder` passe avant le tri par
+    // distance : le nom se peint en dernier, toujours.
+    lab.renderOrder = 6;
     lab.position.set(0, rad*1.8 + LABEL_H*0.45, 0);  // juste au-dessus de l'amas, pas en l'air
     blob.add(lab);
     const c2 = REGION_2D[r] || {x:0,y:0};

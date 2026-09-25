@@ -2,6 +2,7 @@
 name: narcissus
 title: "NARCISSUS — la fin de session"
 description: NARCISSUS — la navette de fin de session. Deux missions : `distillateur` transforme une session de travail brute (notes sessions/archive/, transcripts .jsonl) en fiches et leçons propres, ou met à jour les fiches existantes avec les faits nouveaux ; `jardinier` range les fiches mal placées, déduplique, garantit que chaque fiche est dans la carte MEMORY.md + lessons/INDEX.md, tisse et répare les liens [[...]], masque les secrets. À lancer après une session de travail. La consigne reçue nomme la mission.
+topic: agents-et-sessions
 metadata:
   type: reference
 tools: Read, Edit, Write, Grep, Glob, Bash
@@ -311,7 +312,7 @@ absente — on lui ferait confiance.
 ## Garde-fous
 - **N'invente jamais** un fait absent de la source. Si un détail manque, laisse un `[[lien]]` ou une mention « à confirmer », ne comble pas par hypothèse.
 - Ne touche pas à `sessions/archive/` ni `TIMELINE.md` en écriture (couche brute).
-- En cas de doublon potentiel avec une fiche existante, fusionne plutôt que dupliquer ; si tu hésites, signale-le pour le [[jardinier]]. Les règles de rangement et de granularité sont dans les règles de jardinage.
+- En cas de doublon potentiel avec une fiche existante, fusionne plutôt que dupliquer ; si tu hésites, signale-le pour le jardinier. Les règles de rangement et de granularité sont dans les règles de jardinage.
 - Reste concis : une fiche dense vaut mieux qu'une fiche longue.
 
 ## MISSION — jardinier
@@ -413,4 +414,4 @@ Un hook `PostToolUse` (`hooks/on_fiche_write.py`) traite **chaque** fiche dépos
 - Reste factuel : tu ne réécris pas le sens d'une fiche, tu la ranges.
 
 ## Voir aussi
-Tu tisses les liens **évidents** d'une fiche que tu manipules ; pour la cohésion **globale** (liens manquants entre fiches éloignées, îlots détachés, ponts inter-domaines) c'est l'[[architecte]] qui prend le relais, à partir de `hooks/brain_topology.py`. Constitution commune : les règles de jardinage. Le projet Brain lui-même est décrit dans la doc du tronc. Le jardinage de l'Inbox est le « filon fiable » invoqué par « pas de journée sans commit » quand une session cherche une mise au point réelle à pousser. « une boucle morte : un capteur qui constate sans jamais agir » précise ton rôle sur la fraîcheur : c'est toi qui estampilles `last_validated`, jamais le challenger.
+Tu tisses les liens **évidents** d'une fiche que tu manipules ; pour la cohésion **globale** (liens manquants entre fiches éloignées, îlots détachés, ponts inter-domaines) c'est l'architecte qui prend le relais, à partir de `hooks/brain_topology.py`. Constitution commune : les règles de jardinage. Le projet Brain lui-même est décrit dans la doc du tronc. Le jardinage de l'Inbox est le « filon fiable » invoqué par « pas de journée sans commit » quand une session cherche une mise au point réelle à pousser. « une boucle morte : un capteur qui constate sans jamais agir » précise ton rôle sur la fraîcheur : c'est toi qui estampilles `last_validated`, jamais le challenger.

@@ -48,20 +48,27 @@
    "replace": "# Dérivé de $HOME, pas de __file__ : c'est le state du TRONC qu'on pilote.\nSTATUS = os.path.join(os.path.expanduser('~'), 'claude-brain', 'state', 'status.json')"
   },
   {
+   "id": "ilot-battement-tronc",
+   "file": "capsule/ilot.js",
+   "pattern": "const ALIVE = path\\.join\\(__dirname, '\\.\\.', 'state', 'capsule-alive'\\);",
+   "why": "Chez l'auteur, capsule/ est DANS le tronc : `__dirname/..` tombe sur le state que auto_maintain.py lit. Dans le paquet, la capsule vit dans le MOTEUR (~/.c-brain/engine) et le hook lit ~/.c-brain/trunk/state : la pastille battrait dans le vide, et passé 90 s le hook la prendrait pour une capsule zombie, la tuerait et la relancerait à chaque session. Même chemin que le main.js figé du paquet.",
+   "replace": "// Dérivé de $HOME, pas de __dirname : le hook lit le state du TRONC, la pastille vit dans le moteur.\nconst ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');"
+  },
+  {
    "id": "capsule-dependance-morte",
    "file": "capsule/package.json",
    "_note": "La virgule du bloc PRÉCÉDENT fait partie du motif : la retirer avec le bloc évite la virgule orpheline qui rend le JSON invalide (erreur commise une fois, attrapée par la validation JSON de generalize.py).",
-   "pattern": ",\\n  \"dependencies\": \\{\\n    \"three\": \"\\^0\\.160\\.0\"\\n  \\}",
-   "why": "`three` n'est référencé ni par main.js ni par index.html — le sprite de la créature est dessiné en pixels inline. Dépendance morte : ~1 Mo téléchargé pour rien à chaque installation. Même constat qu'en juin, revenue depuis.",
-   "replace": ""
+   "pattern": ",\\n    \"three\": \"\\^0\\.160\\.0\"\\n  \\}",
+   "why": "`three` n'est référencé ni par main.js ni par index.html — le sprite de la créature est dessiné en pixels inline. Dépendance morte : ~1 Mo téléchargé pour rien à chaque installation. Même constat qu'en juin, revenue depuis. 2026-09-25 : la source a gagné `electron-liquid-glass` (le verre de la pastille, chargé par ilot.js dans un try/catch) dans le même bloc — la règle ne retire plus que la ligne `three` ; l'orbe charge sa copie embarquée orbe/vendor/three.module.js, pas le paquet npm.",
+   "replace": "\n  }"
   },
   {
    "id": "capsule-dependance-morte-lock",
    "file": "capsule/package-lock.json",
    "_note": "JUMEAU OBLIGATOIRE de `capsule-dependance-morte`. Retirer `three` de package.json SANS le retirer du lock ne fait pas disparaître la dépendance : ça rend les deux fichiers INCOHÉRENTS, et npm réécrit alors le lock à chaque `npm install`. Le moteur devient sale — et `update.sh` REFUSE toute mise à jour sur un moteur sale : `brain update` marchait une fois, puis plus jamais. Mesuré le 2026-08-16, npm confirmé en bac à sable.",
-   "pattern": "      \"dependencies\": \\{\\n        \"three\": \"\\^0\\.160\\.0\"\\n      \\},\\n",
-   "why": "Le lock doit décrire le MÊME arbre que package.json, sinon npm le réécrit et salit le dépôt du moteur.",
-   "replace": ""
+   "pattern": ",\\n        \"three\": \"\\^0\\.160\\.0\"\\n      \\},\\n",
+   "why": "Le lock doit décrire le MÊME arbre que package.json, sinon npm le réécrit et salit le dépôt du moteur. 2026-09-25 : même bascule que package.json — seule la ligne `three` part, `electron-liquid-glass` reste.",
+   "replace": "\n      },\n"
   },
   {
    "id": "capsule-dependance-morte-lock-entree",

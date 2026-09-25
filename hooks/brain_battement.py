@@ -4,6 +4,11 @@
 Hook PostToolUse sur TOUS les outils : un appel d'outil, c'est la définition
 même de « quelque chose travaille ».
 
+24/09/2026 — aussi sur UserPromptSubmit et PreToolUse, et `--fin` sur Stop.
+Avec l'orbe dans l'encoche, le seul PostToolUse ne suffisait plus : pendant que
+Claude réfléchit ou écrit sa réponse, aucun outil ne finit, le pouls se périme
+et l'orbe rentrait en plein travail. L'utilisateur : « je ne la vois plus travailler ».
+
 ⚠ LE DÉFAUT QU'IL CORRIGE (2026-07-31). `on_fiche_write` écrivait `busy` dans
 state/status.json, et RIEN ne réécrivait jamais `idle` avant la fin de session.
 `touch_status()` existait dans brain_status.py mais n'était appelé par AUCUN
@@ -38,6 +43,13 @@ def main():
         except Exception:
             cur = {}
         frais = (time.time() - cur.get("ts", 0)) < 30
+        # --fin (hook Stop, 24/09) : la réponse est finie, l'orbe rentre dans
+        # l'encoche tout de suite au lieu d'attendre que le pouls se périme.
+        # Seulement si c'est NOTRE statut : un agent qui tourne garde le sien.
+        if "--fin" in sys.argv:
+            if cur.get("source", "you") == "you":
+                write_status("idle")
+            return
         if cur.get("state") == "busy" and frais:
             touch_status()                      # on prolonge ce qui tourne déjà
         else:

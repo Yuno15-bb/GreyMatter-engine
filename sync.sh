@@ -279,7 +279,18 @@ sync_dir companion '__pycache__' '*.pyc'
 # sur le corpus privé de l'auteur. Chez l'utilisateur il ne décrit rien, et il portait
 # des chemins de fiches clientes. L'outil part (`run.py`), ses cas partent
 # (`cas.json`), son résultat d'un jour non.
+# ⚠ `navigation/` et `banc_navigation_hors_index.py` EXCLUS (2026-09-25) : même nature que
+# `golden_recall` — le banc N1 pose ses questions sur les VRAIES fiches de l'auteur (chemins
+# de fiches clientes, extraits de litige), et ses résultats sont des sorties d'un jour.
+# Arrêtés par leakcheck au premier sync, 24 marqueurs.
+# ⚠ `banc_carte_lisibilite.py`, `feuilles_de_style_intactes.py`,
+# `legende_ne_promet_que_des_touches_vivantes.py` EXCLUS le même jour pour une autre
+# raison : ils mesurent `planet-v2/carte`, qui ne part PAS dans le paquet. Publiés, ils
+# testeraient un fichier absent — rouges chez tout le monde, sans rien protéger.
 sync_dir tests 'plugin_manifest.py' 'english_only.py' 'update_tag_family.sh' \
+  'navigation' 'banc_navigation_hors_index.py' \
+  'banc_carte_lisibilite.py' 'feuilles_de_style_intactes.py' \
+  'legende_ne_promet_que_des_touches_vivantes.py' \
   'recall_benchmark.py' 'recall_cache.py' 'update_rollback.sh' 'plugin_install.sh' \
   'update_auto.sh' \
   'docs_aligned.py' \

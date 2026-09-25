@@ -87,6 +87,7 @@ def tronc():
     for z in ("lessons", "state", "hooks", "tools/relecture"):
         os.makedirs(os.path.join(d, z), exist_ok=True)
     shutil.copy(os.path.join(RACINE, "hooks", "graph_export.py"), os.path.join(d, "hooks"))
+    shutil.copy(os.path.join(RACINE, "hooks", "topics_fiche.py"), os.path.join(d, "hooks"))  # graph_export l'importe (sujet, 23/09)
     for nom, txt in (("fiche-a", FICHE_SANS), ("fiche-b", FICHE_COURTE),
                      ("fiche-c", FICHE_TIRETS), ("cible-un", CIBLE), ("cible-deux", CIBLE2)):
         open(os.path.join(d, "lessons", f"{nom}.md"), "w", encoding="utf-8").write(txt)

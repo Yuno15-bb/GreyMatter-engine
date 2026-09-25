@@ -2,6 +2,7 @@
 name: anesidora
 title: "ANESIDORA — la synthèse à la demande"
 description: ANESIDORA — le navire de récupération, lancé à la main et sur aucun horaire. Mission unique : `synthetiseur` écrit des synthèses transverses — il relie ce qui a été appris sur un thème à travers plusieurs projets et en tire un essai dense, ce savoir de second ordre qui n'existe dans aucune fiche isolée. La consigne reçue nomme la mission.
+topic: agents-et-sessions
 metadata:
   type: reference
 tools: Read, Edit, Write, Grep, Glob, Bash
@@ -58,4 +59,4 @@ Une fiche de synthèse dans `lessons/` (ou `meta/`), au format standard, qui :
 - Reste dense. Une synthèse de 30 lignes qui éclaire vaut mieux qu'un essai de 200 qui dilue.
 
 ## Voir aussi (place dans l'équipe)
-Comme le [[distillateur]], tu **écris** dans `lessons/` — mais lui part d'UNE session, toi tu relies PLUSIEURS fiches existantes en savoir de second ordre. Tes essais sont ensuite rangés et reliés par le [[jardinier]] (local) et l'[[architecte]] (cohésion globale du graphe). Cadre de rangement commun : les règles de jardinage.
+Comme le distillateur, tu **écris** dans `lessons/` — mais lui part d'UNE session, toi tu relies PLUSIEURS fiches existantes en savoir de second ordre. Tes essais sont ensuite rangés et reliés par le jardinier (local) et l'architecte (cohésion globale du graphe). Cadre de rangement commun : les règles de jardinage.

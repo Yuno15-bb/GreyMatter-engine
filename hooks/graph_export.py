@@ -136,6 +136,44 @@ LINK = re.compile(r'\[\[([^\]]+)\]\]')          # [[nom-de-fiche]]
 # reprises proposées au démarrage de session. Une seule source, donc plus de divergence
 # possible entre ce que le Brain propose et ce que la carte montre.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import topics_fiche
+# Un tronc sans `meta/topics.json` (les mini-troncs des bancs) exporte ses sujets à None ; le
+# vrai tronc a toujours sa source, et `tests/topics_canoniques.py` verrouille qu'elle existe.
+SUJETS = ({t["id"]: t["nom"] for t in json.load(open(topics_fiche.SOURCE, encoding="utf-8"))["topics"]}
+          if os.path.exists(topics_fiche.SOURCE) else {})
+# LES FAMILLES DE LA CARTE (23/09) : un cercle concret par famille dans chaque région de la carte,
+# classé à la main dans meta/familles-carte.json. Absent (mini-troncs des bancs) → aucune famille.
+_FAM_SRC = os.path.join(os.path.dirname(topics_fiche.SOURCE), "familles-carte.json")
+FAMILLES = (json.load(open(_FAM_SRC, encoding="utf-8")) if os.path.exists(_FAM_SRC)
+            else {"familles": [], "membres": {}})
+# même règle que `regionOf` de planet-v2/carte/index.html
+_DOM_REGION = {"lessons": "principes", "meta": "méta", "life": "vie", "agents": "agents", "projects": "projets"}
+def _poser_familles(nodes):
+    """Pose `famille` sur chaque fiche. Une fiche que le classement ne connaît pas encore (fiche
+    neuve) rejoint la famille de SA région qui compte le plus de fiches de son sujet, sinon la plus
+    grosse — et porte `famille_devinee`, pour qu'on la voie au lieu de la croire classée."""
+    region = lambda n: n.get("primary_project") or _DOM_REGION.get(n["domain"], n["domain"])
+    connues = {f["id"]: f for f in FAMILLES["familles"]}
+    par_region = {}
+    for f in FAMILLES["familles"]:
+        par_region.setdefault(f["region"], []).append(f["id"])
+    for n in nodes.values():
+        fid = FAMILLES["membres"].get(n["file"])
+        n["famille_devinee"] = False
+        if fid in connues and connues[fid]["region"] == region(n):
+            n["famille"] = fid
+    for n in nodes.values():
+        if n.get("famille"):
+            continue
+        ids = par_region.get(region(n), [])
+        if not ids:
+            n["famille"] = None
+            continue
+        voisins = [m["famille"] for m in nodes.values() if m.get("famille") in ids and not m["famille_devinee"]]
+        meme_sujet = [f for f in voisins if n.get("topic") and connues[f].get("sujet") == n.get("topic")]
+        pool = meme_sujet or voisins or ids
+        n["famille"] = max(ids, key=lambda f: (pool.count(f), -ids.index(f)))
+        n["famille_devinee"] = True
 def _head_courant():
     """Le HEAD du tronc, ou None si le tronc n'est pas un dépôt."""
     try:
@@ -342,8 +380,15 @@ def scan():
                 # disent la portée, les familles disent de quoi ça parle — deux axes.
                 tm = re.search(r"^tags:\s*\[(.*?)\]", fm, re.M)
                 tags = [t.strip() for t in tm.group(1).split(",") if t.strip()] if tm else []
+                # ── LE SUJET (N1, 23/09) : `topic:` et ses 12 valeurs de `meta/topics.json`, lus
+                # par `topics_fiche` — la seule définition du tronc, pas un septième dialecte.
+                # `tags[0]` ne portait une famille que sur 223 leçons ; `topic:` en couvre 667.
+                # Une valeur hors de la source (ancien vocabulaire) est exportée à None : la carte
+                # ne doit pas inventer un 13e sujet que le banc `topics_canoniques` refuse.
+                sujet, _sec = topics_fiche.lire(text)
+                sujet = sujet if isinstance(sujet, str) and sujet in SUJETS else None
                 nodes[nid] = {"id": nid, "name": nid, "title": title, "domain": domain,
-                              "group": group, "desc": desc, "tags": tags,
+                              "group": group, "desc": desc, "tags": tags, "topic": sujet,
                               "born_from": born, "scale": scale,
                               "type": (FM_TYPE.search(fm).group(1) if FM_TYPE.search(fm) else None),
                               "en_clair": extract_en_clair(text),  # version humaine, affichée en 1er
@@ -443,6 +488,8 @@ def scan():
         n["frontier"] = (n["primary_project"] is not None
                          and sum(1 for v in m.values() if v >= FRONTIER_MIN) >= 2)
 
+    _poser_familles(nodes)
+
     # LA COUVERTURE SE COMPTE SUR LES FICHES, pas sur la taille du cache : une entrée qui
     # ne correspond à aucune fiche actuelle ne place personne, et un cache de 400 clés
     # périmées se lirait sinon comme une santé parfaite.
@@ -470,6 +517,10 @@ def scan():
                    # nulle part et la campagne s'oublie à mi-chemin.
                    "en_clair": sum(1 for n in nodes.values() if n.get("en_clair"))},
         "domains": DOMAINS,
+        # les 12 sujets et leur nom, dans l'ordre de la source : la carte ne recopie aucune liste
+        "topics": SUJETS,
+        # les familles de la carte, id → nom affiché et région (meta/familles-carte.json)
+        "familles": {f["id"]: {"nom": f["nom"], "region": f["region"]} for f in FAMILLES["familles"]},
         # fenêtre de l'ACTIVITÉ EN DIRECT (minutes) : le visualizer éteint lui-même un anneau
         # dont `active_ts` est sorti de la fenêtre, sans attendre une régénération du graphe.
         "live_window_min": live_window_min,

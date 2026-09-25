@@ -178,6 +178,7 @@ def rendre(reps, reprs, decs) -> str:
     L.append('description: "État de TOUS les projets, regénéré automatiquement deux fois par jour '
              "(hooks/etat_projets.py). Partie MESURÉE (dépôts git) + partie DÉCLARÉE (points de "
              'reprise des fiches, potentiellement périmés) + décisions en attente du propriétaire."')
+    L.append("topic: projets-clients")   # sinon la régénération effacerait le sujet (carte, 23/09)
     L.append("metadata:")
     L.append("  type: project")
     L.append("  node_type: memory")

@@ -12,10 +12,24 @@
   le Brain. Le projet d'origine est sur le Bureau (`~/Desktop/Orbe`), avec sa
   démo et ses leçons.
 -->
+<script>
+  // Posé AVANT la feuille de style : sinon la première image montre l'orbe sortie.
+  if (location.search.includes('encoche')) document.documentElement.dataset.encoche = '1';
+  // ?seule : l'orbe sans ses libellés, pour le panneau de la barre de menus (ilot.html),
+  // qui dit lui-même qui travaille et sur quoi.
+  if (location.search.includes('seule')) document.documentElement.dataset.seule = '1';
+  // ?ilot : l'orbe du panneau de la barre de menus. l'auteur, 24/09 : « l'écriture
+  // dans l'orbe + le glow ont disparu » — elle garde le pavé de code. Puis : « supprime
+  // l'écriture sous l'orbe, elle est déjà là à gauche » — le nom et la ligne du
+  // dessous s'effacent, comme le compteur de fiches.
+  if (location.search.includes('ilot')) document.documentElement.dataset.ilot = '1';
+</script>
 <style>
   html, body { margin:0; height:100%; background:transparent; overflow:hidden;
                -webkit-user-select:none; }
   #scene { position:absolute; inset:0; }
+  html[data-seule] #dit, html[data-seule] #fiche, html[data-seule] #pave, html[data-seule] #restant { display:none !important; }
+  html[data-ilot] #restant, html[data-ilot] #dit, html[data-ilot] #fiche { display:none !important; }
   /* ⚠ SANS CETTE RÈGLE, le canvas se met en page à sa taille de TAMPON (300 px
      sur un écran retina) dans une fenêtre de 150 : l'orbe déborde en bas à
      droite et tout le reste — pavé, pastille, qui sont centrés sur la FENÊTRE —
@@ -71,13 +85,27 @@
      les lettres : sur un fond d'écran clair, le libellé virait au gris sale.
      Un texte posé sur une scène qu'on ne maîtrise pas se donne son opacité,
      il ne l'emprunte pas au fond. */
-  #dit { position:absolute; left:50%; bottom:14.5px; transform:translateX(-50%);
+  /* 2026-09-20 — DESCENDU DE 2 pt (L'utilisateur : « baisse tres legerement l'ecriture
+     sous l'orbe desfois l'orbe passe dessus »). Sur les mécaniques les plus
+     gonflées — `synthesizing`, `challenging` — le bas du verre et sa lueur
+     descendaient jusqu'à toucher le haut des capitales. Mesuré sur le tournage
+     du 20/09 : le verre atteint y=265 px là où les capitales commencent à
+     y=254. Les deux lignes descendent ensemble pour garder leur écart. */
+  #dit { position:absolute; left:50%; bottom:12.5px; transform:translateX(-50%);
          white-space:nowrap; color:#fff;
          /* 2026-08-08 — +1,5 px sur les deux lignes à la demande de l'auteur. Le
             libellé monte AUSSI : ne grossir que la ligne du dessous inverserait
             la hiérarchie que la casse est seule à porter. */
          font:600 9px/1.2 ui-sans-serif,-apple-system,sans-serif;
          letter-spacing:1.4px; text-indent:1.4px;
+         /* 2026-09-20 — LE NOM EST RECENTRÉ, PAS LA LIGNE (L'utilisateur : « décale les
+            noms un peu vers la droite pour les recentrer avec le reste »). Les
+            trois points comptent dans la largeur du bloc : centrer le bloc
+            poussait le NOM de 8 px vers la gauche, mesuré sur le tournage —
+            centre du mot à 133,5 px quand la ligne du dessous est à 149,5. Une
+            marge à gauche égale à la largeur des points remet le mot au milieu,
+            d'aplomb avec la petite ligne et avec l'orbe. */
+         padding-left:16px;
          /* ⚠ L'OMBRE PORTÉE A ÉTÉ RETIRÉE (2026-08-04, demande de l'auteur :
             « supprime l'ombre noire sous les WORKING / SYNTHESIZING »).
             C'était une ellipse sombre de 126 px posée derrière le libellé pour
@@ -144,7 +172,7 @@
                          0 0 7px rgba(0,0,0,.45); }
   #restant .tot { opacity:.62; font-weight:600; }
   #restant.vu { display:block; }
-  #fiche { position:absolute; left:50%; bottom:3.5px; transform:translateX(-50%);
+  #fiche { position:absolute; left:50%; bottom:2px; transform:translateX(-50%);
            max-width:146px; overflow:hidden; text-overflow:ellipsis;
            white-space:nowrap; text-align:center;
            color:#fff; letter-spacing:.1px;
@@ -292,8 +320,67 @@
   #pave .l.tete  { color:#e6fff1; opacity:1; }
   @media (prefers-reduced-motion: reduce) { #pave .rouleau { transition:none } }
 
+
+  /* ── L'ORBE DANS L'ENCOCHE ─────────────────────────────────────────────────
+     l'auteur, 24/09 : « il doit apparaître dans l'encoche et y rester jusqu'à la
+     fin », « comme une notif qui apparaît ». L'encoche est un TROU dans la dalle :
+     aucun pixel ne s'y affiche. Être « dans l'encoche », c'est donc que
+     l'ENCOCHE GRANDIT : un noir exactement de sa largeur (pas une aile de plus,
+     L'utilisateur : « sans espace supplémentaire sur les côtés ») descend sous elle et
+     porte l'orbe, à sa taille réelle. Au repos ce noir a la hauteur de l'encoche
+     et se confond avec elle : il n'y a rien à voir.
+     `#bloc` porte TOUT le dessin de l'orbe du bureau (orbe, nom, ligne, pavé),
+     inchangé ; seul le bloc voyage. `--decal` et `--barre` viennent de main.js. */
+  html[data-encoche]:not([data-pret]) body > * { visibility:hidden; }
+  /* ⚠ LE CADRE DOIT LAISSER RESPIRER LE TEXTE. Première version : le noir
+     s'arrêtait au ras de la ligne du dessous — l'auteur, 24/09 : « working frôle le
+     bord bas ». 10 px sous la dernière ligne, pas un de plus : « un meilleur
+     cadre qui reste petit ». Puis, même jour : « que l'encoche fasse un carré ».
+     La largeur ne peut pas bouger (179 pt, celle du trou, mesurée : plus
+     étroit, le trou dépasserait) : c'est la HAUTEUR qui descend. Le cadre sorti
+     fait `--haut` (158 pt depuis le haut de l'écran) et l'orbe `--echelle`
+     (0,9 — L'utilisateur : « la nouvelle taille de l'orb est bonne garde la »). ⚠ Ce que l'auteur voit n'est pas ce que la capture voit : sur la vraie
+     dalle, le noir du cadre se soude au trou ET au bord noir au-dessus de
+     l'écran, et paraît plus haut qu'il ne l'est en pixels. Son œil tranche.
+     L'ANIMATION, dans l'ordre (L'utilisateur : « une bien meilleure animation ») :
+       sortie  — le cadre s'ouvre sur un RESSORT (un léger dépassement puis
+                 retour, comme l'îlot de l'iPhone), l'orbe se dessine dedans en
+                 sortant d'un flou, puis le texte monte de 6 px ;
+       rentrée — l'inverse, plus vite : le texte part, l'orbe se referme dans le
+                 flou, le cadre remonte sans rebond.
+     Les ressorts sont de vraies courbes physiques, calculées dans le script et
+     posées en `linear()` (--ressort-*), pas des courbes de Bézier à l'œil. */
+  #ile { display:none; }
+  html[data-encoche] #ile { display:block; position:absolute; top:0; left:0; right:0;
+    height:var(--barre, 33px); background:#000; border-radius:0 0 12px 12px;
+    transition:height .42s var(--ressort-rentree, ease) .16s, border-radius .42s ease .16s; }
+  /* Le rayon suit l'échelle (30 pt à 0,9) : réduit d'un tiers, le cadre garde sa forme. */
+  html[data-encoche][data-sortie] #ile { height:var(--haut, 116px);
+    border-radius:0 0 calc(33.3px * var(--echelle, .6)) calc(33.3px * var(--echelle, .6));
+    transition:height .72s var(--ressort-sortie, ease), border-radius .5s ease; }
+  /* L'encre de l'orbe commence à 27,5 pt dans sa boîte : on la pose 5 pt sous
+     le bas de l'encoche, à l'échelle `--echelle`. l'auteur, 24/09 soir : « remonte
+     légèrement l'orb mais très légèrement » → 2 pt au lieu de 5 (le texte
+     retrouve ses 10 pt de marge au-dessus du bas du cadre). */
+  html[data-encoche] #bloc { position:absolute; left:50%;
+    top:calc(var(--barre, 33px) + 2px - 27.5px * var(--echelle, .6));
+    width:150px; height:150px; margin-left:-75px;
+    transform:scale(.5); transform-origin:50% 0; opacity:0; filter:blur(10px);
+    transition:transform .26s cubic-bezier(.5,0,.9,.4), opacity .2s ease .04s, filter .22s ease; }
+  html[data-encoche][data-sortie] #bloc { transform:scale(var(--echelle, .6)); opacity:1; filter:none;
+    transition:transform .8s var(--ressort-sortie, ease) .1s, opacity .3s ease .1s, filter .42s ease .1s; }
+  html[data-encoche] #dit, html[data-encoche] #fiche { translate:0 6px;
+    transition:opacity .12s ease, translate .12s ease; }
+  html[data-encoche][data-sortie] #dit, html[data-encoche][data-sortie] #fiche { translate:0 0;
+    transition:opacity .35s ease .34s, translate .5s var(--ressort-sortie, ease) .34s; }
+  html[data-encoche]:not([data-sortie]) #dit, html[data-encoche]:not([data-sortie]) #fiche { opacity:0; }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-encoche] #ile, html[data-encoche] #bloc, html[data-encoche] #dit,
+    html[data-encoche] #fiche { transition:opacity .2s ease !important; filter:none !important; } }
+
 </style>
 
+<div id="ile"></div>
 <div id="scene"><canvas id="c"></canvas></div>
 <div id="dit"></div>
 <div id="fiche"></div>
@@ -345,10 +432,68 @@ orbe.setVerre(1.0);
      plutôt que de donner l'impression d'un objet cassé.
    Un fondu de mécanique tourne à 60 — en dessous, le morphing avance par crans
    et se lit comme une saccade. */
-const CADENCE = { repos: 12, travail: 30, transition: 60 };
+/* ── SORTIR / RENTRER (mode encoche seulement) ──────────────────────────────
+   La sortie suit l'état DÉJÀ lu pour l'orbe (garde de fraîcheur comprise) :
+   aucun second avis sur « est-ce qu'on travaille ». La rentrée attend 4 s, sinon
+   l'orbe ferait l'aller-retour entre deux appels d'outils d'un même travail.
+   Rentrée, elle ne peint presque plus (cadence 1). */
+const ENCOCHE = document.documentElement.dataset.encoche === '1';
+let rentree = ENCOCHE, force = false, attenteRentree = null;
+function sortir(v) {
+  if (v) {
+    clearTimeout(attenteRentree); attenteRentree = null;
+    if (!rentree) return;
+    rentree = false; document.documentElement.dataset.sortie = '1'; majCadence();
+  } else if (!rentree && !attenteRentree) {
+    attenteRentree = setTimeout(() => {
+      attenteRentree = null; rentree = true;
+      delete document.documentElement.dataset.sortie;
+      setTimeout(majCadence, 700);       // laisser l'orbe finir sa rentrée à pleine cadence
+    }, force ? 0 : 4000);
+  }
+}
+// Pour le banc : forcer la sortie ou la rentrée sans attendre un vrai travail.
+window.__sortir = (v) => { force = true; sortir(v); };
+/* Un ressort amorti, échantillonné en courbe `linear()` : x(t) pour une masse
+   unité, raideur k, amortissement c, sur la durée donnée. Au-delà de la durée
+   la courbe est à 1 : la durée CSS doit couvrir le temps de pose du ressort. */
+function ressort(k, c, duree) {
+  const w0 = Math.sqrt(k), z = c / (2 * w0), pts = [];
+  for (let i = 0; i <= 48; i++) {
+    const t = duree * i / 48;
+    let x;
+    if (z < 1) { const wd = w0 * Math.sqrt(1 - z * z);
+      x = 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)); }
+    else x = 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+    pts.push((i === 48 ? 1 : x).toFixed(4));
+  }
+  return 'linear(' + pts.join(',') + ')';
+}
+if (ENCOCHE) {
+  const st = document.documentElement.style;
+  st.setProperty('--ressort-sortie',  ressort(260, 20, 0.72));   // ~8 % de dépassement
+  st.setProperty('--ressort-rentree', ressort(400, 40, 0.42));   // amorti critique : pas de rebond
+  require('electron').ipcRenderer.on('cap-encoche', (_e, g) => {
+    document.documentElement.style.setProperty('--decal', g.decal + 'px');
+    document.documentElement.style.setProperty('--barre', g.barre + 'px');
+    document.documentElement.style.setProperty('--haut', g.haut + 'px');
+    document.documentElement.style.setProperty('--echelle', g.echelle);
+  });
+  // Tout le dessin de l'orbe du bureau passe dans un seul bloc, qui voyage.
+  const bloc = document.createElement('div'); bloc.id = 'bloc';
+  ['scene', 'dit', 'fiche', 'pave', 'restant'].forEach((id) => bloc.appendChild(document.getElementById(id)));
+  document.body.appendChild(bloc);
+  document.documentElement.dataset.pret = '1';
+}
+
+// Tournage (CAPSULE_TOURNAGE=1) : 60 partout. l'auteur, 24/09 : la vidéo « saccade à
+// certains moments, à d'autres c'est lisse » — c'était l'orbe qui passait de 30
+// (travail) à 60 (transition) : une cadence qui change se voit à l'image.
+const CADENCE = (typeof process !== 'undefined' && process.env.CAPSULE_TOURNAGE === '1')
+  ? { repos: 60, travail: 60, transition: 60 } : { repos: 12, travail: 30, transition: 60 };
 let occupe = false;
 function majCadence() {
-  if (!vu || document.hidden) return orbe.setCadence(1);
+  if (!vu || document.hidden || rentree) return orbe.setCadence(1);
   if (orbe.enTransition()) return orbe.setCadence(CADENCE.transition);
   orbe.setCadence(occupe ? CADENCE.travail : CADENCE.repos);
 }
@@ -389,15 +534,38 @@ const NOMS = { mapping:'MAPPING', auditing:'AUDITING', architecting:'ARCHITECTIN
 /* ⚠ 20/09 — DYLAN A RENOMMÉ LES AGENTS EN QUATRE VAISSEAUX (« on met les nouveaux
    noms », fiche renommage-agents-familles-2026-09-20). Quand l'activité appartient
    à un vaisseau, le libellé porte SON NOM et l'action descend dans la ligne du
-   dessous : « NOSTROMO » puis « auditing · hooks and links ». La règle « l'orbe dit
-   ce qui se fait » reste entière pour ce que la session fait elle-même — working,
-   committing, correcting n'ont pas d'auteur parmi les vaisseaux, ils gardent leur
-   -ING. La table suit `hooks/brain_upkeep.py` (ACT) et `hooks/brain_status.py` :
-   auditing = mécanicien, mapping/filing = jardinier. */
+   dessous : « NOSTROMO » puis « auditing · hooks and links ». La table suit
+   `hooks/brain_upkeep.py` (ACT) et `hooks/brain_status.py` : auditing = mécanicien,
+   mapping/filing = jardinier.
+
+   ⚠ 20/09 au soir — LA SESSION ENTRE DANS LA FAMILLE, elle aussi. Version d'avant :
+   working, committing et correcting gardaient leur -ING « parce qu'ils n'ont pas
+   d'auteur parmi les vaisseaux ». Faux, et surtout invisible à l'usage — la session
+   travaille QUASIMENT TOUT LE TEMPS, donc l'orbe affichait « WORKING » en permanence
+   et un nom de vaisseau ne passait que quelques secondes par jour. l'auteur, en voyant
+   l'écart : « j'avais nostromo mais là j'ai working je ne comprend pas », puis
+   « doivent adopter des noms similaire également avec le même effet glow ».
+
+   TORRENS, et le choix n'est pas libre. La série obéit à une règle mesurée le 20/09
+   (fiche du renommage, § « ce que la recherche a trouvé ») : les vaisseaux d'Alien
+   portent presque tous un nom tiré de JOSEPH CONRAD — Nostromo d'après le roman de
+   1904, Narcissus d'après Le Nègre du Narcisse, Sulaco la ville de Nostromo. Le
+   Torrens est le clipper dont Conrad a été second capitaine de novembre 1891 à juin
+   1893 : le DERNIER navire où il a travaillé avant d'être écrivain. Et dans Alien:
+   Isolation, l'USCSS Torrens est le vaisseau à bord duquel on est pendant qu'on va
+   chercher l'enregistreur du Nostromo. C'est exactement la place de la session :
+   le navire où l'on est, pendant que le travail se fait.
+   MOTHER était le candidat évident et il est INTERDIT : le nom est pris depuis le
+   14/08 par la signature visuelle du Brain (planete-mother-2026-08-14), et un
+   homonyme a déjà coûté deux défauts ici.
+
+   CONSÉQUENCE MÉCANIQUE : les douze états ont maintenant un vaisseau, donc `NOMS`
+   ci-dessus ne sert plus que de filet pour un état inconnu. On le garde pour ça. */
 const VAISSEAUX = { auditing:'NOSTROMO',
   mapping:'NARCISSUS', filing:'NARCISSUS', gardening:'NARCISSUS', distilling:'NARCISSUS',
   challenging:'SULACO', architecting:'SULACO', archiving:'SULACO',
-  synthesizing:'ANESIDORA' };
+  synthesizing:'ANESIDORA',
+  working:'TORRENS', committing:'TORRENS', correcting:'TORRENS' };
 
 const dit   = document.getElementById('dit');
 const fiche = document.getElementById('fiche');
@@ -491,7 +659,7 @@ function surQuoi(detail) {
   return cacheTitre['~' + dernierFichier] = sortie;
 }
 
-function fichierActif() {
+function fichierActif(sansAge) {
   try {
     let best = null, bestTs = 0;
     for (const f of fs.readdirSync(FLUX)) {
@@ -500,7 +668,7 @@ function fichierActif() {
       if (st.mtimeMs > bestTs) { bestTs = st.mtimeMs; best = path.join(FLUX, f); }
     }
     // Un flux qui n'a pas bougé depuis 3 min ne raconte plus le présent.
-    return (best && Date.now() - bestTs < 180000) ? best : null;
+    return (best && (sansAge || Date.now() - bestTs < 180000)) ? best : null;
   } catch (e) { return null; }
 }
 
@@ -546,8 +714,64 @@ function lignesAgent(etat) {
   } catch (e) { return cacheAgent[rel] = []; }
 }
 
+// ⚠ l'auteur, 24/09 : « surtout en anglais et anonymiser ». En tournage, le pavé
+//   ne lit AUCUN fichier réel : il déroule un code neutre, en anglais, inventé
+//   pour la vidéo. Sinon une fiche personnelle défile, lisible à l'image.
+const PAVE_TOURNAGE = {
+  synthesizing: `── notes/digest.ts
++ export async function weeklyDigest(notes) {
++   const themes = groupBy(notes, n => n.topic);
++   for (const [topic, items] of themes) {
++     const links = items.flatMap(n => n.links);
++     if (links.length < 2) continue;
++     digest.push({ topic, summary: merge(items) });
++   }
+-   return notes.map(n => n.title);
++   return rank(digest, { by: 'reuse' });
++ }
+  const merge = items => items
+    .map(n => n.lesson)
+    .filter(Boolean)
+    .join('\\n');
++ // cross-project patterns only
++ const rank = (xs, o) => xs.sort(score(o));`,
+  autre: `── src/index/graph.ts
++ export function mapLayout(nodes, edges) {
++   const seen = new Set();
++   for (const e of edges) {
++     if (!seen.has(e.from)) place(e.from);
++     link(e.from, e.to, e.weight);
++   }
+-   return nodes;
++   return settle(nodes, { steps: 120 });
++ }
+  function place(id) {
+    seen.add(id);
+    grid.put(id, nearestFree(id));
+  }
++ // commit: 3 files changed
++ git.add(['graph.ts', 'layout.ts']);
++ git.commit('map layout: stable seeds');`,
+};
+const cachePave = {};
+function paveTournage(etat) {
+  const cle = PAVE_TOURNAGE[etat] ? etat : 'autre';
+  return cachePave[cle] || (cachePave[cle] = PAVE_TOURNAGE[cle].split('\n')
+    .map(t => ({ t: t.slice(0, LARGEUR), c: t.startsWith('──') ? 'tete' : classe(t) })));
+}
+
 function lireFlux(etat) {
-  const f = fichierActif();
+  if (process.env.CAPSULE_TOURNAGE === '1') {
+    const l = paveTournage(etat);
+    if (lignes === l) return false;
+    lignes = l; return true;
+  }
+  let f = fichierActif();
+  // ⚠ l'auteur, 24/09 : « l'écriture dans l'orbe a encore disparu ». Cause : sans
+  //   diff écrit depuis 3 min, `working` n'a pas de fichier d'agent de repli
+  //   (SOURCE_AGENT) → pavé vide. Dans la barre de menus, la dernière écriture
+  //   réelle, même ancienne, vaut mieux qu'une orbe muette pendant le travail.
+  if (!f && HOTE && !lignesAgent(etat).length) f = fichierActif(true);
   if (!f) {
     const repli = lignesAgent(etat);
     // ⚠ ne renvoyer `true` que si le contenu CHANGE : sinon on repeint le pavé
@@ -657,15 +881,31 @@ function peindrePave() {
   if (occupe) { pave.classList.add('vu'); tournerPave(); }
 }
 
+// ?seule / ?ilot : l'orbe est dans la pastille ou le panneau de la barre de
+// menus, et c'est la page hôte (ilot.html) qui lui DIT l'état. l'auteur, 24/09 :
+// « la sphère ne montre qu'un seul état même si elle passe à d'autres couleurs
+// ou vaisseaux » — en lisant le fichier de son côté, elle avait sa propre
+// garde de fraîcheur (30 s contre 180 pour la pastille) et pouvait ne pas
+// suivre ce que disait le panneau. Une seule source maintenant : l'hôte.
+const HOTE = !!(document.documentElement.dataset.seule || document.documentElement.dataset.ilot);
+let impose = null;
+if (HOTE) window.addEventListener('message', (e) => {
+  if (e.data && e.data.ilot) { impose = e.data.ilot; lire(); }
+});
 function lire() {
   let st = { state:'idle' };
-  try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
-  const frais = (Date.now()/1000 - (st.ts || 0)) < 30;
+  if (HOTE) st = impose ? Object.assign({}, impose, { ts: Date.now() / 1000 }) : st;
+  else try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
+  // Dans l'encoche, la fin est dite par le hook Stop (`idle` écrit à la fin de
+  // la réponse) : la garde de fraîcheur n'est plus qu'un filet si la session
+  // meurt. À 30 s, elle faisait rentrer l'orbe pendant que Claude réfléchissait.
+  const frais = (Date.now()/1000 - (st.ts || 0)) < (ENCOCHE ? 180 : 30);
   const etat = (st.state === 'busy' && frais) ? (st.activity || 'working') : 'idle';
   // ⚠ Le flux grossit SANS que l'état change : un même agent écrit des dizaines
   //   de fois d'affilée. Le sortir du garde `etat === dernier` est le seul moyen
   //   de voir arriver autre chose que le premier diff de chaque agent.
   occupe = etat !== 'idle';
+  if (ENCOCHE && !force) sortir(occupe);
   // ⚠ AVANT le garde `etat === dernier`, et c'est tout l'intérêt : le DÉTAIL
   //   change sans que l'état bouge — « FILING » reste « FILING » pendant que
   //   l'agent passe d'une fiche à l'autre. Posée après le garde, cette ligne
@@ -807,6 +1047,7 @@ function dansOrbe(e) {
 
 window.addEventListener('mousemove', (e) => {
   if (attrape) return;                 // pendant le glissé, la main reste prise
+  if (ENCOCHE) return;                 // rien à attraper : le clic traverse
   const dedans = dansOrbe(e);
   if (dedans === surOrbe) return;      // n'envoyer qu'aux TRANSITIONS
   surOrbe = dedans;
@@ -815,6 +1056,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mousedown', (e) => {
+  if (ENCOCHE) return;                 // l'orbe de l'encoche ne se déplace pas
   if (e.button !== 0 || !dansOrbe(e)) return;
   attrape = true;
   document.body.style.cursor = 'grabbing';
