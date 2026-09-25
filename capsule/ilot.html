@@ -73,6 +73,11 @@
   #panneau { display:none; position:absolute; left:0; right:0; top:0; padding:14px; box-sizing:border-box;
              transform-origin:50% 0; }
   html[data-mode="panneau"] #panneau { display:block; }
+  /* Le liseré que dessinait l'ombre de la fenêtre, retirée le 25/09 (voir ilot.js,
+     creerPanneau) : 24 px de page = les 18 pt du verre, zoom de 0,75 compris. */
+  html[data-verre] #panneau { border-radius:24px; box-shadow:inset 0 0 0 .5px rgba(255,255,255,.28); }
+  /* Replié, le panneau est caché mais sa page tourne : ses animations s'arrêtent. */
+  html[data-mode="panneau"]:not([data-vu]) * { animation-play-state:paused !important; }
   html[data-ouvert] #panneau { animation:tombe .42s cubic-bezier(.2,1.3,.4,1) both; }
   @keyframes tombe { from { opacity:0; transform:translateY(-8px) scale(.96) } to { opacity:1; transform:none } }
   @media (prefers-reduced-motion: reduce) { html[data-ouvert] #panneau { animation:none } }
@@ -97,23 +102,20 @@
   .vaisseau { font-size:19px; font-weight:800; letter-spacing:1.4px; line-height:23px;
               color:color-mix(in oklab, var(--c1) 55%, var(--c2)); transition:color 1s; }
   /* l'auteur, 24/09 : « fais glow un peu les noms en grand et colorés ». Une lueur
-     de la teinte du vaisseau, serrée puis large, qui respire lentement. */
-  .vaisseau { text-shadow:0 0 5px color-mix(in oklab, var(--c2) 75%, transparent),
-                          0 0 14px color-mix(in oklab, var(--c2) 45%, transparent);
-              animation:lueur 2.8s ease-in-out infinite; }
-  @keyframes lueur { 50% { text-shadow:0 0 7px color-mix(in oklab, var(--c2) 90%, transparent),
-                                       0 0 20px color-mix(in oklab, var(--c2) 60%, transparent); } }
-  @media (prefers-reduced-motion: reduce) { .vaisseau { animation:none } }
-  html[data-fini] .vaisseau { color:#fff; letter-spacing:0; text-shadow:none; animation:none; }
+     de la teinte du vaisseau, serrée puis large.
+     ⚠ 25/09 : elle respirait (text-shadow animé), ce qui repeignait le panneau
+       60 fois par seconde. Elle est fixe, au milieu de son ancienne respiration. */
+  .vaisseau { text-shadow:0 0 6px color-mix(in oklab, var(--c2) 82%, transparent),
+                          0 0 17px color-mix(in oklab, var(--c2) 52%, transparent); }
+  html[data-fini] .vaisseau { color:#fff; letter-spacing:0; text-shadow:none; }
   /* l'auteur, 24/09 : « les 3 petits points animés à côté de l'état ont disparu ».
      Les mêmes que sous l'orbe (orbe.html, #dit .pt) : trois points pleins qui
-     sautent l'un après l'autre tant que le travail court, absents une fois fini. */
+     sautent l'un après l'autre tant que le travail court, absents une fois fini.
+     ⚠ 25/09 : en animation CSS, ils forçaient 60 images/s au panneau. Ils sautent
+       maintenant par crans (un point levé à la fois, voir sauterPoints). */
   .pts { margin-left:-6px; font-size:19px; font-weight:800; color:inherit; }
-  .pts i { display:inline-block; font-style:normal; animation:pt 1.35s ease-in-out infinite; }
-  .pts i:nth-child(2) { animation-delay:.18s; }
-  .pts i:nth-child(3) { animation-delay:.36s; }
-  @keyframes pt { 0%,70%,100% { transform:translateY(0) } 35% { transform:translateY(-2.5px) } }
-  @media (prefers-reduced-motion: reduce) { .pts i { animation:none } }
+  .pts i { display:inline-block; font-style:normal; }
+  .pts i.haut { transform:translateY(-2.5px); }
   html[data-fini] .pts { display:none; }
   html[data-repos] .grand { display:none; }
   .grand { font-size:17px; font-weight:700; opacity:.55; }
@@ -130,9 +132,9 @@
            transition:width .8s cubic-bezier(.3,.8,.3,1); }
   .arret { position:absolute; top:0; width:15px; height:15px; margin-left:-7.5px; border-radius:50%;
            background:var(--teinte); box-shadow:0 0 0 2.5px #fff; }
-  .arret.ici { box-shadow:0 0 0 2.5px #fff, 0 0 10px 2px var(--teinte); animation:pouls 1.6s ease-in-out infinite; }
-  @keyframes pouls { 50% { transform:scale(1.18) } }
-  @media (prefers-reduced-motion: reduce) { .arret.ici { animation:none } }
+  .arret.ici { box-shadow:0 0 0 2.5px #fff, 0 0 10px 2px var(--teinte); }
+  /* Le pouls de l'étape en cours bat par crans, au rythme des trois points (sauterPoints). */
+  .arret.ici.gonfle { transform:scale(1.18); }
   .arret.fin { background:#fff; display:grid; place-items:center; }
   .arret.fin svg { width:9px; height:9px; }
   .nom-arret { position:absolute; top:21px; font-size:10px; font-weight:700; letter-spacing:.8px; opacity:.5;
@@ -142,14 +144,14 @@
 </head>
 <body>
 <div id="pilule">
-  <div class="mini"><iframe src="orbe.html?seule" allowtransparency="true"></iframe></div>
+  <div class="mini"><iframe data-src="orbe.html?seule" allowtransparency="true"></iframe></div>
   <span class="txt"><span class="nom"></span><span class="act"></span></span>
 </div>
 
 <div id="panneau">
   <div class="tete"><img src="assets/gmtr-128.png" alt=""><b>GreyMatter</b></div>
   <div class="corps">
-    <iframe id="orbe" src="orbe.html?ilot" allowtransparency="true"></iframe>
+    <iframe id="orbe" data-src="orbe.html?ilot" allowtransparency="true"></iframe>
     <div class="ligne"><span class="vaisseau"></span><span class="pts"><i>.</i><i>.</i><i>.</i></span><span class="grand num">0:00</span></div>
     <div class="sous"></div>
   </div>
@@ -166,6 +168,15 @@ const TXT = EN ? { repos: 'Idle', dernier: 'last run', etape: 'step', etapes: 's
 const { reglage } = await import('./orbe/palettes.js');
 const racine = document.documentElement;
 const $ = (s) => document.querySelector(s);
+// ⚠ l'auteur, 25/09 : « mon pc rame énormément […] si c'est la capsule il faut
+//   impérativement la rendre extrêmement légère ». Mesuré avant : 61 % d'un cœur
+//   pendant le travail, 28 % au repos. La même page sert les deux fenêtres, et
+//   chacune chargeait LES DEUX orbes WebGL, dont une jamais montrée. Chaque
+//   fenêtre ne charge plus que l'orbe qu'elle affiche.
+const PANNEAU_MODE = racine.dataset.mode === 'panneau';
+for (const f of document.querySelectorAll('iframe[data-src]')) {
+  if (f.closest(PANNEAU_MODE ? '#panneau' : '#pilule')) f.src = f.dataset.src; else f.remove();
+}
 
 let course = null, decalage = 0;
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -175,21 +186,42 @@ function poserCouleurs(el, etat) { const t = teintes(etat); for (const k in t) e
 // Un slug de fiche se lit en mots ; un texte libre passe tel quel.
 const lisible = (d) => /^[a-z0-9][a-z0-9-]*$/.test(d || '') ? d.replace(/-/g, ' ') : (d || '');
 
+// Le chrono ne se voit que dans le panneau ouvert ; ailleurs, il ne tourne pas.
+// Réécrire le même texte repeint quand même : on n'écrit que ce qui change.
 function chrono() {
-  if (!course) return;
-  const t = mmss((course.fin || (Date.now() + decalage)) - course.t0);
-  $('#panneau .grand').textContent = t;
+  if (!course || !PANNEAU_MODE) return;
+  const t = mmss((course.fin || (Date.now() + decalage)) - course.t0), el = $('#panneau .grand');
+  if (el.textContent !== t) el.textContent = t;
 }
-setInterval(chrono, 250);
+setInterval(() => { if (racine.hasAttribute('data-vu')) chrono(); }, 250);
+
+// Trois points qui sautent l'un après l'autre, puis un temps de pause, et le
+// pouls de l'étape en cours : quatre crans de 340 ms (le cycle de 1,35 s
+// d'avant). Trois changements par seconde au lieu de soixante images.
+const MOUVEMENT_REDUIT = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let phasePoints = 0;
+function sauterPoints() {
+  if (!PANNEAU_MODE || MOUVEMENT_REDUIT || !racine.hasAttribute('data-vu') || racine.hasAttribute('data-fini')) return;
+  phasePoints = (phasePoints + 1) % 4;
+  document.querySelectorAll('.pts i').forEach((el, i) => el.classList.toggle('haut', i === phasePoints));
+  const ici = $('.arret.ici');
+  if (ici) ici.classList.toggle('gonfle', phasePoints < 2);
+}
+setInterval(sauterPoints, 340);
 
 // L'orbe (pastille et panneau) suit CE travail, pas sa propre lecture du fichier.
 // Redit à chaque message (700 ms) : une orbe qui a fini de charger après coup
 // rattrape l'état au suivant.
+// `vu` : le panneau replié est une fenêtre CACHÉE qui tourne encore (le
+// ralenti d'arrière-plan est coupé pour qu'elle reste mesurable). Sans ce mot,
+// son orbe continuait à 12-30 images/s pour personne.
 function direOrbe() {
-  if (!course) return;
-  const ici = course.stations[course.stations.length - 1];
-  const dit = { state: course.fin ? 'idle' : 'busy', activity: ici ? ici.etat : 'working', detail: course.detail || '' };
-  document.querySelectorAll('iframe').forEach((f) => f.contentWindow && f.contentWindow.postMessage({ ilot: dit }, '*'));
+  const m = { vu: !PANNEAU_MODE || racine.hasAttribute('data-vu') };
+  if (course) {
+    const ici = course.stations[course.stations.length - 1];
+    m.ilot = { state: course.fin ? 'idle' : 'busy', activity: ici ? ici.etat : 'working', detail: course.detail || '' };
+  }
+  document.querySelectorAll('iframe').forEach((f) => f.contentWindow && f.contentWindow.postMessage(m, '*'));
 }
 // l'auteur, 24/09 : « quand la mini change de taille ou d'état le changement
 // saccade ». Avant, le texte changeait d'un coup, débordait, puis la fenêtre
@@ -312,7 +344,9 @@ function peindre() {
 }
 
 ipcRenderer.on('ilot', (_e, c) => {
-  if (!c) return;
+  if (!c) return direOrbe();
+  // data-vu, pas data-ouvert : poser data-ouvert en retard rejouerait la chute du panneau.
+  if (PANNEAU_MODE && racine.hasAttribute('data-vu') !== !!c.ouvert) { racine.toggleAttribute('data-vu', !!c.ouvert); chrono(); }
   decalage = c.maintenant - Date.now();
   const avant = JSON.stringify(course && [course.stations, course.fin, course.detail, course.theme]);
   course = c;
@@ -322,7 +356,11 @@ ipcRenderer.on('ilot', (_e, c) => {
 });
 ipcRenderer.on('ilot-pose', () => { clearTimeout(fondu); $('#pilule .txt').classList.remove('efface'); });
 ipcRenderer.on('ilot-verre', () => racine.setAttribute('data-verre', ''));
-ipcRenderer.on('ilot-ouvert', (_e, v) => racine.toggleAttribute('data-ouvert', v));
+ipcRenderer.on('ilot-ouvert', (_e, v) => {
+  racine.toggleAttribute('data-ouvert', v);
+  if (PANNEAU_MODE) racine.toggleAttribute('data-vu', v);
+  chrono(); direOrbe();
+});
 $('#pilule').addEventListener('mousedown', () => ipcRenderer.send('ilot-clic'));
 </script>
 </body>

@@ -173,8 +173,12 @@ function creerPanneau() {
   // Le verre est celui de macOS (vibrancy), pas un flou CSS : `backdrop-filter`
   // ne floute que le contenu de la page, jamais le bureau derrière la fenêtre.
   // Verre liquide si le module est là ; sinon le matériau `hud` d'avant.
+  // ⚠ 25/09, mesuré : sur le verre, l'ombre de fenêtre coûtait ~11 % d'un cœur
+  //   à WindowServer tant que le panneau est ouvert (recalculée à chaque image
+  //   de ce qui passe dessous : vidéo, terminal). Elle ne se voyait qu'en un
+  //   liseré clair au bord ; la page le dessine elle-même (html[data-verre]).
   const avecVerre = !!verre;
-  panneau = fenetre(Object.assign({ width: PANNEAU.w, height: PANNEAU.h, hasShadow: true,
+  panneau = fenetre(Object.assign({ width: PANNEAU.w, height: PANNEAU.h, hasShadow: !avecVerre,
     webPreferences: { zoomFactor: ECHELLE },
     backgroundColor: '#00000000' }, avecVerre ? { roundedCorners: false }
     : { vibrancy: 'hud', visualEffectState: 'active', roundedCorners: true }), 'panneau');
@@ -269,7 +273,10 @@ function lireStatut() {
 }
 
 function envoyer() {
-  const donnees = course ? Object.assign({}, course, { maintenant: Date.now(), vocabulaire: VAISSEAUX }) : null;
+  // `ouvert` redit à chaque tour si le panneau est à l'écran : le premier
+  // 'ilot-ouvert' part avant que la page du panneau soit chargée, et se perd.
+  const ouvert = !!(panneau && !panneau.isDestroyed() && panneau.isVisible());
+  const donnees = course ? Object.assign({}, course, { maintenant: Date.now(), vocabulaire: VAISSEAUX, ouvert }) : null;
   for (const w of [pilule, panneau]) if (w && !w.isDestroyed()) w.webContents.send('ilot', donnees);
 }
 

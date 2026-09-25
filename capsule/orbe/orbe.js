@@ -354,6 +354,8 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
     // la phase avance à la vitesse COURANTE : accélérer ne téléporte plus rien
     U.uPhase.value += dt * U.uSpeed.value;
     if(api&&api._maj) api._maj();
+    // ce que la page veut mettre à jour DANS la même image (sinon une image de plus)
+    if(api&&api.surImage) api.surImage(dt);
     core.rotation.y+=dt*0.24; core.rotation.x+=dt*0.09;
     renderer.render(scene,camera); };
   // Pilotage de la transition, côté JS. `uMix` avance à cadence fixe et, une

@@ -403,7 +403,8 @@ const REDUIT = window.matchMedia &&
 
 const depart = reglage('idle');
 const orbe = creerOrbe(document.getElementById('c'), depart.meca, snoise, depart);
-let cible = depart, vu = true;
+// Le panneau de la pastille naît replié : son orbe attend qu'on lui dise « vu ».
+let cible = depart, vu = !document.documentElement.dataset.ilot;
 // Exposé pour le banc de vérification : on regarde le rendu de CETTE page,
 // pas d'une démo dont la mise en page rétrécit l'orbe à 69 px.
 window.__orbe = orbe;
@@ -489,8 +490,20 @@ if (ENCOCHE) {
 // Tournage (CAPSULE_TOURNAGE=1) : 60 partout. l'auteur, 24/09 : la vidéo « saccade à
 // certains moments, à d'autres c'est lisse » — c'était l'orbe qui passait de 30
 // (travail) à 60 (transition) : une cadence qui change se voit à l'image.
+// ⚠ l'auteur, 25/09 : « mon pc rame énormément […] il faut impérativement la
+//   rendre extrêmement légère ». Mesuré ce jour-là, pastille lancée seule sur un
+//   faux statut : chaque image par seconde coûte ~1,2 % d'un cœur à la pastille
+//   et ~0,8 % à WindowServer, QUELLE QUE SOIT la taille de l'orbe. La cadence
+//   est donc le seul levier, et elle se règle par endroit :
+//     · ?seule (pastille, 20 pt) : à cette taille, 4 i/s ne montre pas de crans ;
+//       au repos, 1 i/s suffit à une respiration qui bouge de moins d'un point ;
+//     · ?ilot (panneau) : 16 en travail, le seuil du pavé (voir tournerPave).
+const DANS = document.documentElement.dataset;
 const CADENCE = (typeof process !== 'undefined' && process.env.CAPSULE_TOURNAGE === '1')
-  ? { repos: 60, travail: 60, transition: 60 } : { repos: 12, travail: 30, transition: 60 };
+  ? { repos: 60, travail: 60, transition: 60 }
+  : DANS.seule ? { repos: 1, travail: 4, transition: 12 }
+  : DANS.ilot  ? { repos: 12, travail: 16, transition: 30 }
+  : { repos: 12, travail: 30, transition: 60 };
 let occupe = false;
 function majCadence() {
   if (!vu || document.hidden || rentree) return orbe.setCadence(1);
@@ -503,8 +516,12 @@ setInterval(majCadence, 200);
    ⚠ filet anti-NaN : une valeur non finie contaminerait la géométrie pour
    toute la session, sans la moindre erreur en console. */
 const lerp = (a, b, k) => a + (b - a) * k;
+// ⚠ 25/09 : ce minuteur tournait 30 fois par seconde à vie, couleurs arrivées ou
+//   non. Arrivé à la cible, il se tait jusqu'au prochain état.
+let cibleAtteinte = null;
+const ecartCouleur = (c, h) => { const t = new THREE.Color(h); return Math.abs(c.r - t.r) + Math.abs(c.g - t.g) + Math.abs(c.b - t.b); };
 setInterval(() => {
-  if (!vu || document.hidden) return;
+  if (!vu || document.hidden || cible === cibleAtteinte) return;
   const U = orbe._u, k = 0.045;
   const sur = (a, b) => Number.isFinite(a) && Number.isFinite(b) ? lerp(a, b, k) : b;
   U.uC1.value.lerp(new THREE.Color(cible.c1), k);
@@ -515,6 +532,10 @@ setInterval(() => {
   U.uFreq.value  = sur(U.uFreq.value,  cible.freq);
   U.uSpeed.value = sur(U.uSpeed.value, cible.speed);
   U.uRimI.value  = sur(U.uRimI.value,  cible.rimI);
+  const pret = (u, c) => !Number.isFinite(cible[c]) || Math.abs(U[u].value - cible[c]) < 0.002;
+  if (ecartCouleur(U.uC1.value, cible.c1) + ecartCouleur(U.uC2.value, cible.c2) + ecartCouleur(U.uC3.value, cible.c3)
+      + ecartCouleur(U.uRim.value, cible.rim) < 0.006
+      && pret('uDisp', 'disp') && pret('uFreq', 'freq') && pret('uSpeed', 'speed') && pret('uRimI', 'rimI')) cibleAtteinte = cible;
 }, 1000 / 30);
 
 /* ── L'ÉTAT ────────────────────────────────────────────────────────────────
@@ -845,7 +866,7 @@ for (let k = 0; k < FENTES; k++) {
 }
 
 let defilement = 0;
-function tournerPave() {
+function tournerPave(dt = 0) {
   if (!occupe || !lignes.length || !vu || document.hidden) return;
   // ⚠ RÉGLÉ EN TROIS FOIS, et les deux premiers essais ont dépassé la cible dans
   //   les deux sens — 0,055 (0,6 ligne/s) : on croyait l'orbe figée ; 0,13
@@ -853,7 +874,9 @@ function tournerPave() {
   //   La bonne vitesse n'est pas « lisible » ni « vivante », c'est SUIVABLE :
   //   l'œil doit pouvoir accrocher une ligne et la perdre sans effort.
   //   0,075 ≈ 1,25 ligne/s.
-  if (!REDUIT) defilement += 0.075;
+  // 1,25 ligne/s (0,075 par pas de 60 ms), désormais au temps réel écoulé :
+  // le pavé avance DANS les images de l'orbe (orbe.surImage), sans minuteur à lui.
+  if (!REDUIT) defilement += 1.25 * dt;
   const base = Math.floor(defilement), frac = defilement - base;
   for (let k = 0; k < FENTES; k++) {
     const d = fentes[k];
@@ -870,9 +893,12 @@ function tournerPave() {
     d.style.opacity = (0.50 + 0.50 * Math.pow(sx, 0.9)).toFixed(2);
   }
 }
-// 60 ms plutôt que 90 : à la nouvelle vitesse, un pas de 90 ms se voit
-// avancer par crans le long des latitudes.
-setInterval(tournerPave, 60);
+// Un pas de 90 ms se voit avancer par crans le long des latitudes ; 60 ms, non.
+// D'où la cadence de travail du panneau à 16 i/s (62 ms), pas 12 : voir CADENCE.
+// ⚠ 25/09 : le pavé avait son minuteur (60 ms), décalé des images de l'orbe :
+//   chaque pas forçait une image de plus. Il avance maintenant dans la boucle
+//   de rendu — autant d'images que l'orbe, pas une de plus.
+orbe.surImage = tournerPave;
 
 /* Les fentes sont permanentes : peindre ne fait qu'ouvrir ou fermer le pavé,
    le contenu est posé par `tournerPave` à chaque tour. */
@@ -890,7 +916,9 @@ function peindrePave() {
 const HOTE = !!(document.documentElement.dataset.seule || document.documentElement.dataset.ilot);
 let impose = null;
 if (HOTE) window.addEventListener('message', (e) => {
-  if (e.data && e.data.ilot) { impose = e.data.ilot; lire(); }
+  if (!e.data) return;
+  if ('vu' in e.data && vu !== !!e.data.vu) { vu = !!e.data.vu; majCadence(); }
+  if (e.data.ilot) { impose = e.data.ilot; lire(); }
 });
 function lire() {
   let st = { state:'idle' };
@@ -926,8 +954,10 @@ function lire() {
   //   là, la classe `vu` ne revenait jamais. Vu sur planche : orbe muette sur
   //   tous les états de travail sauf le premier.
   //   La lecture peut être conditionnelle ; l'affichage, non.
-  if (occupe) { lireFlux(etat); peindrePave(); }
-  else { pave.classList.remove('vu'); }
+  // ⚠ 25/09 : chaque lecture du flux passe en revue ~180 fichiers. La pastille
+  //   (?seule) n'affiche pas le pavé, une orbe cachée ne l'affiche à personne.
+  if (occupe && vu && !document.documentElement.dataset.seule) { lireFlux(etat); peindrePave(); }
+  else if (!occupe) { pave.classList.remove('vu'); }
   if (etat === dernier) return;
   dernier = etat;
   // l'état est porté sur le body : utile au style, et lisible au débogage
@@ -953,7 +983,9 @@ function lire() {
   else dit.classList.remove('vu');
   majCadence();
 }
-setInterval(lire, 700);
+// Hébergée, l'orbe lit ce que la page hôte lui dit, à chaque message : son
+// propre tour de lecture faisait doublon.
+if (!HOTE) setInterval(lire, 700);
 /* Exposé pour le TOURNAGE PAS À PAS (banc/film.cjs, FILM_PAS). Là-bas l'horloge
    de la page est gelée et avancée d'un soixantième de seconde à la fois : si le
    changement d'état attendait le minuteur ci-dessus, il tomberait n'importe où
