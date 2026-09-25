@@ -146,6 +146,11 @@ gating it would make a legitimate re-install refuse its own engine.
 1. Read the version identity from the source it is run from:
    `git describe --tags --always` — `v1.29.0` when detached on a tag,
    `v1.28.1-24-g6f28312` for a plain clone of `main`. Both are valid names.
+   **Uncommitted edits in the source never change the name** (no `-dirty`
+   suffix since 2026-09-20): the engine is `git archive HEAD`, so those edits
+   are not in it anyway. Two names for one content made every re-install from a
+   working clone rebuild 11.6 MB it already had. The installer now says out loud,
+   once, that the uncommitted work is not in the engine.
    **The documented `git clone && ./install.sh` keeps working unchanged**, and
    produces an updatable install. That is the whole point of the chantier.
 2. Build `versions/<id>/` with `git archive <HEAD> | tar -x`. 162 files, 11.6 MB
@@ -238,9 +243,10 @@ already warns about, one file further on.
 
 ### `brain doctor`
 
-- Today it runs `git -C engine status` to detect a dirty engine
-  (`brain_doctor.py:248`). A versioned engine has no `.git`, so that check is
-  replaced by verifying `.cbrain-manifest`.
+- It used to run `git -C engine status` to detect a dirty engine. A versioned
+  engine has no `.git`, so doctor now checks every file against
+  `.cbrain-manifest` with `shasum -a 256 -c` (`hooks/brain_doctor.py`, the
+  `.cbrain-manifest` branch).
 - Any difference is reported as an **anomaly, never repaired**. An immutable
   version that changed is a fact the user needs to see, not a mess to tidy away
   behind their back.

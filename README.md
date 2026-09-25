@@ -37,26 +37,23 @@ conversation history, which only gets longer.
 
 **The memory itself** — this is the product, and it is all you need:
 
-| | |
-|---|---|
-| **A trunk** | your lessons, projects, method — markdown, on your machine, versionable |
-| **Automatic recall** | relevant notes are injected into context on every prompt |
-| **It learns from use** | what served you climbs — with a slot kept for notes never seen, so it does not go round in circles |
-| **It knows its own age** | notes never re-checked enter a review queue, dated from the git history |
-| **8 agents** | they distill, file, link, challenge, synthesize, prune, repair, and watch the machine |
-| **A closed loop** | session ends → archive → distill → file, without being asked |
-| **Updates** | the engine updates itself **every session**; **your notes are never touched** |
+- **A trunk.** Your lessons, projects and method, as markdown on your machine, versioned with git.
+- **Automatic recall.** On every prompt, the few notes that match are pasted into the context.
+- **It learns from use.** What served you climbs, and a slot stays reserved for notes never
+  seen, so it does not go round in circles.
+- **It knows its own age.** Notes never re-checked enter a review queue, dated from the git history.
+- **8 agents.** They distill, file, link, challenge, synthesize, prune, repair, and watch the machine.
+- **A closed loop.** Session ends → archive → distill → file, without being asked.
+- **Updates.** The engine updates itself **every session**; **your notes are never touched**.
 
 **And two ways to look at it**, which are extensions and install separately —
 `./install.sh --core-only` leaves both out:
 
-| | |
-|---|---|
-| **A capsule** | a glass orb on your desktop showing the agents at work, live |
-| **A map** | everything you wrote as one navigable 3D map, rebuilt on every launch |
+- **A capsule.** A glass orb on your desktop showing the agents at work, live.
+- **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
 
 <p align="center">
-  <img src="docs/media/architecture.png" alt="How a session becomes memory: the trunk — ~/.c-brain/trunk, holding the notes, MEMORY.md and state — is read and written by three hook stages inside your session. On every prompt, inject_recall uses BM25 lexical search to pick the few notes that match what you asked and pastes them into the prompt. During the session, post_diff, track_read, on_fiche_write and pre_snapshot record what is written and read. At session end, archive_session and auto_maintain archive the session and wake the agents, in two layers: layer 1 always runs the distiller then the gardener, the gardener gated on the distiller actually succeeding; layer 2 wakes at most one of the challenger, architect, archivist or mechanic, and only if its sensor crosses a threshold and twelve hours have passed. Below, three ways to look at it: the capsule reading state/status.json, the planet built from graph_export, and the brain CLI — status, review, selftest, update — every automatic step runnable by hand" width="900">
+  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. On every prompt, the few notes that match are pasted into the prompt — a lexical search, 5 ms at 100 notes and 47 ms at 1,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next prompt. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="720">
 </p>
 
 ### How good is the recall?

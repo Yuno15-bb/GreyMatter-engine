@@ -129,6 +129,12 @@ HOME=$T bash $T/dev-c-brain/install.sh      # second pass
 **Expected**: "already linked" everywhere, `settings.json — nothing to do`. The
 personal hook, the model and the theme are all still there.
 
+Then edit one tracked file in `$T/dev-c-brain` without committing, and run the
+second pass again. **Expected**: `= <version> already installed and intact`, the
+same version name as before (no `-dirty` suffix since 2026-09-20), still one
+directory under `~/.c-brain/versions/`, and the warning "your source has
+uncommitted changes, and they are NOT in this engine".
+
 ## 3. The full life cycle
 
 ```bash

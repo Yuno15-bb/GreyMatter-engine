@@ -84,6 +84,15 @@ After v1.29.0, C Brain no longer uses your checkout as the installed engine.
   machine, so a healthy install ended on "some hooks are broken"; the other
   installation's engine on a machine that already had C Brain. Nothing else in
   the upgrade path changes: the warning above still applies exactly as written.
+- **The installer's last screen says what happened.** It used to end on
+  "installed" whatever had occurred above it. When the `brain` command is not on
+  your PATH yet, the ending now says so, with the one-line export that fixes it
+  and a full-path command that works right away (`tests/closing_verdict.sh`).
+- **No stray "Abort trap: 6".** Checking a capsule whose Electron is broken no
+  longer prints the shell's crash report in the middle of the install.
+- **One commit, one engine.** Installing from a clone with uncommitted edits no
+  longer builds a second `…-dirty` copy of the same version: those edits are not
+  in the engine, and the installer says so instead of renaming it.
 
 ### If you work ON C Brain
 
