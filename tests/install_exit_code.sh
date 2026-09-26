@@ -78,31 +78,35 @@ install_in() {  # install_in <extra-PATH-before-apple> <1 if ~/.local/bin on PAT
   OUT="$(cd "$SRC" && env -i HOME="$home" USER="${USER:-tester}" LANG=en_US.UTF-8 \
            TERM=dumb PATH="$p" ./install.sh --core-only </dev/null 2>&1)"
   RC=$?
+  LAST="$(printf '%s' "$OUT" | tail -40)"
 }
-last_screen() { printf '%s' "$OUT" | tail -40; }
+# Read from a variable, never from `tail | grep -q`: under pipefail, grep -q
+# exits at the first match, tail can still be writing, takes a SIGPIPE, and a
+# true line reads as absent. Measured on 2026-09-26: 15 false reds in 3000.
+last_screen_has() { grep -q "$1" <<<"$LAST"; }
 
 echo "▸ the selftest fails, ~/.local/bin on PATH"
 install_in "$BAD" 1
 printf '%s' "$OUT" | grep -q "selftest failed"
 check $? "the selftest really is red (the bench is aimed at the right case)"
 [ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
-last_screen | grep -q "own verification did not pass"
+last_screen_has "own verification did not pass"
 check $? "the last screen names the failed verification"
-last_screen | grep -q "✅ C Brain installed."
+last_screen_has "✅ C Brain installed."
 [ $? -ne 0 ]; check $? "it does not claim a clean install"
 
 echo "▸ the selftest fails AND ~/.local/bin is not on PATH (a new Mac)"
 install_in "$BAD" 0
 [ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
-last_screen | grep -q "not reachable yet"
+last_screen_has "not reachable yet"
 check $? "the last screen still gives the PATH advice"
-last_screen | grep -q "own verification did not pass"
+last_screen_has "own verification did not pass"
 check $? "and the PATH advice no longer hides the failed verification"
 
 echo "▸ control: a healthy install, PATH or not"
 install_in "" 1
-[ "$RC" -eq 0 ]; check $? "a green selftest exits 0" "exit code $RC — $(last_screen | grep -E '❌|failed' | head -2 | tr '\n' ' ')"
-last_screen | grep -q "✅ C Brain installed."
+[ "$RC" -eq 0 ]; check $? "a green selftest exits 0" "exit code $RC — $(grep -E '❌|failed' <<<"$LAST" | head -2 | tr '\n' ' ')"
+last_screen_has "✅ C Brain installed."
 check $? "and says so plainly"
 install_in "" 0
 [ "$RC" -eq 0 ]; check $? "a PATH still to fix is a working install: exit 0" "exit code $RC"

@@ -80,7 +80,7 @@ session_end() {  # session_end <payload-json> — both SessionEnd hooks, as Clau
   done
 }
 queued() { python3 -c 'import json,sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1])) else 1)' "$QUEUE" "$1" 2>/dev/null; }
-archived() { ls "$T/sessions/archive/" 2>/dev/null | grep -q "${1:0:8}"; }
+archived() { compgen -G "$T/sessions/archive/*${1:0:8}*" >/dev/null; }   # no pipe: no SIGPIPE
 
 echo "▸ the ghost: what \`claude plugin install\` sends when it exits"
 G="aaaa1111-0000-4000-8000-000000000001"
