@@ -28,9 +28,14 @@
 # every plugin user got no index, no config, no history and no welcome line, and
 # a `brain selftest` that stayed red. This bench now replays that order.
 #
-# Run: bash tests/plugin_install.sh [--sabotage folder-means-set-up|no-history]
+# And a fourth, from the same blank Mac: the welcome line said "Try: brain demo",
+# and a plugin user who typed it in their terminal got "command not found". The
+# plugin's bin/ goes on the PATH of Claude Code's own shell, never on the user's.
+#
+# Run: bash tests/plugin_install.sh [--sabotage folder-means-set-up|no-history|welcome-terminal]
 #   folder-means-set-up — "the folder exists" counts as set up again; must go RED.
 #   no-history          — the bootstrap stops starting the trunk's git history; must go RED.
+#   welcome-terminal    — the welcome offers `brain` as a terminal command again; must go RED.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -64,6 +69,11 @@ swap = {
                           '        and not os.path.exists(os.path.join(TRUNK, ".git"))\n',
                           '    fresh = not os.path.isdir(TRUNK)\n'),
   "no-history": ("        start_history()\n", "        pass\n"),
+  "welcome-terminal": ('              "   To see it work, ask Claude to run: brain demo · brain recall cache "\n'
+                       '              "· brain demo --remove\\n"\n'
+                       '              "   (`brain` runs inside Claude Code; for your own terminal too, "\n'
+                       '              "install with install.sh)")\n',
+                       '              "   Try: brain demo · brain recall cache · brain demo --remove")\n'),
 }
 if which not in swap or src.count(swap[which][0]) != 1:
     sys.exit(1)
@@ -104,6 +114,19 @@ if printf '%s' "$OUT" | grep -qi "shortcut"; then
 else
   echo "  ✅ nothing is promised that this path does not create"
 fi
+
+# Every `brain` command the welcome offers has to be offered where it runs.
+# Claude Code puts the plugin's bin/ on the PATH of ITS shell; the user's own
+# terminal never gets it. So a line that hands out `brain` must say it is for
+# Claude to run — a bare "Try: brain demo" reads as "type this", and typed in
+# a terminal it answers "command not found".
+BARE="$(printf '%s\n' "$OUT" | grep -E '\bbrain (demo|recall|status)' | grep -v 'Claude')"
+[ -z "$BARE" ]
+check $? "every brain command offered is offered inside Claude Code" "offered bare: $BARE"
+env -i HOME="$H" PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash -c 'command -v brain' >/dev/null 2>&1
+[ $? -ne 0 ]; check $? "a terminal without install.sh has no brain (why the line above matters)"
+env -i HOME="$H" PATH="$P/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash -c 'brain demo --status' >/dev/null 2>&1
+check $? "with the plugin's bin/ on PATH, as in Claude Code's shell, the bare command runs"
 
 echo "▸ the commands a plugin user can type"
 V="$(HOME="$H" "$P/bin/brain" version 2>&1)"

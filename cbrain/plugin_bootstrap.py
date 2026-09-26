@@ -136,9 +136,17 @@ def main():
         # by install.sh, which a plugin install never runs — so the first
         # sentence a marketplace user ever read pointed at something that was
         # not there. The path is given instead, because it is true.
+        #
+        # ⚠ Nor does it hand out `brain` as a terminal command. The plugin's bin/
+        # goes on the PATH of Claude Code's own shell, never on the user's
+        # terminal: typed there, the three commands answered "command not found"
+        # (blank-Mac test, 2026-09-26). They are offered where they run.
         print("🧠 C Brain: your trunk is ready at ~/.c-brain/trunk — plain "
               "markdown files, yours.\n"
-              "   Try: brain demo · brain recall cache · brain demo --remove")
+              "   To see it work, ask Claude to run: brain demo · brain recall cache "
+              "· brain demo --remove\n"
+              "   (`brain` runs inside Claude Code; for your own terminal too, "
+              "install with install.sh)")
 
 
 if __name__ == "__main__":

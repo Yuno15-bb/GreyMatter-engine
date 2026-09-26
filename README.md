@@ -115,7 +115,8 @@ change: the numbers above still hold whenever you do.
 ```
 
 That gives you the whole memory: the trunk, recall, the four agents,
-the `brain` command, and three commands you can type — `/c-brain:recall`,
+the `brain` command inside Claude Code (your own terminal gets it from the full
+install below), and three commands you can type — `/c-brain:recall`,
 `/c-brain:distill`, `/c-brain:doctor`. It creates `~/.c-brain/trunk` on your first session and
 tells you so. It does **not** set up the capsule, the planet or the scheduled
 jobs — a plugin cannot install a background service, and pretending otherwise
@@ -260,7 +261,7 @@ Inside your agent, once the plugin is installed:
 /c-brain:doctor             check the wiring and the trunk
 ```
 
-And in any shell:
+And in any shell once `install.sh` has run — with the plugin alone, ask Claude to run them:
 
 <p align="center">
   <img src="docs/media/recall.png" alt="Terminal: brain demo places three notes, brain recall ranks them by relevance, brain demo --remove takes them away" width="820">
