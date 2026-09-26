@@ -41,7 +41,7 @@ done
 
 # A MISSPELLED SABOTAGE MUST NOT RUN THE NORMAL TEST, or the harness records a
 # green as proof that a sabotage reddens. Borrowed from e2e_install_update.sh.
-SABOTAGES="silent-overwrite silent-statusline summary-swallowed"
+SABOTAGES="silent-overwrite silent-statusline summary-swallowed works-over-red"
 if [ -n "$SABOTAGE" ]; then
   case " $SABOTAGES " in
     *" $SABOTAGE "*) : ;;
@@ -103,6 +103,14 @@ case "$SABOTAGE" in
     sabotage_patch install.sh \
       'if [ "${REFUSED_SURFACES:-0}" -gt 0 ]; then' \
       'if false; then' ;;
+  # The count still comes back, but says "and works" whatever the verification
+  # found — the closing screen of v2.0.2, over an install that was red.
+  works-over-red)
+    sabotage_patch install.sh \
+      '  if [ "${SELFTEST_OK:-1}" = "1" ]; then
+    echo "   C Brain installed everything else and works.' \
+      '  if true; then
+    echo "   C Brain installed everything else and works.' ;;
 esac
 
 # The installer builds its engine with `git archive`, so the source has to be a
@@ -179,8 +187,21 @@ fi
 
 # D — AND C BRAIN IS STILL INSTALLED. A refusal is a reported outcome, not a
 # crash: refusing to take a surface must not cost the user the whole product.
-[ "$OVER_EXIT" = "0" ] && ok "the installer still exits 0" \
-                       || ko "the installer exited $OVER_EXIT"
+# The exit code follows the verification, as it does on any install: the agents
+# folder left to its owner means Claude Code cannot reach C Brain's agents, the
+# selftest says so, and a script running the installer must hear it. What must
+# NOT happen is the refusal itself ending the run: the screen above got to its
+# count, and the disk below has the trunk and the engine.
+if grep -q "selftest failed" "$OUT"; then
+  [ "$OVER_EXIT" != "0" ] && ok "the verification is red, and the exit code says so ($OVER_EXIT)" \
+                          || ko "the verification is red and the installer exited 0"
+  grep -q "installed everything else and works" "$OUT" \
+    && ko "the closing screen says \"works\" over a red verification" \
+    || ok "the closing screen does not call a red install working"
+else
+  [ "$OVER_EXIT" = "0" ] && ok "the verification is green, and the installer exits 0" \
+                         || ko "the installer exited $OVER_EXIT over a green verification"
+fi
 [ -d "$HOME/.c-brain/trunk" ] && [ -d "$HOME/.c-brain/engine/hooks" ] \
   && ok "the trunk and the engine were installed anyway" \
   || ko "the install did not complete"

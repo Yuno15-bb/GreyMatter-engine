@@ -140,6 +140,12 @@ next step is the one the refusal prints, `mv <path> <path>.before-c-brain`
 followed by a re-run, and `tests/e2e_occupied_surfaces.sh` runs that gesture
 rather than describing it.
 
+Not a crash, and not a clean install either. A surface left alone can cost
+something the verification checks: an agents folder that belongs to someone else
+means Claude Code cannot reach C Brain's agents, the selftest says so, and the
+installer then exits 1 like any install whose verification is red. The closing
+screen says "works" only when the verification agrees.
+
 Inside `~/.c-brain` there is no gate. That directory **is** the installation, and
 gating it would make a legitimate re-install refuse its own engine.
 

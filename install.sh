@@ -801,7 +801,15 @@ echo
 # comes back whatever else went right.
 if [ "${REFUSED_SURFACES:-0}" -gt 0 ]; then
   echo "⚠️  $REFUSED_SURFACES surface(s) were left to their current owner."
-  echo "   C Brain installed everything else and works. Scroll up: each one is"
+  # "And works" only when the verification agrees. A surface left alone can cost
+  # something the selftest checks — an agents folder that is someone else's means
+  # Claude Code cannot reach C Brain's agents — and the line below then says red.
+  if [ "${SELFTEST_OK:-1}" = "1" ]; then
+    echo "   C Brain installed everything else and works. Scroll up: each one is"
+  else
+    echo "   C Brain installed everything else; what it could not take may be why"
+    echo "   the verification below is red. Scroll up: each one is"
+  fi
   echo "   named, with what it costs and the one command that hands it over."
   echo
 fi

@@ -261,7 +261,7 @@ jobs:
           bash tests/e2e_occupied_surfaces.sh
           # And the sabotages, because a contract that cannot redden proves
           # nothing. Each one must FAIL; a green here is the alarm.
-          for s in silent-overwrite silent-statusline summary-swallowed; do
+          for s in silent-overwrite silent-statusline summary-swallowed works-over-red; do
             if bash tests/e2e_occupied_surfaces.sh --sabotage "$s" >/dev/null 2>&1; then
               echo "❌ sabotage $s left the contract green"; exit 1
             fi
