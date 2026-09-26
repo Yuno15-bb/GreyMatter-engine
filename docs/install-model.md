@@ -175,6 +175,9 @@ gating it would make a legitimate re-install refuse its own engine.
 7. Point `engine` at `versions/<id>`, then do everything the installer already
    does: trunk, mounts, CLI, hooks, launchd, planet, shortcut, verification —
    leaving alone every shared surface it cannot prove it placed.
+8. Exit with the verification's verdict: `1` when the selftest is red, `0`
+   otherwise — a PATH still to fix is a working install. Until v2.0.3 the
+   installer exited 0 on a red selftest (`tests/install_exit_code.sh`).
 
 Idempotent: re-running with the same source rebuilds nothing if
 `.cbrain-manifest` already matches.

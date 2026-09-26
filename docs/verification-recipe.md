@@ -128,6 +128,11 @@ machine that already had C Brain, the line above was reporting on the OTHER
 installation's engine. Read this expectation on a machine that has never had
 C Brain, and once on a machine that has.
 
+Read the exit code too (`echo $?` right after). Since v2.0.3 it is `0` only when
+the selftest is green; a red selftest ends the install with `1`. Until then the
+installer printed the red and exited 0, so anything that ran it read success
+(`tests/install_exit_code.sh`).
+
 ## 1 bis. The preview must leave the machine exactly as it found it
 
 ```bash
