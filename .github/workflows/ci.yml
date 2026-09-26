@@ -71,9 +71,28 @@ jobs:
       # takes, and it was the one path nothing executed.
       - run: |
           bash tests/plugin_install.sh
-          for sab in folder-means-set-up no-history; do
+          for sab in folder-means-set-up no-history welcome-terminal; do
             if bash tests/plugin_install.sh --sabotage "$sab" >/dev/null 2>&1; then
               echo "❌ sabotage $sab left the plugin path green"; exit 1
+            fi
+            echo "✅ sabotage $sab reddens"
+          done
+      # What a new user meets before and around the first session: `brain
+      # status` before any status exists, and the SessionEnd that `claude plugin
+      # install` fires on its way out — a command, which must not leave a
+      # session in the distillation queue. Both found on a blank Mac, 2026-09-26.
+      - name: the first minutes, and a command that is not a session
+        run: |
+          set -euo pipefail
+          bash tests/status_first_run.sh
+          if bash tests/status_first_run.sh --sabotage status-missing >/dev/null 2>&1; then
+            echo "❌ sabotage status-missing left the contract green"; exit 1
+          fi
+          echo "✅ sabotage status-missing reddens"
+          bash tests/ghost_session.sh
+          for sab in ghost-queued ghost-archived; do
+            if bash tests/ghost_session.sh --sabotage "$sab" >/dev/null 2>&1; then
+              echo "❌ sabotage $sab left the contract green"; exit 1
             fi
             echo "✅ sabotage $sab reddens"
           done
@@ -258,6 +277,20 @@ jobs:
           bash tests/fresh_mac_path.sh
           for sab in node-required badge-regex lock-ignored; do
             if bash tests/fresh_mac_path.sh --sabotage "$sab" >/dev/null 2>&1; then
+              echo "❌ sabotage $sab left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $sab reddens"
+          done
+
+      # A red selftest has to reach whatever ran the installer — the exit code,
+      # not only the screen — and the PATH advice must not hide it. Until v2.0.3
+      # install.sh exited 0 on a red selftest (blank Mac, 2026-09-26).
+      - name: a red selftest fails the installer
+        run: |
+          set -euo pipefail
+          bash tests/install_exit_code.sh
+          for sab in exit-zero path-hides-selftest; do
+            if bash tests/install_exit_code.sh --sabotage "$sab" >/dev/null 2>&1; then
               echo "❌ sabotage $sab left the contract green"; exit 1
             fi
             echo "✅ sabotage $sab reddens"
