@@ -92,8 +92,15 @@ states, and the maintenance log says out loud when an index is not rebuilt.
 |---|---|---|
 | ⚠ | **challenger verdict** — this note has been contested | the `challenger` agent |
 | ✦ | **conviction** — a position held, not a mere fact | curated convictions |
-| ↻ | **to resume** — a thread left open in the note | resume markers |
+| ↻ | **to resume** — one of the threads offered when a session starts | the resume points, `brain_anticipate` |
 | ▷ | **replayable** — the note carries a 3D capture | an associated `.glb` |
+
+The ↻ badge has no detector of its own. It used to: a pattern that lit any note
+merely *containing* the words "resume point" — including notes that only describe
+the marker. On a blank Mac the first session lit one of the ship briefs, and the
+selftest stayed red from then on. The badge now marks the notes at the top of the
+resume points offered when a session starts — the same detector, the same ranking.
+If those cannot be computed, the graph says why instead of showing no badge at all.
 
 A ▷ blinks softly: **double-click** opens the capture, which you can then turn by
 dragging and zoom with the wheel. `Esc` returns to the map.
