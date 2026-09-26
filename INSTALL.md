@@ -72,7 +72,9 @@ The installer:
   before any modification;
 - installs the capsule and the scheduled jobs, unless you decline them;
 - drops a planet launcher on your Desktop;
-- **checks its own work** (`selftest` + `doctor`) and shows you the result.
+- **checks its own work** (`selftest` + `doctor`) and shows you the result —
+  and if that check is red, the installer exits with an error, so a script or
+  an agent running it sees the failure too.
 
 Installation does not send telemetry. Updates fetch published tags; recall reads
 your local notes and may add note titles, summaries and paths to a prompt sent
@@ -122,7 +124,7 @@ the moment you wrote your first line in it.
 Then, day to day:
 
 ```bash
-brain status          where the trunk stands
+brain status          where the trunk stands ("not started yet" until your first session)
 brain recall <word>   search your memory
 brain doctor          tree health
 brain capsule         open the floating orb  (stop · status)

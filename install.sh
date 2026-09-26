@@ -814,10 +814,17 @@ if [ "${PATH_OK:-1}" = "0" ]; then
   echo "       echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
   echo
   echo "   Or reach it by its full path right now:  ~/.local/bin/brain status"
-elif [ "${SELFTEST_OK:-1}" = "0" ]; then
-  echo "⚠️  C Brain is installed, but its own verification did not pass."
+fi
+# NOT AN `elif`. It was one, and a bare PATH — the usual case on a new Mac — then
+# hid a red selftest behind the PATH advice: the one screen that has to say "this
+# install is not healthy" said something else. Both are spoken when both are true.
+if [ "${SELFTEST_OK:-1}" = "0" ]; then
+  [ "${PATH_OK:-1}" = "0" ] && echo
+  echo "❌ C Brain is installed, but its own verification did not pass."
   echo "   Details: /tmp/c-brain-selftest.log — re-run it with \`brain selftest\`."
-else
+  echo "   This installer exits with an error, so whatever ran it sees the failure too."
+fi
+if [ "${PATH_OK:-1}" = "1" ] && [ "${SELFTEST_OK:-1}" = "1" ]; then
   echo "✅ C Brain installed."
 fi
 echo
@@ -862,3 +869,10 @@ echo
   && echo "   Restart your CLI session for the hooks to take effect." \
   || echo "   Without Claude Code: no closed loop, but the whole CLI is there."
 echo "   Uninstall: $ENGINE/uninstall.sh"
+
+# THE EXIT CODE IS PART OF THE VERDICT. The screen above can go red; the exit code
+# stayed 0 whatever it said, so a script, a CI job or an agent running this
+# installer read success after a red selftest (blank-Mac test, 2026-09-26: "an
+# automatic tool does not see the failure"). Only the selftest decides it — a PATH
+# still to fix, or a surface left to its owner, is a working install.
+[ "${SELFTEST_OK:-1}" = "1" ] || exit 1
