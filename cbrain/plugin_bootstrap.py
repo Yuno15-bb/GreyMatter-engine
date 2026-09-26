@@ -4,7 +4,9 @@ plugin_bootstrap.py — makes the trunk exist when C Brain arrives as a PLUGIN.
 
 Installing the plugin is not running install.sh. Nobody created ~/.c-brain,
 nobody linked the engine into the trunk, and nobody put the `brain` command
-anywhere. This runs first on every SessionStart and makes the layout true.
+anywhere. This runs first on every SessionStart and makes the layout true —
+including the trunk's local git history, which install.sh starts and the
+session-end auto-save needs.
 
 WHY IT RUNS EVERY TIME, not once. ${CLAUDE_PLUGIN_ROOT} moves whenever the
 plugin updates — the old directory is kept for a couple of weeks and then
@@ -22,6 +24,7 @@ than no memory at all.
 import json
 import os
 import shutil
+import subprocess
 import sys
 
 HOME = os.path.expanduser("~")
@@ -47,18 +50,62 @@ def relink(target, path):
     return True
 
 
+def seed_from_skeleton():
+    """Copies every skeleton file the trunk lacks. Never overwrites one."""
+    skeleton = os.path.join(ROOT, "skeleton")
+    if not os.path.isdir(skeleton):
+        return
+    for dirpath, _, filenames in os.walk(skeleton):
+        dest = os.path.normpath(os.path.join(TRUNK, os.path.relpath(dirpath, skeleton)))
+        os.makedirs(dest, exist_ok=True)
+        for name in filenames:
+            if not os.path.lexists(os.path.join(dest, name)):
+                shutil.copy2(os.path.join(dirpath, name), os.path.join(dest, name))
+
+
+def start_history():
+    """The same local history install.sh starts: without it, the per-zone
+    auto-save at session end returns early, silently, for every plugin user."""
+    if os.path.exists(os.path.join(TRUNK, ".git")):
+        return
+    git = shutil.which("git")
+    if not git:
+        return
+    # Apple's /usr/bin/git is a stub until the Command Line Tools are in, and
+    # calling it opens Apple's install dialog — here, at every session start.
+    if sys.platform == "darwin" and git == "/usr/bin/git" and subprocess.run(
+            ["/usr/bin/xcode-select", "-p"], capture_output=True).returncode != 0:
+        return
+    for args in (["init", "-q"], ["add", "-A"],
+                 ["-c", "user.email=c-brain@localhost", "-c", "user.name=C Brain",
+                  "commit", "-qm", "the trunk, as installed"]):
+        if subprocess.run([git, "-C", TRUNK] + args, capture_output=True,
+                          timeout=8).returncode != 0:
+            return
+
+
 def main():
-    fresh = not os.path.isdir(TRUNK)
+    # ⚠ "THE FOLDER EXISTS" DOES NOT MEAN "THE TRUNK WAS SET UP". Claude Code
+    # runs the SessionEnd hooks when `claude plugin install` itself exits — so
+    # the maintenance writes state/ before any SessionStart has run. This test
+    # used to be `not os.path.isdir(TRUNK)`: on a blank Mac (2026-09-26) every
+    # plugin install got a trunk with no index, no config and no history, the
+    # welcome line never appeared, and `brain selftest` stayed red for good.
+    # A trunk with no index and no history has never been set up, whatever
+    # created its folder.
+    fresh = not os.path.exists(os.path.join(TRUNK, "MEMORY.md")) \
+        and not os.path.exists(os.path.join(TRUNK, ".git"))
+    os.makedirs(TRUNK, exist_ok=True)
     if fresh:
-        skeleton = os.path.join(ROOT, "skeleton")
-        os.makedirs(CB, exist_ok=True)
-        if os.path.isdir(skeleton):
-            shutil.copytree(skeleton, TRUNK)
-        else:
-            os.makedirs(TRUNK, exist_ok=True)
+        seed_from_skeleton()
 
     for d in ("state", os.path.join("sessions", "archive")):
         os.makedirs(os.path.join(TRUNK, d), exist_ok=True)
+
+    try:
+        start_history()
+    except Exception:
+        pass                       # never worth failing a session over
 
     relink(ROOT, os.path.join(CB, "engine"))
     for d in LINKED:

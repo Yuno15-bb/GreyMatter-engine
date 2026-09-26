@@ -53,7 +53,9 @@ jobs:
 
   plugin:
     name: plugin manifests
-    runs-on: ubuntu-latest
+    # macOS, not Linux: the bench below ends on `brain selftest`, a macOS
+    # contract — Linux is not supported (README), so a Linux green proves nothing.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,7 +69,14 @@ jobs:
       # This runs the bootstrap the way Claude Code does — from a copy, on a
       # fresh HOME — because that is the path everyone from the marketplace
       # takes, and it was the one path nothing executed.
-      - run: bash tests/plugin_install.sh
+      - run: |
+          bash tests/plugin_install.sh
+          for sab in folder-means-set-up no-history; do
+            if bash tests/plugin_install.sh --sabotage "$sab" >/dev/null 2>&1; then
+              echo "❌ sabotage $sab left the plugin path green"; exit 1
+            fi
+            echo "✅ sabotage $sab reddens"
+          done
 
   recall:
     name: recall quality · cache freshness
