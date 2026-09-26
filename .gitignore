@@ -1,22 +1,16 @@
-# === C Brain — ce qui ne doit JAMAIS être commité ===================
-# Règle : le moteur se copie, le vécu ne se copie pas.
-# Ce fichier est le 2ᵉ filet. Le 1ᵉʳ est la liste blanche de sync.sh
-# (refus par défaut), le 3ᵉ est leakcheck.py (bloque le commit).
+# === C Brain — what must NEVER be committed =========================
+# Rule: the engine travels, lived experience does not.
+# This file is the SECOND net. The first is sync.sh's allowlist
+# (deny by default), the third is leakcheck.py (which blocks the commit).
 
-# --- Vécu de l'utilisateur : jamais dans le moteur ---
-# ANCRÉS À LA RACINE (`/`) : sans la barre initiale, git applique le motif à
-# TOUS les niveaux et exclut aussi `skeleton/lessons/`, `skeleton/meta/`… —
-# le squelette du tronc vide ne partait donc jamais dans le dépôt, et
-# l'installation échouait chez l'utilisateur. Attrapé en installant depuis un
-# vrai clone, jamais depuis une copie.
+# --- The user's lived content: never inside the engine ---
+# ANCHORED AT THE ROOT (`/`): without the leading slash, git applies the pattern
+# at EVERY level and also excludes `skeleton/lessons/`, `skeleton/meta/`… — so
+# the empty-trunk skeleton never shipped in the repo, and the install failed on
+# the user's machine. Caught by installing from a real clone, never from a copy.
 /state/
 /lessons/
 /projects/
-# ⚠ `/meta/` reste ignoré EN ENTIER, registre des familles compris. Le registre
-# est bien du produit, mais sa place dans le paquet est `skeleton/meta/` — le
-# tronc-modèle — parce que brain_recall.py et brain_doctor.py le lisent sous
-# ~/.c-brain/trunk, jamais sous le moteur. Une copie à la racine du dépôt ne
-# serait lue par personne et divergerait en silence.
 /meta/
 /life/
 /sessions/
@@ -24,29 +18,28 @@
 /audits/
 /MEMORY.md
 
-# --- Artefacts régénérés qui contiennent le TEXTE INTÉGRAL des fiches ---
-# La planète n'embarque AUCUN .json : le globe se reconstruit à chaque
-# lancement (graph_export.py). Donc tout planet/*.json est une donnée du
-# tronc de l'auteur — des méga-octets de texte de fiches, noms de clients
-# compris — jamais un fichier du produit.
+# --- Regenerated artefacts holding the FULL TEXT of the notes ---
+# The planet ships no JSON at all: the globe is rebuilt on every launch by
+# graph_export.py. So any planet/*.json is the author's own trunk data —
+# megabytes of note text, real client names included — never a product file.
 #
-# Cette règle nommait `graph.json` seul. Le 2026-08-14, la refonte de la
-# planète a ajouté `textes.json` : 1,5 Mo du même contenu sous un nom neuf,
-# hors de cette règle ET hors de l'exclusion de sync.sh. Une liste ne couvre
-# que ce qui existait quand on l'a écrite ; un motif couvre aussi le suivant.
+# This used to name graph.json alone. On 2026-08-14 the planet rewrite added
+# textes.json, 1.5 MB of the same content under a new name, which fell outside
+# the rule and outside sync.sh's exclusion. A list only ever covers what
+# existed when it was written; a pattern covers the next one too.
 planet/*.json
 
-# --- Machine-spécifique (contient /Users/<nom> en dur) ---
+# --- Machine-specific (contains a hardcoded home path) ---
 hooks/com.claudebrain.resume.plist
 *.plist
 !*.plist.template
 
-# --- Poids mort / dépendances ---
+# --- Dead weight / dependencies ---
 capsule/node_modules/
 capsule/assets/
 .venv/
 __pycache__/
 *.pyc
 
-# --- Système ---
+# --- System ---
 .DS_Store

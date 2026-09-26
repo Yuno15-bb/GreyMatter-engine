@@ -1,62 +1,62 @@
-# Companion — suivi live des modifications, intégré à la session
+# Companion — live change tracking, inside the session
 
-**Aucune fenêtre.** Deux surfaces seulement :
+**No window.** Two surfaces only:
 
-1. **La barre de bas de session** (2ᵉ ligne de la status line) — en permanence, dans la
-   session : nombre de fichiers touchés, `+`/`−` cumulés, dernier fichier modifié avec son
-   solde et son âge, état de l'app, âge du dernier rechargement.
-2. **Ton onglet navigateur** — rechargé automatiquement après chaque rafale de
-   modifications : c'est là qu'on voit le **rendu réel**, pas seulement le code.
+1. **The session's bottom bar** (the second line of the status line) — permanently
+   in the session: number of files touched, cumulative `+`/`−`, the last file
+   modified with its balance and age, the app's state, the age of the last reload.
+2. **Your browser tab** — reloaded automatically after each burst of
+   modifications: that is where you see the **real rendering**, not just the code.
 
-Historique : une première version affichait un panneau Electron collé sous la fenêtre
-Terminal. Abandonné — illisible, et deux sessions donnaient deux panneaux flottants qui
-recouvraient le travail. Le code reste dans l'historique git.
+History: a first version displayed an Electron panel glued under the Terminal
+window. Abandoned — unreadable, and two sessions produced two floating panels
+that covered the work. The code remains in the git history.
 
 ---
 
-## Comportement
+## Behaviour
 
-| Point | Détail |
+| Point | Detail |
 |---|---|
-| Déclencheur | `Write` / `Edit` / `MultiEdit` / `NotebookEdit`, tous projets |
-| Barre | `✎ 9f +879 −239 │ status_part.py +183 −0 2min │ app :3000 │ ↻ 4s` |
-| Agrégation | incrémentale par curseur d'octets, cache dans `agg/<sid>.json` — la barre ne relit jamais tout le flux |
-| Navigateur | Chrome puis Safari, onglet dont l'URL contient `localhost:<port>` ; débounce 1,2 s de silence, verrou `mkdir` (un seul recharcheur), jamais de vol de focus (`open -g`, pas d'`activate`) |
-| Premier lancement | si aucun onglet n'affiche l'app, il en ouvre **un seul** (mémorisé par port), ensuite il ne fait que recharger |
-| Ports sondés | `3000 · 5173 · 4321 · 8080 · 8000 · 4200` |
-| Fin de session | événement `end` dans le flux, pré-images et totaux nettoyés |
+| Trigger | `Write` / `Edit` / `MultiEdit` / `NotebookEdit`, in every project |
+| Bar | `✎ 9f +879 −239 │ status_part.py +183 −0 2min │ app :3000 │ ↻ 4s` |
+| Aggregation | incremental by byte cursor, cached in `agg/<sid>.json` — the bar never re-reads the whole stream |
+| Browser | Chrome then Safari, the tab whose URL contains `localhost:<port>`; 1.2 s of silence as debounce, a `mkdir` lock (one reloader only), never steals focus (`open -g`, not `activate`) |
+| First launch | if no tab shows the app, it opens **exactly one** (remembered per port), and after that it only reloads |
+| Ports probed | `3000 · 5173 · 4321 · 8080 · 8000 · 4200` |
+| Session end | an `end` event in the stream, before-images and totals cleaned up |
 
-## Sécurité et robustesse
+## Safety and robustness
 
-- **Jamais bloquant** : chaque hook est enveloppé `try/except` + `sys.exit(0)`, timeouts 5–8 s ; le recharcheur tourne détaché. Companion cassé ⇒ session Claude intacte.
-- **Secrets** : `.env`, `secrets/`, `*.pem`, `*.key`, `credentials`, `.npmrc`… → la modification est signalée, le contenu **n'est jamais affiché**. Ailleurs, toute ligne ressemblant à un secret est masquée valeur par valeur.
-- **Plafonds** : diff tronqué à 500 lignes, fichiers > 2 Mo non diffés ; le flux est purgé à 7 jours.
-- **Append-only** : le flux d'événements n'est jamais réécrit en bloc.
+- **Never blocking**: every hook is wrapped in `try/except` + `sys.exit(0)`, with 5–8 s timeouts; the reloader runs detached. A broken companion leaves your session intact.
+- **Secrets**: `.env`, `secrets/`, `*.pem`, `*.key`, `credentials`, `.npmrc`… → the modification is reported, the content is **never displayed**. Elsewhere, any line that looks like a secret is masked value by value.
+- **Caps**: diffs truncated at 500 lines, files over 2 MB are not diffed; the stream is purged after 7 days.
+- **Append-only**: the event stream is never rewritten wholesale.
 
-## Fichiers
+## Files
 
 ```
 companion/
-  status_part.py           la 2e ligne de la barre (importée par ~/.claude/statusline.py)
-  hooks/companion_lib.py   chemins, masquage des secrets, écriture du flux
-  hooks/pre_snapshot.py    PreToolUse  → pré-image du fichier (l'« avant » du diff)
-  hooks/post_diff.py       PostToolUse → diff réel + réveil du recharcheur
-  hooks/browser_reload.py  détaché      → débounce puis rechargement de l'onglet
-  hooks/session_close.py   SessionEnd  → marque la fin, purge (flux > 7 jours)
+  status_part.py           the second line of the bar (imported by ~/.claude/statusline.py)
+  hooks/companion_lib.py   paths, secret masking, stream writing
+  hooks/pre_snapshot.py    PreToolUse  → the file's before-image (the diff's "before")
+  hooks/post_diff.py       PostToolUse → the real diff + wakes the reloader
+  hooks/browser_reload.py  detached     → debounce, then reload the tab
+  hooks/session_close.py   SessionEnd  → marks the end, purges streams older than 7 days
 ```
 
-État runtime dans `~/.claude/companion/` : `sessions/<sid>.jsonl` (flux),
-`snap/<sid>/` (pré-images), `agg/<sid>.json` (totaux de la barre),
-`reload.json` (dernier rechargement), `port.json` (cache de sonde).
+Runtime state lives in `~/.claude/companion/`: `sessions/<sid>.jsonl` (the
+stream), `snap/<sid>/` (before-images), `agg/<sid>.json` (the bar's totals),
+`reload.json` (last reload), `port.json` (probe cache).
 
-## Limites connues
+## Known limits
 
-- **Aucune image dans Terminal.app** : il n'existe aucun protocole d'image inline. Voir le rendu *dans* le terminal impose iTerm2 ou kitty. D'où le choix du navigateur.
-- **Premier rechargement** : macOS demande une fois l'autorisation d'automatiser Chrome/Safari. Refusée, le rechargement échoue en silence — la barre reste juste.
-- **Modifications hors outils d'édition** (`Bash` avec `sed`, `git checkout`, script) : invisibles. Il faudrait une surveillance de dossier.
-- Le suivi **montre** le changement, il ne le **valide** pas : la vérification reste les tests et l'œil.
+- **No images in Terminal.app**: there is no inline image protocol. Seeing the rendering *inside* the terminal requires iTerm2 or kitty. Hence the browser.
+- **First reload**: macOS asks once for permission to automate Chrome/Safari. If refused, the reload fails silently — the bar stays accurate.
+- **Modifications outside the editing tools** (`Bash` with `sed`, `git checkout`, a script): invisible. That would need folder watching.
+- The tracker **shows** the change, it does not **validate** it: verification is still the tests and your eyes.
 
-## Désactiver
+## Disabling it
 
-- Barre : retirer le bloc `status_part` de `~/.claude/statusline.py` (sauvegarde `statusline.py.bak-companion-*`).
-- Hooks : retirer les 3 entrées `companion/hooks/*.py` de `~/.claude/settings.json` (`PreToolUse`, `PostToolUse`, `SessionEnd`). Sauvegarde : `settings.json.bak-companion-*`.
+- The bar: remove the `status_part` block from `~/.claude/statusline.py` (backup at `statusline.py.bak-*`).
+- The hooks: remove the three `companion/hooks/*.py` entries from `~/.claude/settings.json` (`PreToolUse`, `PostToolUse`, `SessionEnd`). Backup: `settings.json.bak-c-brain-*`. Or simply run `uninstall.sh`.

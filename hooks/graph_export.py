@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
 """
-graph_export.py — exporte le C Brain en graphe pour la PLANÈTE de connaissance.
+graph_export.py — exports the trunk as a graph for the knowledge PLANET.
 
 Scanne toutes les fiches .md du tronc (projects/, lessons/, meta/, life/, agents/),
-lit leur frontmatter (`name`, `description`) et leurs liens `[[...]]`, et écrit
-`planet/graph.json` : la matière première du visualizer 3D (1 fiche = 1 point sur le globe).
+reads their front matter (`name`, `description`) and their `[[...]]` links, and writes
+`planet/graph.json`: the raw material of the 3D visualizer (one note = one dot on the globe).
 
-Conçu pour être appelé :
-  - à la main : `python3 hooks/graph_export.py`
-  - automatiquement par on_fiche_write.py à chaque fiche écrite (croissance temps réel).
+Designed to be called:
+  - by hand: `python3 hooks/graph_export.py`
+  - automatically by on_fiche_write.py on every note written (real-time growth).
 
-Déterministe et sans dépendance externe. Sort toujours 0 (ne bloque jamais un hook).
+Deterministic and free of external dependencies. Always exits 0 (never blocks a hook).
 """
 import os, re, json, sys
-import subprocess
 from collections import Counter
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 OUT = os.path.join(BRAIN, "planet", "graph.json")
-# le corps des fiches, sorti de graph.json : chargé à la demande au premier dépliage
-OUT_TEXTES = os.path.join(BRAIN, "planet", "textes.json")
-EMBED2 = os.path.join(BRAIN, "state", "embed2.json")   # carte SÉMANTIQUE (Étage 1), calculée par brain_embed2.py
-COACT = os.path.join(BRAIN, "state", "coactivation.json")  # mémoire de travail (Étage 2), calculée par coactivation.py
-CHALLENGES = os.path.join(BRAIN, "state", "challenges.json")  # avis du challenger (Étage 3 : la carte a un avis)
-BELIEFS = os.path.join(BRAIN, "meta", "beliefs.json")        # convictions datées de l'auteur du tronc (Étage 3 : couche goût)
-MEDIA = os.path.join(BRAIN, "meta", "media.json")            # nœuds REJOUABLES (Étage 4 : capture glb/clip/courbe)
+EMBED2 = os.path.join(BRAIN, "state", "embed2.json")   # SEMANTIC map, computed by brain_embed2.py
+COACT = os.path.join(BRAIN, "state", "coactivation.json")  # working memory, computed by coactivation.py
+CHALLENGES = os.path.join(BRAIN, "state", "challenges.json")  # the challenger's verdict (the map has an opinion)
+BELIEFS = os.path.join(BRAIN, "meta", "beliefs.json")        # the author's dated convictions (the taste layer)
+MEDIA = os.path.join(BRAIN, "meta", "media.json")            # REPLAYABLE nodes (a glb/clip/curve capture)
 
 
 def load_media():
-    """Captures rejouables par fiche → { rel_path: {type, src, caption} }. Curé (meta/media.json). Stdlib."""
+    """Replayable captures per note → { rel_path: {type, src, caption} }. Curated (meta/media.json). Stdlib."""
     out = {}
     try:
         for f, v in json.load(open(MEDIA, encoding="utf-8")).items():
@@ -41,7 +38,7 @@ def load_media():
 
 
 def load_beliefs():
-    """Convictions datées de l'auteur du tronc → { rel_path: "depuis <date> — <note>" }. Curé (meta/beliefs.json). Stdlib."""
+    """The author's dated convictions → { rel_path: "since <date> — <note>" }. Curated (meta/beliefs.json). Stdlib."""
     out = {}
     try:
         for f, v in json.load(open(BELIEFS, encoding="utf-8")).items():
@@ -55,16 +52,21 @@ def load_beliefs():
 
 
 def load_challenges():
-    """Verdicts ACTIFS du challenger par fiche → { rel_path: "verdict court" }. Les challenges
-    marqués PÉRIMÉ/résolu sont ignorés (la carte ne conteste que ce qui tient encore). Stdlib."""
+    """ACTIVE challenger verdicts per note → { rel_path: "verdict court" }. Les challenges
+    marked STALE/resolved are ignored (the map only challenges what still stands). Stdlib."""
     out = {}
     try:
         for c in json.load(open(CHALLENGES, encoding="utf-8")):
             vp = (c.get("verdict_pair") or "")
-            prob = (c.get("probleme") or "")
-            if "PÉRIMÉ" in prob or "périmé" in vp.lower() or "résolu" in vp.lower():
-                continue                                  # challenge éteint → pas un avis vivant
-            f = c.get("fiche")
+            prob = (c.get("problem") or "")
+            # BILINGUAL: the challenger writes these words itself, and its prompt
+            # exists in both languages. Matching only one would keep dead
+            # challenges alive on the map, marking notes as contested forever.
+            dead = ("stale", "resolved", "périmé", "resolu", "résolu")
+            blob = (prob + " " + vp).lower()
+            if any(w in blob for w in dead):
+                continue                                  # challenge extinguished → not a live verdict
+            f = c.get("note")
             if not f:
                 continue
             reason = vp or prob
@@ -75,36 +77,36 @@ def load_challenges():
 
 
 def load_embed2():
-    """Positions 3D sémantiques { rel_path: [x,y,z] } — cache produit hors-ligne (numpy).
-    Lu SANS dépendance : graph_export reste pur-stdlib (appelé à chaque écriture de fiche).
+    """Semantic 3D positions { rel_path: [x,y,z] } — a cache produced offline (numpy).
+    Read with NO dependency: graph_export stays pure stdlib (it runs on every note written).
 
-    REND (positions, état, détail) — ET C'EST TOUT L'INTÉRÊT DE CETTE SIGNATURE.
-    Avant, un `except Exception: return {}` confondait trois situations qu'un lecteur doit
-    pouvoir distinguer : le module n'a jamais été installé (légitime — les embeddings sont
-    optionnels par dessein, docs/design-doc.md), le cache est là et illisible (une vraie
-    panne), le cache est là et bon. La Planète annonçait alors « SENS EN VOLUME — proximité
-    = sens, toutes les fiches » sur une carte où PAS UNE fiche n'avait de vecteur, parce
-    qu'un dictionnaire vide ne dit rien de la raison de son vide. Mesuré à l'écran le
-    2026-09-19 sur le paquet livré : 0 fiche sur 10, et la carte S'OUVRE sur cette vue.
+    RETURNS (positions, state, detail) — AND THAT IS THE WHOLE POINT OF THIS SIGNATURE.
+    It used to return `{}` on any exception, which conflated three situations a reader must
+    be able to tell apart: the module was never installed (legitimate — embeddings are
+    optional by design, docs/design-doc.md), the cache is there and unreadable (a real
+    failure), and the cache is there and fine. The viewer then announced "MEANING IN VOLUME
+    — proximity = meaning, every note" over a map where NOT ONE note had a vector, because
+    an empty dict says nothing about why it is empty. Measured 2026-09-19 on the shipped
+    package: 0 of 10 notes placed by meaning, and the map OPENS on that view.
     """
     if not os.path.exists(EMBED2):
-        return {}, "absent", ("state/embed2.json n'a jamais été produit — le module "
-                              "sémantique est optionnel et n'a pas tourné")
+        return {}, "absent", ("state/embed2.json has never been produced — the semantic "
+                              "module is optional and was not run")
     try:
         pos = json.load(open(EMBED2, encoding="utf-8")).get("pos", {})
-    except Exception as e:                      # illisible, tronqué, pas du JSON
-        return {}, "broken", f"state/embed2.json est là mais illisible : {e}"
+    except Exception as e:                      # unreadable, truncated, not JSON
+        return {}, "broken", f"state/embed2.json is present but unreadable: {e}"
     if not isinstance(pos, dict):
-        return {}, "broken", "state/embed2.json n'a pas de table `pos` exploitable"
+        return {}, "broken", "state/embed2.json has no usable `pos` mapping"
     return pos, "ready", ""
 
 
 def load_coact():
-    """Chaleur (récence d'usage) par id + liens d'usage + ACTIVITÉ EN DIRECT — Étage 2. Stdlib.
+    """Heat (usage recency) per id + usage links + LIVE ACTIVITY. Stdlib.
 
-    `live` = { path: ts } des fiches lues dans la fenêtre glissante (quelques minutes), plus la
-    fenêtre elle-même : le visualizer en a besoin pour éteindre un anneau tout seul, en continu,
-    même si le graphe n'est pas régénéré entre-temps."""
+    `live` = { path: ts } for the notes read within the sliding window (a few minutes), plus the
+    window itself: the visualizer needs it to fade a ring out on its own, continuously, even when
+    the graph is not regenerated in between."""
     try:
         c = json.load(open(COACT, encoding="utf-8"))
         lv = c.get("live") or {}
@@ -116,118 +118,36 @@ def load_coact():
 DOMAINS = ["projects", "lessons", "meta", "life", "agents"]
 
 FM_NAME = re.compile(r'^\s*name:\s*["\']?([^"\'\n]+)["\']?\s*$', re.M)
-FM_TITLE = re.compile(r'^\s*title:\s*["\']?(.+?)["\']?\s*$', re.M)  # libellé humain descriptif (≠ slug stable)
+FM_TITLE = re.compile(r'^\s*title:\s*["\']?(.+?)["\']?\s*$', re.M)  # a descriptive human label (not the stable slug)
 FM_DESC = re.compile(r'^\s*description:\s*["\']?(.+?)["\']?\s*$', re.M)
 FM_BORN = re.compile(r'^\s*born_from:\s*(.+?)\s*$', re.M)   # born_from: <projet>[, autre]
-FM_SCALE = re.compile(r'^\s*scale:\s*([0-9](?:\.[0-9])?)\s*$', re.M)  # scale: 1..4 (centre-ville→périphérie)
-FM_TYPE = re.compile(r'^\s*type:\s*["\']?(\w+)["\']?\s*$', re.M)      # metadata.type : feedback|project|lesson…
+FM_SCALE = re.compile(r'^\s*scale:\s*([0-9](?:\.[0-9])?)\s*$', re.M)  # scale: 1..4 (city centre → outskirts)
 LINK = re.compile(r'\[\[([^\]]+)\]\]')          # [[nom-de-fiche]]
-# ⚠️ ANCIEN DÉTECTEUR, RETIRÉ LE 2026-08-14 :
-#     RESUME_RE = re.compile(r'REPRENDRE ICI|point de reprise|à reprendre', re.I)
-# Il allumait le badge ↻ sur 32 fiches en continu — et un marqueur allumé partout ne marque
-# plus rien. Il comptait notamment : les fiches qui PARLENT du marqueur (la leçon
-# `marqueur-barre-ou-nie-nest-pas-une-tache-ouverte`, l'audit de la planète lui-même), celles
-# qui le NIENT (« confirme qu'il n'y a rien à reprendre »), celles où il est BARRÉ
-# (`~~À reprendre~~`, une décision d'abandon), et les leçons/méta où un point de reprise n'a
-# aucun sens. C'est exactement le défaut déjà consigné dans
-# [[marqueur-barre-ou-nie-nest-pas-une-tache-ouverte]], corrigé dans `etat_projets.py` puis
-# jamais propagé ici : deux détecteurs pour la même question, un seul réparé.
-# Le badge lit maintenant `brain_anticipate` — le MÊME détecteur et le MÊME classement que les
-# reprises proposées au démarrage de session. Une seule source, donc plus de divergence
-# possible entre ce que le Brain propose et ce que la carte montre.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import topics_fiche
-# Un tronc sans `meta/topics.json` (les mini-troncs des bancs) exporte ses sujets à None ; le
-# vrai tronc a toujours sa source, et `tests/topics_canoniques.py` verrouille qu'elle existe.
-SUJETS = ({t["id"]: t["nom"] for t in json.load(open(topics_fiche.SOURCE, encoding="utf-8"))["topics"]}
-          if os.path.exists(topics_fiche.SOURCE) else {})
-# LES FAMILLES DE LA CARTE (23/09) : un cercle concret par famille dans chaque région de la carte,
-# classé à la main dans meta/familles-carte.json. Absent (mini-troncs des bancs) → aucune famille.
-_FAM_SRC = os.path.join(os.path.dirname(topics_fiche.SOURCE), "familles-carte.json")
-FAMILLES = (json.load(open(_FAM_SRC, encoding="utf-8")) if os.path.exists(_FAM_SRC)
-            else {"familles": [], "membres": {}})
-# même règle que `regionOf` de planet-v2/carte/index.html
-_DOM_REGION = {"lessons": "principes", "meta": "méta", "life": "vie", "agents": "agents", "projects": "projets"}
-def _poser_familles(nodes):
-    """Pose `famille` sur chaque fiche. Une fiche que le classement ne connaît pas encore (fiche
-    neuve) rejoint la famille de SA région qui compte le plus de fiches de son sujet, sinon la plus
-    grosse — et porte `famille_devinee`, pour qu'on la voie au lieu de la croire classée."""
-    region = lambda n: n.get("primary_project") or _DOM_REGION.get(n["domain"], n["domain"])
-    connues = {f["id"]: f for f in FAMILLES["familles"]}
-    par_region = {}
-    for f in FAMILLES["familles"]:
-        par_region.setdefault(f["region"], []).append(f["id"])
-    for n in nodes.values():
-        fid = FAMILLES["membres"].get(n["file"])
-        n["famille_devinee"] = False
-        if fid in connues and connues[fid]["region"] == region(n):
-            n["famille"] = fid
-    for n in nodes.values():
-        if n.get("famille"):
-            continue
-        ids = par_region.get(region(n), [])
-        if not ids:
-            n["famille"] = None
-            continue
-        voisins = [m["famille"] for m in nodes.values() if m.get("famille") in ids and not m["famille_devinee"]]
-        meme_sujet = [f for f in voisins if n.get("topic") and connues[f].get("sujet") == n.get("topic")]
-        pool = meme_sujet or voisins or ids
-        n["famille"] = max(ids, key=lambda f: (pool.count(f), -ids.index(f)))
-        n["famille_devinee"] = True
-def _head_courant():
-    """Le HEAD du tronc, ou None si le tronc n'est pas un dépôt."""
-    try:
-        r = subprocess.run(["git", "-C", BRAIN, "rev-parse", "HEAD"],
-                           capture_output=True, text=True, timeout=20)
-        return r.stdout.strip() if r.returncode == 0 else None
-    except Exception:
-        return None
+# BILINGUAL on purpose: it scans the USER's notes, in whatever language they write.
+RESUME_RE = re.compile(r'RESUME HERE|resume point|pick up here'
+                       r'|REPRENDRE ICI|point de reprise|à reprendre', re.I)   # ↻ badge
+DASH = re.compile(r'\s+[—–]\s+')                # em/en dash surrounded by spaces
 
-
-def load_reprises():
-    """Les fiches en tête des reprises proposées (badge ↻), et la raison si le calcul échoue.
-
-    APPELÉE PAR scan(), PLUS AU CHARGEMENT DU MODULE (17/09). `brain_anticipate.collect()`
-    parcourt tout l'arbre : mesuré à 281 ms, et ces 281 ms étaient payées par TOUT importateur
-    du module — le docteur, les bancs, et depuis ce matin le hook qui relit chaque fiche à
-    l'écriture — alors que le seul lecteur du résultat est le graphe. Le hook les payait dans
-    son temps de PREMIER PLAN, celui que l'utilisateur attend, là où il prend soin de détacher ses
-    rafraîchissements. Même forme que load_coact, load_challenges et les autres chargeurs
-    au-dessus : une fonction, appelée là où son résultat sert.
-    """
-    try:
-        import brain_anticipate
-        return {it["path"] for it in brain_anticipate.collect()[:brain_anticipate.TOP_REPRISES]}, None
-    except Exception as e:
-        # Jamais bloquer l'export du graphe pour un badge — mais un badge éteint parce
-        # que la capacité manque et un badge éteint parce qu'il n'y a rien à reprendre
-        # sont deux états DIFFÉRENTS. Le graphe porte donc la raison, et l'invariant la
-        # lit plutôt que de comparer deux ensembles vides et de se croire vert.
-        indisponible = "%s: %s" % (type(e).__name__, e)
-        print("⚠️  badge ↻ non calculé — %s" % indisponible, file=sys.stderr)
-        return set(), indisponible
-DASH = re.compile(r'\s+[—–]\s+')                # tiret cadratin/demi-cadratin entouré d'espaces
-
-# poids des appartenances (modèle continent/ville/frontière) — voir respirabilite & volet-3
+# membership weights (continent / city / frontier model)
 W_PRIMARY = 1.00     # dossier d'origine (un projet) = appartenance forte
-W_BORN    = 0.70     # né d'un projet (born_from) mais rangé ailleurs (ex. leçon réutilisable)
+W_BORN    = 0.70     # born of a project (born_from) but filed elsewhere (e.g. a reusable lesson)
 W_LINK    = 0.18     # lien [[...]] vers/depuis une fiche de projet = appartenance douce
 HOME_MIN  = 0.50     # appartenance mini pour avoir une VILLE maison (dossier/born_from, pas un simple lien)
-FRONTIER_MIN = 0.30  # seuil pour qu'une 2ᵉ appartenance compte comme « frontière »
+FRONTIER_MIN = 0.30  # threshold for a second membership to count as a "frontier"
 
-# heuristique d'échelle quand `scale:` absent : centre-ville (vision/projet) → périphérie (détail)
+# scale heuristic when `scale:` is absent: city centre (vision/project) → outskirts (detail)
 def guess_scale(nid):
     s = nid.lower()
     if s.startswith("project-") or "vision" in s:
         return 1.0                                   # cœur : le projet, sa vision
     if any(k in s for k in ("audit", "naming", "precision", "couts", "labo", "lab")):
-        return 3.0                                   # périphérie : détail/annexe
+        return 3.0                                   # outskirts: detail / appendix
     return 2.0                                        # ville standard
 
 
 def clean_desc(raw):
-    """Résumé court et propre pour le panneau : la phrase d'accroche avant le 1er ' — ',
-    sinon la description entière ; jamais coupée en plein mot."""
+    """A short clean summary for the panel: the hook sentence before the first ' — ',
+    otherwise the whole description; never cut mid-word."""
     full = (raw or "").strip()
     summary = DASH.split(full, 1)[0].strip()
     if len(summary) < 35:                       # accroche trop maigre → on garde tout
@@ -238,7 +158,7 @@ def clean_desc(raw):
 
 
 def frontmatter(text):
-    """Renvoie le bloc frontmatter (entre les --- de tête) ou ''."""
+    """Returns the front-matter block (between the leading ---) or ''."""
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end != -1:
@@ -246,60 +166,36 @@ def frontmatter(text):
     return ""
 
 
-RE_H1 = re.compile(r'^#[ \t]+(.+?)[ \t]*$', re.M)
-# Un H1 qui n'est PAS un titre : un nom de fichier, un identifiant, un chemin. Ces lignes-là
-# existent bel et bien dans le tronc (« on_fiche_write.py »), et les prendre pour un titre
-# donnerait un panneau qui annonce un nom de fichier en gros.
-RE_PAS_UN_TITRE = re.compile(r'^[\w./-]+\.(py|md|js|mjs|json|sh|html|ts|cjs)$|^`|^[A-Z_]{3,}$')
-
-
-def titre_de(frontmatter_title, texte, nid):
-    """Le titre affiché : `title:` du frontmatter, sinon le H1 du corps, sinon le nom de fichier.
-
-    Avant (2026-08-14), il n'y avait que deux marches : `title:` ou le nom de fichier avec les
-    tirets remplacés par des espaces. Or 258 fiches sur 359 n'ont pas de `title:` — le panneau
-    affichait donc « email commit git fuite a la publication » en guise de titre d'article.
-    115 de ces fiches portaient pourtant DÉJÀ un vrai titre, en H1, dans leur corps. Il n'était
-    simplement jamais lu. La marche manquante coûtait plus cher que 115 réécritures à la main.
-
-    Dernier recours, on remet au moins une majuscule : « capturer stderr dans un test le rend
-    toujours vert » se lit mal, « Capturer stderr… » se lit.
-    """
-    if frontmatter_title and frontmatter_title.strip():
-        return frontmatter_title.strip()
-    m = RE_H1.search(texte)
-    if m:
-        h1 = m.group(1).strip().replace("`", "")
-        if len(h1) >= 12 and " " in h1 and not RE_PAS_UN_TITRE.match(h1):
-            return h1
-    mots = nid.replace("-", " ").strip()
-    return mots[:1].upper() + mots[1:]
-
-
-EN_CLAIR = re.compile(r'^##[ \t]+En clair[ \t]*$(.*?)(?=^## |\Z)', re.M | re.S)
+FM_TYPE = re.compile(r"^\s*type:\s*(\S+)\s*$", re.M)
+EN_CLAIR = re.compile(r'^##[ \t]+En clair[ \t]*$(.*?)(?=^## |\Z)', re.M | re.S)  # i18n-ok
 
 
 def extract_en_clair(text):
-    """Le bloc « ## En clair » d'une fiche — la version humaine, sans jargon (4-6 lignes).
+    """The note's "## En clair" block — the plain-language register, jargon-free.
 
-    Format tranché par l'auteur le 2026-08-14 : UN fichier, pas deux. Deux fichiers tenus à
-    la main divergent toujours ; au bout d'un mois il y a deux vérités, donc aucune. Le
-    bloc vit DANS la fiche, et c'est l'afficheur qui choisit ce qu'il montre en premier.
-    Rend None si la fiche n'a pas encore de bloc — le panneau retombe alors sur `desc`.
+    ONE file, not two. Two hand-maintained files always drift; after a month there are two
+    truths, therefore none. The block lives INSIDE the note and the viewer decides what to
+    show first: the panel shows the whole block, the hover shows its first paragraph.
+
+    Returns None when a note has no such block — the panel then falls back on `desc`, which
+    is what the viewer already does.
+
+    The heading stays in French because it is the convention of the NOTES themselves, not a
+    string of this codebase; the notes are the user's, in the user's language.
     """
     m = EN_CLAIR.search(text)
     if not m:
         return None
     txt = re.sub(r"\[\[([^\]]+)\]\]", r"\1", m.group(1))
     txt = txt.replace("**", "").replace("`", "")
-    # Les retours à la ligne du fichier servent la relecture du .md, pas l'affichage :
-    # on recolle les paragraphes et on ne garde que les vraies coupures (ligne vide).
+    # The file's line breaks serve reading the .md, not the display: re-join paragraphs and
+    # keep only the real breaks (a blank line).
     paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", txt) if p.strip()]
     return "\n\n".join(paras) or None
 
 
 def clean_body(text):
-    """Corps de la fiche nettoyé du markdown → explication longue, lisible, pour le panneau déplié."""
+    """The note body stripped of markdown → a long readable explanation for the expanded panel."""
     body = text
     if text.startswith("---"):
         end = text.find("\n---", 3)
@@ -316,7 +212,7 @@ def clean_body(text):
             continue
         s = re.sub(r"^#{1,6}\s*", "", s)                     # titres
         s = re.sub(r"^[-*]\s+", "• ", s)                      # puces
-        s = re.sub(r"^\d+\.\s+", "• ", s)                     # listes numérotées
+        s = re.sub(r"^\d+\.\s+", "• ", s)                     # numbered lists
         s = re.sub(r"^>\s?", "", s)                           # citations
         s = s.replace("**", "").replace("`", "").replace("*", "")
         out.append(s)
@@ -326,16 +222,25 @@ def clean_body(text):
     return txt
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, legitimate
+import topics_fiche  # noqa: E402
+# A trunk without `meta/topics.json` (the benches' mini-trunks) exports its topics as None;
+# a real trunk has its source, and `tests/topics_canoniques.py` locks that it exists.
+TOPICS = ({t["id"]: t.get("name", t["id"])
+           for t in json.load(open(topics_fiche.SOURCE, encoding="utf-8"))["topics"]}
+          if os.path.exists(topics_fiche.SOURCE) else {})
+
+
 def scan():
     nodes = {}      # id -> {id, name, domain, group, desc, file}
     raw_links = []   # (src_id, target_name)
-    types_liens = {}  # (src_id, target_name) -> "base_sur" | "contredit" | "remplace"
-    embed2, sem_state, sem_detail = load_embed2()   # positions sémantiques + POURQUOI (Étage 1)
-    heat, coact_edges, live, live_window_min = load_coact()   # chaleur + liens d'usage + activité en direct (Étage 2)
-    challenges = load_challenges()             # avis du challenger par fiche (Étage 3)
-    beliefs = load_beliefs()                   # convictions datées de l'auteur du tronc (Étage 3 : couche goût)
-    media = load_media()                       # captures rejouables par fiche (Étage 4)
-    reprises, reprises_indisponibles = load_reprises()   # fiches en tête des reprises (badge ↻)
+    link_types = {}  # (src_id, target_name) -> one of RELATION_TYPES
+    unknown_relations = 0   # qualifications lost to a type outside RELATION_TYPES
+    embed2, sem_state, sem_detail = load_embed2()   # semantic positions + WHY, keyed by note path
+    heat, coact_edges, live, live_window_min = load_coact()   # heat + usage links + live activity
+    challenges = load_challenges()             # the challenger's verdict per note
+    beliefs = load_beliefs()                   # the author's dated convictions (the taste layer)
+    media = load_media()                       # replayable captures per note
 
     for domain in DOMAINS:
         root = os.path.join(BRAIN, domain)
@@ -364,97 +269,104 @@ def scan():
                 dm = FM_DESC.search(fm)
                 desc = clean_desc(dm.group(1) if dm else "")
                 tm = FM_TITLE.search(fm)
-                title = titre_de(tm.group(1) if tm else None, text, nid)
+                title = tm.group(1).strip() if tm else nid.replace("-", " ")
                 # sous-groupe = sous-dossier de projet (ex. mon-projet) sinon = domaine
                 rel = os.path.relpath(dirpath, root)
                 group = rel.split(os.sep)[0] if rel != "." else domain
-                # appartenance déclarée : born_from (1+ projets), scale (centre↔périphérie)
+                # declared membership: born_from (one or more projects), scale (centre ↔ outskirts)
                 bm = FM_BORN.search(fm)
                 born = [b.strip().strip("[]\"'") for b in bm.group(1).split(",")] if bm else []
                 born = [b for b in born if b]
                 sm = FM_SCALE.search(fm)
                 scale = float(sm.group(1)) if sm else guess_scale(nid)
                 rel_file = os.path.relpath(path, BRAIN)
-                # ── AXE THÉMATIQUE (2026-08-14) : la famille de la fiche, pour que la
-                # planète puisse montrer le SUJET et pas seulement le dossier. Les dossiers
-                # disent la portée, les familles disent de quoi ça parle — deux axes.
-                tm = re.search(r"^tags:\s*\[(.*?)\]", fm, re.M)
-                tags = [t.strip() for t in tm.group(1).split(",") if t.strip()] if tm else []
-                # ── LE SUJET (N1, 23/09) : `topic:` et ses 12 valeurs de `meta/topics.json`, lus
-                # par `topics_fiche` — la seule définition du tronc, pas un septième dialecte.
-                # `tags[0]` ne portait une famille que sur 223 leçons ; `topic:` en couvre 667.
-                # Une valeur hors de la source (ancien vocabulaire) est exportée à None : la carte
-                # ne doit pas inventer un 13e sujet que le banc `topics_canoniques` refuse.
-                sujet, _sec = topics_fiche.lire(text)
-                sujet = sujet if isinstance(sujet, str) and sujet in SUJETS else None
+                # ── THE TOPIC (N1, 09/23): `topic:` and its values from `meta/topics.json`, read
+                # by `topics_fiche` — the trunk's only definition, not a seventh dialect. A value
+                # outside the source (old vocabulary) is exported as None: the map must not
+                # invent an extra topic that the `topics_canoniques` bench refuses.
+                topic, _secondary = topics_fiche.lire(text)
+                topic = topic if isinstance(topic, str) and topic in TOPICS else None
                 nodes[nid] = {"id": nid, "name": nid, "title": title, "domain": domain,
-                              "group": group, "desc": desc, "tags": tags, "topic": sujet,
+                              "group": group, "desc": desc,
                               "born_from": born, "scale": scale,
-                              "type": (FM_TYPE.search(fm).group(1) if FM_TYPE.search(fm) else None),
-                              "en_clair": extract_en_clair(text),  # version humaine, affichée en 1er
+                              # The plain-language register, shown FIRST by the viewer: the
+                              # panel renders the whole block, the hover its first paragraph.
+                              # It was read at five sites in planet/index.html and produced
+                              # nowhere, so the register was invisible in the map.
+                              # read to decide `regle` below, then dropped: not exported.
+                              "_type": (FM_TYPE.search(fm).group(1)
+                                        if fm and FM_TYPE.search(fm) else None),
+                              "en_clair": extract_en_clair(text),
                               "long": clean_body(text),
-                              "embed2": embed2.get(rel_file),   # [x,y] sémantique ou None
-                              "heat": heat.get(nid, 0.0),        # chaleur d'usage 0..1 (Étage 2)
-                              "active": rel_file in live,        # LUE à l'instant (fenêtre glissante, Étage 2)
-                              "active_ts": live.get(rel_file),   # horodatage de cette lecture → extinction côté visualizer
-                              "challenge": challenges.get(rel_file),   # avis du challenger (Étage 3) ou None
-                              "conviction": beliefs.get(rel_file),     # conviction datée de l'auteur du tronc (Étage 3) ou None
-                              "media": media.get(rel_file),            # capture rejouable (Étage 4) ou None
-                              "resume": rel_file in reprises,    # fait partie des reprises en tête (badge ↻)
+                              "embed2": embed2.get(rel_file),   # semantic [x,y] or None
+                              "heat": heat.get(nid, 0.0),        # usage heat 0..1
+                              "active": rel_file in live,        # READ just now (sliding window)
+                              "active_ts": live.get(rel_file),   # timestamp of that read → fade-out in the visualizer
+                              "challenge": challenges.get(rel_file),   # the challenger's verdict, or None
+                              "conviction": beliefs.get(rel_file),     # a dated conviction, or None
+                              "media": media.get(rel_file),            # a replayable capture, or None
+                              "resume": bool(RESUME_RE.search(text)),  # carries a resume point (↻ badge)
+                              "topic": topic,
                               "file": rel_file}
-                # liens sortants (dédupliqués plus bas)
+                # outgoing links (deduplicated below)
                 for tgt in set(LINK.findall(text)):
                     raw_links.append((nid, tgt.strip()))
-                # relations TYPÉES du frontmatter (cf. jardinage-regles §4 bis).
-                # Elles n'ajoutent pas d'arête : elles QUALIFIENT celle qui existe déjà,
-                # puisque la convention impose de garder le [[slug]] dans le corps.
-                for typ, cibles in _relations(text).items():
-                    for c in cibles:
-                        types_liens[(nid, c)] = typ
+                # TYPED relations from the frontmatter (cf. gardening rules §4 bis).
+                # They add no edge: they QUALIFY the one that already exists, since the
+                # convention requires keeping the [[slug]] in the body.
+                # An unrecognized type costs the QUALIFICATION, never the edge: the link
+                # comes from the [[slug]] in the body, so it survives untyped. The counter
+                # says how many qualifications were lost, and says it in graph.json — the
+                # only place the automatic path (on_fiche_write → export → Planet) passes
+                # through. A warning printed here would be invisible: that path has no tty.
+                recognized, unknown = _relations(text)
+                unknown_relations += unknown
+                for typ, targets in recognized.items():
+                    for c in targets:
+                        link_types[(nid, c)] = typ
 
-    # ne garde que les liens dont la cible est une fiche connue (pas les [[à écrire]])
+    # keep only links whose target is a known note (not [[yet-to-write]] ones)
     ids = set(nodes)
     seen = set()
     links = []
     for src, tgt in raw_links:
         if tgt in ids and src != tgt and (src, tgt) not in seen and (tgt, src) not in seen:
             seen.add((src, tgt))
-            arete = {"source": src, "target": tgt}
-            typ = types_liens.get((src, tgt)) or types_liens.get((tgt, src))
+            edge = {"source": src, "target": tgt}
+            typ = link_types.get((src, tgt)) or link_types.get((tgt, src))
             if typ:
-                arete["type"] = typ
-            links.append(arete)
+                edge["type"] = typ
+            links.append(edge)
 
-    # ---------- RÈGLES TRANSVERSES : une étiquette, plus un voisin ----------
-    # `verifier-le-code-jamais-supposer` est cité par 77 fiches sur 359, `verifier-le-rendu-final`
-    # par 49. À ce niveau, une règle n'est plus un VOISIN de la fiche — c'est une ÉTIQUETTE posée
-    # dessus, et les 215 arcs qui en partent forment l'essentiel du nuage gris.
-    # On ne supprime AUCUN lien : le savoir reste, le panneau les liste toujours. On les marque,
-    # et le viewer ne les dessine qu'au survol.
-    # Le critère n'est pas un seuil inventé : c'est le `type:` déclaré dans le frontmatter.
-    # `type: feedback` = une règle de travail de l'auteur ; `type: project` = une fiche de projet,
-    # qui a le droit d'être un hub de son domaine (`claude-brain`, 41 liens, en est un et doit
-    # le rester). Le degré ne sert qu'à distinguer la règle omniprésente de celle citée trois fois.
-    DEGRE_ETIQUETTE = 20            # ~5 % du tronc : au-delà, la règle est partout
-    degres = Counter()
+    # ---------- RULE NOTES (the orange badge the viewer already draws) ----------
+    # A `type: feedback` note wired to at least this many others is a RULE: something the
+    # whole trunk leans on. The viewer draws a badge for it and explains, in its own
+    # comment, why such a point has no visible children. It read `nd.regle` and nothing
+    # ever wrote it, so that badge could never appear — the same silent shape as en_clair,
+    # found by widening the contract test to the viewer's second accessor.
+    # The type is read here and NOT exported: the viewer never reads `type`, so shipping it
+    # would be bytes in every graph for nobody.
+    RULE_DEGREE = 20                     # ~5% of a trunk; past that "rule" means nothing
+    degrees = Counter()
     for l in links:
-        degres[l["source"]] += 1
-        degres[l["target"]] += 1
-    regles = {nid for nid, n in nodes.items()
-              if n.get("type") == "feedback" and degres[nid] >= DEGRE_ETIQUETTE}
+        degrees[l["source"]] += 1
+        degrees[l["target"]] += 1
+    rules = {nid for nid, n in nodes.items()
+             if n.pop("_type", None) == "feedback" and degrees[nid] >= RULE_DEGREE}
     for nid, n in nodes.items():
-        n["regle"] = nid in regles
+        n.pop("_type", None)
+        n["regle"] = nid in rules
     for l in links:
-        if l["source"] in regles or l["target"] in regles:
+        if l["source"] in rules or l["target"] in rules:
             l["regle"] = True
 
-    # ---------- APPARTENANCE (modèle continent/ville/frontière) ----------
+    # ---------- MEMBERSHIP (continent / city / frontier model) ----------
     # « villes » = les sous-dossiers du domaine projects (chaque projet est une ville).
     projects = sorted({n["group"] for n in nodes.values() if n["domain"] == "projects"})
     proj_set = set(projects)
-    # voisinage non orienté vers les fiches de projet (pour l'appartenance douce des leçons)
+    # undirected neighbourhood towards project notes (for the soft membership of lessons)
     proj_of = {nid: n["group"] for nid, n in nodes.items() if n["domain"] == "projects"}
-    adj_proj = {nid: [] for nid in nodes}       # nid -> [groupes de projet reliés]
+    adj_proj = {nid: [] for nid in nodes}       # nid -> [connected project groups]
     for l in links:
         s, t = l["source"], l["target"]
         if s in proj_of and t not in proj_of:
@@ -464,45 +376,36 @@ def scan():
 
     for nid, n in nodes.items():
         m = {}
-        if n["domain"] == "projects":                       # fiche déjà dans une ville
+        if n["domain"] == "projects":                       # note already inside a city
             m[n["group"]] = m.get(n["group"], 0.0) + W_PRIMARY
-        for b in n["born_from"]:                              # née d'un projet, rangée ailleurs
+        for b in n["born_from"]:                              # born of a project, filed elsewhere
             if b in proj_set:
                 m[b] = m.get(b, 0.0) + W_BORN
-        for g in adj_proj[nid]:                               # tirée par les liens vers un projet
+        for g in adj_proj[nid]:                               # pulled by links towards a project
             m[g] = m.get(g, 0.0) + W_LINK
         if not m:
-            n["membership"] = {}                             # hors-ville (méta/vie pures)
+            n["membership"] = {}                             # out of town (pure meta/life)
             n["primary_project"] = None
             n["frontier"] = False
             continue
-        # poids ABSOLUS ancrés sur W_PRIMARY=1.0 (pas de normalisation par le max :
-        # un simple lien reste ténu ~0.20, il ne doit pas se gonfler en pleine appartenance)
+        # ABSOLUTE weights anchored on W_PRIMARY=1.0 (no normalization by the max:
+        # a plain link stays faint ~0.20, it must not inflate into full membership)
         m = {k: round(min(v, 1.0), 3) for k, v in m.items()}
         n["membership"] = dict(sorted(m.items(), key=lambda kv: -kv[1]))
         mx = max(m.values())
         # une fiche n'a une VILLE que si son appartenance est FORTE (dossier d'origine ou born_from).
-        # Un simple lien (~0.18) ne suffit pas → l'agent/méta qui mentionne un projet n'y est pas classé.
+        # A plain link (~0.18) is not enough → an agent or meta note mentioning a project is not filed there.
         n["primary_project"] = max(m, key=m.get) if mx >= HOME_MIN else None
-        # frontière = a une vraie ville maison ET une 2ᵉ ville ≥ seuil (ex. VoiceShell)
+        # frontier = has a real home city AND a second city above the threshold
         n["frontier"] = (n["primary_project"] is not None
                          and sum(1 for v in m.values() if v >= FRONTIER_MIN) >= 2)
 
-    _poser_familles(nodes)
-
-    # LA COUVERTURE SE COMPTE SUR LES FICHES, pas sur la taille du cache : une entrée qui
-    # ne correspond à aucune fiche actuelle ne place personne, et un cache de 400 clés
-    # périmées se lirait sinon comme une santé parfaite.
+    # THE COVERAGE IS COUNTED ON THE NOTES, not on the size of the cache: an entry that
+    # matches no current note places nobody, and a cache of 400 stale keys would otherwise
+    # read as full health.
     sem_covered = sum(1 for n in nodes.values() if n.get("embed2"))
     return {
         "generated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%S"),
-        # LE HEAD QUE CE GRAPHE DÉCRIT (2026-08-20). Le badge ↻ est un INSTANTANÉ ;
-        # les reprises proposées au démarrage sont un RECALCUL. Depuis que le
-        # classement suit la date de commit, les deux concordent tant qu'ils parlent
-        # du même HEAD — et divergent légitimement dès qu'un commit passe. Sans ce
-        # champ, « périmé » et « incohérent » sont indiscernables.
-        "head": _head_courant(),
-        "reprises_indisponibles": reprises_indisponibles,
         "counts": {"nodes": len(nodes), "links": len(links),
                    "projects": len(projects),
                    "frontier": sum(1 for n in nodes.values() if n.get("frontier")),
@@ -511,30 +414,29 @@ def scan():
                    "media": sum(1 for n in nodes.values() if n.get("media")),
                    "active": sum(1 for n in nodes.values() if n.get("active")),
                    "resume": sum(1 for n in nodes.values() if n.get("resume")),
-                   "regles": sum(1 for n in nodes.values() if n.get("regle")),
-                   # compteur d'avancement de la conversion : combien de fiches ont déjà
-                   # leur version humaine. Sans lui, « on en a fait 10 » n'est vérifiable
-                   # nulle part et la campagne s'oublie à mi-chemin.
-                   "en_clair": sum(1 for n in nodes.values() if n.get("en_clair"))},
+                   "en_clair": sum(1 for n in nodes.values() if n.get("en_clair")),
+                   # Relation TYPES this exporter did not recognize. The links are all
+                   # still there and still drawn — only their qualification is gone.
+                   # `brain doctor` says which notes and which types; this only says
+                   # how many, so the loss is visible without a second validator.
+                   "unknown_relations": unknown_relations},
         "domains": DOMAINS,
-        # les 12 sujets et leur nom, dans l'ordre de la source : la carte ne recopie aucune liste
-        "topics": SUJETS,
-        # les familles de la carte, id → nom affiché et région (meta/familles-carte.json)
-        "familles": {f["id"]: {"nom": f["nom"], "region": f["region"]} for f in FAMILLES["familles"]},
-        # fenêtre de l'ACTIVITÉ EN DIRECT (minutes) : le visualizer éteint lui-même un anneau
-        # dont `active_ts` est sorti de la fenêtre, sans attendre une régénération du graphe.
+        # the topics and their names, in the source's order: the map copies no list
+        "topics": TOPICS,
+        # LIVE ACTIVITY window (minutes): the visualizer fades out a ring whose `active_ts`
+        # has left the window on its own, without waiting for a graph regeneration.
         "live_window_min": live_window_min,
         "projects": projects,
         "nodes": sorted(nodes.values(), key=lambda n: (n["domain"], n["group"], n["id"])),
         "links": links,
-        # liens d'USAGE (co-activation) : fiches activées ensemble en session, ≠ liens déclarés (Étage 2)
+        # USAGE links (co-activation): notes activated together in a session, unlike declared links
         "coact": [e for e in coact_edges if e[0] in ids and e[1] in ids],
-        # LA CAPACITÉ SÉMANTIQUE, DÉCLARÉE — pas supposée. L'afficheur lisait l'absence de
-        # vecteurs comme « rien à signaler » et gardait sa formulation nominale ; on lui dit
-        # désormais, en toutes lettres, combien de fiches sont réellement posées par le sens
-        # et pourquoi les autres ne le sont pas. `covered == 0` AVEC un cache lisible n'est
-        # pas « en cours » : le cache existe et ne correspond à aucune fiche actuelle (clés
-        # périmées, tronc déplacé), ce qu'un lecteur doit VOIR, pas deviner.
+        # THE SEMANTIC CAPACITY, DECLARED — not assumed. The viewer used to read the
+        # absence of vectors as "nothing to say" and kept its nominal wording; from here
+        # it is told, in so many words, how many notes are actually placed by meaning and
+        # why the others are not. `covered == 0` WITH a readable cache is not "in
+        # progress": the cache exists and matches none of the current notes (stale keys,
+        # a moved trunk), which is a failure a reader must see, not a silence.
         "semantic": {
             "state": (sem_state if sem_state != "ready" else
                       "ready" if nodes and sem_covered == len(nodes) else
@@ -543,134 +445,106 @@ def scan():
             "total": len(nodes),
             "detail": (sem_detail if sem_detail else
                        "" if sem_covered == len(nodes) else
-                       f"state/embed2.json ne correspond à aucune des {len(nodes)} fiches — cache périmé"
+                       f"state/embed2.json matches none of the {len(nodes)} notes — stale cache"
                        if not sem_covered else
-                       f"{len(nodes) - sem_covered} fiche(s) écrite(s) depuis la dernière indexation"),
+                       f"{len(nodes) - sem_covered} note(s) written since the last indexing pass"),
         },
     }
 
 
-# ── LE VOCABULAIRE DES RELATIONS — fermé, décidé par l'auteur le 2026-09-17 (ADR-0019) ──
-# Quatre types qui disent chacun une chose précise, plus UN fourre-tout qui doit dire pourquoi.
-# Le fourre-tout existe parce que le refuser ne supprime pas le besoin, il le pousse vers des
-# mots inventés que l'export jette en silence : mesuré le 17/09, `voisin_de` — qui n'existe
-# dans aucun vocabulaire — portait 239 liens, 42 % du total, et disparaissait sans un mot.
-#   base_sur   cette fiche PRÉSUPPOSE l'autre
-#   precise    cette fiche affine l'autre sans la contredire (37 liens l'utilisaient déjà)
-#   contredit  les deux ne peuvent pas être vraies ensemble
-#   remplace   l'autre est morte, celle-ci prend la suite (SEUL type actif : sort du rappel)
-#   lie_a      tout le reste — n'est complet qu'accompagné de sa raison, en une phrase
-TYPES_RELATION = ("base_sur", "precise", "contredit", "remplace", "lie_a")
+# ── THE RELATION VOCABULARY — closed, decided by the author on 2026-09-17 (ADR-0019) ──
+# Four types that each say one precise thing, plus ONE catch-all that must say why.
+# The catch-all exists because refusing it does not remove the need, it pushes it towards
+# invented words the export drops silently: measured on 09/17, a made-up "neighbour of"
+# type — in no vocabulary — carried 239 links, 42 % of the total, and vanished without a word.
+#   based_on     this note PRESUPPOSES the other
+#   refines      this note sharpens the other without contradicting it
+#   contradicts  the two cannot both be true
+#   replaces     the other is dead, this one takes over (the ONLY active type: leaves recall)
+#   related_to   everything else — only complete with its reason, in one sentence
+RELATION_TYPES = ("based_on", "refines", "contradicts", "replaces", "related_to")
 
-# DEUX FORMES, parce que les deux étaient déjà écrites dans le tronc le 17/09 :
-#     base_sur: [a, b]         la forme courte — 558 liens ;
-#     base_sur:                la forme bloc (liste YAML) — 5 fiches, et elle était jetée EN
-#       - a                    SILENCE, l'analyseur n'acceptant que les crochets ;
-#     lie_a:                   la forme bloc porte en plus la raison, après deux-points.
-#       - a: parce que …
-# `- a: raison` est du YAML valide (une liste d'associations), donc un lecteur YAML réel ne
-# s'étrangle pas dessus le jour où il en passe un.
-_REL_BLOC = re.compile(r"^relations:\s*$(.*?)(?=^\S|\Z)", re.M | re.S)
-_REL_LIGNE = re.compile(r"^\s+(\w+)\s*:\s*\[([^\]]*)\]", re.M)
-_REL_TETE = re.compile(r"^\s+(\w+)\s*:\s*$")
+# TWO FORMS, because both were already written in the trunk on 09/17:
+#     based_on: [a, b]         the short form;
+#     based_on:                the block form (a YAML list) — it used to be dropped
+#       - a                    SILENTLY, the parser only accepting brackets;
+#     related_to:              the block form also carries the reason, after a colon.
+#       - a: because …
+# `- a: reason` is valid YAML (a list of mappings), so a real YAML reader does not choke
+# on it the day one goes through.
+_REL_BLOCK = re.compile(r"^relations:\s*$(.*?)(?=^\S|\Z)", re.M | re.S)
+_REL_LINE = re.compile(r"^\s+(\w+)\s*:\s*\[([^\]]*)\]", re.M)
+_REL_HEAD = re.compile(r"^\s+(\w+)\s*:\s*$")
 _REL_ITEM = re.compile(r"""^\s+-\s+["']?([^:"'\n]+?)["']?\s*(?::\s*(\S.*?))?\s*$""")
 
 
-def relations_brutes(bloc):
-    """[(type, cible, raison|None)] pour TOUT ce qui est écrit sous `relations:`, sans filtrer
-    sur TYPES_RELATION. C'est ce que lit le docteur pour NOMMER les types que l'export va
-    jeter : il ne peut le dire que s'il voit d'abord ce qui est écrit, y compris l'inconnu."""
-    out, courant = [], None
-    for ligne in bloc.split("\n"):
-        m = _REL_LIGNE.match(ligne)
+def raw_relations(block):
+    """[(type, target, reason|None)] for EVERYTHING written under `relations:`, without
+    filtering on RELATION_TYPES. It is what the doctor reads to NAME the types the export
+    will drop: it can only say so if it first sees what is written, the unknown included."""
+    out, current = [], None
+    for line in block.split("\n"):
+        m = _REL_LINE.match(line)
         if m:
-            courant = None
+            current = None
             for c in m.group(2).split(","):
                 c = c.strip().strip('"\'')
                 if c:
                     out.append((m.group(1), c, None))
             continue
-        m = _REL_TETE.match(ligne)
+        m = _REL_HEAD.match(line)
         if m:
-            courant = m.group(1)
+            current = m.group(1)
             continue
-        m = _REL_ITEM.match(ligne) if courant else None
+        m = _REL_ITEM.match(line) if current else None
         if m:
-            out.append((courant, m.group(1).strip(), (m.group(2) or "").strip() or None))
-        elif ligne.strip():
-            courant = None
+            out.append((current, m.group(1).strip(), (m.group(2) or "").strip() or None))
+        elif line.strip():
+            current = None
     return out
 
 
 def _relations(text):
-    """Lit le bloc `relations:` du frontmatter. Silencieux si absent ou mal formé —
-    un frontmatter bancal ne doit jamais faire tomber l'export du graphe."""
+    """Reads the frontmatter's `relations:` block → (recognized, unknown_count).
+
+    Silent when absent or malformed — a wobbly frontmatter must never bring the graph
+    export down. But silent about DROPPING was a different thing: a type outside
+    RELATION_TYPES used to vanish without a word, and 58 `base_sur` in the private trunk
+    would come out unqualified under this exporter with no error and no log.
+
+    What is counted is the unrecognized TYPE, once per note, not its targets — whether it
+    is written as a bracket line or as a block list — for two reasons: it is
+    what the viewer's wording says ("relation types were not recognized"), and it makes
+    this count comparable to `brain_doctor`'s `unknown_relation`, which lists one entry per
+    (note, type) — the two read the same block with the same parser and must agree.
+
+    The count is NOT a validation verdict. Nothing here decides that `base_sur` or
+    `illustre` should become valid: that is a vocabulary decision, and it lives elsewhere.
+    """
     fm = re.match(r"^---\n(.*?)\n---", text, re.S)
     if not fm:
-        return {}
-    bloc = _REL_BLOC.search(fm.group(1) + "\n")
-    if not bloc:
-        return {}
-    out = {}
-    for typ, cible, _raison in relations_brutes(bloc.group(1)):
-        if typ in TYPES_RELATION:
-            out.setdefault(typ, []).append(cible)
-    return out
+        return {}, 0
+    block = _REL_BLOCK.search(fm.group(1) + "\n")
+    if not block:
+        return {}, 0
+    out, unknown_types = {}, set()
+    for typ, target, _reason in raw_relations(block.group(1)):
+        if typ in RELATION_TYPES:
+            out.setdefault(typ, []).append(target)
+        else:
+            unknown_types.add(typ)
+    return out, len(unknown_types)
 
 
 def main():
     try:
         data = scan()
         os.makedirs(os.path.dirname(OUT), exist_ok=True)
-        # ---------- LE CORPS DES FICHES PART DANS SON PROPRE FICHIER ----------
-        # `long` (la fiche entière, dense) pesait 536 Ko des 1051 Ko de graph.json : plus de la
-        # MOITIÉ du fichier, pour un texte que seul le panneau DÉPLIÉ affiche — donc jamais au
-        # chargement, et jamais pour les 358 fiches qu'on ne déplie pas. La page revalide
-        # graph.json toutes les 3 s ; le jour où le serveur répond 200 plutôt que 304 (fiche
-        # modifiée, ce qui arrive à chaque passage de hook), c'est 1 Mo qui repart pour rien.
-        # Les textes vivent maintenant à côté, chargés au premier dépliage et gardés en cache.
-        textes = {n["id"]: n.pop("long") for n in data["nodes"] if n.get("long")}
-        # ---------- ET LE BLOC « EN CLAIR » SUIT LE MÊME CHEMIN ----------
-        # La campagne du 2026-08-14 a donné son bloc humain aux 362 fiches. Excellent pour la
-        # lecture — et graph.json est repassé de 472 Ko à 1309 Ko, dont 826 Ko pour ce seul
-        # champ. Le dégonflage de la veille était annulé par le chantier du lendemain.
-        # Or le SURVOL n'affiche que le PREMIER PARAGRAPHE (`en_clair.split('\n\n')[0]` côté
-        # viewer) ; le bloc entier ne sert qu'au panneau déplié, comme `long`. On ne garde donc
-        # que ce premier paragraphe — 60 Ko au lieu de 826 — et le reste part avec les textes.
-        for n in data["nodes"]:
-            plein = n.get("en_clair")
-            if not plein:
-                continue
-            textes[n["id"] + "::clair"] = plein
-            n["en_clair"] = plein.split("\n\n")[0]
-        # ⚠️ ÉCRITURE ATOMIQUE — SINON LA PLANÈTE SE RETROUVE AVEC UN GRAPHE ILLISIBLE.
-        # `open(OUT, "w")` tronque le fichier puis le réécrit : pendant ce temps, quiconque lit
-        # obtient un fichier à moitié écrit, et deux exports lancés en même temps (la ronde
-        # launchd et la boucle d'entretien) entrelacent leurs octets. Constaté le 2026-08-14 :
-        #   "target": "une-fiche-quel"une-fiche-quelconque,
-        # JSON invalide → la page charge 0 fiche et n'affiche RIEN, sans la moindre erreur
-        # visible (le fetch réussit, c'est le parse qui échoue, dans un `catch` silencieux).
-        # On écrit donc à côté, puis on bascule d'un coup : `os.replace` est atomique, un lecteur
-        # voit toujours l'ancien fichier OU le nouveau, jamais un mélange des deux.
-        def ecrire_atomique(chemin, charge, indent=None):
-            tmp = f"{chemin}.{os.getpid()}.tmp"
-            try:
-                with open(tmp, "w", encoding="utf-8") as f:
-                    json.dump(charge, f, ensure_ascii=False, indent=indent)
-                    f.flush()
-                    os.fsync(f.fileno())          # les octets sont sur le disque avant la bascule
-                os.replace(tmp, chemin)
-            finally:
-                if os.path.exists(tmp):
-                    os.remove(tmp)
-        # les textes d'abord : le graphe qui les référence ne doit jamais arriver avant eux
-        ecrire_atomique(OUT_TEXTES, textes)               # pas d'indent : personne ne le lit à l'œil
-        ecrire_atomique(OUT, data, indent=1)
+        with open(OUT, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
         if sys.stdout.isatty():
             c = data["counts"]
-            ko = lambda p: round(os.path.getsize(p) / 1024)
-            print(f"🪐 graph.json écrit : {c['nodes']} points, {c['links']} liens → {os.path.relpath(OUT, BRAIN)}"
-                  f" ({ko(OUT)} Ko + {ko(OUT_TEXTES)} Ko de textes à la demande)")
+            print(f"🪐 graph.json written: {c['nodes']} dots, {c['links']} links → {os.path.relpath(OUT, BRAIN)}")
     except Exception as e:
         if sys.stdout.isatty():
             print(f"graph_export: {e}", file=sys.stderr)

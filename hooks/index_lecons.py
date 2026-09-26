@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""Régénère lessons/INDEX.md depuis les `tags:` des fiches — l'INDEX devient un ARTEFACT.
+"""Regenerates lessons/INDEX.md from the notes' `tags:` — the INDEX becomes an ARTIFACT.
 
-Décision de l'utilisateur, 2026-08-14 (question Q3 du chantier « ossature thématique ») : la vérité
-vit dans les fiches, l'INDEX est dérivé. Motif : un index tenu à la main sur 223 leçons a déjà
-dérivé une fois — c'est de là que venaient ses 16 « Divers » et ses 21 étiquettes qui rangeaient
-par technologie. Cf. [[reparer-l-artefact-derive-ne-tient-qu-un-cycle]] : la réparation va dans
-la source, jamais dans le fichier régénéré.
+The user's decision, 2026-08-14 (question Q3 of the "thematic skeleton" job): the truth
+lives in the notes, the INDEX is derived. Reason: an index kept by hand over 223 lessons had
+already drifted once — that is where its 16 "Misc" entries and its 21 labels sorting by
+technology came from. Cf. [[reparer-l-artefact-derive-ne-tient-qu-un-cycle]]: the repair goes into
+the source, never into the regenerated file.
 
-Ce qui a été SAUVÉ avant de rendre ce fichier jetable (sinon on perdait le jugement de l'auteur) :
-  · les 103 ⭐ → champ `star: true` dans la fiche ;
-  · les 22 gloses que la description ne portait pas → repliées dans la description.
+What was SAVED before making this file disposable (otherwise the author's judgement was lost):
+  · the 103 ⭐ → a `star: true` field in the note;
+  · the 22 glosses the description did not carry → folded into the description.
 
-    python3 hooks/index_lecons.py            # écrit
-    python3 hooks/index_lecons.py --verifie  # ne touche à rien, sort 1 si l'INDEX a dérivé
+    python3 hooks/index_lecons.py            # writes
+    python3 hooks/index_lecons.py --check    # touches nothing, exits 1 if the INDEX has drifted
 """
 import glob, json, os, re, sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, légitime
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, legitimate
 from brain_racine import brain_root
 
-# I-1 (2026-08-21). Avant : la racine du DÉPÔT du script servait d'identité du Brain —
-# racine de CODE prise pour racine de BRAIN. Ce module ÉCRIT `lessons/INDEX.md` : sur la
-# mauvaise racine, il réécrit l'index d'un autre arbre. Migré SANS être exécuté sur le
-# tronc : la preuve est faite sur clones jetables, la collecte held-out est en cours.
+# I-1 (2026-08-21). Before: the script's REPOSITORY root served as the Brain's identity —
+# a CODE root taken for a BRAIN root. This module WRITES `lessons/INDEX.md`: on the
+# wrong root, it rewrites another tree's index. Migrated WITHOUT being run on the
+# trunk: the proof was made on throwaway clones, the held-out collection is in progress.
 BRAIN = brain_root(__file__)
 INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 
@@ -40,18 +40,18 @@ def champ(fm, nom):
 
 def lire_lecons():
     out = []
-    # Cherche les tags dans toute l'arborescence (sauf sessions/, audits/, .git/, vision/, etc.)
-    # car une leçon peut être physiquement un projet mais aussi une leçon par ses tags.
-    # vision/ est exclue : ce sont des documents sources de continuité, pas des leçons
+    # Looks for tags across the whole tree (except sessions/, audits/, .git/, vision/, etc.)
+    # because a lesson can physically be a project and still be a lesson through its tags.
+    # vision/ is excluded: those are continuity source documents, not lessons
     excludes = {".git", "audits", "sessions", "capsule", "companion", "tools", "archive", ".claude", "planet", "vision"}
     for p in sorted(glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True)):
-        # Exclut les dossiers spécialisés et l'INDEX lui-même
+        # Excludes the specialised folders and the INDEX itself
         rel = os.path.relpath(p, BRAIN)
         if any(rel.startswith(ex) for ex in excludes) or os.path.basename(p) == "INDEX.md":
             continue
         fm = frontmatter(p)
         t = re.search(r"^tags:\s*\[(.*?)\]", fm, re.M)
-        if not t:  # Seules les fiches avec tags sont des leçons
+        if not t:  # Only notes with tags are lessons
             continue
         nom = os.path.basename(p)[:-3]
         out.append({
@@ -64,19 +64,21 @@ def lire_lecons():
 
 
 def rendre():
-    # Le registre est la PIÈCE MAÎTRESSE : sans lui il n'y a pas d'index à écrire.
-    # On sort en nommant l'étape suivante plutôt qu'en déroulant une trace Python —
-    # un `FileNotFoundError` nu dit ce qui manque, jamais quoi faire.
+    # The registry is the KEYSTONE: without it there is no index to write.
+    # We exit by naming the next step rather than unrolling a Python traceback —
+    # a bare `FileNotFoundError` says what is missing, never what to do.
+    # The file name and its keys (familles, titre, quand, lexique) are the registry's data
+    # format, shared with brain_recall._load_families — not translated here.
     reg = os.path.join(BRAIN, "meta", "familles.json")
     try:
         familles = json.load(open(reg, encoding="utf-8"))["familles"]
     except FileNotFoundError:
-        sys.exit(f"❌ registre des familles absent : {reg}\n"
-                 "   → `git checkout meta/familles.json` dans le tronc, ou relance "
-                 "./install.sh (le paquet le livre dans skeleton/meta/).")
+        sys.exit(f"❌ family registry missing: {reg}\n"
+                 "   → `git checkout meta/familles.json` in the trunk, or rerun "
+                 "./install.sh (the package ships it in skeleton/meta/).")
     except (ValueError, KeyError) as e:
-        sys.exit(f"❌ registre des familles illisible : {reg} ({e})\n"
-                 "   → répare le JSON ; l'INDEX n'est pas réécrit tant qu'il ne charge pas.")
+        sys.exit(f"❌ family registry unreadable: {reg} ({e})\n"
+                 "   → repair the JSON; the INDEX is not rewritten until it loads.")
     lecons = lire_lecons()
     sans = [l["nom"] for l in lecons if not l["tags"]]
 
@@ -88,18 +90,18 @@ def rendre():
 
     ordre = sorted(familles, key=lambda k: -len(par_fam[k]["principal"]))
     lignes = [
-        "<!-- ⚠️ FICHIER GÉNÉRÉ — ne pas éditer à la main : `python3 hooks/index_lecons.py` l'écrase.",
-        "     La vérité vit dans le champ `tags:` de chaque fiche. Pour déplacer une leçon,",
-        "     on change SON tag, jamais cette carte. -->",
+        "<!-- ⚠️ GENERATED FILE — do not edit by hand: `python3 hooks/index_lecons.py` overwrites it.",
+        "     The truth lives in each note's `tags:` field. To move a lesson,",
+        "     change ITS tag, never this map. -->",
         "",
-        "# Carte des leçons transverses",
+        "# Map of cross-cutting lessons",
         "",
-        "Cet index secondaire conserve la navigation exhaustive sans charger tout le catalogue à "
-        "chaque démarrage. Il est structurel : les moteurs de rappel et les métriques de savoir l'excluent.",
+        "This secondary index keeps exhaustive navigation without loading the whole catalogue on "
+        "every start. It is structural: the recall engines and the knowledge metrics exclude it.",
         "",
-        f"**{len(lecons)} leçons · {len(familles)} familles.** Le rangement en dossiers dit la PORTÉE "
-        "(d'où faut-il pouvoir relire la fiche) ; ces familles disent le SUJET. Les deux axes sont "
-        "indépendants — une famille n'est pas un dossier.",
+        f"**{len(lecons)} lessons · {len(familles)} families.** The folder layout says the SCOPE "
+        "(from where must the note be readable); these families say the TOPIC. The two axes are "
+        "independent — a family is not a folder.",
         "",
     ]
     for k in ordre:
@@ -107,18 +109,18 @@ def rendre():
         if not grp["principal"] and not grp["aussi"]:
             continue
         lignes.append(f"### {f['titre']}  ·  {len(grp['principal'])}")
-        lignes.append(f"*{f['quand']}* — on la trouve en cherchant : {' · '.join(f['lexique'])}")
+        lignes.append(f"*{f['quand']}* — found by searching for: {' · '.join(f['lexique'])}")
         lignes.append("")
-        # ⚠️ UNE FICHE PAR LIGNE, GLOSE COURTE. Première version : tout sur une seule ligne avec
-        # la description entière — 400 caractères par fiche, 50 fiches à la suite, illisible.
-        # Un catalogue se PARCOURT : le nom porte déjà le sens, la glose ne fait que confirmer.
+        # ⚠️ ONE NOTE PER LINE, SHORT GLOSS. First version: everything on a single line with
+        # the whole description — 400 characters per note, 50 notes in a row, unreadable.
+        # A catalogue is BROWSED: the name already carries the meaning, the gloss only confirms it.
         def glose(d, n=115):
-            # ⚠️ UNE CARTE GÉNÉRÉE DOIT ÊTRE INERTE. Les descriptions contiennent des
-            # apostrophes inverses (`git checkout`, `tags:`) : recopiées telles quelles, elles
-            # ouvrent des spans de code non fermés, et l'extracteur de liens du docteur avalait
-            # tout ce qui suit. Mesuré : 289 `[[` dans le fichier, 136 liens vus — 153 liens
-            # perdus, donc des « orphelins » signalés à tort sur des fiches parfaitement liées.
-            # On neutralise aussi les crochets, qui fabriqueraient de faux liens.
+            # ⚠️ A GENERATED MAP MUST BE INERT. The descriptions contain
+            # backticks (`git checkout`, `tags:`): copied as they are, they
+            # open unclosed code spans, and the doctor's link extractor swallowed
+            # everything after them. Measured: 289 `[[` in the file, 136 links seen — 153 links
+            # lost, hence "orphans" wrongly reported on perfectly linked notes.
+            # Brackets are neutralised too, since they would make fake links.
             d = re.sub(r"\s+", " ", d).replace("`", "").replace("[[", "").replace("]]", "").strip()
             if len(d) <= n:
                 return d
@@ -130,21 +132,21 @@ def rendre():
                           else f"- {etoile}[[{l['nom']}]]")
         if grp["aussi"]:
             lignes.append("")
-            lignes.append("*Touche aussi cette famille :* " +
+            lignes.append("*Also touches this family:* " +
                           " · ".join(f"[[{l['nom']}]]" for l in sorted(grp["aussi"], key=lambda x: x["nom"])))
         lignes.append("")
     if sans:
-        lignes += ["### ⚠️ Sans famille — à taguer", "", " · ".join(f"[[{n}]]" for n in sans), ""]
+        lignes += ["### ⚠️ No family — to tag", "", " · ".join(f"[[{n}]]" for n in sans), ""]
     return "\n".join(lignes) + "\n"
 
 
 if __name__ == "__main__":
     neuf = rendre()
-    if "--verifie" in sys.argv:
+    if "--check" in sys.argv:
         actuel = open(INDEX, encoding="utf-8").read() if os.path.exists(INDEX) else ""
         if actuel == neuf:
-            print("INDEX à jour."); sys.exit(0)
-        print("INDEX DÉRIVÉ — relancer `python3 hooks/index_lecons.py`.", file=sys.stderr); sys.exit(1)
+            print("INDEX up to date."); sys.exit(0)
+        print("INDEX DRIFTED — rerun `python3 hooks/index_lecons.py`.", file=sys.stderr); sys.exit(1)
     open(INDEX, "w", encoding="utf-8").write(neuf)
     n = len(lire_lecons())
-    print(f"lessons/INDEX.md régénéré : {n} leçons")
+    print(f"lessons/INDEX.md regenerated: {n} lessons")

@@ -1,70 +1,69 @@
 #!/usr/bin/env python3
-"""brain_corpus — LA définition du corpus indexable du tronc. Source UNIQUE.
+"""brain_corpus — THE definition of the trunk's indexable corpus. Single source.
 
-POURQUOI CE FICHIER EXISTE (2026-08-16). Cette définition vivait en DEUX exemplaires :
-une dans `brain_recall.py` (BM25), une dans `brain_embed.py` (embeddings), la seconde
-portant le commentaire « MÊME corpus que brain_recall ». Elles ont divergé le 2026-08-15,
-le jour où les 24 compétences sont entrées dans le tronc :
+WHY THIS FILE EXISTS (2026-08-16). This definition lived in TWO copies: one in
+`brain_recall.py` (BM25), one in `brain_embed.py` (embeddings), the second one
+carrying the comment "IMPORTANT: the SAME corpus as brain_recall". Measured on a
+real trunk the day this file was written:
 
-    brain_recall  393 documents      (skills/ exclu)
-    brain_embed   458 documents      (skills/ indexé — 65 fiches d'outillage)
+    brain_recall  471 documents      (tools/ excluded)
+    brain_embed   476 documents      (tools/ indexed)
+    gap: 5 documents, all under tools/ — two READMEs and three result LISEZ-MOI
 
-Personne ne l'a vu, parce que rien ne comparait les deux. Le commentaire affirmait la
-parité au lieu de la garantir — et un commentaire ne rougit jamais.
+Nobody saw it, because nothing compared the two. The comment ASSERTED parity
+instead of guaranteeing it — and a comment never turns red.
 
-CE QUE ÇA CASSAIT. Toute comparaison BM25 / embeddings mesurait deux CORPUS différents en
-croyant comparer deux méthodes de récupération. Le duel en aveugle de l'ADR-0001 a été
-tranché AVANT cette divergence ; le rejouer tel quel aujourd'hui rendrait un verdict faux.
+WHAT IT BROKE. Every BM25 / embeddings comparison measured two CORPORA while
+believing it compared two retrieval methods. The blind duel behind
+docs/decisions (BM25 stays the recall engine) was settled BEFORE the divergence
+appeared; replaying it against these two definitions would return a false verdict.
 
-LA RÈGLE. Aucun moteur ne redéfinit cette liste. On l'importe.
-`tests/corpus_partage.py` refuse tout module qui s'en écrirait une copie locale.
-cf. [[un-detecteur-partage-par-concept]]
+THE RULE. No engine redefines this list. It imports it.
+`tests/shared_corpus.py` rejects any module that writes itself a local copy.
 """
 import glob
 import os
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 
-# On exclut du corpus les couches BRUTES/infra — le rappel doit remonter le savoir DISTILLÉ
-# (projects/lessons/meta/life), pas les catalogues d'agents, l'état ni le corpus froid.
-#   • sessions/ : TIMELINE.md = index de 80+ sessions, si long qu'il matche presque tout → bruit.
-#   • corpus/   : couche froide (milliers de conversations importées) → noierait le top-k. cf. carte-vivante
-# Matché par SEGMENTS de dossier (pas en substring : sinon une fiche « capsule-… » ou « …-sessions »
-# serait exclue à tort, comme l'ancien bug). cf. [[bm25-recall-exclure-index-catalogues]]
-#   • tools/    : outillage. Le banc de valeur y garde des COPIES du tronc pour ses
-#     conditions ; sans cette exclusion chaque fiche était indexée 5 fois (1 573 docs
-#     au lieu de 312), ce qui fausse l'IDF de tout le corpus et donc tous les scores.
+# Excluded from the corpus: the RAW and infrastructure layers. Recall must surface
+# DISTILLED knowledge (projects/lessons/meta/life), not agent catalogues, state, or
+# the cold corpus.
+#   • sessions/ : TIMELINE.md indexes 80+ sessions and is long enough to match almost
+#     anything → pure noise.
+#   • corpus/   : the cold layer (thousands of imported conversations) would drown the top-k.
+# Matched on path SEGMENTS, never as a substring: otherwise a note named "capsule-…"
+# or "…-sessions" would be wrongly excluded, which is the bug this replaced.
+#   • tools/    : tooling. The value bench keeps COPIES of the trunk for its conditions;
+#     without this exclusion every note was indexed 5 times (1573 docs instead of 312),
+#     which skews the IDF of the whole corpus and therefore every score. This is the
+#     line brain_embed.py was missing — the 5-document divergence above.
 SKIP_DIRS = {
     ".git", "node_modules", "capsule", "capsule-v2", "corpus", "audits",
     "agents", "state", "tools",
-    #   • skills/ : entré dans le tronc le 2026-08-15 (les 24 compétences vivent
-    #     désormais ici, `~/.claude/skills` est un symlink). Ce sont des MODES
-    #     D'EMPLOI et leurs références — de l'outillage, comme `agents/` juste
-    #     au-dessus, pas du savoir distillé. Mesuré à chaud : sans cette ligne,
-    #     438 docs indexés dont **65 venant de skills/** (15 % du corpus), et le
-    #     rappel proposait `skills/blender-motion/references/fcurve-modifiers.md`
-    #     sur la requête « pousse les modifs ». Le déplacement dans le tronc et
-    #     l'exclusion du rappel doivent aller ENSEMBLE : ranger une couche
-    #     d'outillage dans le Brain sans l'exclure ici la fait concurrencer les
-    #     fiches. Les skills restent trouvables par leur fiche,
-    #     [[systeme-skills-standard]]. cf. [[ce-qui-vit-dans-la-config-ne-vit-pas-dans-le-brain]]
-    #     ⚠️ C'est CETTE ligne que brain_embed.py n'avait pas — la divergence de 65 docs.
+    #   • skills/ : skill definitions are USER MANUALS and their references — tooling,
+    #     like agents/ just above, not distilled knowledge. Measured on a trunk that
+    #     hosts them: 65 of 438 indexed documents came from skills/ (15% of the
+    #     corpus), and recall answered "push the changes" with
+    #     skills/blender-motion/references/fcurve-modifiers.md. Moving a tooling layer
+    #     into the trunk and excluding it from recall must happen TOGETHER; filing it
+    #     under the trunk without this line makes it compete with real notes.
     "skills",
-    # `archive/` = la couche FROIDE (journaux détachés des fiches, cf.
-    # tools/archiver-journal.py). Mesuré le 2026-08-14 : sans cette ligne, un
-    # journal archivé ressortait **en 1re position** devant la fiche courante —
-    # ranger l'historique au froid n'a aucun sens s'il continue de concurrencer
-    # le présent dans la recherche. Sur disque et dans git, hors du rappel.
+    #   • archive/ : the COLD layer (journals detached from their note). Measured
+    #     2026-08-14: without this line an archived journal came back in FIRST
+    #     position, ahead of the current note. Filing history away as cold makes no
+    #     sense if it keeps competing with the present in search. Kept on disk and in
+    #     git, kept out of recall.
     "archive",
-    # `vision/` = documents SOURCES de vision et de continuité (le MASTER
-    # C Brain/GMatter, 2026-08-19). Ce ne sont pas des fiches de savoir : ce sont
-    # des récits longs qui expliquent POURQUOI le système existe. Un seul d'entre
-    # eux pèse plus que 20 fiches et touche tout le vocabulaire du projet — indexé,
-    # il remonterait sur presque chaque requête et écraserait la fiche précise que
-    # l'on cherche (même mécanique que `archive/` mesurée le 2026-08-14).
-    # Ils restent atteignables par leur POINTEUR dans MEMORY.md et par la fiche
-    # courte qui leur sert de porte d'entrée, elle indexée.
-    # Verrouillé par tests/vision_hors_corpus.py.
+    # `vision/` = SOURCE documents about vision and continuity (the C Brain/GMatter
+    # MASTER, 2026-08-19). They are not knowledge notes: they are long narratives
+    # that explain WHY the system exists. A single one of them weighs more than 20
+    # notes and touches the project's whole vocabulary — indexed, it would surface on
+    # almost every query and crush the precise note being looked for (the same
+    # mechanism as `archive/`, measured on 2026-08-14).
+    # They stay reachable through their POINTER in MEMORY.md and through the short
+    # note that serves as their entry point, which is indexed.
+    # Locked by tests/vision_hors_corpus.py.
     "vision",
 }
 SKIP_PREFIX = ("sessions",)
@@ -72,23 +71,23 @@ SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
 
 
 def skip(rel):
-    """Ce chemin relatif est-il hors du corpus ?"""
+    """Is this relative path outside the corpus?"""
     if rel in SKIP_FILES or any(rel.startswith(p) for p in SKIP_PREFIX):
         return True
-    dirs = rel.split(os.sep)[:-1]               # segments de DOSSIER (hors nom de fichier)
+    dirs = rel.split(os.sep)[:-1]               # FOLDER segments (excluding the file name)
     return any(d in SKIP_DIRS for d in dirs)
 
 
 def indexable(brain=None):
-    """Les .md du corpus, triés — (chemin relatif, chemin absolu).
+    """The corpus .md files, sorted — (relative path, absolute path).
 
-    Le tri n'est pas cosmétique : c'est l'entrée de l'empreinte du cache d'index de
-    brain_recall. Un ordre instable rejetterait le cache à chaque appel.
+    The sort is not cosmetic: it feeds the fingerprint of brain_recall's index
+    cache. An unstable order would discard the cache on every call.
     """
-    racine = brain or BRAIN
+    root = brain or BRAIN
     out = []
-    for p in glob.glob(os.path.join(racine, "**", "*.md"), recursive=True):
-        rel = os.path.relpath(p, racine)
+    for p in glob.glob(os.path.join(root, "**", "*.md"), recursive=True):
+        rel = os.path.relpath(p, root)
         if not skip(rel):
             out.append((rel, p))
     out.sort()
@@ -97,4 +96,4 @@ def indexable(brain=None):
 
 if __name__ == "__main__":
     docs = indexable()
-    print(f"{len(docs)} documents dans le corpus indexable de {BRAIN}")
+    print(f"{len(docs)} documents in the indexable corpus of {BRAIN}")

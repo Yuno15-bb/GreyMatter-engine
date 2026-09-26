@@ -1,15 +1,15 @@
-// C Brain — la capsule : l'ORBE.
+// C Brain — the capsule: the ORB.
 //
-// Une matière de verre posée dans le coin bas droit de l'écran. Sa mécanique de
-// fluide dit la NATURE du travail en cours, sa vitesse l'INTENSITÉ, sa teinte la
-// FAMILLE d'agent — et le code réellement écrit défile à l'intérieur.
+// A pane of living glass in the bottom-right corner of the screen. Its fluid
+// mechanic says WHAT KIND of work is happening, its speed the INTENSITY, its
+// hue the AGENT FAMILY — and the code actually being written scrolls inside it.
 //
-// ⚠ CE FICHIER N'EST PAS SYNCHRONISÉ depuis le tronc de l'auteur (cf. sync.sh).
-//   La version privée porte une géométrie de Dock spécifique à sa machine :
-//   position assise sur le Dock, vague au survol, magnification. Rien de tout
-//   cela n'a de sens sur la machine de quelqu'un d'autre. Ici l'orbe vit
-//   simplement dans le coin bas droit, et on peut la déplacer à la souris.
-//   Toute correction faite là-bas doit donc être PORTÉE ici à la main.
+// ⚠ THIS FILE IS NOT SYNCED from the author's trunk (see sync.sh). The private
+//   version carries Dock geometry specific to that machine: sitting on the
+//   Dock, the ripple on hover, magnification. None of that means anything on
+//   someone else's machine. Here the orb simply lives in the bottom-right
+//   corner and can be dragged with the mouse. Any fix made over there has to
+//   be PORTED here by hand.
 const { app, BrowserWindow, screen, globalShortcut, ipcMain, powerMonitor } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -17,60 +17,177 @@ const os = require('os');
 
 let win;
 
-// --- Single-instance : une seule capsule, jamais de fenêtres zombies ------
+// --- Single instance: one capsule, never a zombie window ------------------
+//
+// FIXED 2026-09-19. The friction below was real and is kept as written, because
+// it says what made the silence expensive. What it got WRONG is its own last
+// line: "a line on stderr saying which instance already holds it" is not
+// enough, because THE REFUSED INSTANCE HAS NO IDEA WHO REFUSED IT. Electron's
+// lock lives in `app.getPath('userData')`, a path derived from the application
+// NAME alone, so every trunk on the machine — a private install, a package
+// checkout, a test scratchpad — shares ONE lock without knowing it. The holder
+// therefore has to announce itself, and the marker has to sit NEXT TO THE LOCK
+// rather than in `state/`: two trunks have two `state/` directories and a
+// single `userData`, so a marker filed under `state/` would be invisible to
+// the very process being turned away.
+//
+// ⚠ KNOWN FRICTION, observed 2026-08-17. A second capsule quits INSTANTLY and
+//   SILENTLY: no message, no exit code anyone sees, nothing in any log. It cost
+//   half an hour of chasing a capsule that "would not start" before the lock
+//   turned out to be the reason. It bites whoever runs two trunks on one
+//   machine — a private install and a package checkout, which is exactly the
+//   author's setup — and anyone debugging the orb, since the fix is invisible
+//   while an older instance still holds the lock.
+//   Worse for observation: on macOS the window server keeps ghost layers of
+//   these transparent always-on-top windows, so a killed instance can still be
+//   on screen. Screenshots of the orb are not a reliable sensor.
+const IDENTITY = path.join(app.getPath('userData'), 'instance.json');
+
+function announceSelf() {
+  try {
+    fs.mkdirSync(path.dirname(IDENTITY), { recursive: true });
+    fs.writeFileSync(IDENTITY, JSON.stringify({
+      pid: process.pid,
+      since: Date.now(),
+      dir: path.resolve(__dirname),
+    }));
+  } catch (e) {}
+  // ⚠ The marker is NOT removed on quit, tempting as that looks: between the
+  //   old instance leaving and the new one arriving, the deletion usually lands
+  //   AFTER the replacement has written its own marker, and would erase the
+  //   identity of whoever actually holds the lock. Staleness is handled on
+  //   READ instead, by checking the announced pid is still alive.
+}
+
+function alive(pid) {
+  // Signal 0 kills nothing; it asks "does this pid exist?". EPERM means "it
+  // exists but it is not mine" — alive all the same.
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return e.code === 'EPERM'; }
+}
+
+function since(ms) {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 90) return `${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 90) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return h < 48 ? `${h}h ${m % 60}min` : `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+function explainRefusal() {
+  let id = null;
+  try { id = JSON.parse(fs.readFileSync(IDENTITY, 'utf8')); } catch (e) {}
+
+  // Three situations, three sentences. A MISSING marker and a STALE one do not
+  // mean the same thing, and neither one licenses naming a holder by guesswork.
+  if (!id || !id.pid) {
+    return ['Capsule: another instance already holds the lock, and it did not announce itself.',
+            `   No marker at ${IDENTITY}`,
+            '   — that is what a capsule started before 2026-09-19 looks like.',
+            '   To find it:  pgrep -fl "capsule/node_modules"', ''].join('\n');
+  }
+  if (!alive(id.pid)) {
+    return [`Capsule: the lock is taken, but the announced pid (${id.pid}) is gone.`,
+            '   Something holds it without having announced itself in its place.',
+            '   To find it:  pgrep -fl "capsule/node_modules"', ''].join('\n');
+  }
+
+  const here = path.resolve(__dirname);
+  const lines = [
+    'Capsule: one instance is already running, so this launch stands aside.',
+    `   pid ${id.pid} · up ${since(id.since)}`,
+    `   directory: ${id.dir}`,
+  ];
+  // ⚠ THE SCOPE OF THE LOCK, corrected 2026-09-20. These lines used to say the
+  //   lock was "shared across the whole machine: one capsule at a time, whichever
+  //   trunk it came from". It is not. Electron's single-instance lock lives in
+  //   `userData`, whose folder is named after this package — so two capsules whose
+  //   package.json carry different names each take their OWN lock and run side by
+  //   side. MEASURED that day: the author's trunk (`claude-brain-capsule`) and the
+  //   shipped package (`c-brain-capsule`) had two orbs on screen at once.
+  //   test_lock_speaks.sh proved the same thing without noticing: every launch it
+  //   makes is forced onto one throwaway `--user-data-dir` PRECISELY so it cannot
+  //   disturb a capsule already running. Section D now asserts it out loud.
+  if (id.dir !== here) {
+    lines.push(`   ⚠️  that is NOT the capsule of this directory (${here}).`,
+               '       One capsule per installation, not per machine: a second one',
+               '       installed elsewhere under a different name gets its own lock.');
+  }
+  lines.push('   It has just been asked to show itself again.',
+             `   To replace it:  kill ${id.pid}   then relaunch.`, '');
+  return lines.join('\n');
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  process.stderr.write(explainRefusal());
+  // ⚠ Exit 0 on purpose. A second launch has not failed: Electron delivers
+  //   `second-instance` to the one already running, which shows itself again.
+  //   The defect was the silence, never the exit code.
   app.quit();
 } else {
-  app.on('second-instance', () => {       // un 2e lancement → on re-montre l'existante
+  announceSelf();
+  app.on('second-instance', () => {       // a 2nd launch → re-show the existing one
     if (win) { win.showInactive(); }
   });
 }
 
-// L'orbe occupe un carré. 150 px : assez pour que la matière se lise et que le
-// code qui défile à l'intérieur reste du texte, assez peu pour ne pas manger le
-// coin de l'écran.
-const TAILLE = 150;
-const MARGE  = 26;
+// The orb fills a square. 150 px: enough for the material to read and for the
+// code scrolling inside to still be text, small enough not to eat the corner
+// of the screen.
+const SIZE = 150;
+const EDGE = 26;
 
-// DÉRIVÉ DE $HOME, jamais de __dirname : le moteur peut vivre ailleurs que le
-// tronc (installation par symlinks), et c'est le state de l'UTILISATEUR qu'on
-// surveille. Même chemin que celui utilisé par orbe.html.
+// DERIVED FROM $HOME, never from __dirname: the engine may live somewhere other
+// than the trunk (symlink install), and it is the USER's state we watch. Same
+// path orbe.html uses.
 const STATUS = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
 
-// PREUVE DE VIE de la fenêtre, portée à la main le 2026-08-13.
+// PROOF OF LIFE of the window, ported by hand on 2026-08-13.
 //
-// auto_maintain remplace une capsule dont le process n'a plus de fenêtre (un
-// zombie). Il lit ce fichier pour distinguer une capsule vivante d'une morte —
-// et jusqu'ici le paquet embarquait ce CONTRÔLE SANS SON ÉMETTEUR, parce que ce
-// fichier n'est pas synchronisé. Ce qui le rendait inoffensif, c'est le garde
-// d'en face : « jamais battu ≠ zombie ». Le contrôle ne pouvait donc rien
-// réparer non plus. Maintenant si.
+// auto_maintain replaces a capsule process that no longer has a window (a
+// zombie). It reads this file to tell a live capsule from a dead one — and
+// until now the package shipped that CHECK WITHOUT ITS EMITTER, because this
+// file is not synced. What kept it harmless is the guard on the other side:
+// "never beaten != zombie". So the check could never repair anything either.
+// Now it can.
 //
-// ⚠ Écrit par le processus PRINCIPAL, jamais par le renderer : celui-ci se met
-//   volontairement en pause quand l'orbe est cachée (écran endormi, repos), un
-//   battement posé là-bas s'arrêterait au repos et crierait au zombie sur une
-//   capsule parfaitement saine.
-// ⚠ Seulement tant que la fenêtre existe — c'est tout l'intérêt : un process
-//   sans fenêtre cesse de battre, et devient repérable de l'extérieur.
-// Même chemin dérivé de $HOME que STATUS : c'est le state du TRONC, pas du moteur.
+// ⚠ Written by the MAIN process, never by the renderer: the renderer pauses on
+//   purpose when the orb is hidden (asleep screen, idle), so a heartbeat placed
+//   there would stop at rest and cry zombie over a perfectly healthy capsule.
+// ⚠ Only while the window exists — that is the entire point: a process without
+//   a window stops beating, and becomes visible from the outside.
+// Same $HOME-derived path as STATUS: it is the TRUNK's state, not the engine's.
 const ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');
-const BATTEMENT = 5000;
-function battement() {
+const HEARTBEAT = 5000;
+function heartbeat() {
   try {
     if (win && !win.isDestroyed()) fs.writeFileSync(ALIVE, String(Date.now()));
   } catch (e) {}
 }
 
-// L'orbe s'efface d'elle-même quand plus rien ne travaille : un indicateur qui
-// ne dit rien ne doit pas occuper l'écran. Elle revient au premier agent.
-// Une minute de présence après la fin du travail — assez pour qu'on ait le
-// temps de regarder ce qui vient de se passer.
-const REPOS_AVANT_EFFACEMENT = 60000;
-// Même garde de fraîcheur que le renderer : `status.json` peut rester sur
-// « busy » avec un horodatage périmé si un agent meurt brutalement.
-const PERIME = 30000;
-let reposDepuis = null;
+// The orb clears itself off the screen once nothing is working: an indicator
+// that says nothing should not occupy the desktop. It comes back on the first
+// agent. One minute of presence after the work ends — long enough to read what
+// just happened.
+const IDLE_BEFORE_HIDE = 60000;
+// Same freshness guard as the renderer: status.json can stay on "busy" with a
+// stale timestamp if an agent dies abruptly.
+// THE WINDOW IS NOT DECIDED HERE. It used to be, as a literal — and the renderer
+// held a second literal, and `brain status` a third at 120 s. Three copies of one
+// question, already 4x apart. The number now comes from the file the Python side
+// reads too; the literal below is a fallback for a broken install, not a rival.
+const FRESHNESS = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+function freshnessWindows() {
+  try {
+    const j = JSON.parse(fs.readFileSync(FRESHNESS, 'utf8'));
+    return { live: (j.liveness_stale_seconds || 30) * 1000,
+             activity: (j.activity_stale_seconds || 120) * 1000 };
+  } catch (e) { return { live: 30000, activity: 120000 }; }
+}
+const STALE = freshnessWindows().live;
+let idleSince = null;
 
 function watchStatus() {
   const poll = () => {
@@ -79,34 +196,34 @@ function watchStatus() {
       const j = JSON.parse(fs.readFileSync(STATUS, 'utf8'));
       s = j.state || 'idle'; ts = j.ts || 0;
     } catch (e) {}
-    const frais = (Date.now() / 1000 - ts) * 1000 < PERIME;
-    const occupe = s === 'busy' && frais;
+    const fresh = (Date.now() / 1000 - ts) * 1000 < STALE;
+    const busy = s === 'busy' && fresh;
 
-    if (occupe) {
-      reposDepuis = null;
-      if (win && !win.isVisible()) win.showInactive();   // sans voler le focus
+    if (busy) {
+      idleSince = null;
+      if (win && !win.isVisible()) win.showInactive();   // without stealing focus
     } else if (win) {
-      if (reposDepuis === null) reposDepuis = Date.now();
-      if (Date.now() - reposDepuis > REPOS_AVANT_EFFACEMENT && win.isVisible()) win.hide();
+      if (idleSince === null) idleSince = Date.now();
+      if (Date.now() - idleSince > IDLE_BEFORE_HIDE && win.isVisible()) win.hide();
     }
   };
-  // ⚠ `fs.watchFile` ne se déclenche qu'au CHANGEMENT du fichier. Le délai
-  //   d'inactivité, lui, doit être réévalué même quand plus rien ne bouge —
-  //   sinon l'orbe ne se cache jamais. Il faut donc aussi un vrai minuteur.
-  fs.watchFile(STATUS, { interval: 2000 }, poll);   // réaction immédiate au réveil
-  setInterval(poll, 1500);                          // écoulement du temps de repos
+  // ⚠ fs.watchFile only fires when the file CHANGES. The idle delay, though,
+  //   has to be re-evaluated even when nothing moves — otherwise the orb never
+  //   hides. So a real timer is needed as well.
+  fs.watchFile(STATUS, { interval: 2000 }, poll);   // instant reaction on wake-up
+  setInterval(poll, 1500);                          // the passing of idle time
   poll();
 }
 
-// --- Veille : écran éteint / session verrouillée → l'orbe se cache vraiment.
-//     Sans ça elle continue d'animer et de faire recomposer le bureau devant un
-//     écran noir.
-let _cacheeParVeille = false;
+// --- Sleep: screen off / session locked → the orb really hides. Without this
+//     it keeps animating and forcing the desktop to recomposite in front of a
+//     black screen.
+let _hiddenBySleep = false;
 function powerSleep() {
-  if (win && win.isVisible()) { _cacheeParVeille = true; win.hide(); }
+  if (win && win.isVisible()) { _hiddenBySleep = true; win.hide(); }
 }
 function powerWake() {
-  if (win && _cacheeParVeille) { _cacheeParVeille = false; win.showInactive(); }
+  if (win && _hiddenBySleep) { _hiddenBySleep = false; win.showInactive(); }
 }
 function watchPower() {
   ['suspend', 'lock-screen'].forEach(e => powerMonitor.on(e, powerSleep));
@@ -117,33 +234,33 @@ function watchPower() {
   }
 }
 
-// --- Le clic traverse, SAUF sur l'orbe ------------------------------------
-// Un carré de 150 px posé sur le bureau qui avale les clics serait insupportable.
-// `forward: true` laisse quand même remonter les mouvements de souris : la page
-// sait donc dire « là, c'est moi » et ne redevient cliquable que sur le disque.
+// --- Clicks pass through, EXCEPT on the orb -------------------------------
+// A 150 px square swallowing clicks on the desktop would be unbearable.
+// `forward: true` still lets mouse moves through: the page can therefore say
+// "that one is me" and only becomes clickable over the disc.
 function setClickThrough(on) {
   if (!win) return;
   try { win.setIgnoreMouseEvents(on, { forward: true }); } catch (e) {}
 }
 ipcMain.on('cap-interactive', (_e, interactive) => setClickThrough(!interactive));
 
-// --- Attraper l'orbe et la déplacer ---------------------------------------
-// ⚠ Le curseur est suivi ICI, dans le processus principal, et pas dans la page.
-//   En glissant vite, le pointeur sort de la fenêtre : le renderer cesse alors
-//   de recevoir les mouvements et l'orbe resterait plantée en arrière du geste.
-//   `screen.getCursorScreenPoint()` reste juste où que soit le curseur.
-let posLibre = false;      // l'utilisateur l'a déplacée : on ne la replace plus
-let suivi = null;
+// --- Grabbing the orb and moving it ---------------------------------------
+// ⚠ The cursor is tracked HERE, in the main process, not in the page. On a fast
+//   drag the pointer leaves the window: the renderer stops receiving moves and
+//   the orb would lag behind the gesture. screen.getCursorScreenPoint() stays
+//   correct wherever the cursor is.
+let freePos = false;      // the user moved it: we stop putting it back
+let follow = null;
 
 ipcMain.on('cap-drag-begin', () => {
-  if (!win || suivi) return;
-  posLibre = true;
+  if (!win || follow) return;
+  freePos = true;
   const c0 = screen.getCursorScreenPoint();
   const b0 = win.getBounds();
-  // Écart entre le coin de la fenêtre et le point saisi : sans lui, l'orbe
-  // sauterait pour se centrer sous le curseur au premier pixel de mouvement.
+  // Offset between the window corner and the grabbed point: without it, the orb
+  // would jump to centre itself under the cursor on the first pixel of movement.
   const dx = c0.x - b0.x, dy = c0.y - b0.y;
-  suivi = setInterval(() => {
+  follow = setInterval(() => {
     if (!win) return;
     const c = screen.getCursorScreenPoint();
     win.setPosition(Math.round(c.x - dx), Math.round(c.y - dy));
@@ -151,37 +268,37 @@ ipcMain.on('cap-drag-begin', () => {
 });
 
 ipcMain.on('cap-drag-end', () => {
-  if (suivi) { clearInterval(suivi); suivi = null; }
-  garderAVue();
+  if (follow) { clearInterval(follow); follow = null; }
+  keepInView();
 });
 
-// Au lâcher et à chaque changement d'écran : on ramène la fenêtre dans la zone
-// visible. Sans ça, une orbe lâchée sur un écran qu'on débranche reste posée
-// dans le vide — elle existe, elle consomme, et elle est introuvable.
-function garderAVue() {
+// On release, and on every display change: bring the window back into the
+// visible area. Without this, an orb dropped on a screen you then unplug stays
+// parked in the void — it exists, it costs, and it cannot be found.
+function keepInView() {
   if (!win) return;
   const b = win.getBounds();
   const wa = screen.getDisplayMatching(b).workArea;
-  const RESTE = 24;                     // ce bout d'orbe reste toujours à l'écran
-  const x = Math.min(Math.max(b.x, wa.x - b.width + RESTE), wa.x + wa.width - RESTE);
-  const y = Math.min(Math.max(b.y, wa.y), wa.y + wa.height - RESTE);
+  const KEEP = 24;                      // this much orb always stays on screen
+  const x = Math.min(Math.max(b.x, wa.x - b.width + KEEP), wa.x + wa.width - KEEP);
+  const y = Math.min(Math.max(b.y, wa.y), wa.y + wa.height - KEEP);
   if (x !== b.x || y !== b.y) win.setPosition(Math.round(x), Math.round(y));
 }
 
-function poser() {
+function place() {
   if (!win) return;
-  if (posLibre) return garderAVue();     // l'utilisateur a choisi sa place
+  if (freePos) return keepInView();      // the user picked their spot
   const b = screen.getPrimaryDisplay().bounds;
-  win.setPosition(b.x + b.width - TAILLE - MARGE, b.y + b.height - TAILLE - MARGE);
+  win.setPosition(b.x + b.width - SIZE - EDGE, b.y + b.height - SIZE - EDGE);
 }
 
 function createWindow() {
   const b = screen.getPrimaryDisplay().bounds;
   win = new BrowserWindow({
-    width: TAILLE,
-    height: TAILLE,
-    x: b.x + b.width - TAILLE - MARGE,
-    y: b.y + b.height - TAILLE - MARGE,
+    width: SIZE,
+    height: SIZE,
+    x: b.x + b.width - SIZE - EDGE,
+    y: b.y + b.height - SIZE - EDGE,
     frame: false,
     transparent: true,
     resizable: false,
@@ -189,49 +306,108 @@ function createWindow() {
     skipTaskbar: true,
     hasShadow: false,
     fullscreenable: false,
-    // backgroundThrottling:false → la capsule est un HUD qui n'a JAMAIS le focus
-    //   (showInactive) ; sans ça Electron bride le rendu à quelques images par
-    //   seconde dès qu'elle n'est pas au premier plan, et l'animation saccade.
+    // backgroundThrottling:false → the capsule is a HUD that NEVER holds focus
+    //   (showInactive); without this Electron throttles rendering to a few
+    //   frames per second as soon as it is not frontmost, and the animation
+    //   stutters.
     webPreferences: { nodeIntegration: true, contextIsolation: false, backgroundThrottling: false },
   });
   win.webContents.setBackgroundThrottling(false);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile('orbe.html');
-  // Le clic traverse DÈS LE DÉPART : entre le premier rendu et le premier
-  // survol, la fenêtre est un rectangle transparent posé sur le bureau.
-  // Attendre le premier mouvement de souris laisserait une zone morte au
-  // moment précis où l'utilisateur découvre la chose.
+  // Clicks pass through FROM THE START: between the first paint and the first
+  // hover, the window is a transparent rectangle sitting on the desktop.
+  // Waiting for the first mouse move would leave a dead zone at the exact
+  // moment the user discovers the thing.
   setClickThrough(true);
-  // La page met son animation en pause quand personne ne la voit : peindre pour
-  // un écran éteint ferait recomposer le bureau pour rien.
-  const direVisible = (v) => { try { win.webContents.send('cap-visible', v); } catch (e) {} };
-  win.on('show', () => direVisible(true));
-  win.on('hide', () => direVisible(false));
+  // The page pauses its animation when nobody is looking: painting for a dark
+  // screen makes the desktop recomposite for nothing.
+  const tellVisible = (v) => { try { win.webContents.send('cap-visible', v); } catch (e) {} };
+  win.on('show', () => tellVisible(true));
+  win.on('hide', () => tellVisible(false));
 }
 
 app.whenReady().then(() => {
   createWindow();
   ['display-metrics-changed', 'display-added', 'display-removed']
-    .forEach(e => screen.on(e, poser));
-  watchStatus();   // re-montre l'orbe dès qu'un agent passe en 'busy'
-  watchPower();    // pause réelle quand l'écran dort ou que la session est verrouillée
-  battement(); setInterval(battement, BATTEMENT);   // preuve de vie de la FENÊTRE
+    .forEach(e => screen.on(e, place));
+  watchStatus();   // re-shows the orb as soon as an agent turns 'busy'
+  watchPower();    // real pause when the screen sleeps or the session locks
+  heartbeat(); setInterval(heartbeat, HEARTBEAT);   // proof of life of the WINDOW
 
-  // Rechargement à chaud — opt-in : c'est un confort de DÉVELOPPEMENT, pas une
-  // fonction de la capsule. En usage normal il ferait un accès disque toutes
-  // les secondes, à vie, pour un fichier qui ne bouge jamais.
+  // ─── THE DIAGNOSTIC CHANNEL ────────────────────────────────────────────────
+  //
+  // WHY IT EXISTS. `docs/verification-recipe.md` told the reader to `touch
+  // /tmp/cap_shot_req` and read `/tmp/cap.png`. No such mechanism was ever in
+  // this repository — the documented way to verify the capsule could not be run,
+  // and nobody noticed because nobody ran it. Found on 2026-08-17 by grepping the
+  // whole tree for the string the recipe prescribes.
+  //
+  // WHAT IT IS, AND WHAT IT IS NOT. It reports what the RENDERER believes it is
+  // displaying: the state label, whether that label is visible, the detail, the
+  // code pad, and whether the orb object exists. That is one observable.
+  //
+  // ⚠ IT IS NOT A SUBSTITUTE FOR THE PIXEL. A renderer can be certain it is
+  // drawing an orb that no one can see — the window may be off-screen, occluded,
+  // or fully transparent. And the converse trap is the one this whole verification
+  // exists for: macOS keeps GHOST LAYERS of these windows, so a screenshot can
+  // show an orb that no renderer is drawing. Neither observable can stand in for
+  // the other, which is exactly why both are collected.
+  //
+  // Opt-in by environment variable, so nothing is written in normal use.
+  if (process.env.CBRAIN_PROBE_OUT) {
+    const OUT = process.env.CBRAIN_PROBE_OUT;
+    const probe = () => {
+      if (!win || win.isDestroyed()) return;
+      // Read from the DOM, in the renderer. Not from main's own idea of the
+      // state: main's idea is the INPUT. Asking it what it displays would be
+      // asking the question to the answer.
+      win.webContents.executeJavaScript(`(() => {
+        const el = (id) => document.getElementById(id);
+        const seen = (id) => { const e = el(id); return !!e && e.classList.contains('vu'); };
+        const c = el('c');
+        return {
+          renderer_ready: document.readyState,
+          state_text: (el('dit') || {}).textContent || "",
+          state_visible: seen('dit'),
+          detail_text: (el('fiche') || {}).textContent || "",
+          detail_visible: seen('fiche'),
+          pad_visible: seen('pave'),
+          orb_object: typeof window.__orbe,
+          canvas_w: c ? c.width : 0,
+          canvas_h: c ? c.height : 0
+        };
+      })()`, true).then((dom) => {
+        const b = win.getBounds();
+        const payload = Object.assign({
+          ts: Date.now(),
+          // The window as the SYSTEM sees it. A renderer drawing perfectly into
+          // a hidden window is the failure this pair of fields catches.
+          window_visible: win.isVisible(),
+          window_bounds: b,
+          engine_dir: __dirname
+        }, dom);
+        try { fs.writeFileSync(OUT, JSON.stringify(payload, null, 2)); } catch (e) {}
+      }).catch(() => {});
+    };
+    probe(); setInterval(probe, 1000);
+  }
+
+  // Hot reload — opt-in: this is a DEVELOPMENT comfort, not a feature of the
+  // capsule. In normal use it would hit the disk every second, forever, for a
+  // file that never changes.
   if (process.env.CAPSULE_DEV === '1') {
     const PAGE = path.join(__dirname, 'orbe.html');
     fs.watchFile(PAGE, { interval: 1000 }, () => { if (win) win.webContents.reloadIgnoringCache(); });
   }
-  // ⌘⇧B : montrer / cacher
+  // ⌘⇧B: show / hide
   globalShortcut.register('CommandOrControl+Shift+B', () => {
     if (!win) return;
     win.isVisible() ? win.hide() : win.showInactive();
   });
 });
 
-// pilotage depuis la page
+// driven from the page
 ipcMain.on('cap-show', () => { if (win && !win.isVisible()) win.showInactive(); });
 ipcMain.on('cap-hide', () => { if (win && win.isVisible()) win.hide(); });
 ipcMain.on('cap-quit', () => app.quit());

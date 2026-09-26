@@ -1,29 +1,27 @@
 #!/usr/bin/env python3
-"""brain_embed — backend embeddings local (Volet 2 · Horizon 1, upgrade « vrai sémantique »).
+"""brain_embed — local embeddings backend (the "true semantic" upgrade).
 
 Tourne dans le venv ~/.c-brain/trunk/.venv (model2vec + numpy, SANS PyTorch).
-Embeddings STATIQUES : modèle ~30 Mo, encodage instantané (0.001s), zéro API, hors-ligne.
+STATIC embeddings: ~30 MB model, instant encoding (0.001 s), no API, fully offline.
 
-Index sur disque INCRÉMENTAL (state/embeddings.npz + .json) : on ne ré-encode que les
-fiches modifiées (hash du contenu). brain_recall y délègue en mode --semantic ;
-le défaut reste BM25 (instantané) pour le hook à chaque message.
+INCREMENTAL on-disk index (state/embeddings.npz + .json): only the modified notes
+are re-encoded (content hash). brain_recall delegates to it in --semantic mode;
+the default stays BM25 (instant) for the per-message hook.
 
 Usage (dans le venv) :
-  brain_embed.py build              → (re)construit l'index incrémental
-  brain_embed.py query [-k N] "..." → top-k par similarité sémantique
+  brain_embed.py build              → (re)builds the incremental index
+  brain_embed.py query [-k N] "..." → top-k by semantic similarity
 """
 import os, sys, re, json, glob, hashlib
 import numpy as np
 from model2vec import StaticModel
 
-# ⚠️ LE CORPUS N'EST PLUS DÉFINI ICI. Il l'a été, en copie de celui de brain_recall, sous
-# un commentaire qui affirmait « MÊME corpus que brain_recall ». Les deux ont divergé le
-# 2026-08-15 : 458 documents ici contre 393 là-bas, les 65 fiches de `skills/`. Une parité
-# AFFIRMÉE dans un commentaire n'est pas une parité GARANTIE — un commentaire ne rougit
-# jamais. La définition est maintenant importée, et tests/corpus_partage.py la surveille.
-from brain_corpus import (  # noqa: E402
-    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip,
-)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ⚠️ THE CORPUS DEFINITION IS NOT WRITTEN HERE — it lives in brain_corpus.py, imported by
+# both engines. This file used to keep its own copy under the comment "IMPORTANT: the SAME
+# corpus as brain_recall". The two had drifted by 5 documents (all of tools/), and the
+# comment could not turn red. Asserting parity is not guaranteeing it.
+from brain_corpus import BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip  # noqa: E402,F401
 
 NPZ = os.path.join(BRAIN, "state", "embeddings.npz")
 META = os.path.join(BRAIN, "state", "embeddings.json")
@@ -47,7 +45,7 @@ def fiche_text(raw):
         desc = md.group(1).strip() if md else ""
     body = re.sub(r"```.*?```", " ", raw, flags=re.S)
     body = re.sub(r"^---\n.*?\n---", "", body, flags=re.S)
-    # nom + description en tête (signal dense) puis corps tronqué
+    # name + description first (the dense signal) then a truncated body
     return (name + ". " + desc + ". " + body)[:4000], name, desc
 
 
@@ -81,9 +79,9 @@ def build():
         text, name, desc = fiche_text(raw)
         new_meta.append({"path": rel, "name": name or os.path.basename(rel)[:-3],
                          "desc": desc, "hash": h})
-        if rel in cache and cache[rel][0] == h:           # inchangée → réutilise le vecteur
+        if rel in cache and cache[rel][0] == h:           # unchanged → reuse the vector
             rows.append(vecs[cache[rel][1]])
-        else:                                              # nouvelle / modifiée → à encoder
+        else:                                              # new / modified → needs encoding
             rows.append(None); to_encode.append(text); enc_idx.append(len(rows) - 1)
     if to_encode:
         encoded = model().encode(to_encode)
@@ -112,7 +110,7 @@ def main():
     args = sys.argv[1:]
     if args and args[0] == "build":
         n, enc = build()
-        print(f"✅ index embeddings : {n} fiches ({enc} (ré)encodées)")
+        print(f"✅ embeddings index: {n} notes ({enc} (re)encoded)")
         return
     if args and args[0] == "query":
         args = args[1:]
@@ -127,7 +125,7 @@ def main():
             print(json.dumps([{"path": m["path"], "name": m["name"], "desc": m["desc"],
                                "score": round(s, 3)} for s, m in res], ensure_ascii=False))
         else:
-            print(f"🔎 (sémantique) Top {len(res)} pour « {q} » :\n")
+            print(f"🔎 (semantic) Top {len(res)} for '{q}':\n")
             for s, m in res:
                 print(f"  [{s:5.3f}] {m['name']}  ({m['path']})")
                 if m["desc"]: print(f"          {m['desc'][:110]}")

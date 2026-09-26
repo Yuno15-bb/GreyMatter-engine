@@ -1,0 +1,11 @@
+{
+  "_why": "THE canonical definition of 'is the status still current?'. It used to be written three times: capsule/main.js (30 s), capsule/orbe.html (30 s, a second literal) and brain_status.py (120 s). Three copies of one concept, already 4x apart — the shape of a detector that drifts until nobody knows which answer is the real one.",
+
+  "_two_numbers_on_purpose": "LIVENESS and ACTIVITY are different questions, so they are allowed different windows. What was wrong before was not having two numbers: it was having two numbers that both claimed to answer 'is the status fresh?'.",
+
+  "liveness_stale_seconds": 30,
+  "_liveness": "Is Claude still working? Answered by `ts`, refreshed on EVERY tool call (PostToolUse). Short on purpose: with a real heartbeat behind it, going quiet for 30 s means the work has actually stopped.",
+
+  "activity_stale_seconds": 120,
+  "_activity": "Is the activity LABEL still describing what is happening? Answered by `activity_ts`, set only by whoever knows the activity. Past this, the orb still says busy but stops naming a stale activity — it says 'working' rather than a comfortable lie."
+}

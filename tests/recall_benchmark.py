@@ -2,53 +2,49 @@
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """
-recall_benchmark.py — le rappel, il est bon à quel point, au juste ?
+recall_benchmark.py — how good is the recall, actually?
 
-POURQUOI ÇA EXISTE. Tout le reste de ce dépôt prouve que la mécanique marche :
-l'installeur installe, les migrations se rejouent, les manifestes concordent.
-Rien ne mesurait si ce POUR QUOI le produit existe — faire remonter la bonne
-fiche au bon moment — fait son travail. Un système de mémoire peut avoir l'air
-intelligent en se contentant d'injecter beaucoup de contexte, sans que personne
-puisse faire la différence.
+WHY THIS EXISTS. Everything else in this repository proves the machinery works:
+the installer installs, the migrations replay, the plugin manifests line up.
+Nothing measured whether the thing the product is FOR — surfacing the right note
+at the right moment — does its job. A memory system can look intelligent while
+merely injecting a lot of context, and nobody would be able to tell.
 
-CE QU'IL MESURE, et contre quelle vérité. Les vraies fiches ne peuvent pas être
-livrées : elles sont personnelles. Le corpus est donc SYNTHÉTIQUE et sa vérité
-terrain tient par construction.
+WHAT IT MEASURES, and against what truth. Real notes cannot ship: they are
+personal. So the corpus is SYNTHETIC and its ground truth holds by construction.
 
-⚠ LA PREMIÈRE VERSION DE CE FICHIER NOTAIT 1.00 PARTOUT, et c'était un défaut,
-pas un résultat. Elle demandait « lequel de ces 8 thèmes ? », avec des
-vocabulaires qui ne se recouvraient pas — une question si facile qu'un mot-clé y
-répond, et qui ne dit rien du produit. Un benchmark incapable de mal tourner ne
-mesure rien.
+⚠ THE FIRST VERSION OF THIS FILE SCORED 1.00 ON EVERY METRIC, and that was a
+defect, not a result. It asked "which of 8 topics is this query about?", with
+topic vocabularies that did not overlap — a question so easy that a keyword
+match answers it, and one that says nothing about the product. A benchmark that
+cannot come out badly measures nothing.
 
-La tâche ici est la vraie : trouver LA fiche qui répond, parmi ~120 sœurs du
-même thème qui partagent presque tout leur vocabulaire.
+The task here is the real one: find THE note that answers, among ~120 siblings
+of the same topic that share almost all of their vocabulary.
 
-  · Chaque fiche porte une SIGNATURE de 4 termes distinctifs — son « fait ».
-    Le vivier de signatures est assez petit pour que chaque terme soit réutilisé
-    par plusieurs fiches : aucun terme seul n'identifie une fiche, seule la
-    combinaison le fait.
-  · Une requête paraphrase une fiche : 2 de ses 4 termes de signature (jamais
-    les 4), plus 2 mots de son thème, plus un mot vide de sens. Le moteur doit
-    intersecter, pas consulter.
-  · Les vocabulaires des thèmes SE RECOUVRENT par un vivier technique commun,
-    parce que de vraies fiches disent « cache », « file » et « jeton » sur des
-    sujets très différents.
-  · Les titres ne contiennent jamais les termes de la requête. Ils pèsent ×3, et
-    matcher dessus flatterait le score.
-  · Les longueurs varient d'un facteur 6, parce que la normalisation de longueur
-    de BM25 est exactement le genre de chose qui déraille en silence.
+  · Each note carries a SIGNATURE of 4 distinctive terms — its "fact". The
+    signature pool is small enough that every term is reused by several notes,
+    so no single term identifies a note. Only the combination does.
+  · A query paraphrases one note: 2 of its 4 signature terms (never all 4),
+    plus 2 words of its topic, plus one meaningless word. The retriever must
+    intersect, not look up.
+  · Topic vocabularies OVERLAP through a shared technical pool, because real
+    notes say "cache", "queue" and "token" across many different subjects.
+  · Titles never contain the query terms. Titles are weighted x3, and matching
+    on them would flatter the score.
+  · Note lengths vary by 6x, because BM25 length normalisation is exactly the
+    kind of thing that quietly misbehaves.
 
-MÉTRIQUES. P@1 / P@3 / P@5 et MRR sont calculés contre UNE fiche correcte, pas
-un panier. `useless@3` est la vraie question de l'audit — la part des fiches
-injectées qui ne sont ni la réponse ni même son thème, puisque cette part se
-paie en contexte à chaque prompt. Latence et tokens injectés sont rapportés à la
-valeur réellement livrée (TOP_K=3).
+METRICS. P@1 / P@3 / P@5 and MRR are computed against ONE correct note, not a
+bucket. `useless@3` is the audit's real question — the share of injected notes
+that are neither the answer nor even its topic, since that share is paid in
+context on every single prompt. Latency and injected tokens are reported at the
+value the product actually ships (TOP_K=3).
 
-Lancement :
-  python3 tests/recall_benchmark.py              # 100 · 500 · 1000 fiches
-  python3 tests/recall_benchmark.py --sizes 100  # une seule échelle
-  python3 tests/recall_benchmark.py --check      # mode CI : seuils exigés
+Run:
+  python3 tests/recall_benchmark.py              # 100 · 500 · 1000 notes
+  python3 tests/recall_benchmark.py --sizes 100  # one scale
+  python3 tests/recall_benchmark.py --check      # CI mode: thresholds enforced
   python3 tests/recall_benchmark.py --json
 """
 import argparse
@@ -64,29 +60,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Ce que le produit injecte réellement à chaque prompt (hooks/inject_recall.py).
+# What the product actually injects on every prompt (hooks/inject_recall.py).
 SHIPPED_TOP_K = 3
-DESC_BUDGET = 120          # caractères de description injectés par fiche
+DESC_BUDGET = 120          # description characters injected per note
 
-# Seuils de CI. Volontairement SOUS ce que le moteur obtient aujourd'hui : un
-# verrou est là pour attraper une régression, pas pour figer un chiffre qu'une
-# amélioration honnête ailleurs pourrait légitimement bouger d'un point.
+# CI thresholds. Deliberately set BELOW what the engine scores today: a gate is
+# there to catch a regression, not to freeze a number that a fair improvement
+# elsewhere might legitimately move by a point.
 GATES = {
-    "p_at_1": 0.72,             # mesuré 0,79 à 1000 fiches
-    "p_at_3": 0.88,             # mesuré 0,93
-    "mrr": 0.80,                # mesuré 0,86
-    "useless_at_3": 0.30,       # maximum — mesuré 0,24
-    "p50_ms": 5.0,              # maximum, par requête — mesuré ~1 ms
-    "index_build_ms": 600.0,    # maximum — voir ci-dessous
+    "p_at_1": 0.72,             # measured 0.79 at 1000 notes
+    "p_at_3": 0.88,             # measured 0.93
+    "mrr": 0.80,                # measured 0.86
+    "useless_at_3": 0.30,       # maximum — measured 0.24
+    "p50_ms": 5.0,              # maximum, per query — measured ~1 ms
+    "index_build_ms": 600.0,    # maximum — see below
 }
 
-# ⚠ POURQUOI index_build_ms EST VERROUILLÉ. Le hook de rappel tourne à chaque
-# prompt, et tant que l'index n'était pas caché il relisait et renotait tout le
-# tronc à chaque fois : 233 ms sur le tronc de 241 fiches de l'auteur, ~1,6 s à
-# 5000, en croissance linéaire. Ce coût, l'utilisateur le paie à chaque message,
-# et aucun test ne l'aurait jamais signalé — le rappel était correct, seulement
-# plus lent chaque semaine. La qualité n'est pas la seule chose qui se dégrade
-# avec l'échelle.
+# ⚠ WHY index_build_ms IS GATED AT ALL. The recall hook runs on every prompt,
+# and until the index was cached it re-read and re-scored the entire trunk each
+# time: 233 ms on the author's own 241-note trunk, ~1.6 s at 5000 notes, growing
+# linearly. That cost is paid by the user on every single message, and no test
+# would ever have reported it — the recall was correct, just slower every week.
+# Quality is not the only thing that decays with scale.
 
 TOPICS = {
     "cache-deploy": (
@@ -254,7 +249,7 @@ def measure(n_notes: int, seed: int = 7):
         docs = recall.load_corpus()
         index = recall.BM25(docs)
         build_ms = (time.perf_counter() - t0) * 1000
-        assert len(docs) == n_notes, f"corpus chargé : {len(docs)} sur {n_notes}"
+        assert len(docs) == n_notes, f"corpus loaded {len(docs)} of {n_notes}"
 
         # Warm: what the user actually pays on a prompt when no note changed —
         # which is almost every prompt. The cache must return the SAME corpus.
@@ -262,7 +257,7 @@ def measure(n_notes: int, seed: int = 7):
         cached = recall.load_corpus()
         recall.BM25(cached)
         cached_ms = (time.perf_counter() - t0) * 1000
-        assert cached == docs, "le cache a renvoyé un corpus différent"
+        assert cached == docs, "the cache returned a different corpus"
 
         queries = build_queries(notes, random.Random(seed + 1))
         hits1 = hits3 = hits5 = 0
@@ -318,10 +313,10 @@ def measure(n_notes: int, seed: int = 7):
 
 
 def render(rows):
-    print(f"🔎 Benchmark de rappel — corpus synthétique, {len(TOPICS)} thèmes, "
-          f"vérité terrain par construction\n")
-    head = f"{'fiches':>6} {'P@1':>6} {'P@3':>6} {'P@5':>6} {'MRR':>6} " \
-           f"{'hors-sujet':>10} {'p50':>8} {'p95':>8} {'index':>9} {'caché':>8} {'tok ctx':>8}"
+    print(f"🔎 Recall benchmark — synthetic corpus, {len(TOPICS)} topics, "
+          f"ground truth by construction\n")
+    head = f"{'notes':>6} {'P@1':>6} {'P@3':>6} {'P@5':>6} {'MRR':>6} " \
+           f"{'useless@3':>10} {'p50':>8} {'p95':>8} {'index':>9} {'cached':>8} {'ctx tok':>8}"
     print(head)
     print("-" * len(head))
     for r in rows:
@@ -330,15 +325,15 @@ def render(rows):
               f"{r['p50_ms']:>7.1f}m {r['p95_ms']:>7.1f}m "
               f"{r['index_build_ms']:>8.0f}m {r['index_cached_ms']:>7.0f}m "
               f"{r['injected_tokens_per_prompt']:>8.0f}")
-    print(f"\n  hors-sujet = part des {SHIPPED_TOP_K} fiches injectées à chaque "
-          f"prompt qui sont à côté du sujet.")
-    print(f"  index      = construction à froid, 1er prompt après un changement.")
-    print(f"  caché      = ce que coûte un prompt quand rien n'a changé — presque tous.")
-    print(f"  tok ctx    = tokens ajoutés par prompt, estimés (~4 car./token).")
+    print(f"\n  useless@3 = share of the {SHIPPED_TOP_K} notes injected on every "
+          f"prompt that are off-topic.")
+    print(f"  index     = cold build, first prompt after a note changes.")
+    print(f"  cached    = what a prompt costs when nothing changed — almost every prompt.")
+    print(f"  ctx tok   = estimated tokens added per prompt (~4 chars/token).")
 
 
 def check(rows):
-    """Verrou de CI : jugé sur le PLUS GRAND corpus, là où c'est le plus dur."""
+    """CI gate: judged on the LARGEST corpus, where retrieval is hardest."""
     worst = max(rows, key=lambda r: r["notes"])
     fails = []
     for key, gate in GATES.items():
@@ -347,14 +342,14 @@ def check(rows):
         bad = got > gate if key in maxima else got < gate
         mark = "❌" if bad else "✅"
         sense = "≤" if key in maxima else "≥"
-        print(f"  {mark} {key:<14} {got:>7.2f}   (seuil {sense} {gate})")
+        print(f"  {mark} {key:<14} {got:>7.2f}   (gate {sense} {gate})")
         if bad:
             fails.append(key)
     print()
     if fails:
-        print(f"❌ le rappel a régressé sur : {', '.join(fails)}")
+        print(f"❌ recall regressed on: {', '.join(fails)}")
         return 1
-    print(f"✅ le rappel tient ses seuils à {worst['notes']} fiches")
+    print(f"✅ recall holds its thresholds at {worst['notes']} notes")
     return 0
 
 

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Réveil périodique d'auto-reprise du Claude Brain.
-     Draine la file pending-distill.json dès que le quota se réinitialise,
-     sans avoir besoin d'ouvrir une session.
+<!-- Periodic auto-resume wake-up for C Brain.
+     Drains the pending-distill.json queue as soon as the quota resets,
+     without needing to open a session.
 
-     TEMPLATE — ne pas installer ce fichier tel quel : __HOME__ doit être
-     substitué par le vrai $HOME (fait automatiquement par github-restore.sh
-     via `sed`). Généré après le bug du 2026-07-22 où /Users/<ancien-nom> était en
-     dur et cassait silencieusement la reprise sur toute nouvelle machine. -->
+     TEMPLATE — do not install this file as is: __HOME__ must be
+     substituted with the real $HOME (install.sh does it automatically
+     through `sed`). Written after a bug where a home path was hardcoded
+     and silently broke resume on every new machine. -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -17,19 +17,14 @@
         <string>/usr/bin/python3</string>
         <string>__HOME__/.c-brain/trunk/hooks/resume_pending.py</string>
     </array>
-    <!-- launchd démarre avec un PATH minimal (/usr/bin:/bin:/usr/sbin:/sbin) qui NE contient PAS
-         ~/.local/bin où vit `claude` → resume_pending ne trouvait jamais le binaire et la reprise
-         autonome au reset quota était inopérante. On donne un PATH complet. -->
+    <!-- launchd starts with a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin) that does NOT contain
+         ~/.local/bin where `claude` lives → resume_pending never found the binary and the
+         autonomous resume at quota reset was inoperative. We give it a full PATH. -->
     <key>EnvironmentVariables</key>
     <dict>
-        <!-- I-3 (2026-08-21, lot C/D'). Cette pose était volontairement laissée SANS
-             ancrage tant que son enfant ignorait BRAIN_HOME : injecter l'identité à un
-             programme qui ne la lit pas produit une conformité NOMINALE, plus trompeuse
-             que l'absence. L'enfant est désormais conforme I-1 (mesuré : BRAIN_HOME
-             divergent de la racine de code est honoré), donc l'ancrage a un effet réel.
-             `__BRAIN__` est rendu par la racine CANONIQUE (realpath). -->
-        <key>BRAIN_HOME</key>
-        <string>__BRAIN__</string>
+        <!-- No BRAIN_HOME here: install.sh and adopt-launchd.sh render only
+             `__HOME__`, and the child resolves the default trunk itself
+             (hooks/brain_racine.py: BRAIN_HOME, else ~/.c-brain/trunk). -->
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>

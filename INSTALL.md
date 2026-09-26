@@ -1,127 +1,134 @@
-# Installer C Brain
+# Installing GreyMatter
 
-## La façon courte : demande-le à ton agent
+> ### ⚠️ Already running GreyMatter v1.28.1 or earlier?
+> **Read [docs/UPGRADING.md](docs/UPGRADING.md) before you upgrade.** The updater
+> shipped with older releases may reset uncommitted changes in your engine
+> checkout, once, during the move to v1.29.0. One command tells you whether it
+> concerns you:
+> ```bash
+> git -C ~/.c-brain/engine status --short
+> ```
+> Your notes are not affected — the trunk is a separate directory and no update
+> path writes to it.
 
-Colle ceci dans ton CLI (Claude Code ou un autre agent en ligne de commande) :
+## The short way: ask your agent
+
+Paste this into your CLI (Claude Code or another command-line agent):
 
 ```
-Installe C Brain : clone <URL-DU-DÉPÔT> dans ~/dev/c-brain, lis son INSTALL.md,
-puis exécute ./install.sh et montre-moi le résultat de la vérification finale.
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+then run ./install.sh and show me the final verification output.
 ```
 
-C'est tout. L'agent clone, installe, et te rend le compte-rendu du selftest.
+That's it. The agent clones, installs, and hands you back the selftest result.
 
-## La façon manuelle
+## The manual way
 
 ```bash
-git clone <URL-DU-DÉPÔT> ~/dev/c-brain
+git clone https://github.com/Yuno15-bb/GreyMatter-engine ~/dev/c-brain
 cd ~/dev/c-brain
 ./install.sh
 ```
 
-Options : `--dry-run` (n'écrit rien, montre ce qui serait fait) ·
-`--no-launchd` (pas de tâches planifiées) · `--no-capsule` (pas d'Electron).
+Options: `--dry-run` (writes nothing, shows what would happen) ·
+`--dev` (for working ON GreyMatter: links the engine to your checkout and turns
+automatic engine updates off for it) ·
+`--no-launchd` (no scheduled jobs) · `--no-capsule` (no Electron) · `--no-shortcut`
+(no `C Brain` shortcut in your home folder).
 
 ---
 
-## Ce que l'installation fait — et ne fait pas
+## What the install does — and does not do
 
-Deux emplacements, et la séparation est le cœur du système :
+Two locations, and keeping them apart is the heart of the system:
 
 ```
-~/.c-brain/engine  → lien vers ce dépôt. Du CODE, rien d'autre. Se met à jour.
-~/.c-brain/trunk     → TON tronc. Tes fiches. Jamais écrasé, jamais mis à jour.
+~/.c-brain/versions/  each installed version. CODE only, immutable.
+~/.c-brain/engine     → link to the ACTIVE version. Updating switches this link.
+~/.c-brain/trunk      → YOUR trunk. Your notes. Never overwritten, never updated.
 ```
 
-L'installeur :
+**This repository is the SOURCE, not the engine.** The installer reads it to
+build a version under `~/.c-brain/versions/` and never writes to it again — so
+`brain update` has nothing to do with your clone, and cannot move, reset or
+overwrite it. Update your clone with git, like any other repository.
+See [docs/install-model.md](docs/install-model.md).
 
-- crée ton tronc **vide** s'il n'existe pas (il ne touche à rien s'il existe) ;
-- relie le moteur dans le tronc par liens symboliques ;
-- pose la commande `brain` dans `~/.local/bin` ;
-- rend les agents visibles par ton CLI ;
-- **ajoute** ses hooks à `~/.claude/settings.json` sans toucher au reste — ton
-  modèle, ton thème, tes propres hooks sont conservés, et une sauvegarde est
-  écrite avant toute modification ;
-- installe la capsule et les tâches planifiées, sauf si tu les refuses ;
-- pose un lanceur de la planète sur le Bureau ;
-- **vérifie son propre travail** (`selftest` + `doctor`) et te montre le résultat.
+The installer:
 
-Il ne supprime rien, n'envoie rien sur le réseau, et ne lit aucune de tes données.
+- creates your **empty** trunk if none exists (and touches nothing if one does);
+- builds an engine from this source and links it into the trunk with symlinks;
+- puts the `brain` command in `~/.local/bin`;
+- makes the agents visible to your CLI;
+- **adds** its hooks to `~/.claude/settings.json` without touching the rest —
+  your model, your theme, your own hooks are preserved, and a backup is written
+  before any modification;
+- installs the capsule and the scheduled jobs, unless you decline them;
+- drops a planet launcher on your Desktop;
+- **checks its own work** (`selftest` + `doctor`) and shows you the result.
 
-## Dépôt privé : s'authentifier une fois
+Installation does not send telemetry. Updates fetch published tags; recall reads
+your local notes and may add note titles, summaries and paths to a prompt sent
+to your model provider. See [SECURITY.md](SECURITY.md) for the full data flow.
 
-C Brain est distribué sur invitation. Sans identifiants git, le clone **et** les
-mises à jour échouent — la mise à jour automatique note alors « impossible de
-récupérer les versions distantes » dans `~/.c-brain/state/auto-update.log` et
-réessaie à la session suivante, sans jamais bloquer ta session.
+## Prerequisites
 
-Le plus simple, une seule fois :
-
-```bash
-gh auth login          # puis : gh auth setup-git
-```
-
-Ou en SSH : ajoute ta clé à ton compte GitHub et clone via
-`git@github.com:…` plutôt que `https://…`.
-
-## Prérequis
-
-| Requis | Pour quoi |
+| Required | For |
 |---|---|
 | macOS | launchd, Electron, `open` |
-| `python3` | tous les hooks et la CLI |
-| `git` | les mises à jour |
-| `npm` *(optionnel)* | la capsule Electron — le reste marche sans |
+| `python3` | every hook and the CLI |
+| `git` | updates |
+| `npm` *(optional)* | the Electron capsule — everything else works without it |
 
-## Si tu n'utilises pas Claude Code
+## If you don't use Claude Code
 
-C Brain s'installe quand même, et te donne le tronc, les agents, la CLI `brain`,
-la planète et la capsule.
+GreyMatter still installs, and gives you the trunk, the agents, the `brain` CLI, the
+planet and the capsule.
 
-**Ce que tu n'auras pas** : la boucle automatique. Le rappel au début d'une
-session, l'archivage à la fin, la maintenance autonome passent par les hooks de
-`~/.claude/settings.json`, qui sont propres à Claude Code. Ailleurs, C Brain
-fonctionne **à la demande** : `brain recall`, `brain status`, agents invoqués
-explicitement. L'installeur le détecte et te le dit — il ne fait pas semblant.
+**What you won't get**: the closed loop. Recall at the start of a session,
+archiving at the end, autonomous maintenance — all go through the hooks in
+`~/.claude/settings.json`, which are specific to Claude Code. Elsewhere, GreyMatter
+works **on demand**: `brain recall`, `brain status`, agents invoked explicitly.
+The installer detects this and tells you — it does not pretend.
 
-## Premiers gestes
+## First steps
 
-Ton tronc part **vide**, et un tronc vide ne montre rien. Commence par le
-remplir d'exemples, le temps de comprendre la boucle :
-
-```bash
-brain demo                     # pose 3 fiches d'exemple
-brain recall cache déploiement # ce que le rappel retrouve, et pourquoi
-brain demo --remove            # les retire, sans laisser de trace
-```
-
-Les trois fiches montrent les trois types utiles — une **leçon**, une fiche de
-**méthode**, un **point de reprise** de projet — et sont reliées entre elles,
-pour que le graphe ait quelque chose à afficher.
-
-`--remove` ne touche pas à une fiche que tu aurais modifiée : elle a cessé
-d'être un exemple à la première ligne que tu y as écrite.
-
-Ensuite, au quotidien :
+Your trunk starts **empty**, and an empty trunk shows nothing. Fill it with
+examples first, long enough to understand the loop:
 
 ```bash
-brain status          # où en est le tronc
-brain recall <mot>    # chercher dans ta mémoire
-brain doctor          # santé de l'arbre
-brain selftest        # revérifier l'installation
+brain demo                # place 3 example notes
+brain recall cache deploy # what recall finds, and why
+brain demo --remove       # take them away, leaving no trace
 ```
 
-Puis ouvre `~/.c-brain/trunk/MEMORY.md` : c'est l'index chargé au début de chaque
-session, et le format des fiches y est expliqué. Ton arbre grandit avec le
-travail, pas avant.
+The three notes cover the three useful types — a **lesson**, a **method** note,
+a project **resume point** — and they link to each other, so the graph has
+something to show.
 
-## Désinstaller
+`--remove` will not touch a note you have edited: it stopped being an example
+the moment you wrote your first line in it.
+
+Then, day to day:
+
+```bash
+brain status          where the trunk stands
+brain recall <word>   search your memory
+brain doctor          tree health
+brain capsule         open the floating orb  (stop · status)
+brain selftest        verify the installation
+```
+
+Then open `~/.c-brain/trunk/MEMORY.md`: it is the index loaded at the start of every
+session, and it explains the note format. Your tree grows with the work, not
+before.
+
+## Uninstalling
 
 ```bash
 ~/dev/c-brain/uninstall.sh
 ```
 
-**Ton tronc et tes fiches ne sont jamais supprimés.** Sont retirés : les hooks
-C Brain (le reste de `settings.json` intact), les liens du moteur, la commande
-`brain`, le lanceur du Bureau, les tâches planifiées. Les sauvegardes restent
-dans `~/.c-brain/backups/`.
+**Your trunk and your notes are never deleted.** Removed: the GreyMatter hooks (the
+rest of `settings.json` untouched), the engine symlinks, the `brain` command, the
+Desktop launcher, the scheduled jobs. Backups stay in `~/.c-brain/backups/`.

@@ -2,101 +2,101 @@
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
-# plugin_install.sh — le chemin que prend réellement un inconnu.
+# plugin_install.sh — the path a stranger actually takes.
 #
-# POURQUOI IL EXISTE. La CI prouvait qu'`install.sh` marche, et `install.sh`
-# c'est le chemin LONG — cloner le dépôt, lancer un script, récolter des jobs
-# launchd et une fenêtre Electron. Qui arrive par la marketplace prend l'autre :
-# Claude Code recopie le plugin dans un cache et lance `plugin_bootstrap.py` au
-# SessionStart. Ce chemin-là n'était exécuté par rien.
+# WHY THIS EXISTS. The CI proved `install.sh` works, and `install.sh` is the
+# LONG path — clone the repo, run a script, get launchd jobs and an Electron
+# window. Anyone arriving from the marketplace takes the other one: Claude Code
+# copies the plugin into a cache and runs `plugin_bootstrap.py` at SessionStart.
+# That path was never executed by anything.
 #
-# Il n'était pas cassé, mais il était FAUX de deux façons invisibles de
-# l'extérieur, et les deux sur le premier écran que voit un nouveau venu :
-#   · la ligne d'accueil promettait un raccourci `C Brain` dans le dossier
-#     personnel. Ce dossier est créé par install.sh, qu'une installation en
-#     plugin ne lance jamais.
-#   · `brain version` répondait « (version inconnue) », parce que seul
-#     install.sh écrivait le fichier VERSION — et la version est la première
-#     chose qu'on demande quand quelque chose ne va pas.
+# It was not broken, but it was WRONG in two ways nobody could have seen from
+# the outside, and both were on the first screen a new user ever gets:
+#   · the welcome line promised a `C Brain` shortcut in the home folder. That
+#     folder is created by install.sh, which a plugin install never runs.
+#   · `brain version` answered "(unknown version)", because only install.sh
+#     wrote the VERSION file — and version is the first thing anyone is asked
+#     for when something goes wrong.
 #
-# Aucun des deux n'aurait fait échouer un test. Les deux étaient lus, une fois,
-# par chaque personne qui l'installait.
+# Neither would have failed a test. They would have been read, once, by every
+# person who installed it.
 #
-# Lancer : bash tests/plugin_install.sh
+# Run: bash tests/plugin_install.sh
 set -uo pipefail
 
-RACINE="$(cd "$(dirname "$0")/.." && pwd -P)"
-ECHECS=0
+ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+FAILS=0
 
-verif() {  # verif <code-de-sortie> <libellé> [détail]
-  if [ "$1" = "0" ]; then echo "  ✅ $2"; else echo "  ❌ $2${3:+  — $3}"; ECHECS=$((ECHECS + 1)); fi
+check() {  # check <exit-code> <label> [detail]
+  if [ "$1" = "0" ]; then echo "  ✅ $2"; else echo "  ❌ $2${3:+  — $3}"; FAILS=$((FAILS + 1)); fi
 }
 
 H="$(mktemp -d)"
 trap 'rm -rf "$H"' EXIT
 
-# Claude Code recopie le plugin dans un dossier de cache au lieu de le lancer
-# depuis le dépôt : le montage fait pareil. Le lancer depuis le dépôt masquerait
-# tout chemin qui ne se résout que parce qu'il se trouve à côté d'un .git.
+# Claude Code copies the plugin into a cache directory rather than running it
+# from the repo, so the fixture does the same. Running from the repo would hide
+# any path that only resolves because it happens to sit next to a .git.
 P="$H/plugin-cache/c-brain"
 mkdir -p "$(dirname "$P")"
-rsync -a --exclude .git --exclude node_modules "$RACINE/" "$P/"
+rsync -a --exclude .git --exclude node_modules "$ROOT/" "$P/"
 
 export HOME="$H"
 export CLAUDE_PLUGIN_ROOT="$P"
 
-echo "▸ première session : le tronc doit apparaître"
-SORTIE="$(python3 "$P/cbrain/plugin_bootstrap.py" 2>&1)"
-[ -d "$H/.c-brain/trunk" ];              verif $? "le tronc existe"
-[ -f "$H/.c-brain/trunk/MEMORY.md" ];    verif $? "l'index est là"
-[ -L "$H/.c-brain/engine" ];             verif $? "le moteur est lié"
-[ -L "$H/.c-brain/trunk/hooks" ];        verif $? "les hooks sont liés dans le tronc"
-[ -L "$H/.c-brain/trunk/agents" ];       verif $? "les agents sont liés dans le tronc"
+echo "▸ first session: the trunk has to appear"
+OUT="$(python3 "$P/cbrain/plugin_bootstrap.py" 2>&1)"
+[ -d "$H/.c-brain/trunk" ];              check $? "the trunk exists"
+[ -f "$H/.c-brain/trunk/MEMORY.md" ];    check $? "the index is there"
+[ -L "$H/.c-brain/engine" ];             check $? "the engine is linked"
+[ -L "$H/.c-brain/trunk/hooks" ];        check $? "hooks are linked into the trunk"
+[ -L "$H/.c-brain/trunk/agents" ];       check $? "agents are linked into the trunk"
 
-echo "▸ ce qu'il dit doit être vrai"
-printf '%s' "$SORTIE" | grep -q "~/.c-brain/trunk"
-verif $? "la ligne d'accueil nomme l'endroit où le tronc est vraiment"
-# La promesse qui n'était pas tenue. Si le raccourci est de nouveau mentionné
-# ici, ce doit être parce que quelque chose sur ce chemin le crée.
-if printf '%s' "$SORTIE" | grep -qi "raccourci"; then
+echo "▸ what it says must be true"
+printf '%s' "$OUT" | grep -q "~/.c-brain/trunk"
+check $? "the welcome line names where the trunk actually is"
+# The promise that was not kept. If the shortcut is ever mentioned again here,
+# it has to be because something in this path creates it.
+if printf '%s' "$OUT" | grep -qi "shortcut"; then
   [ -e "$H/C Brain" ]
-  verif $? "un raccourci promis existe" "la première ligne lue par un nouveau venu pointe vers rien"
+  check $? "a promised shortcut exists" "the first line a new user reads points at nothing"
 else
-  echo "  ✅ rien n'est promis que ce chemin ne crée pas"
+  echo "  ✅ nothing is promised that this path does not create"
 fi
 
-echo "▸ les commandes qu'un utilisateur de plugin peut taper"
+echo "▸ the commands a plugin user can type"
 V="$(HOME="$H" "$P/bin/brain" version 2>&1)"
-printf '%s' "$V" | grep -qv "inconnue"
-verif $? "brain version répond quelque chose" "reçu : $V"
+printf '%s' "$V" | grep -qv "unknown"
+check $? "brain version answers something" "got: $V"
 printf '%s' "$V" | grep -q "$(python3 -c "import json;print(json.load(open('$P/.claude-plugin/plugin.json'))['version'])")"
-verif $? "et ça correspond au manifeste" "reçu : $V"
+check $? "and it matches the manifest" "got: $V"
 
 HOME="$H" "$P/bin/brain" demo >/dev/null 2>&1
-HOME="$H" "$P/bin/brain" recall cache déploiement 2>/dev/null | grep -q "cache"
-verif $? "le rappel renvoie quelque chose sur le tronc de démo"
+HOME="$H" "$P/bin/brain" recall cache deploy 2>/dev/null | grep -q "cache"
+check $? "recall returns something on the demo trunk"
 
-echo "▸ chaque session après la première est un non-événement"
-SORTIE2="$(python3 "$P/cbrain/plugin_bootstrap.py" 2>&1)"
-[ -z "$SORTIE2" ];                       verif $? "il ne dit rien la deuxième fois" "affiché : $SORTIE2"
-[ -d "$H/.c-brain/trunk/lessons" ];      verif $? "il n'a pas effacé le tronc"
+echo "▸ every session after the first is a non-event"
+BEFORE="$(find "$H/.c-brain" -newer "$P/cbrain/plugin_bootstrap.py" 2>/dev/null | wc -l)"
+OUT2="$(python3 "$P/cbrain/plugin_bootstrap.py" 2>&1)"
+[ -z "$OUT2" ];                          check $? "it says nothing the second time" "printed: $OUT2"
+[ -d "$H/.c-brain/trunk/lessons" ];      check $? "it did not wipe the trunk"
 
-echo "▸ un vrai dossier hooks/ appartient à une install plus ancienne, on n'y touche pas"
+echo "▸ a real hooks/ folder is somebody's older install, and is left alone"
 rm "$H/.c-brain/trunk/hooks"
 mkdir -p "$H/.c-brain/trunk/hooks"
-touch "$H/.c-brain/trunk/hooks/son-propre-fichier.py"
+touch "$H/.c-brain/trunk/hooks/their-own-file.py"
 python3 "$P/cbrain/plugin_bootstrap.py" >/dev/null 2>&1
-[ -f "$H/.c-brain/trunk/hooks/son-propre-fichier.py" ]
-verif $? "un vrai dossier n'est jamais remplacé par un lien"
+[ -f "$H/.c-brain/trunk/hooks/their-own-file.py" ]
+check $? "a real directory is never replaced by a link"
 
-echo "▸ et il n'emporte jamais la session avec lui"
-CLAUDE_PLUGIN_ROOT="/chemin/inexistant" python3 "$P/cbrain/plugin_bootstrap.py" >/dev/null 2>&1
-verif $? "il sort 0 même pointé vers rien"
+echo "▸ and it never takes the session down with it"
+CLAUDE_PLUGIN_ROOT="/nonexistent/path" python3 "$P/cbrain/plugin_bootstrap.py" >/dev/null 2>&1
+check $? "it exits 0 even pointed at nothing"
 
 echo
-if [ "$ECHECS" -eq 0 ]; then
-  echo "✅ le chemin plugin marche, et ne dit que des choses vraies"
+if [ "$FAILS" -eq 0 ]; then
+  echo "✅ the plugin path works, and says only true things"
   exit 0
 fi
-echo "❌ $ECHECS échec(s) sur le chemin que prend la plupart des nouveaux venus"
+echo "❌ $FAILS failure(s) on the path most new users take"
 exit 1

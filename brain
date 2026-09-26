@@ -1,67 +1,89 @@
 #!/usr/bin/env bash
-# brain — point d'entrée unique du C Brain.
+# brain — the single entry point of C Brain.
 # Usage : brain <status|doctor|audit|push|metrics|selftest|backup>
 set -euo pipefail
+
+# ─── WHERE THIS CLI'S OWN CODE LIVES ─────────────────────────────────────────
+# A CLI must run ITS OWN scripts. This one used to `cd` into the trunk and call
+# `hooks/brain_status.py` — a path that resolves through the trunk's symlinks to
+# whatever engine is CURRENTLY active. Harmless while there was exactly one
+# engine; wrong the moment versions live side by side, because
+# `versions/v1.29.0/brain` would then execute v1.28.1's hooks and report on a
+# mixture of the two. A selftest aimed at a candidate version would go green
+# having tested the active one.
+#
+# `$0` may be a symlink (`~/.local/bin/brain` → `~/.c-brain/engine/brain`, itself
+# a symlink into `versions/`), so it is followed to the end before taking the
+# directory. The trunk stays the working directory: it is the DATA.
+src="$0"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+SELF="$(cd -P "$(dirname "$src")" && pwd)"
+export SELF          # one inline python block reads it from the environment
+
 BRAIN="$HOME/.c-brain/trunk"
 cd "$BRAIN"
 
 cmd="${1:-status}"
 case "$cmd" in
   status)
-    python3 hooks/brain_status.py show 2>/dev/null || cat state/status.json 2>/dev/null || echo "(pas de statut)"
+    python3 "$SELF"/hooks/brain_status.py show 2>/dev/null || cat state/status.json 2>/dev/null || echo "(no status)"
     ;;
   doctor)
-    python3 hooks/brain_doctor.py "${@:2}"
+    python3 "$SELF"/hooks/brain_doctor.py "${@:2}"
     ;;
   audit)
-    # état OPÉRATIONNEL du pipeline : qu'est-ce qui est distillé / en file / non capté + santé
-    python3 hooks/brain_audit.py "${@:2}"
+    # OPERATIONAL state of the pipeline: what is distilled / queued / uncaptured + health
+    python3 "$SELF"/hooks/brain_audit.py "${@:2}"
     ;;
   review)
-    # AUDIT GLOBAL du tronc (contenu/topologie) : agrège topology + utility +
-    # challenger + doctor + fiches périmées + chemins infra → state/review.{json,md}
-    python3 hooks/brain_review.py "${@:2}"
+    # GLOBAL audit of the trunk (content/topology): aggregates topology + utility +
+    # challenger + doctor + stale notes + infrastructure paths → state/review.{json,md}
+    python3 "$SELF"/hooks/brain_review.py "${@:2}"
     ;;
   recall|search)
-    python3 hooks/brain_recall.py "${@:2}"
+    python3 "$SELF"/hooks/brain_recall.py "${@:2}"
     ;;
   embed)
-    # (re)construire l'index embeddings sémantiques (backend optionnel)
-    if [ -x .venv/bin/python ]; then .venv/bin/python hooks/brain_embed.py build; else echo "venv embeddings absent (BM25 par défaut)"; fi
+    # (re)build the semantic embeddings index (optional backend)
+    if [ -x .venv/bin/python ]; then .venv/bin/python "$SELF"/hooks/brain_embed.py build; else echo "embeddings venv missing (BM25 by default)"; fi
     ;;
   next|reprises)
-    python3 hooks/brain_anticipate.py
+    python3 "$SELF"/hooks/brain_anticipate.py
     ;;
   utility|usage)
-    python3 hooks/brain_utility.py "${@:2}"
+    python3 "$SELF"/hooks/brain_utility.py "${@:2}"
     ;;
   coherence)
-    # paires de fiches à fort recouvrement en attente d'arbitrage par le jardinier
-    if [ -f state/coherence.json ]; then python3 -m json.tool state/coherence.json; else echo "✅ aucune paire en attente"; fi
+    # heavily overlapping note pairs awaiting the gardener's arbitration
+    if [ -f state/coherence.json ]; then python3 -m json.tool state/coherence.json; else echo "✅ no pending pair"; fi
     ;;
   metrics)
-    # dernières tendances (10 derniers relevés)
-    if [ -f state/metrics.jsonl ]; then tail -10 state/metrics.jsonl; else echo "(pas encore de métriques)"; fi
+    # latest trends (last 10 readings)
+    if [ -f state/metrics.jsonl ]; then tail -10 state/metrics.jsonl; else echo "(no metrics yet)"; fi
     ;;
   credit|quota)
-    # « est-ce que les agents peuvent dépenser MAINTENANT ? » — sonde d'un token
-    # (~0,00003 $) qui interroge l'API au lieu de deviner. `--debloquer` efface un
-    # marqueur de blocage devenu faux (plafond rechargé, compte changé).
-    if [ "${2:-}" = "--debloquer" ]; then
+    # "can the agents spend RIGHT NOW?" — a one-token probe (~$0.00003) that asks
+    # the API instead of guessing. `--unblock` clears a block marker that has become
+    # false (cap topped up, account switched).
+    if [ "${2:-}" = "--unblock" ]; then
       python3 -c "
-import json, sys, time
-sys.path.insert(0, 'hooks')
+import json, os, sys, time
+sys.path.insert(0, os.environ['SELF'] + '/hooks')
 import quota_probe as qp
-v = qp.sonde()
+v = qp.probe()
 if not v['ok']:
-    print('⚠️  la sonde dit NON —', v['motif']); print('   marqueur laissé en place.'); raise SystemExit(7)
-json.dump({'blocked_until': 0, 'famille': None, 'echecs': 0, 'msg': 'ok — débloqué à la main',
-           'empreinte': v['empreinte'], 'derniere_sonde': v['ts'], 'limites': v['limites']},
+    print('⚠️  the probe says NO —', v['reason']); print('   marker left in place.'); raise SystemExit(7)
+json.dump({'blocked_until': 0, 'family': None, 'failures': 0, 'msg': 'ok — unblocked by hand',
+           'fingerprint': v['fingerprint'], 'last_probe': v['ts'], 'limits': v['limits']},
           open('state/quota.json', 'w'))
-print('✅ blocage levé — les agents peuvent repartir (vérifié par sonde, HTTP', str(v['http']) + ')')
+print('✅ block lifted — the agents can start again (verified by probe, HTTP', str(v['http']) + ')')
 "
     else
-      python3 hooks/quota_probe.py
+      python3 "$SELF"/hooks/quota_probe.py
       python3 -c "
 import json, time
 try: q = json.load(open('state/quota.json'))
@@ -69,37 +91,72 @@ except Exception: raise SystemExit
 b = q.get('blocked_until', 0)
 if b and time.time() < b:
     print()
-    print('⛔ maintenance GELÉE localement jusqu\'à', time.strftime('%d/%m %H:%M', time.localtime(b)))
-    print('   motif :', str(q.get('msg', ''))[:100])
-    print('   la sonde retentera seule (≤ 15 min) — ou : brain credit --debloquer')
+    print('⛔ maintenance FROZEN locally until', time.strftime('%d/%m %H:%M', time.localtime(b)))
+    print('   reason:', str(q.get('msg', ''))[:100])
+    print('   the probe will retry on its own (≤ 15 min) — or: brain credit --unblock')
 "
     fi
     ;;
   push|backup)
+    # ⚠️ THE NAME OVERPROMISES, and the wording below is what corrects it: this
+    # records a local HISTORY, on this disk. It is not an off-machine backup, and
+    # calling it one would let someone lose a laptop believing otherwise.
+    #
+    # It used to run `git add -A` straight away. On a trunk nobody had `git init`ed
+    # — the state a default install was left in — that printed
+    # "fatal: not a git repository" and exited 128: the command whose name promises
+    # safekeeping answered with a git error and no instruction.
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+      echo "⚠️  This trunk has no local history: it is not a git repository."
+      echo "   Your notes are safe as files — nothing is lost — but nothing records"
+      echo "   what changed, and the per-session auto-save has nothing to write to."
+      echo "   Turn it on:  git -C \"$BRAIN\" init && brain backup"
+      exit 1
+    fi
     git add -A
-    git commit -q -m "backup manuel via brain $(date +%F\ %H:%M)" || echo "(rien à committer)"
-    git push --quiet origin main && echo "✅ poussé sur origin/main" || echo "⚠️ push échoué (remote ?)"
+    # `git commit -q` still prints "On branch main / nothing to commit" on its own
+    # stdout when there is nothing staged, so the quiet flag is not enough.
+    git commit -q -m "manual save via brain $(date +%F\ %H:%M)" >/dev/null 2>&1 \
+      || echo "(nothing new to record)"
+    echo "✅ recorded in the local history ($(git rev-list --count HEAD) entries, on this disk)"
+    # A remote is opt-in and rare: the package never adds one. Staying silent when
+    # there is none avoids reporting a failed push to someone who never wanted one.
+    if git remote get-url origin >/dev/null 2>&1; then
+      git push --quiet origin HEAD && echo "✅ pushed to origin" \
+        || echo "⚠️  push to origin failed — the local history is recorded all the same"
+    fi
     ;;
   selftest)
-    bash hooks/selftest.sh
+    bash "$SELF"/hooks/selftest.sh "$SELF"
     ;;
   update)
-    # Mise à jour du MOTEUR uniquement. Le tronc — tes fiches — n'est jamais touché.
-    bash "$HOME/.c-brain/engine/cbrain/update.sh" "${@:2}"
+    # Updates the ENGINE only. The trunk — your notes — is never touched.
+    bash "$SELF"/cbrain/update.sh "${@:2}"
     ;;
   demo)
-    # Trois fiches d'exemple, posées puis retirées à la demande. Un tronc
-    # vide au premier lancement ne montre rien de ce que l'outil sait faire.
-    bash "$HOME/.c-brain/engine/cbrain/demo.sh" "${@:2}"
+    # Three example notes, placed and taken away on demand. An empty trunk on
+    # first launch shows nothing of what the tool can do.
+    bash "$SELF"/cbrain/demo.sh "${@:2}"
+    ;;
+  capsule)
+    # The only verb that puts a WINDOW on screen. It existed nowhere: the
+    # installer installed the capsule, proved its binary answered, and never
+    # said how to open it — the one documented gesture was an `npm start` inside
+    # a directory the leading dot hides from Finder. Decided 2026-09-20, C bis
+    # entry B3: a CLI verb rather than a second Desktop bundle, because the
+    # capsule's reader is already in a terminal, and because install.sh's own
+    # note says the capsule's future is not more Electron plumbing.
+    bash "$SELF"/cbrain/capsule.sh "${@:2}"
     ;;
   version)
-    cat "$HOME/.c-brain/VERSION" 2>/dev/null || echo "(version inconnue)"
+    cat "$HOME/.c-brain/VERSION" 2>/dev/null || echo "(unknown version)"
     ;;
   *)
-    echo "Usage : brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|version>"
-    echo "        (update est AUTOMATIQUE à chaque session — --auto-off pour le couper)"
-    echo "        (credit : les agents peuvent-ils dépenser ? — --debloquer lève un blocage devenu faux)"
-    echo "        (recall accepte --semantic pour le backend embeddings, --lignes pour les passages au lieu des descriptions)"
+    echo "Usage: brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|capsule|version>"
+    echo "        (credit: can the agents spend? — --unblock lifts a block that has become false)"
+    echo '      (capsule: opens the floating orb — stop closes it, status locates it)'
+    echo "       (recall accepts --semantic for embeddings, --lines for passages instead of descriptions)"
+    echo "        (update is AUTOMATIC every session — --auto-off to turn it off)"
     exit 1
     ;;
 esac

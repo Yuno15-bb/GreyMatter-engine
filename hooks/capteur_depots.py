@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
-"""Capteur de dépôts non sauvegardés — le travail qui n'existe QUE sur ce Mac.
+"""Unsaved-repositories sensor — the work that exists ONLY on this machine.
 
-Pourquoi il existe (2026-08-22). `codex M.confidential` : dernier commit le 13/08,
-puis 70 fichiers modifiés et 6 306 insertions restés en working tree pendant NEUF JOURS,
-dont ~20 fichiers jamais suivis — donc sans aucune version antérieure à récupérer.
-Découvert par hasard en lisant le dépôt pour un cadrage. Le même jour : 8 commits jamais
-poussés sur `mconfidential-edl`, une branche sans destination sur `mconfidential-edl-simple`,
-et `cahier` sans aucun dépôt distant.
+Why it exists (2026-08-22). A client project: last commit on 13/08, then 70 modified
+files and 6,306 insertions left in the working tree for NINE DAYS, about 20 of them
+never tracked — so with no earlier version to recover at all. Found by chance while
+reading the repository for a scoping job. The same day: 8 commits never pushed on a
+second repository, a branch with no destination on a third, and a fourth with no
+remote at all.
 
-Le dispositif `sauvegarde-totale-github` couvrait déjà le Bureau NON-git, et sa fiche
-signalait l'angle mort « un .git sans remote ». Il manquait le cas d'à côté, plus courant :
-un dépôt QUI A un remote mais dont le travail n'y est jamais parti. Le dispositif reposait
-sur une règle (« commit + push comme d'habitude ») — une règle n'est pas un capteur.
+The existing total-backup setup already covered the NON-git Desktop, and its note
+flagged the blind spot "a .git without a remote". The neighbouring case was missing,
+and it is the more common one: a repository that HAS a remote but whose work never
+went there. The setup relied on a rule ("commit + push as usual") — a rule is not a sensor.
 
-L'OBSERVABLE EST L'ÉTAT GIT RÉEL DU DISQUE : `git status --porcelain`, `rev-list @{u}..HEAD`,
-`git remote`. Jamais une intention, jamais un journal de script. Mesure 100 % locale : aucun
-`fetch`, donc pas de réseau et pas d'attente au démarrage de session.
+THE OBSERVABLE IS THE REAL GIT STATE ON DISK: `git status --porcelain`, `rev-list @{u}..HEAD`,
+`git remote`. Never an intention, never a script's log. A 100% local measurement: no
+`fetch`, so no network and no wait at session start.
 
-  python3 capteur_depots.py            # rapport lisible
-  python3 capteur_depots.py --hook     # bloc au démarrage de session (silencieux si tout est vert)
-  python3 capteur_depots.py --json     # état brut
-  python3 capteur_depots.py --notifier # + notification macOS si rouge (pour launchd)
+  python3 capteur_depots.py            # readable report
+  python3 capteur_depots.py --hook     # block at session start (silent if everything is green)
+  python3 capteur_depots.py --json     # raw state
+  python3 capteur_depots.py --notify   # + a macOS notification when red (for launchd)
 
-  DEPOTS_RACINES=/chemin/a:/chemin/b   # surcharge du périmètre — pour SABOTER sur des
-                                       # fixtures sans toucher aux vrais dépôts.
+  REPOS_ROOTS=/path/a:/path/b          # overrides the scope — to SABOTAGE on
+                                       # fixtures without touching the real repositories.
 """
 import json
 import os
@@ -34,17 +34,16 @@ from datetime import datetime
 from pathlib import Path
 
 HOME = Path.home()
+# Overridable: a sensor you cannot break on purpose has never proved it turns red.
+RACINES = [Path(p) for p in os.environ.get("REPOS_ROOTS", str(HOME / "Desktop")).split(":") if p]
+PROFONDEUR = int(os.environ.get("REPOS_DEPTH", "3"))
 
-# Surchargeable : un capteur qu'on ne peut pas casser exprès n'a jamais prouvé qu'il rougit.
-RACINES = [Path(p) for p in os.environ.get("DEPOTS_RACINES", str(HOME / "Desktop")).split(":") if p]
-PROFONDEUR = int(os.environ.get("DEPOTS_PROFONDEUR", "3"))
-
-# Un travail non sauvegardé le jour même est NORMAL (session en cours).
-# Ce qui est anormal, c'est qu'il dure. Le drame mesuré faisait 9 jours.
+# Work left unsaved on the same day is NORMAL (a session in progress).
+# What is abnormal is that it lasts. The measured incident lasted 9 days.
 ORANGE_JOURS = 1
 ROUGE_JOURS = 3
 
-ICONE = {"rouge": "🔴", "orange": "🟠", "vert": "🟢"}
+ICONE = {"red": "🔴", "orange": "🟠", "green": "🟢"}
 
 
 def _git(depot, *args):
@@ -76,74 +75,74 @@ def trouver_depots():
 
 
 def examiner(depot):
-    """Un constat par dépôt. Le niveau vient des FAITS mesurés, pas d'une appréciation."""
+    """One finding per repository. The level comes from measured FACTS, not from an opinion."""
     nom = depot.name
     remotes = _git(depot, "remote") or ""
     sale = len([l for l in (_git(depot, "status", "--porcelain") or "").splitlines() if l])
     dernier = _git(depot, "log", "-1", "--format=%ct")
     age = (time.time() - int(dernier)) / 86400 if dernier and dernier.isdigit() else None
 
-    # 1. Aucune destination : le travail n'existe nulle part ailleurs. Structurel, jamais toléré.
+    # 1. No destination: the work exists nowhere else. Structural, never tolerated.
     if not remotes:
-        return dict(depot=nom, chemin=str(depot), niveau="rouge",
-                    msg="aucun dépôt distant — ce travail n'existe que sur ce Mac",
-                    observable="git remote → (vide)", sale=sale, ahead=0, age_j=age)
+        return dict(repo=nom, path=str(depot), level="red",
+                    msg="no remote repository — this work exists only on this machine",
+                    observable="git remote → (empty)", dirty=sale, ahead=0, age_d=age)
 
-    # 2. Branche sans destination : les commits partent nulle part, et `ahead` est illisible.
+    # 2. A branch with no destination: its commits go nowhere, and `ahead` is unreadable.
     upstream = _git(depot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
     branche = _git(depot, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     if upstream is None:
-        return dict(depot=nom, chemin=str(depot), niveau="rouge",
-                    msg=f"branche « {branche} » sans destination — ses commits ne partent nulle part",
-                    observable="git rev-parse @{u} → échec", sale=sale, ahead=0, age_j=age)
+        return dict(repo=nom, path=str(depot), level="red",
+                    msg=f"branch '{branche}' has no destination — its commits go nowhere",
+                    observable="git rev-parse @{u} → failed", dirty=sale, ahead=0, age_d=age)
 
     ahead_s = _git(depot, "rev-list", "--count", "@{u}..HEAD")
     ahead = int(ahead_s) if ahead_s and ahead_s.isdigit() else 0
 
-    # 3. Du travail existe qui n'est pas sur GitHub. La gravité vient de sa DURÉE.
+    # 3. Work exists that is not on the remote. Its severity comes from its DURATION.
     if sale or ahead:
         if age is None:
-            niveau = "rouge"
+            niveau = "red"
         elif age >= ROUGE_JOURS:
-            niveau = "rouge"
+            niveau = "red"
         elif age >= ORANGE_JOURS:
             niveau = "orange"
         else:
-            niveau = "vert"          # session du jour : normal
+            niveau = "green"         # same-day session: normal
         bouts = []
         if sale:
-            bouts.append(f"{sale} fichier(s) non enregistré(s)")
+            bouts.append(f"{sale} unsaved file(s)")
         if ahead:
-            bouts.append(f"{ahead} commit(s) jamais poussé(s)")
-        suffixe = f", dernier enregistrement il y a {age:.1f} j" if age is not None else ""
-        return dict(depot=nom, chemin=str(depot), niveau=niveau,
-                    msg=" et ".join(bouts) + suffixe,
+            bouts.append(f"{ahead} commit(s) never pushed")
+        suffixe = f", last save {age:.1f} d ago" if age is not None else ""
+        return dict(repo=nom, path=str(depot), level=niveau,
+                    msg=" and ".join(bouts) + suffixe,
                     observable=f"git status --porcelain → {sale} · rev-list @{{u}}..HEAD → {ahead}",
-                    sale=sale, ahead=ahead, age_j=age)
+                    dirty=sale, ahead=ahead, age_d=age)
 
-    return dict(depot=nom, chemin=str(depot), niveau="vert", msg="à jour sur son dépôt distant",
+    return dict(repo=nom, path=str(depot), level="green", msg="up to date on its remote",
                 observable="git status --porcelain → 0 · rev-list @{u}..HEAD → 0",
-                sale=0, ahead=0, age_j=age)
+                dirty=0, ahead=0, age_d=age)
 
 
 def mesurer():
     constats = [examiner(d) for d in trouver_depots()]
     return {
-        "quand": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "constats": constats,
-        "rouges": [c for c in constats if c["niveau"] == "rouge"],
-        "oranges": [c for c in constats if c["niveau"] == "orange"],
+        "when": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "findings": constats,
+        "reds": [c for c in constats if c["level"] == "red"],
+        "oranges": [c for c in constats if c["level"] == "orange"],
     }
 
 
 def notifier(rouges):
-    """Une alerte qui ne se voit pas ne sert à rien — c'est exactement le défaut qu'on corrige."""
+    """An alert nobody sees is useless — that is exactly the defect being fixed."""
     if not rouges:
         return
-    txt = " · ".join(c["depot"] for c in rouges[:4])
+    txt = " · ".join(c["repo"] for c in rouges[:4])
     try:
         subprocess.run(["osascript", "-e",
-                        f'display notification "{txt}" with title "Dépôts non sauvegardés" sound name "Basso"'],
+                        f'display notification "{txt}" with title "Unsaved repositories" sound name "Basso"'],
                        capture_output=True, timeout=10)
     except Exception:
         pass
@@ -152,28 +151,24 @@ def notifier(rouges):
 def main():
     args = sys.argv[1:]
     etat = mesurer()
-
     if "--hook" in args:
-        if etat["rouges"]:
-            print("<depots-non-sauvegardes> Du travail n'existe que sur ce Mac :")
-            for c in etat["rouges"]:
-                print(f"- {c['depot']} : {c['msg']}")
-            print("</depots-non-sauvegardes>")
+        if etat["reds"]:
+            print("<unsaved-repos> Work that exists only on this machine:")
+            for c in etat["reds"]:
+                print(f"- {c['repo']}: {c['msg']}")
+            print("</unsaved-repos>")
         return 0
-
-    if "--notifier" in args:
-        notifier(etat["rouges"])
-
+    if "--notify" in args:
+        notifier(etat["reds"])
     if "--json" in args:
         print(json.dumps(etat, indent=2, ensure_ascii=False))
         return 0
-
-    print(f"🗄  Dépôts non sauvegardés — {etat['quand']}")
-    for c in etat["constats"]:
-        print(f"   {ICONE[c['niveau']]} {c['depot']:<28} {c['msg']}")
-        print(f"      observable : {c['observable']}")
-    n = len(etat["rouges"])
-    print("   ✅ rien au rouge" if not n else f"   ⚠ {n} dépôt(s) au rouge")
+    print(f"🗄  Unsaved repositories — {etat['when']}")
+    for c in etat["findings"]:
+        print(f"   {ICONE[c['level']]} {c['repo']:<28} {c['msg']}")
+        print(f"      observable: {c['observable']}")
+    n = len(etat["reds"])
+    print("   ✅ nothing red" if not n else f"   ⚠ {n} repository(ies) red")
     return 0
 
 

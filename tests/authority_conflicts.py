@@ -1,28 +1,10 @@
 #!/usr/bin/env python3
-"""
-authority_conflicts.py — l'étage 2 de l'ADR-0008 : la RÉSOLUTION.
+"""Resolve conflicting authority for the synthetic ADR-0008 cases.
 
-CE QU'IL FAIT. Deux connaissances pertinentes se contredisent : laquelle fait autorité ?
-Le résolveur répond par l'une de QUATRE sorties — A_WINS, B_WINS, COMPATIBLE, UNRESOLVED.
-
-POURQUOI UNRESOLVED EST UNE SORTIE DE PLEIN DROIT, et pas un échec. Un résolveur qui
-tranche toujours transforme l'incertitude en certitude : sur deux non-savoirs
-(`unknown` contre `agent_inference`), élire un gagnant fabrique de l'autorité à partir de
-rien. Le droit de répondre « je ne sais pas » est ce qui empêche cette machine de mentir.
-
-CE QU'IL NE FAIT PAS. Détecter QU'IL Y A contradiction : c'est sémantique, et une règle
-déterministe ne le fait pas. Le champ `contradiction` est posé par l'auteur du cas. Le
-résolveur juge qui l'emporte quand contradiction il y a — c'est ce qui est mesuré ici.
-
-INDÉPENDANT DU GOLDEN SET DE RÉCUPÉRATION, délibérément (ADR-0008) : tests/golden_recall.py
-mesure « la bonne fiche remonte-t-elle ? », ce fichier mesure « laquelle fait foi ? ».
-Mélanger les deux ferait qu'une amélioration de l'un masquerait une régression de l'autre.
-
-Lancer :
-  python3 tests/authority_conflicts.py
-  python3 tests/authority_conflicts.py --check         # barrière
-  python3 tests/authority_conflicts.py --scope-large   # SABOTAGE : tous les scopes élargis
-  python3 tests/authority_conflicts.py --sans-scope    # SABOTAGE : le scope est ignoré
+UNRESOLVED is a valid outcome: neither unknown nor agent inference gains
+authority merely because a decision is requested. The case author specifies
+whether a contradiction exists; this test measures resolution, not detection.
+This benchmark is independent of the retrieval golden set.
 """
 import argparse
 import json
@@ -30,39 +12,30 @@ import os
 import sys
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-FIXTURES = os.path.join(ICI, "fixtures_conflits.json")
+FIXTURES = os.path.join(ICI, "authority_conflicts.json")
 
-# Seules classes portant de la NORMATIVITÉ (le droit de trancher un choix).
+# Only kinds carrying normative authority.
 sys.path.insert(0, ICI)
 from provenance_invariants import kind_effectif  # noqa: E402
-# ⬆️ UNE seule écriture de I7. La copie locale qui vivait ici rendait
-# `official_documentation` là où la propagation rendait `web` : la divergence annoncée
-# avait déjà eu lieu. cf. [[un-detecteur-partage-par-concept]]
+# Share the effective-kind logic with provenance invariants.
 
 NORMATIFS = {"user_decision", "internal_experience"}
 
-# Autorité FACTUELLE : qui décrit le mieux ce qui EST. `user_decision` en est absent, et
-# c'est I6 : l'auteur décide de ses projets, pas de la réalité. `unknown` et `agent_inference`
-# valent 0 — pas « peu », zéro : ils ne peuvent jamais l'emporter, même seuls face à rien.
+# Factual authority excludes user decisions. Unknown and inference have zero weight.
 POIDS_FACTUEL = {"internal_experience": 4, "official_documentation": 3,
                  "external_document": 2, "web": 1, "agent_inference": 0, "unknown": 0}
-# Autorité NORMATIVE : qui a le droit de dicter une règle de travail.
+# Normative authority governs working conventions.
 POIDS_NORMATIF = {"user_decision": 4, "internal_experience": 2,
                   "official_documentation": 0, "external_document": 0,
                   "web": 0, "agent_inference": 0, "unknown": 0}
 
 
 def s_applique(cote, question, mode_scope="strict"):
-    """Ce côté a-t-il seulement le droit de se prononcer sur CETTE question ?
-
-    C'est I6 rendu opérationnel : l'autorité est bornée par son domaine. Une décision prise
-    pour le projet A ne dit rien du projet B, et une doc qui décrit le monde ne dit rien
-    d'une convention interne.
-    """
-    if mode_scope == "sans":                     # sabotage : le scope ne compte plus
+    """Whether this side may speak for the question's domain."""
+    if mode_scope == "sans":                     # sabotage: ignore scope
         return True
-    dom_c, dom_q = cote.get("domaine"), question["domaine"]
-    if mode_scope == "large":                    # sabotage : tout le monde voit tout
+    dom_c, dom_q = cote.get("domain"), question["domain"]
+    if mode_scope == "large":                    # sabotage: all domains match
         return True
     if cote.get("scope") == "global":
         return question["nature"] == "normative"
@@ -81,25 +54,24 @@ def resoudre(cas, mode_scope="strict"):
     for nom in ("A", "B"):
         c = cas[nom]
         if not s_applique(c, q, mode_scope):
-            continue                              # hors de son domaine : il ne concourt pas
+            continue                              # outside its domain
         k = kind_effectif(c)
         p = poids.get(k, 0)
-        # Une connaissance validée pèse plus — mais seulement si sa classe pèse déjà
-        # quelque chose. Valider ne crée pas d'autorité là où il n'y en a aucune (I1).
+        # Validation strengthens an existing authority but cannot create one.
         if c.get("validated") and p > 0:
             p += 1
-        if c.get("superseded"):                   # remplacée : elle ne fait plus foi
+        if c.get("superseded"):                   # superseded evidence has no weight
             p = 0
         cotes[nom] = p
 
     if not cotes:
-        return "UNRESOLVED"                       # les deux hors scope
+        return "UNRESOLVED"                       # both sides out of scope
     if len(cotes) == 1:
         seul = next(iter(cotes))
-        # Seul en lice, mais sans la moindre autorité : on ne le déclare pas vainqueur.
+        # A sole candidate still needs positive authority.
         return f"{seul}_WINS" if cotes[seul] > 0 else "UNRESOLVED"
     if cotes["A"] == cotes["B"]:
-        return "UNRESOLVED"                       # rien ne départage : on ne bricole pas
+        return "UNRESOLVED"                       # tied authority
     gagnant = max(cotes, key=cotes.get)
     return f"{gagnant}_WINS" if cotes[gagnant] > 0 else "UNRESOLVED"
 
@@ -107,17 +79,17 @@ def resoudre(cas, mode_scope="strict"):
 def mesurer(cas_tous, mode_scope="strict"):
     res = [(c, resoudre(c, mode_scope)) for c in cas_tous]
     n = len(res)
-    justes = sum(1 for c, v in res if v == c["attendu"])
+    justes = sum(1 for c, v in res if v == c["expected"])
 
-    tranchables = [(c, v) for c, v in res if c["attendu"] in ("A_WINS", "B_WINS")]
-    sel = (sum(1 for c, v in tranchables if v == c["attendu"]) / len(tranchables)
+    tranchables = [(c, v) for c, v in res if c["expected"] in ("A_WINS", "B_WINS")]
+    sel = (sum(1 for c, v in tranchables if v == c["expected"]) / len(tranchables)
            if tranchables else 0.0)
 
     dits_unres = [(c, v) for c, v in res if v == "UNRESOLVED"]
-    unres_prec = (sum(1 for c, _ in dits_unres if c["attendu"] == "UNRESOLVED")
+    unres_prec = (sum(1 for c, _ in dits_unres if c["expected"] == "UNRESOLVED")
                   / len(dits_unres) if dits_unres else 1.0)
 
-    # A-t-on laissé gagner un côté qui n'avait pas le droit de se prononcer ?
+    # Did an out-of-scope side win?
     viol = 0
     for c, v in res:
         if v in ("A_WINS", "B_WINS"):
@@ -134,36 +106,36 @@ def mesurer(cas_tous, mode_scope="strict"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
-    ap.add_argument("--scope-large", action="store_true", help="SABOTAGE : scope élargi")
-    ap.add_argument("--sans-scope", action="store_true", help="SABOTAGE : scope ignoré")
+    ap.add_argument("--scope-large", action="store_true", help="SABOTAGE: broaden scope")
+    ap.add_argument("--sans-scope", action="store_true", help="SABOTAGE: ignore scope")
     a = ap.parse_args()
     mode = "large" if a.scope_large else ("sans" if a.sans_scope else "strict")
 
-    cas_tous = json.load(open(FIXTURES, encoding="utf-8"))["cas"]
+    cas_tous = json.load(open(FIXTURES, encoding="utf-8"))["cases"]
     m = mesurer(cas_tous, mode)
 
-    titre = {"strict": "", "large": "  ⚠️ SABOTAGE : scopes élargis",
-             "sans": "  ⚠️ SABOTAGE : scope ignoré"}[mode]
-    print(f"Conflits d'autorité — {m['n']} cas{titre}\n")
+    titre = {"strict": "", "large": "  ⚠️ SABOTAGE: broadened scopes",
+             "sans": "  ⚠️ SABOTAGE: ignored scope"}[mode]
+    print(f"Authority conflicts — {m['n']} cases{titre}\n")
     for c, v in m["res"]:
-        ok = v == c["attendu"]
-        print(f"  {'✅' if ok else '❌'} {c['id']:48} {c['attendu']:11} → {v}")
+        ok = v == c["expected"]
+        print(f"  {'✅' if ok else '❌'} {c['id']:48} {c['expected']:11} → {v}")
 
     print(f"\n  conflict_resolution_accuracy  {m['conflict_resolution_accuracy']:.2f}")
     print(f"  authority_selection_accuracy  {m['authority_selection_accuracy']:.2f}")
     print(f"  unresolved_precision          {m['unresolved_precision']:.2f}"
-          "   (quand il refuse de trancher, avait-il raison ?)")
+          "   (was declining to decide correct?)")
     print(f"  scope_violation_rate          {m['scope_violation_rate']:.2f}"
-          "   (a-t-on laissé gagner un hors-scope ?)")
+          "   (did an out-of-scope side win?)")
 
     if a.check:
         if m["justes"] != m["n"]:
-            print(f"\n❌ {m['n'] - m['justes']} cas divergent")
+            print(f"\n❌ {m['n'] - m['justes']} divergent cases")
             return 1
         if m["scope_violation_rate"] > 0:
-            print("\n❌ un côté hors de son domaine a été déclaré vainqueur")
+            print("\n❌ an out-of-scope side was declared the winner")
             return 1
-        print("\n✅ résolution conforme à l'ADR-0008")
+        print("\n✅ resolution conforms to ADR-0008")
     return 0
 
 

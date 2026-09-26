@@ -1,38 +1,38 @@
 #!/usr/bin/env python3
-"""registre_ecritures — rendre OBSERVABLE quelle session a fait bouger une fiche du tronc.
+"""registre_ecritures — make OBSERVABLE which session moved a trunk note.
 
-POURQUOI CE FICHIER EXISTE (mesuré le 2026-08-28)
-    `state/manual-saves.jsonl` n'avait plus reçu une seule entrée depuis le 2026-08-18,
-    alors que 189 fiches du savoir portaient une date de modification postérieure. Le
-    registre n'était pas cassé : reproduit sur un tronc jetable, `on_fiche_write.py`
-    écrit correctement son entrée. C'est son DÉCLENCHEUR qui ne voyait plus rien —
-    il n'est armé que sur `PostToolUse Write|Edit`, et le balayage des 32 transcripts
-    postérieurs au 18/08 ne trouve que 9 écritures de fiche par ces deux outils, toutes
-    de la session 397b659d, celle-là même dont les dernières entrées du registre datent.
-    Tout le reste passe par Bash — heredoc, `sed -i`, script Python — ou par les agents
-    de fond, que le registre exclut volontairement.
+WHY THIS FILE EXISTS (measured on 2026-08-28)
+    `state/manual-saves.jsonl` had not received a single entry since 2026-08-18,
+    while 189 knowledge notes carried a later modification date. The
+    register was not broken: reproduced on a throwaway trunk, `on_fiche_write.py`
+    writes its entry correctly. It was its TRIGGER that no longer saw anything —
+    it is armed only on `PostToolUse Write|Edit`, and sweeping the 32 transcripts
+    after 18/08 finds only 9 note writes through those two tools, all of them
+    from a single session, the very one the register's last entries date from.
+    Everything else goes through Bash — heredoc, `sed -i`, a Python script — or through
+    the background agents, which the register excludes on purpose.
 
-CE QU'IL N'EST PAS
-    Ce n'est PAS un remplacement de `manual-saves.jsonl`. Celui-là a un contrat étroit et
-    un consommateur unique : `auto_maintain.py` le lit pour dire au distillateur « ne
-    recrée pas ces fiches, la session les a écrites à la main ». Y verser des écritures de
-    script ferait taire le distillateur sur du savoir que personne n'a rédigé. Les deux
-    registres coexistent, chacun avec son contrat.
+WHAT IT IS NOT
+    It is NOT a replacement for `manual-saves.jsonl`. That one has a narrow contract and
+    a single consumer: `auto_maintain.py` reads it to tell the distiller "do not
+    recreate these notes, the session wrote them by hand". Pouring script writes
+    into it would silence the distiller on knowledge nobody wrote. The two
+    registers coexist, each with its own contract.
 
-CE QU'IL PROUVE, ET CE QU'IL NE PROUVE PAS
-    Il observe un EFFET — une fiche dont la date de modification a dépassé le dernier
-    passage — et non un MOYEN. Il couvre donc n'importe quel outil, y compris ceux qui
-    n'existent pas encore. En contrepartie, l'identité qu'il note est celle de la session
-    dont l'outil vient de rendre la main : c'est une attribution par COÏNCIDENCE, pas une
-    preuve d'auteur. Le champ `attribution` le dit dans chaque ligne, pour qu'aucune
-    lecture ultérieure ne puisse le prendre pour plus qu'il n'est.
+WHAT IT PROVES, AND WHAT IT DOES NOT
+    It observes an EFFECT — a note whose modification date has passed the last
+    pass — not a MEANS. So it covers any tool, including those that
+    do not exist yet. In return, the identity it records is that of the session
+    whose tool has just handed back control: an attribution by COINCIDENCE, not a
+    proof of authorship. The `attribution` field says so in every line, so that no
+    later reading can take it for more than it is.
 
-HORS COUVERTURE, ET C'EST DÉCLARÉ
-    Une écriture faite pendant qu'aucun outil ne tourne (agent de fond, tâche planifiée,
-    éditeur externe) n'est vue qu'au passage suivant, et sera alors attribuée à la session
-    de ce passage-là. Deux sessions actives en même temps peuvent se voler une ligne.
-    Le registre répond « quelque chose a écrit cette fiche vers cette heure-ci », jamais
-    « cette session l'a écrite ».
+OUT OF COVERAGE, AND DECLARED
+    A write made while no tool is running (background agent, scheduled task,
+    external editor) is seen only at the next pass, and will then be attributed to the
+    session of that pass. Two sessions active at the same time can steal a line from each other.
+    The register answers "something wrote this note around this time", never
+    "this session wrote it".
 """
 import json
 import os
@@ -41,10 +41,10 @@ import time
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 ZONES = ("projects", "lessons", "meta", "life", "skills")
-REGISTRE = os.path.join(BRAIN, "state", "ecritures-fiches.jsonl")
-JALON = os.path.join(BRAIN, "state", "ecritures-fiches.jalon")
-# Un premier passage sans jalon verrait TOUT le tronc comme « modifié » et écrirait 500
-# lignes de bruit. On borne : au premier passage, on pose le jalon et on ne journalise rien.
+REGISTRE = os.path.join(BRAIN, "state", "note-writes.jsonl")
+JALON = os.path.join(BRAIN, "state", "note-writes.mark")
+# A first pass without a mark would see THE WHOLE trunk as "modified" and write 500
+# lines of noise. So it is bounded: on the first pass, the mark is set and nothing is logged.
 FENETRE_MAX = 3600.0
 
 
@@ -63,7 +63,7 @@ def _jalon_ecrit(t):
 
 
 def fiches_modifiees(depuis):
-    """Les fiches .md des zones du savoir dont la mtime dépasse `depuis`. 3,4 ms mesurés."""
+    """The .md notes of the knowledge zones whose mtime is past `depuis`. 3.4 ms measured."""
     out = []
     for z in ZONES:
         racine = os.path.join(BRAIN, z)
@@ -89,19 +89,19 @@ def main(data):
     precedent = _jalon_lu()
     _jalon_ecrit(maintenant)
     if precedent is None:
-        return 0                      # premier passage : on arme, on ne journalise pas
+        return 0                      # first pass: arm, do not log
     depuis = max(precedent, maintenant - FENETRE_MAX)
     touchees = fiches_modifiees(depuis)
     if not touchees:
         return 0
-    sid = (data or {}).get("session_id") or "inconnu"
-    outil = (data or {}).get("tool_name") or "inconnu"
+    sid = (data or {}).get("session_id") or "unknown"
+    outil = (data or {}).get("tool_name") or "unknown"
     os.makedirs(os.path.dirname(REGISTRE), exist_ok=True)
     with open(REGISTRE, "a", encoding="utf-8") as f:
         for rel, m in touchees:
             f.write(json.dumps({"ts": int(maintenant), "sid": sid, "path": rel,
-                                "mtime": int(m), "ecart_s": int(maintenant - m),
-                                "outil": outil,
+                                "mtime": int(m), "gap_s": int(maintenant - m),
+                                "tool": outil,
                                 "attribution": "coincidence"}, ensure_ascii=False) + "\n")
     return len(touchees)
 
@@ -114,5 +114,5 @@ if __name__ == "__main__":
     try:
         main(charge)
     except Exception:
-        pass                          # règle d'or des hooks du tronc : ne jamais bloquer
+        pass                          # golden rule of the trunk's hooks: never block
     sys.exit(0)

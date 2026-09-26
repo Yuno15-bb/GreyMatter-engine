@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""corpus_import — ingère les exports bruts (4 ans de discussions) dans la COUCHE FROIDE du Brain.
+"""corpus_import — ingests raw chat exports into the trunk's COLD LAYER.
 
 Pipeline (cf. carte-vivante-4-etages) :
-  exports 4 comptes  →  [CE SCRIPT : couche FROIDE lossless]  →  embeddings → clusters → distillation SÉLECTIVE
+  account exports  →  [THIS SCRIPT: lossless COLD layer]  →  embeddings → clusters → SELECTIVE distillation
 
-GARDE-FOU : ce script NE crée PAS de fiches chaudes. Il normalise chaque conversation en UN fichier
-froid lossless dans corpus/cold/ (gitignoré, local-only, comme les transcripts hors repo). La
-distillation sélective (thèmes denses → fiches chaudes) est une ÉTAPE SÉPARÉE, jamais message-par-message.
+GUARDRAIL: this script does NOT create warm notes. It normalizes each conversation into ONE cold,
+lossless file under corpus/cold/ (gitignored, local only, like the out-of-repo transcripts).
+Selective distillation (dense themes → warm notes) is a SEPARATE STEP, never message by message.
 
-Sources auto-détectées :
-  • ChatGPT  : conversations.json avec des objets à `mapping` (arbre de nœuds).
-  • Claude   : conversations.json avec des objets à `chat_messages`.
-Entrée : un .zip d'export, un dossier décompressé, ou un conversations.json direct. Plusieurs comptes =
-plusieurs imports (passer --account pour étiqueter ; défaut = nom du fichier/dossier).
+Auto-detected sources:
+  • ChatGPT  : conversations.json with objects carrying `mapping` (a node tree).
+  • Claude   : conversations.json with objects carrying `chat_messages`.
+Input: an export .zip, an unpacked folder, or a conversations.json directly. Several accounts =
+several imports (pass --account to label them; defaults to the file or folder name).
 
-Zéro dépendance (stdlib). Idempotent (registre corpus/.imported.json). Sort toujours 0.
+Zero dependencies (stdlib). Idempotent (registry corpus/.imported.json). Always exits 0.
 
 Usage :
   corpus_import.py <chemin> [--account LABEL] [--dry-run]
   corpus_import.py ~/Desktop/chatgpt-export.zip --account perso
-  corpus_import.py ~/Desktop                       # scanne le Bureau, importe tout export trouvé
+  corpus_import.py ~/Desktop                       # scans the Desktop, imports every export found
 """
 import os, sys, re, json, zipfile, hashlib, glob, argparse, io, datetime
 
@@ -37,7 +37,7 @@ def slug(s, n=60):
 
 
 def iso(ts):
-    """epoch (float) ou chaîne ISO → 'YYYY-MM-DD HH:MM' ; '' si inconnu."""
+    """epoch (float) or ISO string → 'YYYY-MM-DD HH:MM'; '' when unknown."""
     if ts is None or ts == "":
         return ""
     try:
@@ -60,7 +60,7 @@ def sort_key(ts):
 
 # ───────────────────── extraction de texte ─────────────────────
 def chatgpt_text(content):
-    """content_type text/code/multimodal → texte lisible (lossless sur le texte ; média = placeholder)."""
+    """content_type text/code/multimodal → readable text (lossless on text; media becomes a placeholder)."""
     if not isinstance(content, dict):
         return str(content or "")
     ct = content.get("content_type", "text")
@@ -94,7 +94,7 @@ def claude_text(msg):
 # ───────────────────── normalisation par source ─────────────────────
 def parse_chatgpt(conv):
     cid = conv.get("conversation_id") or conv.get("id") or ""
-    title = conv.get("title") or "(sans titre)"
+    title = conv.get("title") or "(untitled)"
     created = conv.get("create_time")
     rows = []
     for node in (conv.get("mapping") or {}).values():
@@ -115,7 +115,7 @@ def parse_chatgpt(conv):
 
 def parse_claude(conv):
     cid = conv.get("uuid") or conv.get("id") or ""
-    title = conv.get("name") or "(sans titre)"
+    title = conv.get("name") or "(untitled)"
     created = conv.get("created_at")
     rows = []
     for m in conv.get("chat_messages") or []:
@@ -140,9 +140,9 @@ def detect_and_parse(conv):
     return None
 
 
-# ───────────────────── découverte des fichiers ─────────────────────
+# ───────────────────── file discovery ─────────────────────
 def load_conversations(path):
-    """Renvoie une liste de (label_compte, [conversations]) depuis un zip / dossier / json."""
+    """Returns a list of (account_label, [conversations]) from a zip / folder / json."""
     out = []
     if path.endswith(".zip") and zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as z:
@@ -154,7 +154,7 @@ def load_conversations(path):
                     except Exception as e:
                         print(f"  ⚠ {nm}: {e}", file=sys.stderr)
     elif os.path.isdir(path):
-        # `conversations*.json` matche aussi les exports volumineux splittés (conversations-000.json…)
+        # `conversations*.json` also matches large split exports (conversations-000.json…)
         for cj in glob.glob(os.path.join(path, "**", "conversations*.json"), recursive=True):
             try:
                 out.append((_label(os.path.dirname(cj)), json.load(open(cj, encoding="utf-8"))))
@@ -167,7 +167,7 @@ def load_conversations(path):
             out.append((_label(path), json.load(open(path, encoding="utf-8"))))
         except Exception as e:
             print(f"  ⚠ {path}: {e}", file=sys.stderr)
-    # normalise : chaque payload doit être une liste de conversations
+    # normalize: each payload must be a list of conversations
     norm = []
     for label, payload in out:
         if isinstance(payload, dict) and "conversations" in payload:
@@ -183,7 +183,7 @@ def _label(p):
     return slug(base, 40)
 
 
-# ───────────────────── écriture couche froide ─────────────────────
+# ───────────────────── writing the cold layer ─────────────────────
 def write_cold(c, account):
     sub = os.path.join(COLD, c["source"], account)
     os.makedirs(sub, exist_ok=True)
@@ -237,26 +237,26 @@ def run(paths, account_override, dry):
                     reg[key] = rel
                     index_rows.append((date, c["source"], account, c["title"], len(c["msgs"]), rel))
     # rapport
-    print(f"\n{'🔬 DRY-RUN — rien écrit' if dry else '🧊 import couche froide'} :")
+    print(f"\n{'🔬 DRY-RUN — nothing written' if dry else '🧊 cold-layer import'}:")
     tot_i = tot_s = tot_m = 0
     for (src, acc), (i, s, m) in sorted(stats.items()):
-        print(f"  • {src:8} [{acc}] : {i} nouvelles ({m} msgs), {s} déjà importées")
+        print(f"  • {src:8} [{acc}] : {i} new ({m} msgs), {s} already imported")
         tot_i += i; tot_s += s; tot_m += m
     if not stats:
-        print("  (aucune conversation trouvée — vérifie le chemin / le format de l'export)")
-    print(f"  ─ total : {tot_i} nouvelles · {tot_m} messages · {tot_s} ignorées (déjà là)")
+        print("  (no conversation found — check the path and the export format)")
+    print(f"  ─ total: {tot_i} new · {tot_m} messages · {tot_s} skipped (already there)")
     if dry:
         return
     json.dump(reg, open(REG, "w", encoding="utf-8"), ensure_ascii=False, indent=0)
     _update_index(index_rows)
     print(f"\n  → couche froide : {os.path.relpath(COLD, BRAIN)}/  ·  registre : {len(reg)} conversations")
-    print("  Prochaine étape : embeddings du corpus → clusters → distillation sélective.")
+    print("  Next step: corpus embeddings → clusters → selective distillation.")
 
 
 def _update_index(new_rows):
     header = ("# 🧊 Corpus froid — 4 ans de discussions (lossless, local-only)\n\n"
-              "> Index de la couche FROIDE. Une ligne = une conversation normalisée dans `corpus/cold/`.\n"
-              "> Couche distillée (fiches chaudes) = SÉPARÉE, sélective. Gitignoré (cf. carte-vivante-4-etages).\n\n"
+              "> Index of the COLD layer. One line = one conversation normalized into `corpus/cold/`.\n"
+              "> The distilled layer (warm notes) is SEPARATE and selective. Gitignored.\n\n"
               "| date | source | compte | titre | msgs | fichier |\n|---|---|---|---|---|---|\n")
     existing = ""
     if os.path.exists(INDEX):
@@ -272,7 +272,7 @@ def _update_index(new_rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("paths", nargs="+")
-    ap.add_argument("--account", default=None, help="étiquette de compte (défaut = nom du fichier)")
+    ap.add_argument("--account", default=None, help="account label (defaults to the file name)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     paths = [os.path.realpath(os.path.expanduser(p)) for p in a.paths]

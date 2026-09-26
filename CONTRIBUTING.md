@@ -1,91 +1,95 @@
-# Contribuer
+# Contributing
 
-Merci d'être passé. Ce dépôt a une forme qui ne se devine pas de l'extérieur, et
-se tromper dessus coûte un patch refusé — donc c'est écrit ici avant tout le
-reste.
+Thanks for looking. This repository has a shape that is not obvious from the
+outside, and getting it wrong costs you a rejected patch — so it is spelled out
+here before anything else.
 
-## La seule chose à savoir d'abord
+## The one thing to know first
 
-**`main` est une traduction. `fr` est la source.**
+**`main` is a translation. `fr` is the source.**
 
-C Brain est extrait d'un tronc de connaissance réel, personnel et français. La
-chaîne va dans un seul sens :
+C Brain is extracted from a real, personal, French knowledge trunk. The chain
+runs one way:
 
 ```
-le Brain vivant de l'auteur
-   │  sync.sh          liste blanche — refuse de tourner ailleurs que sur `fr`
+the author's living Brain
+   │  sync.sh          whitelist — refuses to run anywhere but `fr`
    ▼
-ce dépôt, branche `fr`
-   │  generalize.py + rules.json     dépersonnalisation
-   │  leakcheck.py                   21 marqueurs, bloquant
+this repo, branch `fr`
+   │  generalize.py + rules.json     depersonalisation
+   │  leakcheck.py                   21 markers, blocking
    ▼
-   branche `main`                    traduite, à la main
+   branch `main`                     translated, by hand
    ▼
-   publish.sh vX.Y.Z "message"       la seule voie autorisée vers un push
+   publish.sh vX.Y.Z "message"       the only sanctioned path to a push
 ```
 
-Ce qui en découle :
+What follows from that:
 
-- **Sur `fr`, n'édite à la main rien sous `hooks/`, `agents/`, `capsule/`,
-  `planet/`, `companion/`, `tests/`, ni le script `brain`.** `sync.sh` écrase
-  ces fichiers depuis le Brain de l'auteur à la passe suivante, et ta
-  modification disparaît sans laisser de trace. Ça passe par une règle dans
-  `rules.json` à la place.
-- **Sur `main`, l'édition directe est la bonne voie** — `main` est la
-  traduction, elle n'a pas d'amont qui l'écrase.
-- **Ouvre ta pull request sur `main`**, sauf si tu corriges spécifiquement la
-  branche française.
+- **On `fr`, do not hand-edit anything under `hooks/`, `agents/`, `capsule/`,
+  `planet/`, `companion/`, `tests/`, or the `brain` script.** `sync.sh`
+  overwrites those files from the author's Brain on the next pass, and your
+  change disappears without a trace. Those need a rule in `rules.json` instead.
+- **On `main`, editing directly is the right move** — `main` is the translation,
+  it has no upstream to be overwritten from.
+- **Open your pull request against `main`** unless you are specifically fixing
+  the French branch.
 
-## Avant d'ouvrir une pull request
+## Before you open a pull request
 
 ```bash
-python3 leakcheck.py             # doit être PROPRE — sinon il bloque la publication
-python3 tests/plugin_manifest.py # les manifestes de plugin restent cohérents
+python3 leakcheck.py           # must be CLEAN — it blocks publication otherwise
+python3 tests/english_only.py  # main only: no French in user-visible strings
 ```
 
-La CI lance ces deux-là, plus une install / selftest / désinstallation complète
-sur macOS et chaque migration rejouée deux fois. C'est un petit workflow, il
-tourne en moins d'une minute — lis `.github/workflows/ci.yml` pour voir
-exactement ce qui est affirmé.
+If you touched the capsule, also run its two benches — **the CI cannot**, because
+it installs with `--no-capsule` and a hosted runner has no Electron:
 
-## Ce qui fera refuser un patch
+```bash
+python3 tests/capsule_runtime.py     # no Electron needed: drives install.sh's own functions
+./capsule/test_lock_speaks.sh        # needs a real Electron · puts a second orb on screen ~15s
+```
 
-- **Un fichier moteur édité à la main sur `fr`.** Voir plus haut — ce n'est pas
-  une préférence de style, la modification ne peut réellement pas survivre.
-- **Tout ce qui fait téléphoner l'outil à la maison.** Zéro télémétrie, zéro
-  analytics, zéro appel réseau au-delà de `git pull`. C'est une ligne dure, pas
-  un réglage par défaut.
-- **Tout ce qui écrit dans le tronc de l'utilisateur sans qu'on l'ait demandé.**
-  Le tronc, c'est son travail. `uninstall.sh` le laisse debout ; `brain demo
-  --remove` n'efface pas une fiche d'exemple que l'utilisateur a modifiée, parce
-  qu'en la modifiant elle est devenue la sienne. Le nouveau code tient la même
-  règle.
-- **Une migration qui fait plus que migrer.** Une migration déplace. Le
-  recâblage est le métier d'`install.sh`, et `update.sh` l'appelle de toute
-  façon — dupliquer cette logique crée deux copies qui divergeront.
+`test_lock_speaks.sh` had no caller at all until 2026-09-20, and it spent that
+time asserting, in one of its own labels, that the single-instance lock was
+shared machine-wide. It is not — see its section D.
 
-## Ce qui est vraiment bienvenu
+The CI runs both, plus a full install / selftest / uninstall on macOS and every
+migration replayed twice. It is a small workflow and it runs in under a minute —
+read `.github/workflows/ci.yml` to see exactly what is asserted.
 
-- **La portabilité.** Aujourd'hui c'est macOS seulement : `launchd`, Electron,
-  `open`. Un chemin Linux propre est un vrai travail et serait une vraie
-  contribution.
-- **Un deuxième agent CLI.** La boucle fermée est câblée sur les hooks de Claude
-  Code. Le reste — tronc, agents, `brain`, planète, capsule — marche à la
-  demande n'importe où.
-- **Les trous de traduction.** Les commentaires des hooks sont encore
-  partiellement français ; `english_only.py` ignore délibérément les
-  commentaires, il ne les trouvera donc pas pour toi.
-- **Tout ce que la CI aurait dû attraper et n'a pas attrapé.** Un test qui
-  échoue en démontrant le trou vaut plus que le correctif.
+## Things that will get a patch turned down
+
+- **A hand-edited engine file on `fr`.** See above — it is not a style
+  preference, the change genuinely cannot survive.
+- **Anything that makes the tool phone home.** No telemetry, no analytics, no
+  network call beyond `git pull`. This is a hard line, not a default.
+- **Anything that writes to the user's trunk without being asked.** The trunk is
+  the user's work. `uninstall.sh` leaves it standing; `brain demo --remove` will
+  not delete an example note the user has edited, because editing it made it
+  theirs. New code is held to the same rule.
+- **A migration that does more than migrate.** Migrations move things.
+  Re-wiring is `install.sh`'s job, and `update.sh` always calls it — duplicating
+  that logic creates two copies that will drift.
+
+## Things that are genuinely welcome
+
+- **Portability.** Today this is macOS-only: `launchd`, Electron, `open`. A
+  clean Linux path is real work and would be a real contribution.
+- **A second CLI agent.** The closed loop is wired for Claude Code hooks. The
+  rest — trunk, agents, `brain`, planet, capsule — works on demand anywhere.
+- **Translation gaps.** Hook comments are still partly French; `english_only.py`
+  deliberately ignores comments, so it will not find them for you.
+- **Anything the CI should have caught and did not.** A failing test that
+  demonstrates the hole is worth more than the fix.
 
 ## Style
 
-Les messages de commit expliquent ici **pourquoi**, et disent ce qui a cassé et
-comment ça a été trouvé — souvent longuement. Fais pareil si tu peux ; un « fix
-bug » d'une ligne n'apprend rien au lecteur suivant qu'il ne voie déjà dans le
-diff.
+Commit messages here explain **why**, and say what broke and how it was found —
+often at some length. Match that if you can; a one-line "fix bug" tells the next
+reader nothing they cannot already see in the diff.
 
 ## Licence
 
-En contribuant, tu acceptes que ta contribution soit sous licence
-[Apache 2.0](LICENSE), comme le reste du projet.
+By contributing you agree your contribution is licensed under
+[Apache 2.0](LICENSE), like the rest of the project.

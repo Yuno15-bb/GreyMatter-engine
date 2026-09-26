@@ -1,89 +1,89 @@
 #!/usr/bin/env python3
 """resume_pending — reprise autonome du backlog de distillation.
 
-Lancé périodiquement (launchd, toutes les ~10 min). Si :
+Run periodically (launchd, roughly every 10 min). If:
   - le quota est revenu (preflight_ok),
   - la file pending-distill.json n'est pas vide,
-  - aucune maintenance ne tourne déjà (verrou libre),
+  - no maintenance is already running (the lock is free),
 alors il distille la session en attente la plus ancienne (une par passage).
 
-→ Répond à : « page fermée + quota fini → ça reprend tout seul à la réinitialisation ? »
-  OUI : sans rien ouvrir, dès que le quota se réinitialise, le backlog se vide.
+→ Answers: "window closed + quota exhausted → does it resume by itself on reset?"
+  YES: without opening anything, the backlog drains as soon as the quota resets.
 
-Sort toujours 0. Ne fait rien (et ne coûte rien) si pas de travail / quota encore épuisé.
+Always exits 0. Does nothing (and costs nothing) with no work, or while the quota is still spent.
 """
 import os, sys, json, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import auto_maintain as am          # réutilise launch_agent + session_msg_count
+import auto_maintain as am          # reuses launch_agent + session_msg_count
 try:
     import brain_guard as guard
 except Exception:
     guard = None
 
 QUEUE = os.path.join(am.BRAIN, "state", "pending-distill.json")
-JOURNAL_RATTRAPAGE = os.path.join(am.BRAIN, "state", "rattrapage.json")
+CATCHUP_LOG = os.path.join(am.BRAIN, "state", "catchup.json")
 
-# --- Rattrapage de l'arriéré : les sessions qui n'ont jamais atteint la file ---
+# --- Catching up on the backlog: sessions that never reached the queue ---
 #
-# Trois freins, parce qu'ici on dépense sur du travail que PERSONNE n'a demandé :
-#   - un délai de garde : un transcript encore chaud peut être une session OUVERTE ;
-#   - une cadence lente : l'arriéré dort depuis des semaines, il n'y a aucune
-#     urgence à le vider en une heure — et un agent coûte ~1 $, à comparer aux
-#     ~0,00003 $ de la sonde de crédit ;
-#   - un plafond de tentatives : une session qui échoue en boucle s'abandonne
-#     visiblement plutôt que de brûler du budget en silence.
-GARDE_SESSION_OUVERTE = 2 * 3600     # transcript inactif depuis 2 h → session vraiment close
-CADENCE_RATTRAPAGE = 3600            # au plus un rattrapage d'arriéré par heure
-MIN_LIGNES_ARRIERE = 60              # substance exigée : > MIN_MSG (20) du flux courant
-MAX_TENTATIVES = 2
+# Three brakes, because here we spend on work NOBODY asked for:
+#   - a grace delay: a transcript still warm may be an OPEN session;
+#   - a slow cadence: the backlog has slept for weeks, there is no urgency in
+#     draining it within the hour — and an agent costs ~$1, against the
+#     ~$0.00003 of the credit probe;
+#   - a cap on attempts: a session that fails in a loop is given up VISIBLY
+#     rather than burning budget in silence.
+OPEN_SESSION_GRACE = 2 * 3600     # transcript idle for 2 h → session really closed
+CATCHUP_INTERVAL = 3600           # at most one backlog catch-up per hour
+MIN_BACKLOG_LINES = 60            # substance required: > MIN_MSG (20) of the current flow
+MAX_ATTEMPTS = 2
 
-RATTRAPAGE_EN_COURS = set()          # sid choisis par arriere_a_rattraper() sur ce passage
+CATCHUP_PICKED = set()            # sids chosen by backlog_to_catch_up() on this pass
 
 
-def _journal():
+def _log():
     try:
-        return json.load(open(JOURNAL_RATTRAPAGE, encoding="utf-8"))
+        return json.load(open(CATCHUP_LOG, encoding="utf-8"))
     except Exception:
         return {}
 
 
-def note_rattrapage(sid):
-    """Trace la tentative AVANT le lancement — sinon un agent qui meurt sans écrire
-    ne compte pas, et la même session repart indéfiniment (le piège de la boucle
-    morte, cf. [[un-delai-devine-ne-sait-pas-que-tu-as-recharge]])."""
-    j = _journal()
-    j[sid] = {"essais": j.get(sid, {}).get("essais", 0) + 1, "ts": time.time()}
-    j["_dernier"] = time.time()
+def note_attempt(sid):
+    """Records the attempt BEFORE launching — otherwise an agent that dies without
+    writing does not count, and the same session restarts forever (the dead-loop
+    trap, cf. [[a-guessed-delay-does-not-know-you-topped-up]])."""
+    j = _log()
+    j[sid] = {"attempts": j.get(sid, {}).get("attempts", 0) + 1, "ts": time.time()}
+    j["_last"] = time.time()
     try:
-        json.dump(j, open(JOURNAL_RATTRAPAGE, "w", encoding="utf-8"))
+        json.dump(j, open(CATCHUP_LOG, "w", encoding="utf-8"))
     except Exception:
         pass
 
 
-def arriere_a_rattraper():
-    """La session orpheline la plus récente qu'on s'autorise à distiller, ou None.
+def backlog_to_catch_up():
+    """The most recent orphan session we allow ourselves to distil, or None.
 
-    Réutilise `brain_audit.collect()` : c'est déjà lui qui sait croiser les
-    transcripts du disque avec les distillées et la file. On ne redécoupe pas ce
-    calcul, on le branche enfin sur une action."""
-    j = _journal()
-    if time.time() - (j.get("_dernier") or 0) < CADENCE_RATTRAPAGE:
+    Reuses `brain_audit.collect()`: it already knows how to cross the transcripts
+    on disk with the distilled ones and the queue. We do not re-cut that
+    computation, we finally wire it to an action."""
+    j = _log()
+    if time.time() - (j.get("_last") or 0) < CATCHUP_INTERVAL:
         return None
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import brain_audit
-        candidats = brain_audit.collect()["post_infra"]     # déjà triés du + récent au + ancien
+        candidates = brain_audit.collect()["post_infra"]     # already sorted newest first
     except Exception:
         return None
-    for t in candidats:
-        if t["n"] < MIN_LIGNES_ARRIERE:
+    for t in candidates:
+        if t["n"] < MIN_BACKLOG_LINES:
             continue
-        if time.time() - t["mtime"] < GARDE_SESSION_OUVERTE:
-            continue                                        # peut-être encore ouverte
-        if j.get(t["sid"], {}).get("essais", 0) >= MAX_TENTATIVES:
-            continue                                        # abandon visible, pas silencieux
-        RATTRAPAGE_EN_COURS.add(t["sid"])
+        if time.time() - t["mtime"] < OPEN_SESSION_GRACE:
+            continue                                        # may still be open
+        if j.get(t["sid"], {}).get("attempts", 0) >= MAX_ATTEMPTS:
+            continue                                        # visible give-up, not a silent one
+        CATCHUP_PICKED.add(t["sid"])
         return t["sid"]
     return None
 
@@ -92,23 +92,23 @@ def main():
     if guard is None:
         return
     if os.environ.get("CLAUDE_BRAIN_GARDENING") == "1":
-        return                              # on est déjà un headless
+        return                              # we are already a headless run
 
-    # Le gel des écrivains autonomes vit dans auto_maintain.main(), et ce chemin-ci
-    # ne passe PAS par main() : il appelle launch_agent directement. Le gel était
-    # donc contournable toutes les dix minutes par le launchd, sans que personne le
-    # voie. Même erreur que [[desarmer-le-hook-ne-suffit-pas-la-session-voisine-
-    # commite-aussi]] : un verrou posé chez UN appelant ne protège pas des autres.
-    # La file continue de se remplir — rien n'est perdu, tout attend le dégel.
+    # The freeze on autonomous writers lives in auto_maintain.main(), and THIS path
+    # does not go through main(): it calls launch_agent directly. So the freeze was
+    # bypassable every ten minutes by launchd, without anyone seeing it. Same mistake
+    # as [[desarmer-le-hook-ne-suffit-pas-la-session-voisine-commite-aussi]]: a lock
+    # placed at ONE caller does not protect against the others.
+    # The queue keeps filling up — nothing is lost, everything waits for the thaw.
     if os.path.exists(os.path.join(am.BRAIN, "state", "FREEZE")):
         return
 
-    # Les fiches au traitement INACHEVÉ, avant de regarder la file — sinon une fiche
-    # à moitié écrite avec une file vide ne serait jamais vue (le retour anticipé
-    # ci-dessous coupe le passage). Le contrôle ne lit que des fichiers locaux :
-    # zéro token, ~20 ms sur 314 fiches. Il plafonne lui-même ses reprises.
+    # Notes whose processing is UNFINISHED, before looking at the queue — otherwise a
+    # half-written note with an empty queue would never be seen (the early return
+    # below cuts the path off). The check only reads local files: zero tokens, ~20 ms
+    # over 314 notes. It caps its own retries.
     try:
-        guard.reenfiler_inacheves()
+        guard.requeue_unfinished()
     except Exception:
         pass
 
@@ -117,36 +117,36 @@ def main():
     except Exception:
         pending = []
 
-    # La file ne contient que ce qui y est ENTRÉ, c'est-à-dire les sessions dont le
-    # SessionEnd s'est déclenché. Une session tuée net — crash, veille, terminal
-    # fermé d'un coup — n'exécute aucun code, donc ne s'enfile jamais : le retour du
-    # crédit ne la concerne pas, elle n'attend nulle part. Constaté le 2026-08-13 :
-    # file vide, et pourtant 8 vraies sessions de travail (22/07 → 03/08) jamais
-    # distillées. `brain audit` les affichait depuis des semaines — le savoir était
-    # là, il n'était juste relié à AUCUNE action. Même motif que le blocage quota du
-    # même jour : un capteur qui constate mais n'agit pas.
+    # The queue only holds what ENTERED it, that is, sessions whose SessionEnd
+    # fired. A session killed outright — crash, sleep, terminal closed in one go —
+    # runs no code at all, so it never queues itself: the credit coming back does
+    # not concern it, it is not waiting anywhere. Observed on 2026-08-13: empty
+    # queue, and yet 8 real work sessions (22/07 → 03/08) never distilled.
+    # `brain audit` had been listing them for weeks — the knowledge was there, it
+    # was simply wired to NO action. Same pattern as the quota block of that same
+    # day: a sensor that observes but does not act.
     if not pending:
-        orphelin = arriere_a_rattraper()
-        if not orphelin:
-            return                          # rien en attente, rien d'orphelin
-        pending = [orphelin]                 # traité comme le reste, une par passage
+        orphan = backlog_to_catch_up()
+        if not orphan:
+            return                          # nothing pending, nothing orphaned
+        pending = [orphan]                  # handled like the rest, one per pass
 
     if not guard.preflight_ok():
-        return                              # quota toujours épuisé → on retentera au prochain tic
+        return                              # quota still spent → retry on the next tick
 
     if not guard.acquire_lock():
-        return                              # une maintenance tourne déjà
+        return                              # maintenance is already running
 
-    # on prend la plus ancienne de façon ATOMIQUE (flock) : sûr même si un
-    # SessionEnd enfile une nouvelle session pile au même instant.
+    # take the oldest one ATOMICALLY (flock): safe even if a SessionEnd queues
+    # a new session at the very same moment.
     sid = guard.dequeue_one() or pending[0]
-    if not sid:                             # file vidée entre-temps par un autre process
+    if not sid:                             # queue drained meanwhile by another process
         guard.release_lock()
         return
-    if sid in RATTRAPAGE_EN_COURS:
-        note_rattrapage(sid)                 # trace AVANT le lancement : une tentative = une trace
+    if sid in CATCHUP_PICKED:
+        note_attempt(sid)                   # trace BEFORE launching: one attempt = one trace
     n = am.session_msg_count(sid) or am.MIN_MSG
-    am.launch_agent(sid, n, to_distill=True)   # le wrapper libère le verrou en fin de run
+    am.launch_agent(sid, n, to_distill=True)   # the wrapper releases the lock at the end of the run
 
 
 if __name__ == "__main__":

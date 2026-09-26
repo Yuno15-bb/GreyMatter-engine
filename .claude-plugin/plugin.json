@@ -1,10 +1,10 @@
 {
   "name": "c-brain",
-  "description": "Une mémoire qui pousse. Ton agent est brillant à l'intérieur d'une session et amnésique entre deux — ceci lui donne un tronc de connaissance persistant sur ta machine : ce que tu résous une fois est distillé en fiche, rangé, relié, et resurgit tout seul la fois suivante, depuis n'importe quel projet. Rien ne quitte la machine.",
-  "version": "1.27.0",
+  "description": "A memory that grows. Your agent is brilliant within a session and amnesic between two — this gives it a persistent knowledge trunk on your machine: what you work out once is distilled into a note, filed, linked, and handed back when you ask for it, from any project. It makes no request of its own — no telemetry, no account.",
+  "version": "2.0.1",
   "author": { "name": "Dylan Peellaert" },
-  "homepage": "https://github.com/Yuno15-bb/c-brain",
-  "repository": "https://github.com/Yuno15-bb/c-brain",
+  "homepage": "https://github.com/Yuno15-bb/GreyMatter-engine",
+  "repository": "https://github.com/Yuno15-bb/GreyMatter-engine",
   "license": "Apache-2.0",
-  "keywords": ["memory", "knowledge", "notes", "recall", "agents", "persistence", "french"]
+  "keywords": ["memory", "knowledge", "notes", "recall", "agents", "persistence"]
 }

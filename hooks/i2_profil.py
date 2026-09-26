@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""i2_profil — un banc normatif annonce SOUS QUEL ÉTAT il a rendu son verdict.
+"""i2_profil — a normative bench announces UNDER WHICH STATE it gave its verdict.
 
-I-2, lot 1 : DÉCLARER AVANT DE CORRIGER. Ce module ne change aucun score, aucun ordre,
-aucun état. Il rend visible ce qui était silencieux.
+I-2, lot 1: DECLARE BEFORE FIXING. This module changes no score, no order,
+no state. It makes visible what was silent.
 
-CE QU'IL DÉCLARE — ce qui a été OBSERVÉ pendant CETTE exécution, jamais un manifeste
-statique. La mesure du 2026-08-21 a montré que `golden_recall` lit ou ne lit PAS
-`state/recall-utilite.json` selon la fraîcheur du cache : une dépendance annoncée « toujours
-présente » serait fausse une fois sur deux.
+WHAT IT DECLARES — what was OBSERVED during THIS run, never a static
+manifest. The 2026-08-21 measurement showed that `golden_recall` does or does NOT read
+`state/recall-utility.json` depending on how fresh the cache is: a dependency announced as
+"always present" would be false one time in two.
 
-DEUX NIVEAUX, À NE PAS CONFONDRE
-    external_read_observed   ce fichier a été ouvert. C'est un FAIT, pas une preuve.
-    verdict_dependency_proven une contre-épreuve a montré que son contenu CHANGE le verdict.
-    « Fichier ouvert » ≠ « dépendance causale ». Le second niveau ne se remplit que depuis
-    une mesure, jamais depuis une intuition.
+TWO LEVELS, NOT TO BE CONFUSED
+    external_read_observed   this file was opened. It is a FACT, not a proof.
+    verdict_dependency_proven a counter-test showed that its content CHANGES the verdict.
+    "File opened" ≠ "causal dependency". The second level is only filled from
+    a measurement, never from an intuition.
 
-repo_reproducible — défini avant d'être utilisé :
-    « À HEAD, avec les dépendances versionnées et l'environnement déclaré par le banc, une
-      autre exécution peut reconstruire le même profil d'expérience sans état local caché. »
-    Ce n'est PAS : même score garanti · déterminisme absolu · absence de cache.
-    Une dépendance locale non versionnée qui influence le verdict → false.
-    Instrumentation incapable de conclure → "unknown". JAMAIS true par défaut.
+repo_reproducible — defined before being used:
+    "At HEAD, with the versioned dependencies and the environment the bench declares,
+      another run can rebuild the same experiment profile with no hidden local state."
+    It is NOT: the same score guaranteed · absolute determinism · absence of cache.
+    An unversioned local dependency that influences the verdict → false.
+    Instrumentation unable to conclude → "unknown". NEVER true by default.
 
-BORNE, VISIBLE ET NON MASQUÉE
-    `sys.addaudithook` ne voit que le processus courant. Un banc qui délègue à un
-    sous-processus ne trace pas les accès de son enfant : le profil le dit alors, et son
-    `repo_reproducible` passe à "unknown".
+A LIMIT, VISIBLE AND NOT HIDDEN
+    `sys.addaudithook` only sees the current process. A bench that delegates to a
+    subprocess does not trace its child's accesses: the profile then says so, and its
+    `repo_reproducible` goes to "unknown".
 """
 import atexit, json, os, sys
 
@@ -35,9 +35,9 @@ BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME")
 BRUIT = ("/lib/python", "site-packages", "/usr/", "encodings", "__pycache__", ".pyc",
          "Library/Caches/com.apple.python", "/dev/")
 
-# Dépendances dont l'effet causal sur un verdict a été MESURÉ (matrice R0-R3 du
-# 2026-08-21 : sans le fichier P@1 0,73 et q13 1er ; avec, 0,60 et q13 hors top-3).
-CAUSALES_PROUVEES = {"state/recall-utilite.json"}
+# Dependencies whose causal effect on a verdict was MEASURED (R0-R3 matrix of
+# 2026-08-21: without the file P@1 0.73 and q13 1st; with it, 0.60 and q13 out of the top 3).
+CAUSALES_PROUVEES = {"state/recall-utility.json"}
 
 _etat = {"lus": set(), "ecrits": set(), "nom": None, "notes": [], "sous_processus": False}
 
@@ -55,7 +55,7 @@ def _hook(evenement, args):
 
 
 def _externe(chemin):
-    """Hors du dépôt suivi, ou dans state/ : ce que HEAD ne contient pas."""
+    """Outside the tracked repository, or in state/: what HEAD does not contain."""
     if not chemin.startswith(BRAIN + "/"):
         return chemin.startswith(os.path.expanduser("~"))
     return os.path.relpath(chemin, BRAIN).startswith("state/")
@@ -66,8 +66,8 @@ def _rel(c):
 
 
 def demarrer(nom, ordre=(), mutations=(), notes=()):
-    """À appeler en tête d'un banc normatif. `ordre` et `mutations` sont des faiblesses
-    CONNUES et mesurées, que le lot 1 rend visibles sans les corriger."""
+    """To call at the top of a normative bench. `ordre` and `mutations` are KNOWN,
+    measured weaknesses, which lot 1 makes visible without fixing them."""
     _etat.update(nom=nom, ordre=list(ordre), mutations=list(mutations), notes=list(notes))
     sys.addaudithook(_hook)
     atexit.register(emettre)
@@ -77,13 +77,13 @@ def emettre():
     if not _etat.get("nom") or _etat.get("emis"):
         return
     _etat["emis"] = True
-    # `open()` est audité à la TENTATIVE, pas au succès : un fichier absent apparaissait
-    # dans la trace. Le sabotage S1 l'a montré — sans `recall-utilite.json`, le profil le
-    # déclarait quand même lu, ce qui est exactement le mensonge que ce lot doit empêcher.
-    # On ne retient donc que ce qui existe encore à l'émission.
+    # `open()` is audited on the ATTEMPT, not on success: a missing file showed up
+    # in the trace. Sabotage S1 showed it — without `recall-utility.json`, the profile still
+    # declared it read, which is exactly the lie this lot must prevent.
+    # So only what still exists at emission time is kept.
     lus = sorted(_rel(c) for c in _etat["lus"] if _externe(c) and os.path.exists(c))
-    # Les fichiers temporaires d'une écriture atomique (`.tmp`, `.NNN.tmp`) ne sont pas un
-    # état local : ils sont le mécanisme d'écriture, et ils ont déjà disparu.
+    # The temporary files of an atomic write (`.tmp`, `.NNN.tmp`) are not
+    # local state: they are the writing mechanism, and they are already gone.
     ecrits = sorted(_rel(c) for c in _etat["ecrits"]
                     if _externe(c) and not c.endswith(".tmp") and os.path.exists(c))
     prouvees = [c for c in lus if c in CAUSALES_PROUVEES]
@@ -107,38 +107,38 @@ def emettre():
               "repo_reproducible": repro, "status": statut,
               "trace_limite_sous_processus": _etat["sous_processus"]}
 
-    # Sortie COMPACTE, et sur STDERR — pas stdout.
-    # POURQUOI stderr : `tests/racine_canonique.py` sonde des modules en LISANT leur
-    # sortie standard. La première version imprimait le profil sur stdout et a fait
-    # rougir ce banc, qui n'y comprenait plus rien. Un diagnostic ne doit jamais
-    # contaminer le canal de données d'un autre instrument.
+    # COMPACT output, and on STDERR — not stdout.
+    # WHY stderr: `tests/racine_canonique.py` probes modules by READING their
+    # standard output. The first version printed the profile on stdout and turned
+    # that bench red, which no longer made sense of anything. A diagnostic must never
+    # contaminate another instrument's data channel.
     def print(*a, **k):
         __builtins__["print"](*a, file=sys.stderr, **k) if isinstance(__builtins__, dict) \
             else __import__("builtins").print(*a, file=sys.stderr, **k)
     print("")
     if statut == "I2-A" and repro is True:
-        print("  profil d'état : reproductible depuis le dépôt seul")
+        print("  state profile: reproducible from the repository alone")
     else:
-        print(f"  ⓘ profil d'état [{statut}] — reproductible depuis le dépôt seul : "
-              f"{'oui' if repro is True else ('inconnu' if repro == 'unknown' else 'NON')}")
+        print(f"  ⓘ state profile [{statut}] — reproducible from the repository alone: "
+              f"{'yes' if repro is True else ('unknown' if repro == 'unknown' else 'NO')}")
         for c in prouvees:
-            print(f"     · verdict dépend d'un état local (causalité MESURÉE) : {c}")
+            print(f"     · verdict depends on a local state (causality MEASURED): {c}")
         for c in lus:
             if c not in prouvees:
-                print(f"     · état local lu : {c}")
+                print(f"     · local state read: {c}")
         for c in ecrits:
-            print(f"     · état local ÉCRIT par la mesure : {c}")
+            print(f"     · local state WRITTEN by the measurement: {c}")
         for o in _etat.get("ordre", []):
-            print(f"     · dépendance d'ordre : {o}")
+            print(f"     · order dependency: {o}")
         for m in _etat.get("mutations", []):
-            print(f"     · mutation connue : {m}")
+            print(f"     · known mutation: {m}")
         if _etat["sous_processus"]:
-            print("     · ⚠️ ce banc délègue à un sous-processus : la trace ne couvre PAS "
-                  "ses accès")
+            print("     · ⚠️ this bench delegates to a subprocess: the trace does NOT cover "
+                  "its accesses")
     d = os.path.join(BRAIN, "state")
     if os.path.isdir(d):
         try:
-            with open(os.path.join(d, "i2-profils.jsonl"), "a", encoding="utf-8") as f:
+            with open(os.path.join(d, "i2-profiles.jsonl"), "a", encoding="utf-8") as f:
                 f.write(json.dumps(profil, ensure_ascii=False) + "\n")
         except OSError:
             pass

@@ -1,0 +1,35 @@
+name: Something is broken
+description: A command, hook, install step or agent that does not behave as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most useful thing you can paste: the output of `brain doctor` and
+        `brain selftest`. They check the tree and every hook, and usually name
+        the problem outright.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `brain version`.
+      placeholder: v1.13.0
+    validations: { required: true }
+  - type: dropdown
+    id: agent
+    attributes:
+      label: CLI agent
+      options: [Claude Code, Another agent, None — CLI only]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, what you got. Paste the output.
+    validations: { required: true }
+  - type: textarea
+    id: selftest
+    attributes:
+      label: brain doctor / brain selftest
+      description: Paste the output, even if it says everything is fine — that is information too.
+      render: shell

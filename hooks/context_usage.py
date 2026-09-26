@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Créé avec Codex
-"""Lecture fail-open de l'empreinte de contexte d'un transcript Claude Code."""
+# Written with Codex
+"""Fail-open reading of the context footprint of a Claude Code transcript."""
 
 import json
 import os
 
 
 def usage_tokens(usage):
-    """Somme des tokens qui constituent le contexte relu par l'appel courant."""
+    """Sum of the tokens that make up the context re-read by the current call."""
     if not isinstance(usage, dict):
         return None
     return (
@@ -18,7 +18,7 @@ def usage_tokens(usage):
 
 
 def read_context_tokens(transcript_path):
-    """Retourne le dernier usage du transcript, ou ``None`` si indisponible."""
+    """Return the transcript's last usage, or ``None`` when unavailable."""
     if not transcript_path or not os.path.isfile(transcript_path):
         return None
     last = None

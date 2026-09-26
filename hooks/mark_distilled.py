@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Ajoute un session_id à sessions/.distilled.json — appelé par le wrapper
-UNIQUEMENT si l'agent de distillation a réussi (claude exit 0). Évite de marquer
-'distillée' une session qui a échoué (ex. limite de quota atteinte)."""
+"""Adds a session_id to sessions/.distilled.json — called by the wrapper
+ONLY if the distillation agent succeeded (claude exit 0). Prevents marking a
+session 'distilled' when it actually failed (e.g. a quota limit was hit)."""
 import json, os, sys
 
 DISTILLED = os.path.expanduser("~/.c-brain/trunk/sessions/.distilled.json")

@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""brain_recall — récupération par pertinence dans le C Brain (Volet 2 · Horizon 1).
+"""brain_recall — relevance retrieval inside the trunk.
 
-FONDATION du rappel sémantique : au lieu de charger MEMORY.md en entier à chaque
-session, on récupère le top-k des fiches PERTINENTES pour une requête.
+The FOUNDATION of semantic recall: instead of loading all of MEMORY.md on every
+session, we retrieve the top-k RELEVANT notes for a query.
 
-Backend v0 = BM25 lexical (pur Python, ZÉRO dépendance, ZÉRO API, instantané).
+Default backend = lexical BM25 (pure Python, ZERO dependencies, ZERO API, instant).
 Architecture enfichable : un backend `Embedding` (sentence-transformers local) pourra
-remplacer/compléter BM25 sans toucher l'appelant — c'est l'upgrade « vrai sémantique ».
+replace or complement BM25 without touching the caller — that is the "true semantic" upgrade.
 
 Usage :
   brain_recall.py "rotation main capteur profondeur"        → top-k fiches
-  brain_recall.py -k 8 "facturation coûts IA"
+  brain_recall.py -k 8 "billing AI costs"
   brain_recall.py --json "..."                              → sortie machine
 """
 import os, re, sys, json, math, glob, hashlib, unicodedata
 from collections import Counter
 
-# ⚠️ LA DÉFINITION DU CORPUS N'EST PAS ÉCRITE ICI — elle vit dans brain_corpus.py, et les
-# deux moteurs (BM25 et embeddings) l'importent. Elle a existé en double jusqu'au
-# 2026-08-16 et les deux copies avaient divergé de 65 documents sans que rien ne le voie.
-# Les noms sont ré-exportés tels quels : `br.SKIP_DIRS` reste valide pour ses appelants
-# (tests/pas_de_fuite_evaluation.py notamment).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ⚠️ THE CORPUS DEFINITION IS NOT WRITTEN HERE — it lives in brain_corpus.py, and the two
+# engines (BM25 here, embeddings in brain_embed.py) IMPORT it. Two copies had already
+# drifted by 5 documents under a comment claiming they were identical.
+# The names are re-exported as-is: `br.SKIP_DIRS` stays valid for existing callers.
 from brain_corpus import (  # noqa: E402
-    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip, indexable as _indexable_de,
+    BRAIN, SKIP_DIRS, SKIP_PREFIX, SKIP_FILES, skip as _skip, indexable as _indexable_from,
 )
 STOP = set("""
 au aux avec ce ces dans de des du elle en et eux il je la le les leur lui ma mais me meme
@@ -33,43 +33,45 @@ le la les un une que qui pour dans sur avec sans est the and for with not are wa
 
 
 def fold(s):
-    """minuscule + sans accents (robustesse FR : 'résumé' ~ 'resume')."""
+    """lowercase + accent-stripped (so 'résumé' matches 'resume')."""
     s = unicodedata.normalize("NFD", s.lower())
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
 
 
-# Racinisation légère du français. Sans elle, « ranger » et « rangement » sont deux
-# tokens étrangers l'un à l'autre : la requête « comment ranger une fiche du brain » ne
-# touchait pas jardinage-regles.md, dont la description dit « rangement ». BM25 ne ratait
-# pas la fiche par manque de finesse, il la ratait par absence de recouvrement lexical.
+# Light French stemming. Without it, "ranger" and "rangement" are two tokens that are
+# strangers to each other: the query "comment ranger une fiche du brain" never touched
+# jardinage-regles.md, whose description says "rangement". BM25 was not missing the note
+# for lack of subtlety, it was missing it for lack of lexical overlap.
 #
-# Deux temps, et l'ordre est le cœur du correctif :
-#   1. le PLURIEL d'abord, sinon « fiche » et « fiches » ne se rejoignent jamais
-#      (« fiches » tombait sur la règle -es et donnait « fich », « fiche » restait
-#      « fiche ») — c'est le mot le plus fréquent du tronc, le rater ruine tout ;
-#   2. puis UN SEUL suffixe, du plus long au plus court, et seulement si la racine
-#      garde au moins 4 lettres.
-# Volontairement conservateur : un stemmer gourmand fabrique des collisions silencieuses
-# qui abîment toutes les autres requêtes. Les suffixes ambigus sont donc absents — -re
-# donnait « mesure » → « mesu », -es et -ee font doublon avec l'étape 1.
+# Two stages, and the ORDER is the heart of the fix:
+#   1. the PLURAL first, otherwise "fiche" and "fiches" never meet ("fiches" fell on the
+#      -es rule and gave "fich", while "fiche" stayed "fiche") — it is the most frequent
+#      word in the trunk, missing it ruins everything;
+#   2. then A SINGLE suffix, longest to shortest, and only if the stem keeps at least
+#      4 letters.
+# Deliberately conservative: a greedy stemmer manufactures silent collisions that damage
+# every other query. Ambiguous suffixes are therefore absent — -re turned "mesure" into
+# "mesu", and -es/-ee duplicate stage 1.
+#
+# The stemmer is French because the TRUNK is written in French: it runs against the
+# user's notes, not against this package's own prose.
 _SUFFIXES = sorted((
     "issement", "ellement", "ications", "ication", "atrice", "ateur", "ation",
     "ement", "ance", "ence", "isme", "iste", "euse", "able", "ible", "aire",
     "ite", "ive", "age", "ure", "eur",
-    # formes verbales courantes
+    # common verb forms
     "eraient", "erions", "assent", "erais", "erait", "erons", "eront", "aient",
     "ant", "ent", "ons", "ier", "ez", "er", "ir",
 ), key=len, reverse=True)
-_MIN_RACINE = 4          # en dessous, la racine ne veut plus rien dire
+_MIN_STEM = 4            # below this, the stem no longer means anything
 
 
-# Memoise : un corpus repete son vocabulaire sans relache — 835 tokens distincts
-# pour 8 013 occurrences dans un seul fichier, donc 90 % des appels ci-dessous
-# sont redondants. Le cout de la racinisation se paie a la construction FROIDE de
-# l'index, c'est-a-dire au premier prompt apres qu'une fiche a change, et
-# tests/recall_benchmark.py tient ce temps sous seuil. Le dictionnaire est borne
-# par le VOCABULAIRE du tronc, pas par sa taille en octets : il cesse de grossir
-# bien avant le corpus.
+# Memoised: a corpus repeats its vocabulary relentlessly — 835 distinct tokens for
+# 8,013 occurrences in one file, so 90% of the calls below are redundant. The cost
+# of stemming is paid on the COLD index build, which is the first prompt after any
+# note changes, and tests/recall_benchmark.py gates that time. The dictionary is
+# bounded by the trunk's vocabulary, not by its size in bytes: it stops growing
+# long before the corpus does.
 _STEM_CACHE = {}
 
 
@@ -84,27 +86,27 @@ def stem(t):
 def _stem(t):
     if len(t) <= 4:
         return t
-    # Pluriel : le « s » seulement. Retirer un « x » final visait les pluriels
-    # français en -aux/-eux, mais le tronc est bilingue et ça MUTILE les mots
-    # anglais : « outbox » → « outbo », « index » → « inde ». Le gain sur
-    # « journaux » ne vaut pas ce dégât ; attrapé par tests/recall_cache.py du
-    # paquet, que mes propres essais n'avaient pas vu.
-    if t.endswith("s") and len(t) > 4:             # 1. pluriel
+    # Plural: the "s" only. Stripping a trailing "x" targeted the French plurals in
+    # -aux/-eux, but the trunk is bilingual and it MUTILATES English words:
+    # "outbox" → "outbo", "index" → "inde". The gain on "journaux" is not worth that
+    # damage; caught by this package's tests/recall_cache.py, which my own trials
+    # had not seen.
+    if t.endswith("s") and len(t) > 4:             # 1. plural
         t = t[:-1]
-    for suf in _SUFFIXES:                          # 2. un seul suffixe
-        if t.endswith(suf) and len(t) - len(suf) >= _MIN_RACINE:
+    for suf in _SUFFIXES:                          # 2. a single suffix
+        if t.endswith(suf) and len(t) - len(suf) >= _MIN_STEM:
             return t[: -len(suf)]
     return t
 
 
-# Alias français ↔ anglais. Le tronc est écrit dans les deux langues : « offline » est
-# dans 37 fiches, « queue » dans 27, « deploy » dans 54 — mais on tape « hors ligne »,
-# « file d'attente », « déploiement ». AUCUN stemmer ne franchit une TRADUCTION : mesuré,
-# « l app terrain plante hors ligne » laissait offline-first-queue-pattern au-delà du
-# rang 20 avec ou sans racinisation ; avec ces alias il remonte au rang 4.
-# Appliqué AVANT la racinisation, pour que corpus et requête soient normalisés pareil.
-# Table courte et justifiée par le corpus : on n'ajoute un couple que si les deux mots y
-# sont réellement présents — pas de vocabulaire inventé.
+# French ↔ English aliases. The trunk is written in both languages: "offline" is in 37
+# notes, "queue" in 27, "deploy" in 54 — but people type "hors ligne", "file d'attente",
+# "déploiement". NO stemmer crosses a TRANSLATION: measured, "l app terrain plante hors
+# ligne" left offline-first-queue-pattern beyond rank 20 with or without stemming; with
+# these aliases it climbs to rank 4.
+# Applied BEFORE stemming, so that corpus and query are normalised the same way.
+# The table is short and justified by the corpus: a pair is only added when both words
+# are really present in it — no invented vocabulary.
 _ALIAS = {
     r"hors[- ]ligne": "offline",
     r"file d[' ]attente": "queue",
@@ -114,22 +116,22 @@ _ALIAS = {
     r"mise en production": "deploy",
     r"\bmemoire cache\b": "cache",
 }
-# UNE passe, pas une par couple. Sept `sub()` separes parcouraient le document
-# sept fois ; une alternation unique le parcourt une fois et aiguille sur le
-# groupe qui a matche. Le motif le plus long reste en tete — Python essaie les
-# alternatives de gauche a droite a chaque position, donc l'ordre qui rendait la
-# version sequentielle correcte garde la version combinee correcte.
-_ALIAS_COUPLES = sorted(_ALIAS.items(), key=lambda kv: -len(kv[0]))
-_ALIAS_RE = re.compile("|".join(f"({k})" for k, _ in _ALIAS_COUPLES))
-_ALIAS_CANON = [v for _, v in _ALIAS_COUPLES]
+# ONE pass, not one per pair. Seven separate `sub()` calls walked the whole
+# document seven times; a single alternation walks it once and dispatches on the
+# group that matched. The longest pattern still comes first — Python tries the
+# alternatives left to right at each position, so the order that made the
+# sequential version correct keeps the combined one correct.
+_ALIAS_PAIRS = sorted(_ALIAS.items(), key=lambda kv: -len(kv[0]))
+_ALIAS_RE = re.compile("|".join(f"({k})" for k, _ in _ALIAS_PAIRS))
+_ALIAS_CANON = [v for _, v in _ALIAS_PAIRS]
 
 
-def aliaser(txt):
+def apply_aliases(txt):
     return _ALIAS_RE.sub(lambda m: _ALIAS_CANON[m.lastindex - 1], txt)
 
 
 def tokenize(text):
-    return [stem(t) for t in re.findall(r"[a-z0-9]+", aliaser(fold(text)))
+    return [stem(t) for t in re.findall(r"[a-z0-9]+", apply_aliases(fold(text)))
             if len(t) > 2 and t not in STOP]
 
 
@@ -140,16 +142,16 @@ def strip_md(text):
 
 
 def _indexable():
-    """Les .md que le rappel considère, triés — l'entrée de l'empreinte."""
-    return _indexable_de(BRAIN)
+    """The .md files recall considers, sorted — the input to the fingerprint."""
+    return _indexable_from(BRAIN)
 
 
 def _fingerprint(files):
-    """Identité du contenu indexable du tronc : chemin, mtime, taille.
+    """Identity of the trunk's indexable content: path, mtime and size.
 
-    Un stat() par fichier, quelques millisecondes — contre les ~200 ms qu'il
-    faut pour les lire et les tokeniser. Hacher le contenu obligerait à tout
-    lire, c'est-à-dire exactement le coût qu'on évite.
+    A stat() per file, a few milliseconds — against the ~200 ms it takes to
+    read and tokenize them. Content hashing would mean reading everything,
+    which is the cost we are avoiding.
     """
     h = hashlib.sha256()
     for rel, p in files:
@@ -158,26 +160,16 @@ def _fingerprint(files):
         except OSError:
             continue
         h.update(f"{rel}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
-    # ⚠️ LE REGISTRE DES FAMILLES FAIT PARTIE DU TEXTE INDEXÉ, IL DOIT DONC ÊTRE DANS
-    # L'EMPREINTE. Il n'est pas un `.md` : sans cette ligne, corriger un lexique ne change
-    # rien à l'empreinte, le cache d'avant est relu tel quel, et la correction est ignorée
-    # EN SILENCE. Vécu le 2026-08-14 : deux mesures identiques au centième après avoir changé
-    # le lexique ET le poids — je mesurais l'index d'avant en croyant mesurer le neuf.
-    # On hache son CONTENU (quelques Ko), pas son mtime : un `git checkout` du registre remet
-    # un mtime neuf sur un contenu identique, et rejetterait le cache pour rien.
-    try:
-        with open(os.path.join(BRAIN, "meta", "familles.json"), "rb") as f:
-            h.update(b"\0familles\0"); h.update(f.read())
-    except OSError:
-        h.update(b"\0familles\0absent")
-    # Même raison pour la configuration : sa section `index` (poids du nom, de la
-    # description, du pont) décide du TEXTE tokenisé. Sans cette ligne, changer un poids
-    # relirait le cache d'avant et la modification serait ignorée en silence — exactement
-    # l'incident du 14/08 ci-dessus. On hache le fichier ENTIER plutôt que la seule section
-    # `index` : découper le hachage sur une partie du contenu est le genre de finesse qui
-    # se désynchronise du jour où quelqu'un déplace une clé. Le coût est une reconstruction
-    # d'index (~0,4 s) après une retouche de poids qui n'en avait pas besoin. C'est le bon
-    # sens de l'erreur : reconstruire pour rien est gratuit, servir un index périmé ne l'est pas.
+    # ⚠️ THE RANKING CONFIG DECIDES THE INDEXED TEXT, SO IT BELONGS IN THE FINGERPRINT.
+    # Its `index` section (name, description and family-bridge weights) changes what gets
+    # tokenised. Without this line, editing a weight would re-read the PREVIOUS cache and
+    # the change would be ignored IN SILENCE — measured on a sister trunk on 2026-08-14:
+    # two runs identical to the cent after changing both a lexicon and a weight, because
+    # the old index was being served. We hash the WHOLE file rather than just the `index`
+    # section: splitting the hash over part of the content is the kind of cleverness that
+    # desynchronises the day someone moves a key. The cost is one index rebuild (~0.4 s)
+    # after a weight change that did not need it — the right side to err on, since
+    # rebuilding for nothing is free and serving a stale index is not.
     try:
         with open(os.path.join(BRAIN, "config", "ranking.json"), "rb") as f:
             h.update(b"\0ranking\0"); h.update(f.read())
@@ -186,83 +178,18 @@ def _fingerprint(files):
     return h.hexdigest()
 
 
-# Incrémenté dès que la tokenisation ou la forme d'un document change, pour
-# qu'un vieux cache soit jeté au lieu de servir en silence des fiches notées
-# selon les règles précédentes.
-#   v2 (2026-08-12) : racinisation + alias FR/EN dans tokenize().
-#   v3 (2026-08-12) : les documents portent redirectsTo / relations.remplace.
-#   v4 (2026-08-14) : le texte indexé inclut le pont de vocabulaire des familles thématiques.
-#   v5 (2026-08-14) : le registre des familles entre dans l'empreinte (cf. _fingerprint) —
-#       sans ça, toute retouche de lexique était ignorée en silence.
-#   v6 (2026-08-15) : les poids d'indexation viennent de config/ranking.json, qui entre
-#       lui aussi dans l'empreinte. Les VALEURS n'ont pas bougé (3/3/1) : un cache v5 et un
-#       cache v6 contiennent les mêmes documents. On incrémente quand même, parce qu'un
-#       numéro de version qui ne bouge pas quand la SOURCE des poids change est un piège
-#       posé pour la prochaine fois.
-_CACHE_VERSION = 6
-
-
-# ---------------------------------------------------------------- configuration du classement
-# POURQUOI CE BLOC. Les poids vivaient en dur ici : personne ne pouvait les lire sans lire
-# le moteur, et aucun résultat ne pouvait dire d'où venait son score. Ils sortent dans
-# config/ranking.json — À COMPORTEMENT IDENTIQUE, c'est la condition de l'opération, et
-# tests/golden_recall.py la vérifie.
-#
-# Les défauts ci-dessous ne sont pas décoratifs : ce sont EXACTEMENT les anciennes valeurs
-# en dur. Fichier absent, illisible ou tronqué → le rappel classe comme avant. Une
-# configuration ne doit jamais pouvoir mettre le rappel en panne ; au pire elle ne s'applique pas.
-_DEFAUTS = {
-    "version": "ranking-v1-defaut",
-    "index": {"poids_nom": 3, "poids_description": 3, "poids_pont_familles": 1},
-    "bm25": {"k1": 1.5, "b": 0.75},
-    "utilite": {"alpha": 0.0},   # M5 : hors classement (ADR-0018)
-    "exploration": {"denominateur": 3, "seuil_peu_proposee": 3},
-}
-_CONFIG_CACHE = None
-
-
-def config():
-    """Poids du classement, fusionnés sur les défauts. Chargés une fois par processus.
-
-    Fusion CLÉ PAR CLÉ et non remplacement de section : un fichier qui ne redéfinit que
-    `utilite.alpha` ne doit pas faire disparaître `bm25.k1`. Les clés commençant par `_`
-    sont de la documentation (le fichier est fait pour être lu par un humain), jamais des
-    paramètres — elles sont ignorées ici.
-    """
-    global _CONFIG_CACHE
-    if _CONFIG_CACHE is not None:
-        return _CONFIG_CACHE
-    cfg = {k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAUTS.items()}
-    try:
-        with open(os.path.join(BRAIN, "config", "ranking.json"), encoding="utf-8") as f:
-            brut = json.load(f)
-        for section, valeurs in brut.items():
-            if section.startswith("_"):
-                continue
-            if isinstance(valeurs, dict) and isinstance(cfg.get(section), dict):
-                for cle, val in valeurs.items():
-                    if not cle.startswith("_") and isinstance(val, (int, float)):
-                        cfg[section][cle] = val
-            elif not isinstance(valeurs, dict):
-                cfg[section] = valeurs
-    except Exception:
-        pass        # absent / illisible / cassé : on classe avec les défauts, sans bruit
-    _CONFIG_CACHE = cfg
-    return cfg
-
-
 def load_corpus():
-    """Fiches tokenisées, depuis un cache tant que le tronc n'a pas bougé.
+    """Tokenized notes, from a cache when the trunk has not changed.
 
-    POURQUOI C'EST CACHÉ. Ceci tourne à CHAQUE prompt, via le hook de rappel.
-    Sans cache, il relisait et retokenisait tout le tronc à chaque fois :
-    214 ms sur un tronc de 241 fiches, et ça croît linéairement — environ 1,6 s
-    à 5000 fiches. L'utilisateur payait ça à chaque message, et rien ne l'aurait
-    jamais signalé, puisque le rappel restait parfaitement correct. Il devenait
-    simplement plus lent chaque semaine.
+    WHY THIS IS CACHED. This runs on EVERY prompt, through the recall hook.
+    Uncached it re-read and re-tokenized the whole trunk each time: 214 ms on a
+    241-note trunk, and it grows linearly — about 1.6 s at 5000 notes. The user
+    paid that on every single message, and nothing would ever have reported it,
+    because recall stayed perfectly correct. It just got slower every week.
+    Measured by tests/recall_benchmark.py, which now gates the build time.
 
-    JSON plutôt que pickle : le cache est un fichier sur disque, et un format
-    capable d'exécuter du code au chargement ne vaut pas quelques millisecondes.
+    JSON rather than pickle: the cache is a file on disk, and a format that can
+    execute code on load is not worth a few milliseconds.
     """
     files = _indexable()
     fp = _fingerprint(files)
@@ -274,54 +201,117 @@ def load_corpus():
         if blob.get("fingerprint") == fp and blob.get("version") == _CACHE_VERSION:
             return blob["docs"]
     except Exception:
-        pass        # absent, illisible, tronqué : on reconstruit, jamais d'échec
+        pass        # absent, unreadable, truncated: rebuild, never fail
 
     docs = _read_corpus(files)
 
     try:
         os.makedirs(os.path.dirname(cache), exist_ok=True)
-        # Atomique : un hook tué en pleine écriture ne doit pas laisser un
-        # demi-fichier que la fois suivante lira comme faisant autorité.
-        # ... mais l'écriture atomique a un angle mort : si le hook est tué ENTRE
-        # l'ouverture et le `replace`, le `.tmp` reste, et personne ne le ramasse
-        # jamais. Deux orphelins retrouvés le 2026-09-22, 4,4 Mo, écrits le 09/09 et
-        # le 21/09 par des PID morts depuis. On balaie donc les siens avant d'écrire.
-        # Le test est la MORT DU PROCESSUS, pas l'âge du fichier : une indexation qui
-        # dure ne doit pas se faire effacer son propre brouillon par une voisine.
-        for orphelin in glob.glob(f"{cache}.*.tmp"):
+        # Atomic: a hook killed mid-write must not leave a half-file that the
+        # next run reads as authoritative.
+        # ... but the atomic write has a blind spot: if the hook is killed BETWEEN the
+        # open and the `replace`, the `.tmp` stays, and nobody ever collects it. Two
+        # orphans found on 2026-09-22, 4.4 MB, written on 09/09 and 09/21 by PIDs long
+        # dead. So we sweep them before writing. The test is the PROCESS'S DEATH, not the
+        # file's age: a long indexing run must not have its own draft erased by a neighbour.
+        for orphan in glob.glob(f"{cache}.*.tmp"):
             try:
-                os.kill(int(orphelin.rsplit(".", 2)[-2]), 0)
+                os.kill(int(orphan.rsplit(".", 2)[-2]), 0)
             except (ValueError, IndexError):
-                continue                    # nom inattendu : on n'y touche pas
+                continue                    # unexpected name: left alone
             except ProcessLookupError:
                 try:
-                    os.remove(orphelin)     # son écrivain est mort, le brouillon ne sert plus
+                    os.remove(orphan)       # its writer is dead, the draft is useless
                 except OSError:
                     pass
             except PermissionError:
-                continue                    # vivant, mais à un autre utilisateur
+                continue                    # alive, but another user's
         tmp = f"{cache}.{os.getpid()}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"version": _CACHE_VERSION, "fingerprint": fp, "docs": docs}, f)
         os.replace(tmp, cache)
     except Exception:
-        pass        # tronc en lecture seule, disque plein : le rappel marche, en plus lent
+        pass        # read-only trunk, full disk: recall still works, just slower
 
     return docs
 
 
-# ── le registre des familles thématiques (libellé + lexique). La VÉRITÉ des appartenances
-# vit dans le `tags:` de chaque fiche ; ce fichier ne porte que le pont de vocabulaire.
-def _charger_familles():
-    p = os.path.join(BRAIN, "meta", "familles.json")
+# Bumped whenever tokenisation or the document shape changes, so an old cache
+# is discarded instead of silently serving notes scored under the previous rules.
+#   v2 (2026-08-12): stemming + FR/EN aliases in tokenize().
+#   v3 (2026-08-12): documents carry redirectsTo / relations.replaces.
+#   v4 (2026-08-16): the indexing weights come from config/ranking.json, which is now part
+#       of the fingerprint too. The VALUES did not move (3/3), so a v3 cache and a v4 cache
+#       hold the same documents. We bump anyway, because a version number that stays put
+#       when the SOURCE of the weights changes is a trap set for next time.
+_CACHE_VERSION = 4
+
+
+# ---------------------------------------------------------------- ranking configuration
+# WHY THIS BLOCK. The weights lived hardcoded below: nobody could read them without reading
+# the engine, and no result could say where its score came from. They move out into
+# config/ranking.json — AT IDENTICAL BEHAVIOUR, which is the condition of the operation.
+#
+# The defaults below are not decorative: they are EXACTLY the previous hardcoded values.
+# File absent, unreadable or truncated → recall ranks exactly as before. A configuration
+# must never be able to break recall; at worst it does not apply.
+_DEFAULTS = {
+    "version": "ranking-v1-default",
+    # family_bridge_weight is 0 ON PURPOSE. The mechanism is here and configurable, but it
+    # is OFF until a measurement earns it: at weight 1, on a 15-case golden set over a real
+    # trunk, it demoted the note that literally answers the query from 1st to 2nd place and
+    # promoted an off-topic one (P@1 0.7333 → 0.6667, MRR 0.8000 → 0.7667). It also needs
+    # meta/familles.json, which this package does not ship yet. Turning it on is a decision
+    # backed by a measurement, not a default.
+    "index": {"name_weight": 3, "description_weight": 3, "family_bridge_weight": 0},
+    "bm25": {"k1": 1.5, "b": 0.75},
+    "utility": {"alpha": 0.0},   # M5: out of the ranking (ADR-0018)
+    "exploration": {"denominator": 3, "rarely_suggested_threshold": 3},
+}
+_CONFIG_CACHE = None
+
+
+def config():
+    """Ranking weights, merged over the defaults. Loaded once per process.
+
+    Merged KEY BY KEY rather than section by section: a file that only redefines
+    `utility.alpha` must not make `bm25.k1` disappear. Keys starting with `_` are
+    documentation (the file is meant to be read by a human), never parameters.
+    """
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is not None:
+        return _CONFIG_CACHE
+    cfg = {k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAULTS.items()}
     try:
-        with open(p, encoding="utf-8") as f:
+        with open(os.path.join(BRAIN, "config", "ranking.json"), encoding="utf-8") as f:
+            raw = json.load(f)
+        for section, values in raw.items():
+            if section.startswith("_"):
+                continue
+            if isinstance(values, dict) and isinstance(cfg.get(section), dict):
+                for key, val in values.items():
+                    if not key.startswith("_") and isinstance(val, (int, float)):
+                        cfg[section][key] = val
+            elif not isinstance(values, dict):
+                cfg[section] = values
+    except Exception:
+        pass        # absent / unreadable / broken: rank with the defaults, without noise
+    _CONFIG_CACHE = cfg
+    return cfg
+
+
+# ── the thematic family registry (label + lexicon). The TRUTH of membership lives in each
+# note's `tags:`; this file carries only the vocabulary bridge. Absent here by design: this
+# package does not ship meta/familles.json yet, so the axis is simply inactive.
+def _load_families():
+    try:
+        with open(os.path.join(BRAIN, "meta", "familles.json"), encoding="utf-8") as f:
             return json.load(f).get("familles", {})
     except Exception:
-        return {}          # registre absent = axe thématique inactif, jamais une exception
+        return {}          # registry absent = thematic axis inactive, never an exception
 
 
-_FAMILLES = _charger_familles()
+_FAMILIES = _load_families()
 
 
 def _fm_tags(fm):
@@ -340,120 +330,116 @@ def _read_corpus(files):
         name = re.search(r"^name:\s*(.+)$", fm.group(1), re.M) if fm else None
         desc = re.search(r'^description:\s*"?(.+?)"?\s*$', fm.group(1), re.M) if fm else None
         body = strip_md(raw)
-        # ── AXE THÉMATIQUE (2026-08-14) : le tag ouvre un PONT DE VOCABULAIRE ──
-        # `strip_md()` supprime tout le frontmatter : un `tags:` y était donc écrit et lu par
-        # PERSONNE. Mesuré avant ce correctif : « faux positif » ne remontait AUCUNE des 52 fiches
-        # de la famille qui porte ce nom — le concept le plus central du tronc était introuvable
-        # par son propre nom.
-        # Et ce n'est pas le tag lui-même qui répare ça : personne ne tape « controle-qui-ment ».
-        # C'est le LEXIQUE de la famille (meta/familles.json) — les mots qu'on tape vraiment,
-        # que les fiches n'emploient pas — dont la fiche taguée hérite ici.
-        # ⚠️ POIDS ×1, PAS ×2. Mesuré : à ×2, une fiche qui HÉRITE d'un mot par sa famille
-        # passait devant une fiche qui l'ÉCRIT dans sa description — la requête « faux positif »
-        # perdait `une-assertion-negative…` au profit de fiches qui ne parlent pas de ça.
-        # Le pont doit rattraper ce que les mots ratent, jamais couvrir ce qu'ils trouvent.
-        tags = _fm_tags(fm.group(1) if fm else "")
+        # title/description weigh more (×3): the densest signal
+        # ── THEMATIC AXIS: a tag opens a VOCABULARY BRIDGE ──
+        # `strip_md()` removes the whole frontmatter, so a `tags:` line was written by the
+        # author and read by NOBODY. The bridge is not the tag itself — nobody types
+        # "controle-qui-ment" — it is the family's LEXICON (meta/familles.json), the words
+        # people actually type that the notes themselves do not use.
+        # ⚠️ SHIPPED AT WEIGHT 0. Measured at weight 1 on a 15-case golden set over a real
+        # trunk: a note that INHERITS a word from its family overtook the note that WRITES
+        # it, demoting the literal answer from 1st to 2nd place. The bridge must catch what
+        # the words miss, never cover what they find. The knob exists; turning it up is a
+        # decision that owes a measurement.
         cfg_idx = config()["index"]
-        pont = ""
-        for t in tags:
-            f = _FAMILLES.get(t)
-            if f:
-                pont += " " + f["titre"] + " " + " ".join(f["lexique"])
-        pont = (pont + " ") * int(cfg_idx["poids_pont_familles"])
-        boosted = ((name.group(1) + " ") * int(cfg_idx["poids_nom"]) if name else "") + \
-                  ((desc.group(1) + " ") * int(cfg_idx["poids_description"]) if desc else "") + \
-                  pont + " " + body
-        # `mots_pont` sert UNIQUEMENT à --explain : savoir si une fiche doit sa place au
-        # pont de vocabulaire plutôt qu'à ses propres mots est la question qu'on se pose en
-        # premier quand un résultat surprend. Ce n'est pas un terme du score.
-        mots_pont = sorted(set(tokenize(pont)))
+        bridge = ""
+        for t in _fm_tags(fm.group(1) if fm else ""):
+            fam = _FAMILIES.get(t)
+            if fam:
+                bridge += " " + fam["titre"] + " " + " ".join(fam["lexique"])
+        bridge = (bridge + " ") * int(cfg_idx["family_bridge_weight"])
+        boosted = ((name.group(1) + " ") * int(cfg_idx["name_weight"]) if name else "") + \
+                  ((desc.group(1) + " ") * int(cfg_idx["description_weight"]) if desc else "") + \
+                  bridge + " " + body
         docs.append({
             "path": rel,
-            # succession : cette fiche est-elle un alias (redirectsTo) et/ou en
-            # remplace-t-elle d'autres (relations.remplace) ? cf. _perimees()
-            "redirige_vers": _fm_champ(raw, "redirectsTo"),
-            "remplace": _fm_remplace(raw),
+            # succession: is this note an alias (redirectsTo) and/or does it
+            # replace others (relations.replaces)? cf. _superseded()
+            "redirects_to": _fm_field(raw, "redirectsTo"),
+            "replaces": _fm_replaces(raw),
             "name": name.group(1).strip() if name else os.path.basename(rel)[:-3],
             "desc": desc.group(1).strip() if desc else "",
             "tokens": tokenize(boosted),
-            "mots_pont": mots_pont,
+            # `bridge_words` serves --explain ONLY: whether a note owes its place to its
+            # family's vocabulary rather than its own words is the first question asked
+            # when a result surprises. It is not a term of the score.
+            "bridge_words": sorted(set(tokenize(bridge))),
         })
     return docs
 
 
-# ---------------------------------------------------------------- boucle usage → classement
-# Ce qui a DÉJÀ servi remonte. Le journal de rappel existait depuis des mois et personne ne
-# le relisait : `inject_recall.py` l'ouvrait en « a » et rien ne le lisait — 2,3 % des
-# fiches proposées étaient réellement ouvertes, et rien ne corrigeait ce taux.
-# ⚠️ α N'EST PLUS UN PARAMÈTRE DE CLASSEMENT depuis le 2026-09-19 (ADR-0018, M5).
-# Il l'a été du 2026-08 au 2026-09-19 : le score valait bm25 × (1 + α·ln(1+hits)), et α
-# avait été MESURÉ, pas choisi — part du top-3 occupée par des fiches à historique, sur
-# 10 requêtes : α=0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30.
-# Ce qui a fermé le dossier n'est pas la valeur mais la RÉSOLUTION de l'instrument : sous
-# 1 % d'écart lexical — la seule bande où un départage aurait le droit d'agir — l'ordre
-# s'inverse une fois sur deux quand le corpus bouge. Dans cette bande, rien ne distingue
-# le service du bruit, donc le bonus y est injustifiable, pas seulement petit.
-# La constante reste lue ici pour ne pas casser ce qui l'importe (tests gelés, sondes),
-# et vaut 0 dans config/ranking.json : même réintroduite par erreur, elle serait inerte.
-ALPHA = config()["utilite"]["alpha"]
-SEUIL_PEU_PROPOSEE = config()["exploration"]["seuil_peu_proposee"]
-_UTILITE_CACHE = None
+# ---------------------------------------------------------------- usage → ranking loop
+# What has ALREADY served climbs. The recall log had existed for months and nobody read it
+# back: `inject_recall.py` opened it in "a" mode and nothing ever read it — 2.3% of the
+# suggested notes were actually opened, and nothing corrected that rate.
+# ⚠️ α IS NO LONGER A RANKING PARAMETER since 2026-09-19 (ADR-0018, M5).
+# It was one from 2026-08 to 2026-09-19: the score was bm25 × (1 + α·ln(1+hits)), and α
+# had been MEASURED, not picked — share of the top-3 held by notes with a history, over
+# 10 queries: α=0 → 3/30 · 0.2 → 8/30 · 0.5 → 12/30 · 1.0 → 15/30.
+# What closed the case was not the value but the instrument's RESOLUTION: under a 1 %
+# lexical gap — the only band where a tie-break would have the right to act — the order
+# flips one time in two when the corpus moves. In that band nothing tells service from
+# noise, so the bonus is unjustifiable there, not merely small.
+# The constant is still read here so as not to break what imports it (frozen tests,
+# probes), and defaults to 0: even reintroduced by mistake, it would be inert.
+ALPHA = config()["utility"]["alpha"]
+RARELY_SUGGESTED = config()["exploration"]["rarely_suggested_threshold"]
+_UTILITY_CACHE = None
 
 
-def _utilite():
-    """{chemin: {sugg, hit}} produit par recall_feedback.py. Chargé une fois par processus.
-    Absent = le rappel fonctionne exactement comme avant : jamais d'échec sur ce fichier."""
-    global _UTILITE_CACHE
-    if _UTILITE_CACHE is None:
+def _utility():
+    """{path: {sugg, hit}} produced by recall_feedback.py. Loaded once per process.
+    Absent = recall behaves exactly as before: this file never causes a failure."""
+    global _UTILITY_CACHE
+    if _UTILITY_CACHE is None:
         try:
-            with open(os.path.join(BRAIN, "state", "recall-utilite.json"), encoding="utf-8") as f:
-                _UTILITE_CACHE = json.load(f)
+            with open(os.path.join(BRAIN, "state", "recall-utility.json"), encoding="utf-8") as f:
+                _UTILITY_CACHE = json.load(f)
         except Exception:
-            _UTILITE_CACHE = {}
-    return _UTILITE_CACHE
+            _UTILITY_CACHE = {}
+    return _UTILITY_CACHE
 
 
-# ---------------------------------------------------------------- succession de fiches
-# `redirectsTo:` existait DÉJÀ dans le frontmatter (1 fiche) et n'était lu par PERSONNE :
-# une fiche fusionnée restait donc l'égale de celle qui la remplace dans le rappel, et
-# pouvait sortir devant elle. C'est la même relation que `relations.remplace` de
-# jardinage-regles §4 bis, vue de l'autre bout — on lit les deux plutôt que d'inventer
-# une convention concurrente.
-_FM_REMPL = re.compile(r"^\s+remplace\s*:\s*\[([^\]]*)\]", re.M)
+# ---------------------------------------------------------------- note succession
+# `redirectsTo:` ALREADY existed in the frontmatter (1 note) and was read by NOBODY: a
+# merged note therefore stayed the equal of the one replacing it in recall, and could come
+# out ahead of it. It is the same relation as `relations.replaces` in the gardening rules
+# §4 bis, seen from the other end — we read both rather than invent a competing convention.
+_FM_REPLACES = re.compile(r"^\s+replaces\s*:\s*\[([^\]]*)\]", re.M)
 
 
-def _entete(raw):
+def _header(raw):
     m = re.match(r"^---\n(.*?)\n---", raw, re.S)
     return m.group(1) if m else ""
 
 
-def _fm_champ(raw, champ):
-    m = re.search(rf"^\s*{champ}\s*:\s*[\"']?([^\"'\n]+)[\"']?\s*$", _entete(raw), re.M)
+def _fm_field(raw, field):
+    m = re.search(rf"^\s*{field}\s*:\s*[\"']?([^\"'\n]+)[\"']?\s*$", _header(raw), re.M)
     return m.group(1).strip() if m else None
 
 
-def _fm_remplace(raw):
-    m = _FM_REMPL.search(_entete(raw))
+def _fm_replaces(raw):
+    m = _FM_REPLACES.search(_header(raw))
     return [c.strip().strip("\"'") for c in m.group(1).split(",") if c.strip()] if m else []
 
 
-def _perimees(docs):
-    """Noms de fiches remplacées par une autre — retirées du rappel, jamais du disque.
-    On n'écarte QUE si la fiche qui succède est réellement présente dans l'index :
-    sinon une redirection cassée effacerait le savoir au lieu de le rediriger."""
-    presents = {d["name"] for d in docs}
-    morts = set()
+def _superseded(docs):
+    """Names of notes replaced by another — removed from recall, never from disk.
+    We only set one aside if the note that succeeds it is really present in the index:
+    otherwise a broken redirect would erase the knowledge instead of redirecting it."""
+    present = {d["name"] for d in docs}
+    dead = set()
     for d in docs:
-        if d.get("redirige_vers") and d["redirige_vers"] in presents:
-            morts.add(d["name"])                 # cette fiche-ci est un alias
-        for cible in d.get("remplace") or ():
-            if cible in presents and d["name"] in presents:
-                morts.add(cible)                 # cette fiche-ci en remplace une autre
-    return morts
+        if d.get("redirects_to") and d["redirects_to"] in present:
+            dead.add(d["name"])                  # this note is an alias
+        for target in d.get("replaces") or ():
+            if target in present and d["name"] in present:
+                dead.add(target)                 # this note replaces another one
+    return dead
 
 
 class BM25:
-    """Backend lexical v0 — Okapi BM25. Remplaçable par un backend embeddings."""
+    """Lexical backend — Okapi BM25. Swappable for an embeddings backend."""
     def __init__(self, docs, k1=None, b=None):
         cfg = config()["bm25"]
         k1 = cfg["k1"] if k1 is None else k1
@@ -470,12 +456,12 @@ class BM25:
         self.idf = {t: math.log(1 + (self.N - n + 0.5) / (n + 0.5)) for t, n in df.items()}
 
     def _contrib(self, i, t):
-        """Contribution BM25 du terme `t` au document `i`.
+        """BM25 contribution of term `t` to document `i`.
 
-        LA FORMULE N'EST ÉCRITE QU'ICI. Le classement servi et l'explication du score
-        appellent la même fonction : il est donc impossible que le rappel explique un
-        calcul et en serve un autre. Deux écritures de la même formule divergent toujours,
-        et la divergence ne se voit pas — cf. [[un-detecteur-partage-par-concept]].
+        THE FORMULA IS WRITTEN ONLY HERE. The ranking that is served and the explanation
+        of the score call the same function, so it is impossible for recall to explain one
+        calculation and serve another. Two writings of the same formula always drift, and
+        the drift is invisible.
         """
         f = self.tf[i].get(t, 0)
         if not f:
@@ -483,17 +469,17 @@ class BM25:
         denom = f + self.k1 * (1 - self.b + self.b * self.dl[i] / (self.avgdl or 1))
         return self.idf.get(t, 0) * (f * (self.k1 + 1)) / denom
 
-    def classer(self, query, k=5, feedback=True):
-        """Le classement AVEC sa décomposition — la source unique de search() et de --explain.
+    def rank(self, query, k=5, feedback=True):
+        """The ranking WITH its decomposition — the single source of search() and --explain.
 
-        Retourne une liste de dicts ordonnée, un par résultat retenu :
-          doc · bm25 · detail_bm25 · hits · dernier · facteur_utilite · score ·
-          exploration · rang
+        Returns an ordered list of dicts, one per kept result:
+          doc · bm25 · bm25_detail · hits · last · utility_factor · score ·
+          exploration · rank
 
-        Depuis M5 (ADR-0018) `score` EST `bm25` : `hits` et `dernier` sont des
-        annotations d'usage, servies à côté du résultat et jamais dedans.
+        Since M5 (ADR-0018) `score` IS `bm25`: `hits` and `last` are usage annotations,
+        served next to the result and never inside it.
 
-        `search()` n'en garde que (score, doc) pour ne rien casser chez ses appelants.
+        `search()` keeps only (score, doc) so its callers see no change.
         """
         q = tokenize(query)
         scored = []
@@ -505,141 +491,141 @@ class BM25:
                 scored.append((s, d, i))
         if not scored:
             return []
-        morts = _perimees(self.docs)
-        if morts:
-            vivants = [t for t in scored if t[1]["name"] not in morts]
-            scored = vivants or scored        # jamais de résultat vide à cause du filtre
-        util = _utilite() if feedback else {}
-        ajuste = []
+        dead = _superseded(self.docs)
+        if dead:
+            alive = [t for t in scored if t[1]["name"] not in dead]
+            scored = alive or scored          # never an empty result because of the filter
+        util = _utility() if feedback else {}
+        adjusted = []
         for s, d, i in scored:
-            # ADR-0018, mécanisme M5 — INSTALLÉ le 2026-09-19, décidé le 2026-08-30.
-            # L'usage ne multiplie plus, ne départage plus, ne sélectionne plus : le rang
-            # est le score lexical, et rien d'autre. `facteur_utilite` reste publié, figé
-            # à 1,0, parce que des instruments gelés lisent la clé (tools/admin-L1) ; il
-            # ne peut plus varier, donc il ne peut plus déplacer une fiche.
+            # ADR-0018, mechanism M5 — INSTALLED on 2026-09-19, decided on 2026-08-30.
+            # Usage no longer multiplies, breaks ties or selects: the rank is the lexical
+            # score, and nothing else. `utility_factor` stays published, frozen at 1.0,
+            # because frozen instruments read the key; it can no longer vary, so it can no
+            # longer move a note.
             u = util.get(d["path"], {})
-            ajuste.append({"doc": d, "idx": i, "bm25": s,
-                           "hits": u.get("hit", 0), "dernier": u.get("dernier"),
-                           "facteur_utilite": 1.0, "score": s,
-                           "exploration": False})
-        ajuste.sort(key=lambda r: r["score"], reverse=True)
+            adjusted.append({"doc": d, "idx": i, "bm25": s,
+                             "hits": u.get("hit", 0), "last": u.get("last"),
+                             "utility_factor": 1.0, "score": s,
+                             "exploration": False})
+        adjusted.sort(key=lambda r: r["score"], reverse=True)
 
-        def finir(retenues):
-            """Détail par terme calculé UNIQUEMENT sur les résultats retenus.
+        def finish(kept):
+            """Per-term detail computed ONLY on the kept results.
 
-            Le faire sur les centaines de fiches qui marquent un point coûterait à chaque
-            prompt pour une information que personne ne lit. C'est le même `_contrib`, donc
-            le détail ne peut pas raconter autre chose que le score.
+            Doing it for the hundreds of notes that score a point would cost on every
+            prompt for information nobody reads. It is the same `_contrib`, so the detail
+            cannot tell a different story from the score.
             """
-            for rang, r in enumerate(retenues, start=1):
-                r["rang"] = rang
-                r["detail_bm25"] = {t: round(self._contrib(r["idx"], t), 4)
+            for rank_, r in enumerate(kept, start=1):
+                r["rank"] = rank_
+                r["bm25_detail"] = {t: round(self._contrib(r["idx"], t), 4)
                                     for t in q if self._contrib(r["idx"], t) > 0}
-            return retenues
+            return kept
 
         if not util:
-            return finir(ajuste[:k])
+            return finish(adjusted[:k])
 
-        # QUOTA D'EXPLORATION — 1 place sur 3. Sans lui, la boucle s'auto-renforce : une
-        # fiche déjà ouverte remonte, donc elle est plus souvent proposée, donc plus
-        # souvent ouverte. Les fiches rares mais justes disparaîtraient du rappel sans
-        # que rien ne le signale. On réserve donc des places aux PEU proposées.
+        # EXPLORATION QUOTA — 1 slot in 3. Without it the loop reinforces itself: a note
+        # already opened climbs, so it is suggested more often, so it is opened more
+        # often. Rare but right notes would vanish from recall without anything ever
+        # reporting it. So we reserve slots for the SELDOM suggested.
         cfg_ex = config()["exploration"]
-        n_explo = k // int(cfg_ex["denominateur"])
-        seuil = cfg_ex["seuil_peu_proposee"]
-        retenues = ajuste[:k - n_explo]
-        deja = {id(r["doc"]) for r in retenues}
-        neuves = [r for r in ajuste[k - n_explo:]
-                  if id(r["doc"]) not in deja
-                  and util.get(r["doc"]["path"], {}).get("sugg", 0) < seuil]
-        for r in neuves[:n_explo]:
-            r["exploration"] = True               # cette place est due au quota, pas au score
-            retenues.append(r); deja.add(id(r["doc"]))
-        for r in ajuste[k - n_explo:]:            # pas assez de neuves : on complète normalement
-            if len(retenues) >= k:
+        n_explore = k // int(cfg_ex["denominator"])
+        threshold = cfg_ex["rarely_suggested_threshold"]
+        kept = adjusted[:k - n_explore]
+        seen = {id(r["doc"]) for r in kept}
+        fresh = [r for r in adjusted[k - n_explore:]
+                 if id(r["doc"]) not in seen
+                 and util.get(r["doc"]["path"], {}).get("sugg", 0) < threshold]
+        for r in fresh[:n_explore]:
+            r["exploration"] = True               # this slot is owed to the quota, not the score
+            kept.append(r); seen.add(id(r["doc"]))
+        for r in adjusted[k - n_explore:]:         # not enough fresh ones: fill in normally
+            if len(kept) >= k:
                 break
-            if id(r["doc"]) not in deja:
-                retenues.append(r); deja.add(id(r["doc"]))
-        return finir(retenues[:k])
+            if id(r["doc"]) not in seen:
+                kept.append(r); seen.add(id(r["doc"]))
+        return finish(kept[:k])
 
     def search(self, query, k=5, feedback=True):
-        """(score, doc) — la forme historique, pour ne rien casser chez les appelants."""
-        return [(r["score"], r["doc"]) for r in self.classer(query, k, feedback)]
+        """(score, doc) — the historic shape, so callers see no change."""
+        return [(r["score"], r["doc"]) for r in self.rank(query, k, feedback)]
 
 
-def _imprimer_explication(records, query, as_json):
-    """« Pourquoi cette fiche, et pourquoi à cette place ? »
+def _print_explanation(records, query, as_json):
+    """"Why this note, and why in this position?"
 
-    HONNÊTETÉ DU SCHÉMA. On n'invente pas de composantes qui n'existent pas dans le
-    calcul. Depuis M5 (ADR-0018, 2026-09-19) le score n'a plus qu'UNE composante, `bm25`.
-    L'usage a donc quitté `composantes` pour `usage` : le laisser parmi les composantes
-    à +0,00 aurait suggéré un terme qui vaut zéro aujourd'hui, alors qu'il n'existe plus.
-    De même :
-      • le pont des familles n'est PAS un terme du score : il est fondu dans le texte
-        indexé, donc dans `bm25`. On publie les mots de la requête qui viennent de lui,
-        ce qui répond à la vraie question (« cette fiche doit-elle sa place à ses propres
-        mots ou à ceux de sa famille ? ») sans fabriquer un chiffre.
-      • l'exploration n'est PAS un bonus numérique : c'est une PLACE réservée. On publie
-        un booléen, parce que c'est ce que c'est.
-    Publier `"family": 0.70` alors que rien dans le code ne calcule 0,70 serait une
-    explication fausse — pire qu'une absence d'explication, parce qu'on s'y fierait.
+    HONESTY OF THE SCHEMA. We do not invent components that do not exist in the
+    calculation. Since M5 (ADR-0018, 2026-09-19) the score has only ONE component, `bm25`.
+    Usage has therefore left `components` for `usage`: leaving it among the components at
+    +0.00 would have suggested a term worth zero today, when it no longer exists.
+    Likewise:
+      • the family bridge is NOT a term of the score: it is folded into the indexed text,
+        therefore into `bm25`. We publish which of the query's words came from it, which
+        answers the real question ("does this note owe its place to its own words or to
+        its family's?") without fabricating a number.
+      • exploration is NOT a numeric bonus: it is a RESERVED SLOT. We publish a boolean,
+        because that is what it is.
+    Publishing `"family": 0.70` when nothing in the code computes 0.70 would be a false
+    explanation — worse than no explanation, because it would be trusted.
     """
     cfg = config()
-    sortie = []
+    out = []
     for r in records:
         d = r["doc"]
-        pont = sorted(set(d.get("mots_pont") or []) & set(r["detail_bm25"]))
-        sortie.append({
-            "fiche": d["name"],
-            "chemin": d["path"],
-            "rang": r["rang"],
-            "score_final": round(r["score"], 4),
-            "composantes": {
+        bridge = sorted(set(d.get("bridge_words") or []) & set(r["bm25_detail"]))
+        out.append({
+            "note": d["name"],
+            "path": d["path"],
+            "rank": r["rank"],
+            "final_score": round(r["score"], 4),
+            "components": {
                 "bm25": round(r["bm25"], 4),
             },
             "usage": {
-                "ouvertures_apres_suggestion": r["hits"],
-                "derniere": r.get("dernier"),
+                "opens_after_suggestion": r["hits"],
+                "last": r.get("last"),
             },
             "nature": {
-                "utilite": "HORS CLASSEMENT (ADR-0018, M5) — annotation d'usage : "
-                           "elle décrit le résultat, elle ne le déplace jamais",
-                "pont_familles": "fondu dans bm25, jamais un terme séparé",
-                "exploration": "place réservée, jamais un bonus de score",
+                "utility": "OUT OF THE RANKING (ADR-0018, M5) — usage annotation: "
+                           "it describes the result, it never moves it",
+                "family_bridge": "folded into bm25, never a separate term",
+                "exploration": "reserved slot, never a score bonus",
             },
-            "detail_bm25": dict(sorted(r["detail_bm25"].items(),
+            "bm25_detail": dict(sorted(r["bm25_detail"].items(),
                                        key=lambda kv: kv[1], reverse=True)),
-            "mots_venus_du_pont": pont,
-            "place_exploration": r["exploration"],
+            "words_from_bridge": bridge,
+            "exploration_slot": r["exploration"],
             "config_version": cfg.get("version"),
         })
     if as_json:
-        print(json.dumps(sortie, ensure_ascii=False, indent=2))
+        print(json.dumps(out, ensure_ascii=False, indent=2))
         return
-    print(f"🔬 Décomposition du score pour « {query} »\n")
-    for e in sortie:
-        drapeau = "  ⟵ place d'exploration" if e["place_exploration"] else ""
-        print(f"  #{e['rang']}  [{e['score_final']:6.2f}] {e['fiche']}{drapeau}")
-        c, u = e["composantes"], e["usage"]
-        quand = f", dern. {u['derniere']}" if u["derniere"] else ""
-        print(f"        bm25 {c['bm25']:6.2f}   ← le rang, en entier")
-        print(f"        usage : {u['ouvertures_apres_suggestion']} ouverture(s) après "
-              f"suggestion{quand} — hors classement")
-        if e["detail_bm25"]:
-            termes = "  ".join(f"{t} {v:.2f}" for t, v in list(e["detail_bm25"].items())[:6])
-            print(f"        termes : {termes}")
-        if e["mots_venus_du_pont"]:
-            print(f"        ⚠️  doit au pont des familles : {', '.join(e['mots_venus_du_pont'])}")
+    print(f"🔬 Score breakdown for \"{query}\"\n")
+    for e in out:
+        flag = "  <- exploration slot" if e["exploration_slot"] else ""
+        print(f"  #{e['rank']}  [{e['final_score']:6.2f}] {e['note']}{flag}")
+        c, u = e["components"], e["usage"]
+        when = f", last {u['last']}" if u["last"] else ""
+        print(f"        bm25 {c['bm25']:6.2f}   <- the rank, in full")
+        print(f"        usage: {u['opens_after_suggestion']} open(s) after "
+              f"suggestion{when} — out of the ranking")
+        if e["bm25_detail"]:
+            terms = "  ".join(f"{t} {v:.2f}" for t, v in list(e["bm25_detail"].items())[:6])
+            print(f"        terms: {terms}")
+        if e["words_from_bridge"]:
+            print(f"        ⚠️  owes the family bridge: {', '.join(e['words_from_bridge'])}")
         print()
-    print(f"  config : {sortie[0]['config_version'] if sortie else '—'}"
+    print(f"  config: {out[0]['config_version'] if out else '—'}"
           f"  (config/ranking.json)")
 
 
 def main():
     args = [a for a in sys.argv[1:]]
 
-    # mode --semantic : délègue au backend embeddings (venv model2vec) s'il est dispo.
-    # Défaut = BM25 (instantané, meilleur que les embeddings statiques à petite échelle).
+    # --semantic mode: delegates to the embeddings backend (venv model2vec) when available.
+    # Default = BM25 (instant, and better than static embeddings at small scale).
     if "--semantic" in args:
         args.remove("--semantic")
         venv_py = os.path.join(BRAIN, ".venv", "bin", "python")
@@ -647,7 +633,7 @@ def main():
         if os.path.exists(venv_py) and os.path.exists(embed):
             import subprocess
             os.execv(venv_py, [venv_py, embed, "query"] + args)
-        # sinon : repli silencieux sur BM25
+        # otherwise: silent fallback on BM25
 
     as_json = "--json" in args
     if as_json:
@@ -655,9 +641,9 @@ def main():
     explain = "--explain" in args
     if explain:
         args.remove("--explain")
-    lignes = "--lignes" in args          # passages au lieu de descriptions (hooks/brain_lignes.py)
-    if lignes:
-        args.remove("--lignes")
+    lines = "--lines" in args            # passages instead of descriptions (hooks/brain_lignes.py)
+    if lines:
+        args.remove("--lines")
     k = 5
     if "-k" in args:
         i = args.index("-k")
@@ -667,41 +653,42 @@ def main():
             pass
     query = " ".join(args).strip()
     if not query:
-        print('Usage : brain_recall.py [-k N] [--json] [--explain] [--lignes] "ta requête"'); sys.exit(1)
+        print('Usage: brain_recall.py [-k N] [--json] [--explain] [--lines] "your query"'); sys.exit(1)
 
-    if lignes:
+    engine = BM25(load_corpus())
+    if lines:
         import brain_lignes
-        moteur = BM25(load_corpus())
-        res = moteur.classer(query, max(k, brain_lignes.REGLAGES["k"]))
+        res = engine.rank(query, max(k, brain_lignes.REGLAGES["k"]))
         if not res:
-            print(f"Aucune fiche pertinente pour : {query}"); return
-        print(brain_lignes.rendre(moteur, tokenize, query, res), end="")
+            print(f"No relevant note for: {query}"); return
+        print(brain_lignes.rendre(engine, tokenize, query, res), end="")
         return
-
     if explain:
-        _imprimer_explication(BM25(load_corpus()).classer(query, k), query, as_json)
+        records = engine.rank(query, k)
+        if not records:
+            print(f"No relevant note for: {query}"); return
+        _print_explanation(records, query, as_json)
         return
-
-    # `classer` et non `search` : depuis M5 (ADR-0018) l'usage est une ANNOTATION servie à
-    # côté du résultat, et `search` ne rend que (score, doc) — elle la perdrait. Elle n'est
-    # affichée QUE si la fiche a déjà été ouverte : une ligne « 0 ouverture » sur chaque
-    # résultat serait du texte relu à chaque échange pour ne rien dire (sobriété en octets).
-    # Le format compact injecté (`--lignes`) ne la porte pas, pour la même raison.
-    results = BM25(load_corpus()).classer(query, k)
+    # `rank` and not `search`: since M5 (ADR-0018) usage is an ANNOTATION served next to
+    # the result, and `search` returns only (score, doc) — it would lose it. It is shown
+    # ONLY if the note has already been opened: a "0 opens" line on every result would be
+    # text re-read on every exchange to say nothing (byte sobriety). The compact injected
+    # format (`--lines`) does not carry it, for the same reason.
+    results = engine.rank(query, k)
     if as_json:
         print(json.dumps([{"path": r["doc"]["path"], "name": r["doc"]["name"],
                            "desc": r["doc"]["desc"], "score": round(r["score"], 3),
-                           "usage": {"ouvertures_apres_suggestion": r["hits"],
-                                     "derniere": r.get("dernier")}}
+                           "usage": {"opens_after_suggestion": r["hits"],
+                                     "last": r.get("last")}}
                           for r in results], ensure_ascii=False, indent=2))
         return
     if not results:
-        print(f"Aucune fiche pertinente pour : {query}"); return
-    print(f"🔎 Top {len(results)} pour « {query} » :\n")
+        print(f"No relevant note for: {query}"); return
+    print(f"🔎 Top {len(results)} for '{query}':\n")
     for r in results:
         d = r["doc"]
-        quand = f", dern. {r['dernier']}" if r.get("dernier") else ""
-        usage = f"   · déjà ouverte {r['hits']}×{quand}" if r["hits"] else ""
+        when = f", last {r['last']}" if r.get("last") else ""
+        usage = f"   · already opened {r['hits']}x{when}" if r["hits"] else ""
         print(f"  [{r['score']:5.2f}] {d['name']}  ({d['path']}){usage}")
         if d["desc"]:
             print(f"          {d['desc'][:110]}")

@@ -1,49 +1,48 @@
 #!/usr/bin/env python3
-"""robots_permissions — ce qu'un robot du Brain a le droit de faire, robot par robot.
+"""robots_permissions — what a Brain robot is allowed to do, robot by robot.
 
-POURQUOI CE FICHIER EXISTE (décidé le 2026-09-14, écrit le 2026-09-15)
-    Les deux lanceurs de robots (`auto_maintain.py`, `brain_upkeep.py`) passaient
-    `--dangerously-skip-permissions` : aucune commande n'était jamais refusée à un robot.
-    C'est ce qui a rendu possibles les portes, le `git reset --hard` du 08/09 et le
-    `--no-verify` du 09/09. Le verrou du pre-commit n'en voit qu'un geste sur trois.
-    Condition 1 et 2 de la levée du gel : tools/REPRISE-2026-09-14-reouverture-et-sobriete.md,
-    section 7.
+WHY THIS FILE EXISTS (decided on 2026-09-14, written on 2026-09-15)
+    The two robot launchers (`auto_maintain.py`, `brain_upkeep.py`) passed
+    `--dangerously-skip-permissions`: no command was ever refused to a robot.
+    That is what made possible the lost work, the `git reset --hard` of 08/09 and the
+    `--no-verify` of 09/09. The pre-commit lock only sees one gesture in three.
+    Conditions 1 and 2 for lifting the freeze.
 
-LE PRINCIPE : AUTORISER, PAS INTERDIRE
-    Une liste noire se contourne par une autre orthographe. Ici, tout ce qui n'est pas
-    nommé est refusé par Claude lui-même, avant exécution :
-      · `--restricted` retire Bash sauf si `--tools` le nomme, ignore les réglages
-        utilisateur (donc leurs éventuelles règles d'autorisation), refuse le passe-droit
-        et protège les fichiers git et de réglages ;
-      · `--permission-prompts none` : personne ne peut dire oui, tout ce qui demanderait
-        une permission est refusé ;
-      · chaque robot reçoit ses chemins d'écriture et ses commandes EXACTES.
-    Aucune écriture git n'est autorisée à aucun robot : les commits sont faits par du code,
-    lancé par le shell après eux. Depuis le 2026-09-19 ce code est
-    `tools/revendication/revendiquer.py`, qui ne commite QUE les fichiers écrits par les
-    robots de la passe — leur propre journal d'actions fait foi. `commit_par_zone.py` reste
-    le repli du paquet livré, où `tools/` n'est pas distribué.
+THE PRINCIPLE: ALLOW, DO NOT FORBID
+    A blacklist is bypassed by another spelling. Here, everything that is not
+    named is refused by Claude itself, before execution:
+      · `--restricted` removes Bash unless `--tools` names it, ignores the user's
+        settings (and so any permission rules they hold), refuses the free pass
+        and protects git and settings files;
+      · `--permission-prompts none`: nobody can say yes, everything that would ask
+        for a permission is refused;
+      · each robot gets its EXACT write paths and commands.
+    No git write is allowed to any robot: commits are made by code, launched by the
+    shell after them. On the author's trunk that code is a claim script that commits
+    ONLY the files written by the robots of the pass — their own action journal is
+    authoritative. `commit_par_zone.py` remains the fallback of the shipped package,
+    where that script is not distributed.
 
-CE QUE `--restricted` COUPE, ET CE QU'ON REND
-    Il ignore ~/.claude/settings.json en entier. Deux choses doivent donc être rendues :
-      · les définitions d'agents (`--agent jardinier` n'est plus trouvé) → `--agents`,
-        lues depuis ~/.claude/agents/<nom>.md ;
-      · le hook `on_fiche_write.py`, qui masque les secrets écrits par un robot → `--settings`.
-    Les autres hooks (rappel injecté, battement, capsule, lab) visent une session humaine
-    et ne sont pas rendus.
+WHAT `--restricted` CUTS, AND WHAT IS GIVEN BACK
+    It ignores ~/.claude/settings.json entirely. So two things must be given back:
+      · the agent definitions (`--agent <name>` is no longer found) → `--agents`,
+        read from ~/.claude/agents/<name>.md;
+      · the `on_fiche_write.py` hook, which masks secrets written by a robot → `--settings`.
+    The other hooks (injected recall, heartbeat, capsule, lab) target a human session
+    and are not given back.
 
-MESURÉ LE 2026-09-15, dans un dépôt jetable (haiku, 4 centimes)
-    Refusés : `git reset --hard`, `ok.py && git reset --hard`, `ok.py; rm state/FREEZE`,
-    `ok.py $(rm state/FREEZE)`, `python3 -c …`, `mv state/FREEZE …`, Edit d'un hook,
-    Write dans .git/hooks. Passés : la commande autorisée, l'écriture dans lessons/, la
-    lecture d'un dossier ajouté. Dépôt vérifié ensuite : HEAD, FREEZE et hook intacts.
+MEASURED ON 2026-09-15, in a throwaway repository (haiku, 4 cents)
+    Refused: `git reset --hard`, `ok.py && git reset --hard`, `ok.py; rm state/FREEZE`,
+    `ok.py $(rm state/FREEZE)`, `python3 -c …`, `mv state/FREEZE …`, Edit of a hook,
+    Write into .git/hooks. Allowed: the permitted command, the write into lessons/, the
+    read of an added folder. Repository checked afterwards: HEAD, FREEZE and hook intact.
 
-CE QUE ÇA CHANGE POUR LES ROBOTS
-    Un robot ne peut plus déplacer ni renommer une fiche (il faudrait `mv` ou `git mv`) :
-    il le PROPOSE dans state/a-valider.md. Il n'écrit plus MEMORY.md : la place d'une fiche
-    dans la carte se propose aussi (ADR-0015). Il ne peut plus toucher hooks/, tools/, tests/,
-    skills/, agents/, ni meta/ depuis le 2026-09-16 (les règles et le vocabulaire du rappel). Il n'appelle plus brain_recall.py, qui compterait ses lectures comme
-    des ouvertures humaines.
+WHAT IT CHANGES FOR THE ROBOTS
+    A robot can no longer move or rename a note (that would take `mv` or `git mv`):
+    it PROPOSES it in state/a-valider.md. It no longer writes MEMORY.md: a note's place
+    on the map is proposed too (ADR-0015). It can no longer touch hooks/, tools/, tests/,
+    skills/, agents/, nor meta/ since 2026-09-16 (the rules and the recall vocabulary).
+    It no longer calls brain_recall.py, which would count its reads as human openings.
 """
 import json
 import os
@@ -52,62 +51,63 @@ import re
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 AGENTS = os.path.expanduser("~/.claude/agents")
 SETTINGS = os.path.expanduser("~/.claude/settings.json")
+# Same key as archive_session._transcripts_key(): BOTH "/" and "." become "-", or a
+# home like /Users/john.smith never finds its transcripts.
 TRANSCRIPTS = os.path.join(os.path.expanduser("~/.claude/projects"),
-                           os.path.expanduser("~").replace(os.sep, "-"))
+                           os.path.expanduser("~").replace("/", "-").replace(".", "-"))
 
-# Où le savoir s'écrit. Chemins relatifs au dossier de travail du robot, qui est le Brain.
-# PAS MEMORY.md (2026-09-15) : ADR-0015 veut chaque entrée de carte validée par un humain, et le
-# pre-commit refuse tout commit tant que la carte et son manifeste divergent. Un robot qui range
-# dans la carte bloquerait donc tous les enregistrements. Il propose, dans state/a-valider.md.
-# PAS meta/ (décision de l'auteur, 2026-09-16, après la passe adverse du 15/09 21 h) : ce dossier
-# porte les règles que suivent les sessions (meta/jardinage-regles.md, « source de vérité » du
-# jardinier) et le vocabulaire du moteur de rappel (meta/familles.json, lu par brain_recall.py
-# et index_lecons.py). Un robot qui l'écrit change ce que toutes les sessions retrouvent, ou
-# réécrit sa propre loi. Une retouche de meta/ se propose dans state/a-valider.md.
+# Where knowledge is written. Paths relative to the robot's working folder, which is the Brain.
+# NOT MEMORY.md (2026-09-15): ADR-0015 wants every map entry validated by a human, and the
+# pre-commit refuses any commit while the map and its manifest diverge. A robot filing into
+# the map would therefore block every save. It proposes, in state/a-valider.md.
+# NOT meta/ (the author's decision, 2026-09-16, after the adversarial pass of 15/09 9 pm): that
+# folder holds the rules sessions follow (meta/jardinage-regles.md, the gardener's "source of
+# truth") and the recall engine's vocabulary (meta/familles.json, read by brain_recall.py
+# and index_lecons.py). A robot writing it changes what every session finds, or
+# rewrites its own law. A change to meta/ is proposed in state/a-valider.md.
 SAVOIR = ["projects/**", "lessons/**", "life/**", "state/a-valider.md"]
 
-# Les pulses de la capsule : les définitions d'agents les écrivent sous deux formes.
+# The capsule's pulses: agent definitions write them in two forms.
 PULSES = ["python3 hooks/brain_status.py *", "python3 ~/.c-brain/trunk/hooks/brain_status.py *"]
 
-# LA FAMILLE EST CE QU'ON APPELLE ; LA MISSION EST CE QU'ON FAIT (2026-09-20).
-# Les huit rôles d'origine n'ont pas disparu : chacun garde ses outils, sa zone d'écriture et
-# ses commandes. Ce qui change, c'est la surface : Claude Code ne voit plus que quatre
-# vaisseaux (`agents/<famille>.md`), et la mission voyage dans la consigne. Les noms sont des
-# noms propres — ADR-0013, « un identifiant interne ne se traduit jamais » : c'est précisément
-# la traduction de `distillateur` en `distiller` qui avait rendu cinq agents introuvables le
-# 19/08. cf. projects/claude-brain/renommage-agents-familles-2026-09-20.md
+# THE SHIP IS WHAT YOU CALL; THE MISSION IS WHAT IT DOES (2026-09-20).
+# The eight original roles have not gone away: each keeps its tools, its write zone and
+# its commands. What changes is the surface: Claude Code only sees four
+# ships (`agents/<ship>.md`), and the mission travels in the instruction. Ship names are
+# proper nouns and are never translated (ADR-0013, "an internal identifier is never
+# translated"). Mission names are the English ones throughout this package: the agent
+# files' `## MISSION — <mission>` headings, the launchers and this table all use them.
 FAMILLE = {
-    "mecanicien": "nostromo",   "machiniste": "nostromo",
-    "distillateur": "narcissus", "jardinier": "narcissus",
-    "challenger": "sulaco", "architecte": "sulaco", "archiviste": "sulaco",
-    "synthetiseur": "anesidora",
+    "mechanic": "nostromo",   "machinist": "nostromo",
+    "distiller": "narcissus", "gardener": "narcissus",
+    "challenger": "sulaco", "architect": "sulaco", "archivist": "sulaco",
+    "synthesizer": "anesidora",
 }
-
 ROBOTS = {
-    "distillateur": {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
+    "distiller": {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
                      "lance": ["python3 hooks/index_lecons.py"], "lit_aussi": [TRANSCRIPTS]},
-    "jardinier":    {"outils": "Read,Edit,Write,Grep,Glob,Bash",
+    "gardener":  {"outils": "Read,Edit,Write,Grep,Glob,Bash",
                      "ecrit": SAVOIR + ["state/a-classer.md", "state/coherence.json"],
                      "lance": ["python3 hooks/brain_doctor.py --json",
                                "python3 hooks/brain_utility.py --json",
                                "python3 hooks/index_lecons.py"]},
-    "architecte":   {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR, "lance": []},
+    "architect": {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR, "lance": []},
     "challenger":   {"outils": "Read,Write,Edit,Grep,Glob,Bash", "ecrit": ["state/challenges.json"],
                      "lance": []},
-    "archiviste":   {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
+    "archivist": {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
                      "lance": ["python3 hooks/brain_utility.py --json"]},
-    "mecanicien":   {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
+    "mechanic":  {"outils": "Read,Edit,Write,Grep,Glob,Bash", "ecrit": SAVOIR,
                      "lance": ["python3 hooks/brain_doctor.py --json"]},
 }
 
 
 def definition(mission):
-    """La définition envoyée à Claude Code pour CETTE mission, au format attendu par --agents.
+    """The definition sent to Claude Code for THIS mission, in the format --agents expects.
 
-    Le fichier lu est celui de la FAMILLE ; le prompt rendu est l'en-tête commun du vaisseau
-    plus la SEULE section `## MISSION — <mission>`. Envoyer le fichier entier coûterait les
-    autres missions à chaque réveil — le NARCISSUS pèse 31 Ko pour 19 Ko de distillation —
-    et la sobriété se mesure en octets envoyés."""
+    The file read is the SHIP's; the prompt returned is the ship's common header
+    plus ONLY the `## MISSION — <mission>` section. Sending the whole file would cost the
+    other missions on every wake-up — NARCISSUS weighs 31 KB for 19 KB of distillation —
+    and sobriety is measured in bytes sent."""
     famille = FAMILLE[mission]
     texte = open(os.path.join(AGENTS, f"{famille}.md"), encoding="utf-8").read()
     m = re.match(r"---\n(.*?)\n---\n(.*)", texte, re.S)
@@ -116,15 +116,15 @@ def definition(mission):
     parts = re.split(r"^## MISSION — (\S+)\s*$", corps, flags=re.M)
     commun, sections = parts[0], dict(zip(parts[1::2], parts[2::2]))
     if mission not in sections:
-        raise KeyError(f"{famille}.md ne porte pas de section « ## MISSION — {mission} »")
+        raise KeyError(f"{famille}.md carries no section '## MISSION — {mission}'")
     return {"description": desc.group(1).strip() if desc else famille,
             "prompt": commun.rstrip() + f"\n\n## MISSION — {mission}\n" + sections[mission],
             "tools": ROBOTS[mission]["outils"].split(",")}
 
 
 def hooks_rendus(brain=BRAIN):
-    """Le seul hook rendu aux robots : on_fiche_write (masquage des secrets), pris tel quel
-    dans les réglages de l'utilisateur, avec le chemin du Brain réécrit si on tourne sur une copie."""
+    """The only hook given back to the robots: on_fiche_write (secret masking), taken as is
+    from the user's settings, with the Brain's path rewritten when running on a copy."""
     reel = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
     try:
         groupes = json.load(open(SETTINGS, encoding="utf-8")).get("hooks", {}).get("PostToolUse", [])
@@ -140,11 +140,11 @@ def hooks_rendus(brain=BRAIN):
 
 
 def drapeaux(mission, brain=BRAIN):
-    """Les options à placer après `claude -p --model … --output-format json`, prompt APRÈS.
+    """The options to place after `claude -p --model … --output-format json`, prompt AFTER.
 
-    `--agent` vient en dernier exprès : `--allowedTools` et `--add-dir` avalent tous les
-    arguments qui suivent, prompt compris, tant qu'une autre option ne les ferme pas
-    (constaté le 2026-09-15 : « Input must be provided »)."""
+    `--agent` comes last on purpose: `--allowedTools` and `--add-dir` swallow every
+    argument that follows, prompt included, until another option closes them
+    (seen on 2026-09-15: "Input must be provided")."""
     r = ROBOTS[mission]
     famille = FAMILLE[mission]
     autorise = (["Read", "Grep", "Glob"]

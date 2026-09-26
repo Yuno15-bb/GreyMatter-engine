@@ -1,24 +1,35 @@
 #!/usr/bin/env python3
 """
-Hook SessionEnd du C Brain — maintenance AUTONOME complète (phase 2).
-À la fin d'une session, en arrière-plan détaché, enchaîne :
-  1. DISTILLER  : le distillateur extrait les fiches durables de la session finie
-  2. RANGER     : le jardinier vide l'Inbox, déduplique, affine, optimise
-  3. COMMIT     : versionné
+SessionEnd hook — the full AUTONOMOUS maintenance pass.
+At the end of a session, detached in the background, it chains:
+  1. DISTILL    : the distiller extracts the durable notes from the finished session
+  2. FILE       : the gardener works the a-classer queue, deduplicates, refines, optimizes
+  3. COMMIT     : versioned
 
-Remplace maybe_garden.py (qui ne faisait que ranger). Ici on distille AUSSI,
-automatiquement, sans rien déclencher à la main.
+Replaces maybe_garden.py (which only filed). Here we ALSO distil,
+automatically, without triggering anything by hand.
 
-Garde-fous quotas/boucles :
-  - anti-récursion : CLAUDE_BRAIN_GARDENING=1 (le headless ne se relance pas)
+Quota and loop safeguards:
+  - recursion guard: CLAUDE_BRAIN_GARDENING=1 (the headless run does not restart itself)
   - une distillation MAX par session (marqueur sessions/.distilled.json)
-  - sessions triviales ignorées (< MIN_MSG messages)
-  - ne spawn que s'il y a du travail (session substantielle non distillée OU Inbox pleine)
-  - détaché : ne bloque jamais la fermeture de session
+  - trivial sessions ignored (< MIN_MSG messages)
+  - spawns only when there is work (a substantial undistilled session OR notes waiting in state/a-classer.md)
+  - detached: never blocks the session from closing
 
 Sort toujours 0.
 """
 import os, sys, re, json, time, glob, shutil, subprocess
+
+def _transcripts_key() -> str:
+    """The folder name Claude Code uses for this HOME, under ~/.claude/projects.
+
+    It encodes the absolute home path by replacing BOTH "/" and "." with "-".
+    Replacing only "/" works for a plain account name and breaks silently for a
+    home like /Users/john.smith: the transcripts folder is never found, so
+    distillation runs and finds nothing to do. No error, no signal.
+    """
+    return os.path.expanduser("~").replace("/", "-").replace(".", "-")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     from brain_status import write_status
@@ -32,50 +43,48 @@ except Exception:
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 SESS = os.path.join(BRAIN, "sessions")
-INDEX = os.path.join(SESS, ".index.json")          # écrit par archive_session.py
-DISTILLED = os.path.join(SESS, ".distilled.json")  # sessions déjà distillées
+INDEX = os.path.join(SESS, ".index.json")          # written by archive_session.py
+DISTILLED = os.path.join(SESS, ".distilled.json")  # sessions already distilled
 LOG = os.path.join(SESS, "gardening.log")
-A_CLASSER = os.path.join(BRAIN, "state", "a-classer.md")   # fiches pas encore dans la carte
-# ⚠ LE NOM DU DOSSIER VIENT DU DOSSIER D'OÙ LA SESSION A ÉTÉ OUVERTE, PAS DE $HOME,
-#   et la nuance n'est pas théorique : mesuré le 2026-09-20, `~/.claude/projects/` porte
-#   HUIT dossiers, et celui que cette ligne construit n'en contient que 155 transcripts
-#   sur 733. Le commentaire d'origine disait « $HOME avec / -> - » — c'est vrai tant que
-#   l'auteur ouvre ses sessions depuis son dossier personnel, et faux le jour où il en ouvre
-#   une depuis ~/.c-brain/trunk. Ne JAMAIS coder le nom d'utilisateur en dur non plus
-#   (cf. [[restauration-machine-2026-07-22]]). Ce chemin reste le PREMIER endroit où
-#   regarder, parce qu'il répond dans le cas courant sans lister quoi que ce soit ;
-#   `transcript_for` prend le relais quand il ne répond pas.
+A_CLASSER = os.path.join(BRAIN, "state", "a-classer.md")   # notes not yet in the map
+# ⚠ THE FOLDER NAME COMES FROM THE FOLDER THE SESSION WAS OPENED FROM, NOT FROM $HOME,
+#   and the nuance is not theoretical: measured on 2026-09-20, `~/.claude/projects/` held
+#   EIGHT folders, and the one this line builds held only 155 transcripts out of 733.
+#   "$HOME with / -> -" is true as long as the author opens their sessions from their home
+#   folder, and false the day they open one from ~/.c-brain/trunk. NEVER hard-code the
+#   user name either (cf. a machine restore, July 2026). This path stays the FIRST
+#   place to look, because it answers the common case without listing anything;
+#   `transcript_for` takes over when it does not answer.
 PROJECTS_ROOT = os.path.expanduser("~/.claude/projects")
-TRANSCRIPTS = os.path.join(PROJECTS_ROOT, os.path.expanduser("~").replace(os.sep, "-"))
+TRANSCRIPTS = os.path.join(PROJECTS_ROOT, _transcripts_key())
 
 
 def transcript_for(sid):
-    """Le transcript de CETTE session-là, cherché dans TOUS les dossiers de projet.
+    """The transcript of THAT session, searched for in EVERY project folder.
 
-    Rend le chemin, ou None — jamais un chemin qui n'existe pas : « je n'ai pas trouvé »
-    et « voilà un fichier » sont deux réponses différentes, et l'appelant qui reçoit un
-    chemin inexistant le passe tel quel au distillateur, qui lit alors le vide sans le
-    dire. C7 (2026-09-20) : c'est exactement ce que faisait la reprise d'une session
-    différée — elle transportait le chemin de la session EN COURS sous l'identifiant de
-    la session REPRISE."""
+    Returns the path, or None — never a path that does not exist: "I did not find it" and
+    "here is a file" are two different answers, and a caller handed a missing path passes
+    it as-is to the distiller, which then reads nothing without saying so. C7 (2026-09-20):
+    that is exactly what resuming a deferred session did — it carried the CURRENT session's
+    path under the RESUMED session's id."""
     if not sid:
         return None
     direct = os.path.join(TRANSCRIPTS, f"{sid}.jsonl")
     if os.path.exists(direct):
         return direct
-    ailleurs = sorted(glob.glob(os.path.join(PROJECTS_ROOT, "*", f"{sid}.jsonl")))
-    return ailleurs[0] if ailleurs else None
-MANUAL_SAVES = os.path.join(BRAIN, "state", "manual-saves.jsonl")  # ledger posé par on_fiche_write
-MIN_MSG = 20  # en dessous : session triviale, pas de distillation
+    elsewhere = sorted(glob.glob(os.path.join(PROJECTS_ROOT, "*", f"{sid}.jsonl")))
+    return elsewhere[0] if elsewhere else None
+MANUAL_SAVES = os.path.join(BRAIN, "state", "manual-saves.jsonl")  # ledger written by on_fiche_write
+MIN_MSG = 20  # below this: a trivial session, no distillation
 
 def inbox_has_work():
-    """Des fiches attendent leur place dans la carte. Depuis le 2026-09-15 la file vit dans
-    state/a-classer.md, plus dans MEMORY.md (voir on_fiche_write.py, section 2)."""
+    """Notes are waiting for their place in the map. Since 2026-09-15 the queue lives in
+    state/a-classer.md, no longer in MEMORY.md (see on_fiche_write.py, section 2)."""
     try:
-        file = open(A_CLASSER, encoding="utf-8").read()
+        queue = open(A_CLASSER, encoding="utf-8").read()
     except Exception:
         return False
-    return bool(re.search(r'^\s*-\s*\[', file, re.M))
+    return bool(re.search(r'^\s*-\s*\[', queue, re.M))
 
 def load_json(path, default):
     try:
@@ -85,8 +94,8 @@ def load_json(path, default):
 
 
 def manual_saves_for(sid):
-    """Fiches de savoir écrites À LA MAIN pendant la session `sid` (ledger posé par on_fiche_write).
-    Sert à dire au distillateur de NE PAS recréer ce que Claude a déjà enregistré (anti-redondance).
+    """Knowledge notes written BY HAND during session `sid` (ledger written by on_fiche_write).
+    Used to tell the distiller NOT to recreate what has already been recorded (anti-redundancy).
     Best-effort : ledger absent/illisible → liste vide (le distillateur tourne normalement)."""
     out = []
     if not sid:
@@ -106,89 +115,87 @@ def manual_saves_for(sid):
         pass
     return out
 
-# La capsule prouve qu'elle a une FENÊTRE en touchant state/capsule-alive toutes
-# les 5 s (cf. capsule/main.js). Chercher un PROCESS ne prouve rien : le
-# 2026-08-13, un Electron vieux de deux jours sans fenêtre s'est fait prendre
-# pour une capsule ouverte, et bloquait donc son propre remplacement à chaque
-# démarrage de session — silencieusement, puisque l'écriture du statut marchait.
-# ⚠️ ANCRÉ SUR BRAIN — corrigé le 2026-09-20 (C bis, C3). Ce motif était un fragment de
-#   chemin ÉCRIT EN DUR ("claude-brain/capsule/…"), donc juste dans un seul arbre. Le
-#   paquet publié porte "c-brain/trunk/capsule/…", qui vise l'INSTALLÉ (~/.c-brain/trunk)
-#   et ne matche ni ~/c-brain ni le plan de travail ~/c-brain-fr : là, pgrep rend 0 sur une
-#   capsule bien vivante, on conclut « rien ne tourne » et on en relance une par-dessus.
-#   Calibré le 2026-09-20 DANS LES DEUX SENS (cf. pkill-motif-approximatif-mesure-une-
-#   instance-perimee) : 4 pids quand la capsule de CE tronc tourne, rc=1 pour un tronc
-#   voisin qui n'en a pas. Le chemin absolu interdit en plus de prendre la capsule d'un
-#   AUTRE arbre pour la sienne.
+# The capsule proves it has a WINDOW by touching state/capsule-alive every 5 s
+# (cf. capsule/main.js). Looking for a PROCESS proves nothing: on 2026-08-13 a
+# two-day-old Electron with no window was taken for an open capsule, and so
+# blocked its own replacement at every session start — silently, since writing
+# the status still worked perfectly.
+# ⚠️ ANCHORED ON BRAIN — fixed on 2026-09-20 (C bis, C3). This pattern used to be a path
+#   fragment WRITTEN IN HARD ("c-brain/trunk/capsule/…"), so right in one tree only: it
+#   aims at the INSTALLED trunk (~/.c-brain/trunk) and matches no other checkout — there,
+#   pgrep returns nothing on a capsule that is very much alive, we conclude "nothing is
+#   running" and start another one on top. Calibrated on 2026-09-20 IN BOTH DIRECTIONS
+#   (cf. pkill-motif-approximatif-mesure-une-instance-perimee): 4 pids when THIS trunk's
+#   capsule runs, rc=1 for a neighbouring trunk that has none. The absolute path also
+#   forbids taking ANOTHER tree's capsule for our own.
 MOTIF_CAPSULE = os.path.join(BRAIN, "capsule", "node_modules", "electron")
-BATTEMENT_MAX = 60          # 12 battements manqués : on ne réagit pas sur un hoquet
-GRACE_DEMARRAGE = 90        # une capsule qui vient de partir n'a pas encore battu
+HEARTBEAT_MAX = 60          # 12 missed beats: we do not react to a hiccup
+STARTUP_GRACE = 90          # a capsule that just started has not beaten yet
 
 
-def _age_process(pid):
-    """Secondes depuis le lancement du process, ou None si illisible.
+def _process_age(pid):
+    """Seconds since the process started, or None when unreadable.
 
-    ⚠ `etimes` (secondes brutes) est une extension GNU : macOS ne la connaît PAS
-    et `ps` répond en imprimant sa LISTE DE MOTS-CLÉS, sur sa sortie standard et
-    en code 0. Un `int(out)` échoue donc silencieusement, `_age_process` renvoyait
-    None pour tout le monde, et le contrôle de zombie répondait « vivante »
-    quoi qu'il arrive — un garde-fou mort-né. On lit `etime`, portable, et on le
-    parse : [[jj-]hh:]mm:ss."""
+    ⚠ `etimes` (raw seconds) is a GNU extension: macOS does NOT know it, and `ps`
+    answers by printing its LIST OF KEYWORDS, on stdout, with exit code 0. So an
+    `int(out)` fails silently, `_process_age` returned None for everyone, and the
+    zombie check answered "alive" no matter what — a stillborn guard. We read
+    `etime`, which is portable, and parse it: [[dd-]hh:]mm:ss."""
     try:
         out = subprocess.run(["ps", "-p", str(pid), "-o", "etime="],
                              capture_output=True, text=True, timeout=5).stdout.strip()
-        if not out or " " in out:            # sortie inattendue (liste de mots-clés)
+        if not out or " " in out:            # unexpected output (keyword list)
             return None
-        jours, _, reste = out.rpartition("-")
-        parts = [int(x) for x in reste.split(":")]
+        days, _, rest = out.rpartition("-")
+        parts = [int(x) for x in rest.split(":")]
         while len(parts) < 3:
             parts.insert(0, 0)
         h, m, sec = parts[-3:]
-        return (int(jours or 0) * 86400) + h * 3600 + m * 60 + sec
+        return (int(days or 0) * 86400) + h * 3600 + m * 60 + sec
     except Exception:
         return None
 
 
-def capsule_vivante(pids):
-    """True si une FENÊTRE bat. Sinon le process est un zombie à remplacer.
+def capsule_alive(pids):
+    """True when a WINDOW is beating. Otherwise the process is a zombie to replace.
 
-    ⚠ Deux prudences, sans quoi ce contrôle tuerait des capsules saines :
-      · un battement absent sur un process JEUNE n'est pas un zombie, c'est un
-        démarrage en cours (GRACE_DEMARRAGE) ;
-      · en cas de doute — âge illisible, erreur d'accès — on répond VIVANTE.
-        Un faux zombie relance une capsule pour rien ; un faux vivant, lui, ne
-        coûte qu'un tour de plus. Le doute ne doit pas tuer."""
+    ⚠ Two cautions, without which this check would kill healthy capsules:
+      · a missing beat on a YOUNG process is not a zombie, it is a startup in
+        progress (STARTUP_GRACE);
+      · in doubt — unreadable age, access error — we answer ALIVE. A false zombie
+        restarts a capsule for nothing; a false alive only costs one more round.
+        Doubt must not kill."""
     try:
         alive = os.path.join(BRAIN, "state", "capsule-alive")
         if not os.path.exists(alive):
-            # ⚠ AUCUN battement n'a JAMAIS été écrit. Ce n'est pas un zombie, c'est
-            #   une capsule qui ne sait pas battre. Deux cas réels :
-            #     · une capsule jamais lancée depuis l'installation ;
-            #     · une capsule d'une version ANTÉRIEURE à l'émetteur — le paquet
-            #       public a longtemps porté ce contrôle sans lui (`capsule/main.js`
-            #       n'est pas synchronisé ; l'émetteur y a été porté à la main le
-            #       2026-08-13, mais une install plus vieille tourne encore sans).
-            #   Sans ce garde, ces capsules-là seraient déclarées mortes passé le
-            #   délai de grâce et tuées en boucle à chaque passage.
-            #   On ne juge que ce qui a DÉJÀ battu puis s'est tu.
+            # ⚠ NO beat has EVER been written. This is not a zombie, it is a
+            #   capsule that cannot beat. Two real cases:
+            #     · a capsule never launched since the install;
+            #     · a capsule from a version PREDATING the emitter — the public
+            #       package long carried this check without it (`capsule/main.js`
+            #       is not synced; the emitter was ported into it by hand on
+            #       2026-08-13, but an older install still runs without one).
+            #   Without this guard, those capsules would be declared dead past the
+            #   grace delay and killed in a loop, every single pass.
+            #   We only judge what has ALREADY beaten and then gone quiet.
             return True
-        if time.time() - os.path.getmtime(alive) < BATTEMENT_MAX:
+        if time.time() - os.path.getmtime(alive) < HEARTBEAT_MAX:
             return True
-        ages = [a for a in (_age_process(p) for p in pids) if a is not None]
+        ages = [a for a in (_process_age(p) for p in pids) if a is not None]
         if not ages:
-            return True                      # illisible → on ne touche à rien
-        return min(ages) < GRACE_DEMARRAGE   # jeune → il démarre, pas un zombie
+            return True                      # unreadable → we touch nothing
+        return min(ages) < STARTUP_GRACE     # young → starting up, not a zombie
     except Exception:
         return True
 
 
 def ensure_capsule():
-    """Ouvre la capsule Tamagotchi si elle n'est pas déjà en cours (réveil des agents).
+    """Opens the capsule if it is not already running (the agents are waking up).
 
-    Mode léger : si le fichier state/no-capsule existe, on ne relance rien.
-    La capsule (Electron + son helper GPU) est le plus gros consommateur CPU
-    de la machine au repos ; sur un MacBook Air sans ventilateur elle force
-    WindowServer à recomposer l'écran en continu."""
+    Light mode: if the file state/no-capsule exists, nothing is launched.
+    The capsule (Electron + its GPU helper) is the machine's biggest CPU consumer
+    at rest; on a fanless MacBook Air it forces
+    WindowServer to recompose the screen continuously."""
     try:
         if os.path.exists(os.path.join(BRAIN, "state", "no-capsule")):
             return
@@ -196,32 +203,30 @@ def ensure_capsule():
         elec = os.path.join(cap, "node_modules", ".bin", "electron")
         if not os.path.exists(elec):
             return
-        # le vrai process tourne sous .../node_modules/electron/dist/... (le .bin/electron
-        # n'est qu'un symlink), donc on matche le chemin du projet, pas le symlink.
+        # the real process runs under .../node_modules/electron/dist/... (.bin/electron
+        # is only a symlink), so we match the project's path, not the symlink.
         r = subprocess.run(["pgrep", "-f", MOTIF_CAPSULE],
                            capture_output=True, text=True)
-        # ⚠️ UNE SORTIE VIDE N'EST PAS UNE MESURE. pgrep rend 0 quand il trouve,
-        #   1 quand il ne trouve rien, et 2 ou plus quand il a ÉCHOUÉ (option
-        #   refusée, motif illisible) — dans ce dernier cas stdout est vide lui
-        #   aussi, et rien ne distingue « aucune capsule » de « je n'ai pas pu
-        #   regarder ». Conclure ici relancerait une capsule par-dessus une
-        #   capsule vivante. On ne conclut pas.
+        # ⚠️ AN EMPTY OUTPUT IS NOT A MEASUREMENT. pgrep returns 0 when it finds, 1 when it
+        #   finds nothing, and 2 or more when it FAILED (option refused, unreadable
+        #   pattern) — in that last case stdout is empty too, and nothing tells "no
+        #   capsule" from "I could not look". Concluding here would start a capsule on
+        #   top of a live one. We do not conclude.
         if r.returncode >= 2:
             return
         if r.stdout.strip():
-            if capsule_vivante(r.stdout.split()):
-                return                       # vraiment ouverte : une fenêtre bat
-            # ZOMBIE : le process vit, sa fenêtre non. On le remplace au lieu de
-            # le prendre pour une capsule saine — c'est ce qui l'a laissée
-            # invisible deux jours le 2026-08-13.
+            if capsule_alive(r.stdout.split()):
+                return                       # really open: a window is beating
+            # ZOMBIE: the process lives, its window does not. We replace it rather
+            # than take it for a healthy capsule — that is what left the author's
+            # orb invisible for two days on 2026-08-13.
             subprocess.run(["pkill", "-f", MOTIF_CAPSULE], capture_output=True)
             time.sleep(1)
-        env = dict(os.environ)
-        # 24/09 soir : l'orbe quitte l'encoche (L'utilisateur : « retire l'orbe de
-        # l'encoche, on garde la pastille »). Ce qui démarre est la pastille de
-        # la barre de menus (capsule/ilot.js), qui bat sur capsule-alive comme
-        # l'orbe. L'orbe reste lançable à la main : CAPSULE_SOLO=1 electron .
-        subprocess.Popen([elec, "ilot.js"], cwd=cap, env=env,
+        # 09/24 evening: the orb leaves the notch (the author: keep the pill, drop the orb
+        # from the notch). What starts is the menu-bar pill (capsule/ilot.js), which beats
+        # on capsule-alive like the orb. The orb can still be started by hand:
+        # CAPSULE_SOLO=1 electron .
+        subprocess.Popen([elec, "ilot.js"], cwd=cap,
                          stdin=subprocess.DEVNULL,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True)
@@ -229,23 +234,24 @@ def ensure_capsule():
         pass
 
 def session_msg_count(sid, transcript_path=None):
-    """Nombre de messages, ou None si on ne PEUT PAS le mesurer.
+    """Message count, or None if it CANNOT be measured.
 
-    C7 (2026-08-19) : ce compteur reconstruisait le chemin depuis expanduser("~")
-    et ignorait le `transcript_path` que Claude Code fournit dans la charge utile
-    du hook. Une session ouverte depuis un AUTRE dossier — typiquement ~/.c-brain/trunk
-    lui-même — retombait alors sur 0, donc sous MIN_MSG, donc jamais distillée, en
-    silence. Balayage rétrospectif : 87 sessions de 20 à 221 messages perdues ainsi.
+    C7 (2026-08-19): this counter rebuilt the path from expanduser("~") and ignored the
+    `transcript_path` Claude Code provides in the hook's payload. A session opened from
+    ANOTHER folder — typically ~/.c-brain/trunk itself — then fell back to 0, so under
+    MIN_MSG, so never distilled, silently. Retrospective sweep: 87 sessions of 20 to 221
+    messages lost that way.
 
-    L'ordre d'autorité est désormais : index → transcript_path fourni → chemin
-    reconstruit (compatibilité). Et un échec rend **None**, jamais 0 : « 0 message
-    mesuré » et « impossible de mesurer » sont deux états différents, et seul le
-    premier a le droit d'entrer dans la comparaison avec MIN_MSG."""
+    The order of authority is now: index → provided transcript_path → rebuilt path
+    (compatibility). And a failure returns **None**, never 0: "0 messages measured" and
+    "impossible to measure" are two different states, and only the first has the right
+    to enter the comparison with MIN_MSG."""
     idx = load_json(INDEX, {})
     if sid in idx and isinstance(idx[sid], dict):
         n = idx[sid].get("n", 0)
         if n:
             return n
+    # silent index (hook race) → count directly in the raw transcript
     for path in [p for p in (transcript_path, transcript_for(sid)) if p]:
         try:
             with open(path, "rb") as f:
@@ -255,30 +261,30 @@ def session_msg_count(sid, transcript_path=None):
     return None
 
 def launch_agent(sid, n, to_distill, transcript_path=None):
-    """Lance le headless de maintenance (distill+jardin OU jardin seul) et le câble
-    à brain_guard. Suppose que le verrou est DÉJÀ pris par l'appelant.
-    Réutilisé par le SessionEnd (main) et par l'auto-reprise (resume_pending)."""
+    """Launches the headless maintenance run (distill+garden OR garden only) and wires it
+    to brain_guard. Assumes the caller ALREADY holds the lock.
+    Reused by SessionEnd (main) and by the auto-resume (resume_pending)."""
     claude = shutil.which("claude")
     if not claude:
         # `claude` introuvable — cas typique sous launchd (PATH minimal /usr/bin:/bin, sans
-        # ~/.local/bin). L'appelant (resume_pending) a DÉJÀ dé-filé la session : si on rend juste
-        # le lock, elle est perdue (jamais distillée) → garantie « zéro perte » violée. On la
-        # RÉ-ENFILE avant de rendre le lock ; un SessionEnd interactif (PATH complet) la rejouera.
+        # ~/.local/bin). The caller (resume_pending) has ALREADY dequeued the session: releasing
+        # the lock alone would lose it (never distilled) → the "zero loss" guarantee broken. We
+        # RE-QUEUE it before releasing the lock; an interactive SessionEnd (full PATH) will replay it.
         if guard is not None:
             if to_distill and sid:
                 guard.enqueue(sid)
             guard.release_lock()
         return
 
-    ensure_capsule()  # la capsule s'ouvre au réveil des agents
+    ensure_capsule()  # the capsule opens as the agents wake
 
-    # ARCHITECTURE SANS PARENT (optimisation « zéro perte ») : on n'instancie PLUS
+    # PARENTLESS ARCHITECTURE: we no longer instantiate an orchestrating
     # un LLM parent qui se contente d'orchestrer en spawnant deux sous-agents — ce
-    # parent ne faisait aucun travail intellectuel mais relisait à chaque tour les
-    # résultats remontés des sous-agents (gros cache_read pur gâchis). Désormais le
-    # shell séquence directement DEUX appels `claude -p --agent …` (le distillateur
-    # PUIS le jardinier), et fait lui-même les pulses capsule + le commit (mécaniques,
-    # zéro LLM). Même travail, même qualité, un contexte LLM en moins.
+    # parent did no intellectual work but re-read, on every turn, the results
+    # returned by the sub-agents (a large cache_read, pure waste). Now the
+    # shell sequences TWO `claude -p --agent …` calls directly (the distiller
+    # THEN the gardener), and performs the capsule pulses and the commit itself (mechanical,
+    # zero LLM). Same work, same quality, one LLM context less.
     py = sys.executable
     status_cli = os.path.join(os.path.dirname(os.path.abspath(__file__)), "brain_status.py")
     mark_cli = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mark_distilled.py")
@@ -292,37 +298,37 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
     cost = os.path.join(BRAIN, "sessions", "cost.jsonl")
     transcript = transcript_path or transcript_for(sid) or os.path.join(TRANSCRIPTS, f"{sid}.jsonl")
 
-    # Les tâches : l'appel EST l'agent (via --agent), donc plus de « lance le
-    # sous-agent X » — on lui donne directement sa mission. Consigne anti-gâchis :
-    # ne pas relire un fichier déjà lu, ne pas committer (le shell s'en charge).
+    # The tasks: the call IS the agent (via --agent), so no more "launch
+    # sub-agent X" — we hand it its mission directly. Anti-waste instruction:
+    # do not re-read a file already read, do not commit (the shell handles it).
     distill_task = (
-        f"Une session vient de se terminer (id={sid}, {n} messages, "
-        f"transcript: {transcript}, note d'archive éventuelle dans sessions/archive/). "
-        "Extrais les fiches/leçons DURABLES uniquement. ÉCONOMIE DE TOKENS IMPÉRATIVE : "
-        "NE lis PAS le transcript en entier ; base-toi sur la note d'archive, au besoin "
-        "grep + lis au plus ~60 lignes ciblées. Ne relis JAMAIS un fichier déjà lu. "
-        "Si rien ne mérite de rester, ne crée rien. NE committe PAS (le shell s'en charge). "
-        "Sois concis dans ton rapport."
+        f"A session has just ended (id={sid}, {n} messages, "
+        f"transcript: {transcript}, plus any archive note in sessions/archive/). "
+        "Extract only the DURABLE notes and lessons. TOKEN ECONOMY IS MANDATORY: "
+        "Do NOT read the whole transcript; rely on the archive note, and if needed "
+        "grep and read at most ~60 targeted lines. NEVER re-read a file already read. "
+        "If nothing deserves to stay, create nothing. Do NOT commit (the shell handles it). "
+        "Keep your report short."
     )
-    # ANTI-REDONDANCE (option B) : les fiches que Claude a déjà écrites À LA MAIN pendant la session
-    # ne doivent pas être recréées par le distillateur (sinon doublon transitoire + tokens gâchés). On
-    # le lui dit explicitement ; il garde le filet pour le savoir NON sauvé.
+    # ANTI-REDUNDANCY: notes already written BY HAND during the session
+    # must not be recreated by the distiller (otherwise a transient duplicate and wasted tokens). We
+    # tell it explicitly; it keeps the safety net for knowledge NOT saved.
     already = manual_saves_for(sid)
     if already:
         distill_task += (
-            " IMPORTANT — Claude a DÉJÀ écrit/affiné ces fiches à la main pendant cette session : "
+            " IMPORTANT — these notes were ALREADY written or refined by hand during this session: "
             + ", ".join(already) +
-            ". NE LES RECRÉE PAS ; complète-les seulement s'il manque vraiment quelque chose, et "
-            "n'extrais que le savoir DURABLE qu'elles ne couvrent pas encore."
+            ". DO NOT RECREATE THEM; only complete them if something is genuinely missing, and "
+            "extract only the DURABLE knowledge they do not already cover."
         )
     garden_task = (
-        "Traite la file state/a-classer.md : pour une LEÇON, pose son champ tags: puis lance "
-        "python3 hooks/index_lecons.py ; pour toute autre fiche, écris dans state/a-valider.md "
-        "la section de MEMORY.md où elle devrait aller, sans toucher MEMORY.md (ADR-0015 : "
-        "la carte est validée par un humain). Retire ensuite sa ligne de state/a-classer.md. "
-        "Déduplique, répare/tisse les liens [[...]] dans les fiches, masque tout secret, affine. "
-        "Ne relis pas inutilement un fichier déjà lu. NE committe PAS (le shell s'en "
-        "charge). Sois concis dans ton rapport."
+        "Process the state/a-classer.md queue: for a LESSON, set its tags: field then run "
+        "python3 hooks/index_lecons.py; for any other note, write in state/a-valider.md "
+        "the MEMORY.md section it should go to, without touching MEMORY.md (ADR-0015: "
+        "the map is validated by a human). Then remove its line from state/a-classer.md. "
+        "Deduplicate, repair and weave the [[...]] links in the notes, mask any secret, refine. "
+        "Do not needlessly re-read a file already read. Do NOT commit (the shell "
+        "handles it). Keep your report short."
     )
 
     env = dict(os.environ)
@@ -347,12 +353,12 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
             guard.release_lock()
         return
 
-    # Modèle PAR AGENT. Le distillateur est le seul étage créatif de la couche 1 : son
-    # échec perd du savoir définitivement (le jardinage, lui, est mécanique et rejouable).
-    # D'où sonnet pour distiller, haiku pour ranger. cf. brain_upkeep.MODEL, même logique.
-    MODEL_L1 = {"distillateur": "sonnet", "jardinier": "haiku"}
-    # Plus de passe-droit depuis le 2026-09-15 : chaque robot n'a que ses outils nommés,
-    # voir robots_permissions.py. Si les droits ne se construisent pas, on ne lance rien.
+    # Model PER AGENT. The distiller is the only creative stage of layer 1: its
+    # failure loses knowledge permanently (gardening is mechanical and replayable).
+    # Hence sonnet to distil, haiku to file. Same logic as brain_upkeep.MODEL.
+    MODEL_L1 = {"distiller": "sonnet", "gardener": "haiku"}
+    # No more free pass since 2026-09-15: each robot has only its named tools, see
+    # robots_permissions.py. If the permissions cannot be built, nothing is launched.
     try:
         import shlex
         from robots_permissions import drapeaux
@@ -364,173 +370,134 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
         return
     base = lambda m: f'"{claude}" -p --model {m} --output-format json'
     pulse = lambda act, det: f'"{py}" "{status_cli}" busy {act} "{det}"'
-    # SAUVEGARDE MÉCANIQUE (pas de LLM), câblée ici le 2026-08-13.
-    # Avant : `git add -A` + un commit fourre-tout. C'est ce `add -A` qui a noyé
-    # 19 fichiers d'un chantier en cours dans e61fd01 (03/08), et 612 commits de
-    # ce type dorment dans l'historique. On commite désormais ZONE PAR ZONE : le
-    # hook pre-commit du tronc refuse déjà les commits mixtes, on s'appuie dessus
-    # au lieu de le contourner.
-    # DEUX LIGNES, ET LA SÉPARATION EST DÉLIBÉRÉE :
-    #   · `commit_par_zone` est LIVRÉ — il commite en LOCAL, chez tout le monde.
-    #   · `tools/sync_depots.py` n'existe QUE chez l'auteur (`tools/` n'est pas
-    #     dans la liste blanche de sync.sh). Lui pousse, et mesure le paquet
-    #     public. Un utilisateur qui a mis un dépôt distant sur son tronc n'a
-    #     jamais demandé que ses notes y partent à chaque fin de session — donc
-    #     le paquet ne contient AUCUN push, et l'absence du fichier suffit à ce
-    #     que la ligne ne fasse rien là-bas.
-    # ⚠️ CE QUE `--auto` FAIT A CHANGÉ LE 2026-08-15. Il poussait le tronc privé
-    # et se contentait de MESURER le paquet public ; il pousse désormais aussi la
-    # branche `fr` du paquet, via le plan de travail ~/c-brain-fr.
-    # Pourquoi c'était bloqué, et pourquoi ça ne l'est plus : l'obstacle n'était
-    # pas le risque mais un fait matériel — le dépôt de l'auteur vit sur `main`,
-    # `sync.sh` refuse d'y tourner, et l'automatisme aurait été un no-op qui a
-    # l'air branché. Le worktree lui donne un endroit où le garde-fou de branche
-    # est DÉJÀ satisfait ; il n'est ni forcé ni contourné.
-    # Ce qui n'a PAS bougé : le leakcheck reste la seule barrière et il décide
-    # (rouge = rien ne part) ; le tag et `main` restent des gestes humains.
-    # Voir le docstring de sync_depots.py, section « DEUX MODES ».
-    # ── SÉLECTION PAR REVENDICATION — câblée le 2026-09-19 ────────────────────
-    # `commit_par_zone` sélectionne « tout ce qui est modifié dans la zone », donc il
-    # emporte le travail non commité des sessions voisines : mesuré en production le
-    # 2026-09-15, 40 fichiers commités dont 13 seulement écrits par un robot.
-    # La chaîne ne commite désormais que ce que SES robots ont écrit, lu dans leur
-    # propre transcript, plus les dérivés régénérés à part et les archives machine.
-    # Qualifié par sabotage : tools/revendication/banc.py, 9/9 au vert contre 2/9
-    # pour l'ancienne sélection (contre-épreuve `--ancien`, rejouée le 19/09).
-    # ⚠️ REPLI ASSUMÉ : `tools/` n'est pas dans le paquet livré. Là où le module est
-    # absent, on retombe sur l'ancien producteur — un tronc qui ne commite plus rien
-    # serait pire que la sélection large, et chez un utilisateur seul il n'y a pas de
-    # session voisine à absorber.
-    revendiquer = f"{BRAIN}/tools/revendication/revendiquer.py"
-    instantane_rev = f"{BRAIN}/state/revendication.json"
-    depots = (f'if [ -f "{revendiquer}" ]; then\n'
-              f'  "{py}" "{revendiquer}" commite --instantane "{instantane_rev}" '
-              f'|| true\n'
-              f'else\n'
-              f'  "{py}" "{BRAIN}/hooks/commit_par_zone.py" || true\n'
-              f'fi\n'
-              f'[ -f "{BRAIN}/tools/sync_depots.py" ] && '
-              f'"{py}" "{BRAIN}/tools/sync_depots.py" --auto || true')
+    # MECHANICAL save (no LLM), wired here on 2026-08-13.
+    # Before: `git add -A` plus one catch-all commit. That `add -A` is what
+    # drowned 19 files of work in progress in e61fd01 (03/08), and 612 commits of
+    # that kind sleep in the history. We now commit ZONE BY ZONE: the trunk's
+    # pre-commit hook already refuses mixed commits, so we lean on it instead of
+    # working around it.
+    # TWO LINES, AND THE SPLIT IS DELIBERATE:
+    #   · `commit_par_zone` SHIPS — it commits LOCALLY, on everyone's machine.
+    #   · `tools/sync_depots.py` exists ONLY on the author's machine (`tools/` is
+    #     not in sync.sh's whitelist). That one pushes, and measures the public
+    #     package. A user who put a remote on their trunk never asked for their
+    #     notes to leave at every session end — so the package contains NO push
+    #     at all, and the file simply being absent is enough for the line to do
+    #     nothing there.
+    save = (f'"{py}" "{BRAIN}/hooks/commit_par_zone.py" || true\n'
+            f'[ -f "{BRAIN}/tools/sync_depots.py" ] && '
+            f'"{py}" "{BRAIN}/tools/sync_depots.py" --auto || true')
 
-    # Garde anti-faux-positif (crash OS / SIGKILL du binaire `claude` AVANT d'écrire) :
-    # `interpret` lit la DERNIÈRE ligne de cost.jsonl. Si claude meurt sans rien écrire,
-    # cette dernière ligne est celle du run PRÉCÉDENT (peut-être un succès) → fausse
-    # réussite → session marquée distillée sans l'être → savoir perdu. Parade : on compte
-    # les lignes avant l'appel ; si aucune n'a été ajoutée, on injecte une ligne d'erreur
-    # synthétique → `interpret` voit bien CE run, échoue, et ré-enfile la session.
+    # False-positive guard (OS crash / SIGKILL of the `claude` binary BEFORE it writes):
+    # `interpret` reads the LAST line of cost.jsonl. If claude dies without writing,
+    # that last line belongs to the PREVIOUS run (possibly a success) → a false
+    # success → the session is marked distilled without being → knowledge lost. Fix: we count
+    # the lines before the call; if none was added, we inject a synthetic error line
+    # → `interpret` sees THIS run, fails, and re-queues the session.
     sentinel = ('{"is_error":true,'
                 '"result":"claude exited without writing output (SIGKILL/crash?)"}')
     nlines = f"$(awk 'END{{print NR}}' \"{cost}\" 2>/dev/null || echo 0)"
 
     def agent_call(agent, pf):
-        # JOURNAL PAR MISSION (20/09/2026). brain_status.journal_agent n'était appelé que
-        # par brain_upkeep : la couche 2. Or la couche 1 est la plus sollicitée des deux —
-        # le distillateur et le jardinier tournent à chaque fin de session — et elle part
-        # par un shell, pas par Python. Résultat mesuré : state/agents.jsonl ne contenait
-        # que des lignes du challenger, et tout affichage par agent aurait déclaré
-        # « jamais vu » les deux qui travaillent le plus. `|| true` partout : un journal
-        # best-effort ne doit jamais faire tomber une passe de maintenance.
+        # PER-MISSION JOURNAL (09/20/2026). brain_status.journal_agent was only called by
+        # brain_upkeep: layer 2. Yet layer 1 is the busier of the two — the distiller and
+        # the gardener run at every session end — and it leaves through a shell, not
+        # through Python. Measured result: state/agents.jsonl held only the challenger's
+        # lines, and any per-agent display would have declared the two hardest workers
+        # "never seen". `|| true` everywhere: a best-effort journal must never bring a
+        # maintenance pass down.
         jr = f'"{py}" "{status_cli}" journal {agent}'
-        modele = MODEL_L1.get(agent, "haiku")
+        model = MODEL_L1.get(agent, "haiku")
         return [
             f'__N0={nlines}',
-            f'__T0=$(date +%s)',
-            f'{jr} debut couche=1 modele={modele} >/dev/null 2>&1 || true',
-            f'{base(modele)} {droits[agent]} "$(cat {pf})" '
+            '__T0=$(date +%s)',
+            f'{jr} start layer=1 model={model} >/dev/null 2>&1 || true',
+            f'{base(model)} {droits[agent]} "$(cat {pf})" '
             f'>> "{cost}" 2>> "{LOG}"',
             f'if [ "{nlines}" -le "$__N0" ]; then '
             f"printf '%s\\n' '{sentinel}' >> \"{cost}\"; fi",
-            f'{jr} fin couche=1 modele={modele} '
-            f'duree_s=$(( $(date +%s) - $__T0 )) >/dev/null 2>&1 || true',
+            f'{jr} end layer=1 model={model} '
+            f'duration_s=$(( $(date +%s) - $__T0 )) >/dev/null 2>&1 || true',
         ]
 
     lines = []
-    # HEARTBEAT capsule : pendant toute la passe, un fond rafraîchit `ts` toutes les 5 s
-    # (un appel `claude -p` dure des minutes sans réécrire le statut → sans ça la capsule
-    # clignote en idle au milieu du travail). Borné à 600 itér. (~50 min) en sécurité au
-    # cas où le kill final n'aurait pas lieu, et tué explicitement juste avant `idle`.
+    # Capsule HEARTBEAT: throughout the pass, a background loop refreshes `ts` every 5 s
+    # (a `claude -p` call lasts minutes without rewriting the status → without this the capsule
+    # would flicker to idle mid-work). Bounded to 600 iterations (~50 min) as a safety net in
+    # case the final kill never happens, and killed explicitly just before `idle`.
     lines.append(f'( __i=0; while [ $__i -lt 600 ]; do "{py}" "{status_cli}" touch '
                  f'>/dev/null 2>&1; sleep 5; __i=$((__i+1)); done ) & __HB=$!')
-    # L'INSTANTANÉ SE PREND AVANT QUE LES ROBOTS PARTENT. Il photographie ce qui était
-    # déjà modifié dans l'arbre partagé — donc ce qui appartient peut-être à une autre
-    # session — et il donne au veto son point de comparaison. Pris après, il ne
-    # distinguerait plus le brouillon d'un voisin de l'écriture d'un robot.
-    # La photo porte elle-même sa borne de lecture de cost.jsonl : seules les sessions
-    # enregistrées APRÈS elle sont des robots de CETTE passe. Compter ces lignes ici,
-    # dans un second `awk`, aurait fait deux sources pour un seul nombre.
-    lines.append(f'[ -f "{revendiquer}" ] && "{py}" "{revendiquer}" instantane '
-                 f'"{instantane_rev}" >/dev/null 2>&1 || true')
     if to_distill:
-        # 1) DISTILLER directement via --agent distillateur, puis interpréter le
-        #    résultat (df=1 : ré-enfile la session si « Not logged in »/quota/crash).
-        #    Le jardinage n'a lieu que si la distillation a RÉELLEMENT réussi.
+        # 1) DISTIL directly through --agent distiller, then interpret the
+        #    result (df=1: re-queue the session on "Not logged in"/quota/crash).
+        #    Gardening happens only if distillation REALLY succeeded.
         lines.append(pulse("distilling", "Distilling this session"))
-        lines += agent_call("distillateur", dpf)
+        lines += agent_call("distiller", dpf)
         lines.append(f'if "{py}" "{guard_cli}" interpret "{cost}" "{sid}" 1 ; then')
         lines.append(f'  "{py}" "{mark_cli}" "{sid}"')
         lines.append(f'  {pulse("gardening", "Organizing the tree")}')
-        lines += ['  ' + l for l in agent_call("jardinier", gpf)]
+        lines += ['  ' + l for l in agent_call("gardener", gpf)]
         lines.append('fi')
     else:
-        # Jardinage seul (Inbox pleine, pas de session à distiller).
+        # Gardening alone (notes waiting to be filed, no session to distil).
         lines.append(pulse("gardening", "Organizing the tree"))
-        lines += agent_call("jardinier", gpf)
+        lines += agent_call("gardener", gpf)
         lines.append(f'"{py}" "{guard_cli}" interpret "{cost}" "{sid}" 0')
-    # GARDE MÉCANIQUE post-jardinier (zéro LLM) : le jardinier est seul juge de sa propre
-    # passe. brain_doctor recompte les défauts (liens morts, orphelins, frontmatter,
-    # hors-carte, taille de MEMORY) JUSTE APRÈS lui, et trace le verdict dans gardening.log. Il ne corrige
-    # rien — le mécanicien s'en charge plus tard, via son capteur. Ici on veut seulement
-    # qu'une passe de jardinage qui dégrade l'arbre soit VISIBLE tout de suite, au lieu
-    # d'attendre jusqu'à 12 h le prochain réveil du mécanicien.
+    # MECHANICAL guard after the gardener (zero LLM): the gardener is the sole judge of its own
+    # pass. brain_doctor recounts the defects (dead links, orphans, front matter,
+    # off-map, MEMORY size) RIGHT AFTER it, and records the verdict in gardening.log. It fixes
+    # nothing — the mechanic handles that later, through its sensor. Here we only want
+    # a gardening pass that degrades the tree to be VISIBLE immediately, instead of
+    # waiting up to 12 h for the mechanic's next wake-up.
     lines.append(f'"{py}" "{doctor_cli}" --json >/dev/null 2>&1')
     lines.append(
         f'''__D=$("{py}" -c 'import json;print(json.load(open("{BRAIN}/state/doctor.json"))["total"])' 2>/dev/null || echo -1); '''
         f'''if [ "$__D" != "0" ]; then echo "[doctor] $(date '+%F %T') post-jardinage: $__D defaut(s)" >> "{LOG}"; fi''')
-    # SECONDE COUCHE (veille de cohésion) : après distill+jardin, régénère les capteurs
-    # mécaniques (gratuit) et réveille AU PLUS un agent de veille (challenger / architecte
-    # / archiviste) si son seuil est franchi et son cooldown respecté. brain_upkeep gère
-    # seul priorité, cadence et coût (best-effort, ne perd aucune donnée s'il échoue).
-    # brain_upkeep pulse lui-même l'activité capsule de l'agent qu'il réveille (ou rien).
+    # SECOND LAYER (cohesion watch): after distill+garden, regenerates the mechanical
+    # sensors (free) and wakes AT MOST one watch agent (challenger / architect
+    # / archivist) if its threshold is crossed and its cooldown elapsed. brain_upkeep handles
+    # priority, cadence and cost on its own (best effort, loses no data if it fails).
+    # brain_upkeep pulses the capsule activity of the agent it wakes (or nothing).
     lines.append(f'"{py}" "{upkeep_cli}" run "{sid}"')
-    # F4/O2 — rafraîchit l'index sémantique du recall (brain_embed `build` est
-    # INCRÉMENTAL : il ne réencode que les fiches dont le contenu a changé, via hash).
-    # Coût quasi nul, zéro LLM (modèle d'embeddings local), et le recall reste à jour
-    # au lieu de tourner sur un index périmé. Placé après distill+jardin pour indexer
-    # les fiches fraîches, juste avant le commit. IMPORTANT : brain_embed a besoin de
-    # numpy/model2vec → on l'invoque avec le python du .venv (le python système des
-    # hooks ne les a pas) ; absent → on saute silencieusement (|| true).
+    # Refreshes the semantic recall index (brain_embed `build` is
+    # INCREMENTAL: it re-encodes only the notes whose content changed, by hash).
+    # Near-zero cost, zero LLM (a local embeddings model), and recall stays current
+    # instead of running on a stale index. Placed after distill+garden to index
+    # the fresh notes, just before the commit. IMPORTANT: brain_embed needs
+    # numpy/model2vec → we invoke it with the .venv python (the system python of
+    # hooks lacks them); absent → skipped silently (|| true).
     venv_py = os.path.join(BRAIN, ".venv", "bin", "python")
     if os.path.exists(venv_py):
-        # HF_HUB_OFFLINE=1 : le modèle d'embeddings est déjà en cache local → on évite
-        # un aller-retour réseau HF Hub à chaque passe (plus rapide, marche hors-ligne).
-        # ⚠️ `|| true` TOUT SEUL A CACHÉ CE DÉFAUT PENDANT UN MOIS. Il faut que la chaîne
-        # continue — l'indexation sémantique est optionnelle, elle ne doit pas empêcher le
-        # commit — mais « continuer » et « ne rien dire » sont deux choses différentes. Un
-        # échec ici ne laissait pas UNE ligne dans le journal, et la Planète continuait
-        # d'annoncer « proximité = sens, toutes les fiches » (C bis A7, mesuré le 2026-09-19).
-        # Un refus qui s'annonce est un résultat ; un refus muet est un mensonge différé.
+        # HF_HUB_OFFLINE=1: the embeddings model is already cached locally → we avoid
+        # a network round trip to the HF Hub on every pass (faster, works offline).
+        # ⚠️ `|| true` ALONE HID THIS DEFECT FOR A MONTH. The chain must go on — semantic
+        # indexing is optional, it must not prevent the commit — but "going on" and
+        # "saying nothing" are two different things. A failure here left not ONE line in
+        # the log, and the Planet kept announcing "proximity = meaning, every note"
+        # (C bis A7, measured on 2026-09-19). A refusal that announces itself is a result;
+        # a silent refusal is a deferred lie.
         lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed_cli}" build >> "{LOG}" 2>&1'
-                     f' || echo "⚠️  index de RAPPEL sémantique non reconstruit'
-                     f' (brain_embed build a échoué)" >> "{LOG}"')
-        # Étage 1 — recalcule la carte SÉMANTIQUE (state/embed2.json) à partir de l'index frais,
-        # puis régénère planet/graph.json pour que la vue « sens » (touche S) reflète le contenu courant.
+                     f' || echo "⚠️  semantic RECALL index not rebuilt (brain_embed build failed)"'
+                     f' >> "{LOG}"')
+        # Recompute the SEMANTIC map (state/embed2.json) from the fresh index,
+        # then regenerate planet/graph.json so the "meaning" view (key S) reflects current content.
         lines.append(f'HF_HUB_OFFLINE=1 "{venv_py}" "{embed2_cli}" >> "{LOG}" 2>&1'
-                     f' || echo "⚠️  CARTE sémantique non recalculée (brain_embed2 a échoué) —'
-                     f' la planète garde les positions précédentes et le dit" >> "{LOG}"')
+                     f' || echo "⚠️  semantic MAP not recomputed (brain_embed2 failed) —'
+                     f' the planet keeps the previous positions and says so" >> "{LOG}"')
     else:
-        # Le cas LÉGITIME, dit à voix haute. Les embeddings sont optionnels par dessein
-        # (docs/design-doc.md) ; ce qui ne l'est pas, c'est qu'un tronc sans eux ressemble en
-        # tout point à un tronc dont le calcul a échoué.
-        lines.append(f'echo "· module sémantique non installé (.venv absent) — BM25 seul,'
-                     f' la planète montre la structure" >> "{LOG}"')
-    # Étage 2 — recalcule la mémoire de travail (chaleur d'usage + liens de co-activation) depuis les
-    # logs de recall/lecture, AVANT graph_export (qui lit coactivation.json). Pur stdlib.
+        # The LEGITIMATE case, said out loud. Embeddings are optional by design
+        # (docs/design-doc.md); what is not is a trunk without them looking in every
+        # respect like a trunk whose computation failed.
+        lines.append(f'echo "· semantic module not installed (.venv absent) — BM25 only,'
+                     f' the planet shows structure" >> "{LOG}"')
+    # Recompute the working memory (usage heat + co-activation links) from the
+    # recall/read logs, BEFORE graph_export (which reads coactivation.json). Pure stdlib.
     lines.append(f'"{py}" "{coact_cli}" >> "{LOG}" 2>&1 || true')
     lines.append(f'"{py}" "{graph_cli}" >> "{LOG}" 2>&1 || true')
-    # dépôts + idle + release : TOUJOURS, quoi qu'il arrive au-dessus.
+    # save + idle + release: ALWAYS, whatever happened above.
     lines.append(pulse("committing", "Saving to git"))
-    lines.append(depots)
-    lines.append('kill "$__HB" >/dev/null 2>&1 || true')   # stoppe le heartbeat AVANT idle
+    lines.append(save)
+    lines.append('kill "$__HB" >/dev/null 2>&1 || true')   # stop the heartbeat BEFORE idle
     lines.append(f'"{py}" "{status_cli}" idle')
     lines.append(f'"{py}" "{guard_cli}" release')
     wrapper = "\n".join(lines)
@@ -542,8 +509,8 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
             stdin=subprocess.DEVNULL, stdout=logf, stderr=logf,
             start_new_session=True,
         )
-        # le hook qui détient le lock va mourir ; on y inscrit le PID du worker détaché
-        # (vivant toute la passe) → une autre session voit un lock VIVANT et n'en lance pas 2.
+        # the hook holding the lock is about to die; we write the detached worker's PID
+        # (alive for the whole pass) → another session sees a LIVE lock and does not start a 2nd.
         if guard is not None:
             try:
                 guard.update_lock_pid(proc.pid)
@@ -557,26 +524,26 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
 
 def main():
     if os.environ.get("CLAUDE_BRAIN_GARDENING") == "1":
-        return  # on EST déjà le headless de maintenance
+        return  # we ARE the maintenance headless run
 
-    # GEL DES ÉCRIVAINS AUTONOMES (Phase 0 du RFC Brain V3, 2026-08-03).
-    # Pendant la construction du Brain V3 hors production, le distillateur, le
-    # jardinier et brain_upkeep continueraient à modifier le tronc — et depuis
-    # que le commit automatique est coupé, ils le feraient SANS trace dans git.
-    # Le lab travaillerait alors sur une base qui bouge sous lui, et le
-    # rattrapage lab↔prod deviendrait impossible à raisonner.
+    # FREEZE ON AUTONOMOUS WRITERS (Phase 0 of the Brain V3 RFC, 2026-08-03).
+    # While Brain V3 is being built outside production, the distiller, the
+    # gardener and brain_upkeep would keep modifying the trunk — and since
+    # automatic commits were cut, they would do it WITHOUT a trace in git.
+    # The lab would then be working on a base moving underneath it, and
+    # reconciling lab and production would become impossible to reason about.
     #
-    # La file d'attente, elle, continue de se remplir (capture-only) : rien
-    # n'est perdu, tout sera distillé après la bascule.
+    # The queue itself keeps filling up (capture-only): nothing is lost,
+    # everything will be distilled after the switch-over.
     #
-    # Lever le gel : supprimer ~/.c-brain/trunk/state/FREEZE
+    # To lift the freeze: delete ~/.c-brain/trunk/state/FREEZE
     freeze = os.path.join(BRAIN, "state", "FREEZE")
     if os.path.exists(freeze):
         try:
             data = json.loads(sys.stdin.read() or "{}")
             sid = data.get("session_id")
             if sid:
-                guard.enqueue(sid)  # capture-only : on note, on ne traite pas
+                guard.enqueue(sid)  # capture-only: we note it, we do not process it
         except Exception:
             pass
         return
@@ -591,9 +558,9 @@ def main():
     tp = data.get("transcript_path")
     n = session_msg_count(sid, tp) if sid else None
     if sid and n is None:
-        # INDISPENSABLE : l'incapacité de mesurer ne doit pas se déguiser en session triviale.
-        print(f"[auto_maintain] transcript illisible ou introuvable pour {sid} "
-              f"(transcript_path={tp!r}) — distillation NON décidée, session mise en file",
+        # ESSENTIAL: being unable to measure must not pass itself off as a trivial session.
+        print(f"[auto_maintain] transcript unreadable or not found for {sid} "
+              f"(transcript_path={tp!r}) — distillation NOT decided, session queued",
               file=sys.stderr)
         if guard is not None:
             guard.enqueue(sid)
@@ -601,7 +568,7 @@ def main():
     to_garden = inbox_has_work()
 
     if not (to_distill or to_garden):
-        return  # rien à faire → aucun agent lancé
+        return  # nothing to do → no agent launched
 
     claude = shutil.which("claude")
     if not claude:
@@ -610,40 +577,39 @@ def main():
     # --- garde-fous tokens/compte (brain_guard) ---------------------------
     if guard is not None:
         if not guard.acquire_lock(sid):
-            # Une maintenance tourne déjà (ex. plusieurs sessions fermées en même
-            # temps : la 1re a pris le verrou). On ne double PAS (anti-corruption),
-            # mais on ENFILE cette session pour qu'elle soit distillée ensuite —
-            # sinon elle serait silencieusement perdue. Drainée par le prochain
-            # SessionEnd ou par resume_pending (launchd, ~10 min).
+            # Maintenance is already running (e.g. several sessions closed at the same
+            # time: the 1st took the lock). We do NOT double up (anti-corruption),
+            # but we QUEUE this session so it gets distilled afterwards —
+            # otherwise it would be silently lost. Drained by the next
+            # SessionEnd or by resume_pending (launchd, ~10 min).
             if to_distill:
                 guard.enqueue(sid)
             return
         if not guard.preflight_ok():
-            # quota épuisé (reset pas encore atteint) → on DIFFÈRE, jamais de crash
+            # quota spent (reset not reached) → we DEFER, never crash
             if to_distill:
                 guard.enqueue(sid)
             guard.release_lock()
             return
-        # quota OK : on rejoue d'abord la session en attente la plus ancienne
-        # (backlog accumulé pendant que le quota/login était KO), une par passage.
-        # On la retire ATOMIQUEMENT (dequeue_one) : le reste de la file reste sur
-        # DISQUE, jamais en mémoire. L'ancien drain_queue() vidait tout d'un coup
-        # puis ré-enfilait le reste — un kill du process entre les deux engloutissait
-        # tout le backlog (bug observé la nuit du 24/06, surface par `brain audit`).
+        # quota OK: we first replay the oldest pending session
+        # (backlog accumulated while quota or login was down), one per pass.
+        # It is removed ATOMICALLY (dequeue_one): the rest of the queue stays on
+        # DISK, never in memory. The old drain_queue() emptied everything at once
+        # then re-queued the rest — a process kill in between swallowed
+        # the whole backlog (a real bug, surfaced by `brain audit`).
         resume_sid = guard.dequeue_one()
         if resume_sid:
             if to_distill and resume_sid != sid:
-                guard.enqueue(sid)               # session courante reportée d'un cran
+                guard.enqueue(sid)               # current session pushed back one slot
             sid, to_distill = resume_sid, True
-            # ⚠ LE CHEMIN DOIT SUIVRE L'IDENTIFIANT. `tp` vient de la charge utile du
-            #   hook, donc de la session qui se TERMINE ; ici on vient d'en reprendre une
-            #   AUTRE, sortie de la file. Jusqu'au 2026-09-20 `tp` n'était pas réévalué et
-            #   partait tel quel dans `launch_agent` : le distillateur recevait
-            #   « id=<repise>, transcript: <fichier de la session en cours> » — une paire
-            #   incohérente, donc des fiches attribuées à une session qu'elles ne
-            #   décrivent pas, et la session reprise jamais réellement lue. Le défaut est
-            #   latent (il ne sort que quand la file n'est pas vide), ce qui est
-            #   précisément pourquoi personne ne l'avait vu.
+            # ⚠ THE PATH MUST FOLLOW THE ID. `tp` comes from the hook's payload, so from the
+            #   session that is ENDING; here we just resumed ANOTHER one, taken from the
+            #   queue. Until 2026-09-20 `tp` was not re-evaluated and went as-is into
+            #   `launch_agent`: the distiller received "id=<resumed>, transcript: <the
+            #   current session's file>" — an inconsistent pair, so notes attributed to a
+            #   session they do not describe, and the resumed session never actually read.
+            #   The defect is latent (it only shows when the queue is not empty), which is
+            #   precisely why nobody had seen it.
             tp = transcript_for(sid)
             _n = session_msg_count(sid, tp)
             n = _n if _n is not None else MIN_MSG
@@ -652,11 +618,12 @@ def main():
 
 if __name__ == "__main__":
     try:
-        # `--capsule` : ouvrir l'orbe SANS déclencher de maintenance. Appelé par le
-        # hook SessionStart. Avant ça, ensure_capsule() n'avait qu'un seul appelant
-        # (launch_agent, en FIN de session) : l'orbe ne s'ouvrait donc jamais pendant
-        # qu'on travaille — 12 h de session sans jamais la voir (constat de l'auteur,
-        # 2026-08-04). Elle s'efface toujours seule au repos, ce mode ne force rien.
+        # `--capsule`: open the orb WITHOUT triggering any maintenance. Called by the
+        # SessionStart hook. Before this, ensure_capsule() had a single caller
+        # (launch_agent, at the END of a session): the orb therefore never opened
+        # while you were working — 12 h of session without ever seeing it (reported
+        # by the user, 2026-08-04). It always fades away on its own when idle, this
+        # mode forces nothing.
         if "--capsule" in sys.argv:
             ensure_capsule()
         else:

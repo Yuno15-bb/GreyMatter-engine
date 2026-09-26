@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""quota_probe — la sonde de crédit : « est-ce que je peux dépenser MAINTENANT ? »
+"""quota_probe — the credit probe: "can I spend RIGHT NOW?"
 
-Pourquoi elle existe (2026-08-13, demande de l'auteur) : le garde-fou quota posait un
-délai d'attente DEVINÉ à partir du message d'erreur (1 h, 2 h, 4 h… cf.
-[[account-quota-resilience]]). Ce délai ne peut pas savoir que l'utilisateur vient de
-RECHARGER son plafond ou de CHANGER DE COMPTE. Résultat vécu ce matin : plafond
-relevé à 08:35, mais la maintenance restait gelée jusqu'à 09:32 pour rien, et il
-a fallu effacer le marqueur à la main.
+Why it exists (2026-08-13, at the author's request): the quota guard used to set a
+waiting time GUESSED from the error message (1 h, 2 h, 4 h… cf.
+[[account-quota-resilience]]). Such a delay cannot know that the user has just
+TOPPED UP their cap or SWITCHED ACCOUNTS. What actually happened that morning: the
+cap was raised at 08:35, yet maintenance stayed frozen until 09:32 for nothing, and
+the marker had to be cleared by hand.
 
-Le principe : ne plus DEVINER, DEMANDER. Une requête d'un seul token porte les
-en-têtes `anthropic-ratelimit-unified-*` qui donnent l'état exact du compte et
-l'heure exacte de reset.
+The principle: stop GUESSING, ASK. A one-token request carries the
+`anthropic-ratelimit-unified-*` headers, which give the exact state of the account
+and the exact reset time.
 
-Coût mesuré : 22 tokens d'entrée + 1 de sortie sur Haiku ≈ 0,00003 $. Sondée
-toutes les 15 min, une journée entière de blocage coûte moins d'un centime — à
-comparer au relancement à l'aveugle d'un agent complet (~1 $ le coup), qui est
-précisément la boucle morte que le recul progressif avait dû éteindre.
+Measured cost: 22 input tokens + 1 output token on Haiku ≈ $0.00003. Probing every
+15 min, a whole day of being blocked costs less than a cent — compare that with
+blindly restarting a full agent (~$1 a go), which is precisely the dead loop the
+progressive backoff had to put out.
 
-D'où la séparation à garder en tête si on touche à ce fichier :
-  - la SONDE est gratuite  → cadence fixe (15 min), elle peut se répéter ;
-  - l'AGENT coûte cher     → il ne part QUE sur un feu vert observé, jamais sur
-    l'expiration d'un délai supposé.
+Hence the separation to keep in mind when touching this file:
+  - the PROBE is free      → fixed cadence (15 min), it may repeat;
+  - the AGENT is expensive → it only starts on an OBSERVED green light, never on
+    the expiry of an assumed delay.
 
-Usage en ligne de commande (lisible, c'est l'observable du contrôle n°2) :
+Command-line usage (readable, because it is the observable of check #2):
     python3 quota_probe.py
 """
 import hashlib
@@ -34,16 +34,16 @@ import urllib.error
 import urllib.request
 
 API = "https://api.anthropic.com/v1/messages"
-MODELE = "claude-haiku-4-5-20251001"      # le moins cher : la sonde ne juge pas, elle teste l'accès
+MODEL = "claude-haiku-4-5-20251001"       # the cheapest: the probe does not judge, it tests access
 KEYCHAIN = "Claude Code-credentials"
 TIMEOUT = 20
 
-# L'API OAuth de Claude Code exige ce premier bloc système, sinon elle refuse le jeton.
-SYSTEME = "You are Claude Code, Anthropic's official CLI for Claude."
+# The Claude Code OAuth API requires this first system block, otherwise it rejects the token.
+SYSTEM = "You are Claude Code, Anthropic's official CLI for Claude."
 
 
-def _jeton() -> str:
-    """Le jeton OAuth du compte actif, lu dans le Keychain. Jamais journalisé."""
+def _token() -> str:
+    """The OAuth token of the active account, read from the Keychain. Never logged."""
     try:
         out = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN, "-w"],
                              capture_output=True, text=True, timeout=10)
@@ -54,19 +54,19 @@ def _jeton() -> str:
         return ""
 
 
-def empreinte_compte() -> str:
-    """Empreinte du compte ACTIF, dérivée du jeton — pas le jeton lui-même.
+def token_fingerprint() -> str:
+    """Fingerprint of the ACTIVE account, derived from the token — not the token itself.
 
-    Signal immédiat et gratuit : l'auteur change de compte → le jeton change → cette
-    empreinte change. Plus fiable que de lire l'accountUuid d'un transcript
-    (cf. account_fingerprint dans brain_guard), qui ne bouge qu'après qu'une
-    session ait déjà tourné sur le nouveau compte."""
-    t = _jeton()
+    An immediate, free signal: the user switches account → the token changes → this
+    fingerprint changes. More reliable than reading a transcript's accountUuid
+    (cf. account_fingerprint in brain_guard), which only moves once a session has
+    already run on the new account."""
+    t = _token()
     return hashlib.sha256(t.encode()).hexdigest()[:12] if t else ""
 
 
-def _entetes_limites(headers) -> dict:
-    """Les compteurs unifiés, en clair. Absents = plan/route sans limite déclarée."""
+def _limit_headers(headers) -> dict:
+    """The unified counters, in plain form. Absent = plan/route with no declared limit."""
     d = {}
     for h in headers:
         hl = h.lower()
@@ -75,65 +75,65 @@ def _entetes_limites(headers) -> dict:
     return d
 
 
-def sonde() -> dict:
-    """Une requête d'un token. Renvoie un verdict exploitable :
+def probe() -> dict:
+    """One one-token request. Returns a verdict you can act on:
 
-      {"ok": bool,          # True = une vraie requête vient de PASSER, on peut dépenser
-       "http": int|None,    # code HTTP (429 = refusé, 401 = jeton périmé, None = réseau)
-       "motif": str,        # lisible par un humain
-       "reset": float|None, # epoch exact du retour, donné par l'API (plus de devinette)
-       "limites": {...},    # compteurs bruts (5h, 7d, overage…)
-       "empreinte": str,    # compte sondé
+      {"ok": bool,          # True = a real request has just GONE THROUGH, we may spend
+       "http": int|None,    # HTTP code (429 = refused, 401 = stale token, None = network)
+       "reason": str,       # human-readable
+       "reset": float|None, # exact epoch of the return, given by the API (no more guessing)
+       "limits": {...},     # raw counters (5h, 7d, overage…)
+       "fingerprint": str,  # account probed
        "ts": float}
 
-    `ok` vaut True sur HTTP 200 même si l'en-tête `unified-status` dit "rejected" :
-    c'est exactement l'état de ce matin — fenêtre 5 h épuisée MAIS overage actif,
-    donc les requêtes passent. Ce qui compte n'est pas ce que le compteur annonce,
-    c'est qu'une requête réelle vient d'aboutir. (Contrôle n°2 : l'observable est
-    la requête qui passe, pas le compteur qui commente.)"""
-    base = {"ok": False, "http": None, "motif": "", "reset": None,
-            "limites": {}, "empreinte": "", "ts": time.time()}
-    jeton = _jeton()
-    if not jeton:
-        base["motif"] = "jeton illisible (Keychain verrouillé ou compte déconnecté)"
+    `ok` is True on HTTP 200 even when the `unified-status` header says "rejected":
+    that is exactly the state seen that morning — the 5 h window exhausted BUT overage
+    active, so requests go through. What counts is not what the counter announces, it
+    is that a real request has just succeeded. (Check #2: the observable is the
+    request that goes through, not the counter that comments on it.)"""
+    base = {"ok": False, "http": None, "reason": "", "reset": None,
+            "limits": {}, "fingerprint": "", "ts": time.time()}
+    token = _token()
+    if not token:
+        base["reason"] = "unreadable token (Keychain locked or account signed out)"
         return base
-    base["empreinte"] = hashlib.sha256(jeton.encode()).hexdigest()[:12]
+    base["fingerprint"] = hashlib.sha256(token.encode()).hexdigest()[:12]
 
-    corps = json.dumps({
-        "model": MODELE,
+    body = json.dumps({
+        "model": MODEL,
         "max_tokens": 1,
-        "system": [{"type": "text", "text": SYSTEME}],
+        "system": [{"type": "text", "text": SYSTEM}],
         "messages": [{"role": "user", "content": "."}],
     }).encode()
-    req = urllib.request.Request(API, data=corps, method="POST", headers={
-        "authorization": "Bearer " + jeton,
+    req = urllib.request.Request(API, data=body, method="POST", headers={
+        "authorization": "Bearer " + token,
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "oauth-2025-04-20",
         "content-type": "application/json",
     })
     try:
         r = urllib.request.urlopen(req, timeout=TIMEOUT)
-        base.update(ok=True, http=r.status, motif="crédit disponible",
-                    limites=_entetes_limites(r.headers))
+        base.update(ok=True, http=r.status, reason="credit available",
+                    limits=_limit_headers(r.headers))
     except urllib.error.HTTPError as e:
-        lim = _entetes_limites(e.headers)
+        lim = _limit_headers(e.headers)
         try:
             msg = json.loads(e.read())["error"]["message"][:200]
         except Exception:
             msg = f"HTTP {e.code}"
-        base.update(http=e.code, motif=msg, limites=lim)
+        base.update(http=e.code, reason=msg, limits=lim)
         if e.code == 401:
-            # jeton périmé : ce n'est PAS un verdict sur le crédit. On ne débloque
-            # pas, mais on ne resserre rien non plus — le CLI rafraîchira le jeton.
-            base["motif"] = "jeton périmé (401) — sonde sans verdict"
+            # Stale token: this is NOT a verdict about credit. We do not unblock,
+            # but we do not tighten anything either — the CLI will refresh the token.
+            base["reason"] = "stale token (401) — probe without a verdict"
     except Exception as e:
-        base["motif"] = f"réseau injoignable ({type(e).__name__})"
+        base["reason"] = f"network unreachable ({type(e).__name__})"
         return base
 
-    for cle in ("reset", "5h-reset", "7d-reset"):
-        if cle in base["limites"]:
+    for key in ("reset", "5h-reset", "7d-reset"):
+        if key in base["limits"]:
             try:
-                base["reset"] = float(base["limites"][cle])
+                base["reset"] = float(base["limits"][key])
                 break
             except Exception:
                 pass
@@ -148,16 +148,17 @@ def _pct(v):
 
 
 if __name__ == "__main__":
-    v = sonde()
-    print("crédit disponible :", "OUI" if v["ok"] else "NON",
-          f"(HTTP {v['http']}) — {v['motif']}")
-    lim = v["limites"]
+    v = probe()
+    print("credit available:", "YES" if v["ok"] else "NO",
+          f"(HTTP {v['http']}) — {v['reason']}")
+    lim = v["limits"]
     if lim:
-        print("compte", v["empreinte"], "—", "overage actif" if lim.get("overage-in-use") == "true" else "overage inactif")
-        for fen, nom in (("5h", "fenêtre 5 h"), ("7d", "fenêtre 7 j"), ("overage", "overage")):
-            u, s, rs = lim.get(f"{fen}-utilization"), lim.get(f"{fen}-status"), lim.get(f"{fen}-reset")
+        print("account", v["fingerprint"], "—",
+              "overage active" if lim.get("overage-in-use") == "true" else "overage inactive")
+        for win, name in (("5h", "5 h window"), ("7d", "7 d window"), ("overage", "overage")):
+            u, s, rs = lim.get(f"{win}-utilization"), lim.get(f"{win}-status"), lim.get(f"{win}-reset")
             if u is None and s is None:
                 continue
-            quand = time.strftime("%d/%m %H:%M", time.localtime(float(rs))) if rs else "?"
-            print(f"  {nom:<12} {_pct(u):>6}  {s or '':<16} repart {quand}")
+            when = time.strftime("%d/%m %H:%M", time.localtime(float(rs))) if rs else "?"
+            print(f"  {name:<12} {_pct(u):>6}  {s or '':<16} back at {when}")
     sys.exit(0 if v["ok"] else 7)

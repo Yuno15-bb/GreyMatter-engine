@@ -1,49 +1,52 @@
-# Banc de vérification de l'orbe
+# Orb verification bench
 
-Regarder le rendu, jamais le déduire du code. Ces scripts existaient dans `/tmp`
-pendant la session du 2026-08-03 — ils y auraient disparu au prochain redémarrage,
-alors qu'ils sont la seule façon honnête de juger une modification de l'orbe.
+Look at the render; never infer it from the code. These scripts lived in `/tmp`
+during the 2026-08-03 session — they would have vanished on the next reboot,
+while being the only honest way to judge a change to the orb.
 
-## Les scripts
+## The scripts
 
-| Script | Ce qu'il fait |
+| Script | What it does |
 |---|---|
-| `planche.cjs` | capture `orbe.html` état par état, sur un faux bureau coloré |
-| `silhouette.cjs` | relève les bornes du mesh sur le canal alpha, état par état |
-| `film.cjs` | filme la démo du README — voir ses trois pièges en tête de fichier |
-| `glisse.cjs` | prouve que `mousedown` au centre déplace la fenêtre, et qu'un coin ne fait rien |
-| `cycle.sh` | fait passer l'orbe **vivante** par ses 13 états, pour la regarder sur le vrai bureau |
+| `planche.cjs` | captures `orbe.html` state by state, over three backgrounds |
+| `silhouette.cjs` | reads the mesh bounds off the alpha channel, state by state |
+| `cadence.cjs` | real frame intervals per state — median AND worst case |
+| `film.cjs` | films the README demo — see its three traps at the top of the file |
+| `glisse.cjs` | proves the drag chain without moving a real mouse |
+| `cycle.sh` | walks the **live** orb through its 13 states, to watch it on the real desktop |
 
-Tous se lancent avec l'Electron du dossier parent :
+All of them run with the Electron in the parent folder:
 
 ```sh
-cd ~/claude-brain/capsule
+cd ~/.c-brain/trunk/capsule
 ./node_modules/.bin/electron banc/planche.cjs
 ```
 
-## Les pièges qui ont coûté du temps
+## The traps that cost time
 
-- **Le verre ne se juge pas sur fond noir.** Un objet transparent y est
-  indiscernable d'un objet opaque. `planche.cjs` pose donc un dégradé et du
-  texte derrière — sans ça la planche ne prouve rien.
-- **La démo de `~/Desktop/Orbe` rétrécit l'orbe à 69 px** dans une fenêtre de
-  150 : sa mise en page réserve la place d'un panneau. On mesure sur
-  `orbe.html`, la vraie page de la capsule.
-- **Les bornes sortent en pixels d'ÉCRAN, pas en pixels CSS** : la capture est
-  en retina 2×, donc une fenêtre de 150 rend un bitmap de 300. Les lire tels
-  quels place un élément au double de la bonne distance.
-- **Attendre 2,6 s après un changement d'état** : le fondu de mécanique dure
-  1,4 s, et capturer avant donne une forme intermédiaire qui n'existe jamais.
-- **Tuer par chemin complet ET vérifier le compte** avant toute mesure :
-  `pgrep -f "claude-brain/capsule" | xargs kill -9` puis recompter. Un motif
-  approximatif échoue en silence et on mesure une instance périmée.
+- **Glass cannot be judged on a black background.** A transparent object is
+  indistinguishable from an opaque one there. `planche.cjs` therefore lays down
+  a gradient and some text behind it — and a near-WHITE background too, the one
+  case where a light label disappears.
+- **Bounds come out in SCREEN pixels, not CSS pixels**: capture is retina 2×, so
+  a 150 px window renders a 300 px bitmap. Reading them raw places an element at
+  twice the intended distance.
+- **Wait 2.6 s after a state change**: the mechanic cross-fade lasts 1.4 s, and
+  capturing earlier freezes an in-between shape that never really exists.
+- **A requested frame rate is not the rate you get.** `cadence.cjs` measures the
+  intervals: `setTimeout` followed by `requestAnimationFrame` adds both waits,
+  which once turned a requested 60 fps into an actual 32.
+- **Kill by full path AND check the count** before any measurement:
+  `pgrep -f "c-brain/trunk/capsule" | xargs kill -9`, then count again. A loose
+  pattern fails silently and you end up measuring a stale instance.
 
-## Piège du 20/09 — l'état est PARTAGÉ entre toutes les sessions Claude
-`film.cjs` et `cycle.sh` pilotent l'orbe par `state/status.json`. Or chaque session Claude
-ouverte (quatre en parallèle ce jour-là) y estampille `busy / working` à chacun de ses appels
-d'outil, via le hook `brain_battement.py`. Un tournage s'est fait polluer à 13,7 s : WORKING
-s'est invité dans les trois secondes de repos. « Ne rien exécuter pendant » ne suffit donc
-pas — les autres sessions, on ne les contrôle pas. **Tourner dans un tronc miroir** :
-`HOME=<miroir> BRAIN_HOME=<miroir>/claude-brain`, où le miroir symlinke tout le tronc sauf
-`state/`, qui est à nous. `orbe.html` résout tout par `os.homedir()` et `brain_status.py`
-par `BRAIN_HOME` : les deux suivent, et le bureau de l'auteur ne clignote même plus.
+## The 20/09 trap — the state is SHARED by every Claude session
+`film.cjs` and `cycle.sh` drive the orb through `state/status.json`. But every open
+Claude session (four in parallel that day) stamps `busy / working` into it on each of
+its tool calls, through the `brain_battement.py` hook. One shoot got polluted at 13.7 s:
+WORKING barged into the three seconds of rest. "Run nothing meanwhile" is therefore not
+enough — the other sessions are not ours to control. **Film in a mirror trunk**:
+`HOME=<mirror> BRAIN_HOME=<mirror>/claude-brain`, where the mirror symlinks the whole
+trunk except `state/`, which is ours. `orbe.html` resolves everything through
+`os.homedir()` and `brain_status.py` through `BRAIN_HOME`: both follow, and the author's
+desktop no longer even flickers.

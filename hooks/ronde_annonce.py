@@ -1,41 +1,41 @@
 #!/usr/bin/env python3
-"""Affiche au démarrage d'une session la ronde matin/soir qui n'a pas été vue.
+"""At session start, shows the morning/evening round that has not been seen.
 
-POURQUOI CE HOOK EXISTE. La ronde de `etat_projets.py` s'annonçait par une bannière macOS
-(`osascript display notification`). Le 2026-08-14, l'auteur constate qu'il n'a rien reçu le matin.
-Enquête : le service AVAIT tourné (`runs = 4`, `last exit code = 0`, ligne « matin » dans
-`sessions/etat.log`) et `osascript` avait rendu 0 — mais Script Editor, l'app au nom de laquelle
-un agent launchd poste ses notifications, n'apparaît nulle part dans `com.apple.ncprefs`, même
-après une tentative forcée. Le canal échouait donc en silence tout en rendant un code vert.
+WHY THIS HOOK EXISTS. The `etat_projets.py` round announced itself through a macOS banner
+(`osascript display notification`). On 2026-08-14 the author noticed nothing had arrived in the morning.
+Investigation: the service HAD run (`runs = 4`, `last exit code = 0`, a "morning" line in
+the round's log) and `osascript` had returned 0 — but Script Editor, the app on whose behalf
+a launchd agent posts its notifications, appears nowhere in `com.apple.ncprefs`, even
+after a forced attempt. So the channel failed silently while returning a green code.
 
-C'est la règle « un code de sortie n'est jamais l'observable », appliquée cette fois au canal
-d'annonce : la ronde était bonne, sa mesure était bonne, et personne ne l'a jamais lue.
+It is the rule "an exit code is never the observable", applied this time to the announcement
+channel: the round was good, its measurement was good, and nobody ever read it.
 
-Le remède n'est pas de réparer la bannière — on ne peut pas prouver sa livraison depuis un
-script. C'est d'annoncer **là où l'auteur est certainement en train de regarder** : sa session de
-travail. Le marqueur reste en attente jusqu'à ce qu'il soit affiché une fois, puis il se tait.
+The remedy is not to repair the banner — its delivery cannot be proved from a
+script. It is to announce **where the author is certainly looking**: their working
+session. The marker stays pending until it has been shown once, then it goes quiet.
 
-Usage : appelé sans argument par le hook SessionStart. N'écrit jamais sur stderr, ne bloque
-jamais le démarrage : une panne ici ne doit pas coûter une session.
+Usage: called with no argument by the SessionStart hook. Never writes to stderr, never
+blocks startup: a failure here must not cost a session.
 """
 import datetime as dt
 import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, légitime
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, legitimate
 from brain_racine import brain_root
 
-# I-1 (2026-08-21). Avant : `os.path.expanduser("~/.c-brain/trunk")` — un littéral qu'AUCUNE
-# variable ne détournait. Ce module était le dernier I1-FAIL à maintenir un orchestrateur
-# DÉJÀ conforme en E0* : son hook SessionStart porte BRAIN_HOME depuis L1.0, et l'enfant
-# l'ignorait. Un parent qui transmet correctement une identité que l'enfant jette produit
-# une conformité nominale — plus trompeuse que l'absence d'ancrage.
+# I-1 (2026-08-21). Before: `os.path.expanduser("~/.c-brain/trunk")` — a literal NO
+# variable could redirect. This module was the last I1-FAIL keeping an orchestrator that was
+# ALREADY compliant in E0*: its SessionStart hook has carried BRAIN_HOME since L1.0, and the child
+# ignored it. A parent that correctly passes on an identity the child throws away produces
+# nominal compliance — more misleading than no anchoring at all.
 BRAIN = brain_root(__file__)
-ANNONCE = os.path.join(BRAIN, "state", "ronde-a-annoncer.json")
+ANNONCE = os.path.join(BRAIN, "state", "round-to-announce.json")
 
-# Au-delà, la ronde ne vaut plus la peine d'être annoncée : elle décrit un état dépassé, et
-# l'annoncer ferait passer une vieille mesure pour la nouvelle.
+# Beyond this, the round is no longer worth announcing: it describes an outdated state, and
+# announcing it would pass an old measurement off as the new one.
 PEREMPTION_H = 18
 
 
@@ -48,39 +48,39 @@ def main() -> int:
     except Exception:
         return 0
 
-    if marque.get("annonce_le"):
-        return 0                                    # déjà vue : on ne la répète pas
+    if marque.get("announced_at"):
+        return 0                                    # already seen: not repeated
 
-    texte = (marque.get("texte") or "").strip()
+    texte = (marque.get("text") or "").strip()
     if not texte:
         return 0
 
     try:
-        ecrit = dt.datetime.fromisoformat(marque["ecrit_le"])
+        ecrit = dt.datetime.fromisoformat(marque["written_at"])
         heures = (dt.datetime.now() - ecrit).total_seconds() / 3600
     except Exception:
         heures = 0.0
 
     if heures > PEREMPTION_H:
-        _marquer_vue(marque, "périmée")
+        _marquer_vue(marque, "expired")
         return 0
 
-    quand = "à l'instant" if heures < 1 else f"il y a {int(heures)} h"
-    print(f"<ronde-etat-projets>\nRonde des projets non lue, écrite {quand} "
-          f"(la bannière macOS ne s'affiche pas : voir hooks/ronde_annonce.py).\n\n"
-          f"{texte}\n</ronde-etat-projets>")
-    _marquer_vue(marque, "affichée")
+    quand = "just now" if heures < 1 else f"{int(heures)} h ago"
+    print(f"<project-status-round>\nUnread project round, written {quand} "
+          f"(the macOS banner does not show: see hooks/ronde_annonce.py).\n\n"
+          f"{texte}\n</project-status-round>")
+    _marquer_vue(marque, "shown")
     return 0
 
 
 def _marquer_vue(marque: dict, raison: str) -> None:
-    marque["annonce_le"] = dt.datetime.now().isoformat()
-    marque["raison"] = raison
+    marque["announced_at"] = dt.datetime.now().isoformat()
+    marque["reason"] = raison
     try:
         with open(ANNONCE, "w", encoding="utf-8") as f:
             json.dump(marque, f, ensure_ascii=False, indent=2)
     except Exception:
-        pass                                        # au pire, elle se réaffichera une fois
+        pass                                        # at worst, it will show once more
 
 
 if __name__ == "__main__":

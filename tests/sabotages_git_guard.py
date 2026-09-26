@@ -1,24 +1,5 @@
 #!/usr/bin/env python3
-"""
-sabotages_git_guard.py — éprouve la PRIMITIVE, pas la course git.
-
-DEUX OBJETS, DEUX BANCS. `tests/banc_course_git.py` mesure si les incidents git observés
-se reproduisent ; ce fichier-ci mesure si le verrou tient ses propres promesses. Les
-confondre donnerait un banc qui passe au vert parce que l'autre moitié marche.
-
-Les neuf sabotages d'ADR-0017 phase 2B. Les 1→4 (S4/S1/S5 sans puis avec protection) vivent
-dans `banc_course_git.py --avec-git-guard`, où le scénario est déjà écrit. Les 5→9 portent
-sur le mécanisme du verrou et vivent ici.
-
-LA RÈGLE QUE CE FICHIER DÉFEND LE PLUS DUREMENT (sabotage 7) :
-    un verrou VIVANT ne se vole pas parce qu'il est ANCIEN.
-    Un `git push` porte `timeout=180` : un propriétaire lent est un propriétaire, pas un
-    zombie. Voler son verrou remplacerait une course par une corruption silencieuse.
-
-Tout se passe dans des dépôts jetables, jamais dans le tronc.
-
-  python3 tests/sabotages_git_guard.py
-"""
+"""Exercise Git lock invariants on disposable repositories."""
 import json
 import os
 import shutil
@@ -27,329 +8,258 @@ import subprocess
 import sys
 import tempfile
 import time
-
 ICI = os.path.dirname(os.path.abspath(__file__))
 BRAIN = os.path.dirname(ICI)
-sys.path.insert(0, os.path.join(BRAIN, "hooks"))
-import git_guard  # noqa: E402
-
+sys.path.insert(0, os.path.join(BRAIN, 'hooks'))
+import git_guard
 fails = []
-def ok(m): print("  ✅ %s" % m)
-def ko(m): print("  ❌ %s" % m); fails.append(m)
 
+def ok(m):
+    print('  ✅ %s' % m)
+
+def ko(m):
+    print('  ❌ %s' % m)
+    fails.append(m)
 
 def depot():
-    d = tempfile.mkdtemp(prefix="sab-git-guard-")
+    d = tempfile.mkdtemp(prefix='bench-git-guard-')
     if not os.path.realpath(d).startswith(os.path.realpath(tempfile.gettempdir()) + os.sep):
-        raise RuntimeError("isolation")            # même garde que l'autre banc
-    os.makedirs(os.path.join(d, "state"))
-    subprocess.run(["git", "init", "-q", "--initial-branch=main", "."], cwd=d)
-    for c, v in (("user.name", "S"), ("user.email", "s@l"), ("commit.gpgsign", "false")):
-        subprocess.run(["git", "config", c, v], cwd=d)
-    open(os.path.join(d, "f.md"), "w").write("base\n")
-    subprocess.run(["git", "add", "f.md"], cwd=d)
-    subprocess.run(["git", "commit", "-q", "-m", "C0"], cwd=d)
+        raise RuntimeError('isolation')
+    os.makedirs(os.path.join(d, 'state'))
+    subprocess.run(['git', 'init', '-q', '--initial-branch=main', '.'], cwd=d)
+    for c, v in (('user.name', 'S'), ('user.email', 's@l'), ('commit.gpgsign', 'false')):
+        subprocess.run(['git', 'config', c, v], cwd=d)
+    open(os.path.join(d, 'f.md'), 'w').write('base\n')
+    subprocess.run(['git', 'add', 'f.md'], cwd=d)
+    subprocess.run(['git', 'commit', '-q', '-m', 'C0'], cwd=d)
     return d
-
 
 def journal(d):
     try:
-        return [json.loads(l) for l in
-                open(os.path.join(d, "state", "git-journal.jsonl"), encoding="utf-8")]
+        return [json.loads(l) for l in open(os.path.join(d, 'state', 'git-journal.jsonl'), encoding='utf-8')]
     except Exception:
         return []
 
-
 def lock_path(d):
-    return os.path.join(d, "state", "git.lock")
+    return os.path.join(d, 'state', 'git.lock')
 
-
-# ── 5. deux acquisitions simultanées → une seule gagne ───────────────────────
-def sabotage_5():
-    """⚠️ PREMIÈRE VERSION FAUSSE, GARDÉE EN MÉMOIRE ICI. Elle lançait 8 processus qui
-    acquéraient puis mouraient AUSSITÔT. Résultat : 4 « gagnants » — et c'était le
-    comportement CORRECT, puisqu'un propriétaire mort laisse un verrou légitimement
-    récupérable. Le sabotage mesurait « 8 processus qui meurent », pas « 8 acquisitions
-    simultanées ». Deux corrections : les gagnants TIENNENT le verrou pendant la course,
-    et tous partent sur une barrière commune au lieu d'espérer que Popen les synchronise."""
-    print("\n5. DEUX ACQUISITIONS SIMULTANÉES — une seule doit gagner")
+def case_5():
+    print('case_5: scenario 75')
     d = depot()
     try:
-        top = os.path.join(d, "TOP")
-        code = ("import sys,os,time;sys.path.insert(0,%r);import git_guard\n"
-                "open(%r+'/PRET-%%s','w').write('1')\n"                # « je suis en place »
-                "while not os.path.exists(%r): time.sleep(0.005)\n"   # barrière commune
-                "j=git_guard.acquerir('acteur-%%s','commit',['f.md'],depot=%r)\n"
-                "print('GAGNE' if j else 'REFUSE',flush=True)\n"
-                "if j:\n"
-                "    time.sleep(1.5)\n"                                # il TIENT le verrou
-                "    git_guard.liberer(j,%r)\n"
-                % (os.path.join(BRAIN, "hooks"), d, top, d, d))
-        procs = [subprocess.Popen([sys.executable, "-c", code % (i, i)],
-                                  stdout=subprocess.PIPE, text=True) for i in range(8)]
-        # ATTENDRE LA PRÉSENCE RÉELLE DES 8, pas une durée fixe. Un `sleep(0.6)` a suffi
-        # tant que le banc tournait seul ; lancé en même temps que les autres, la machine
-        # chargée en laissait partir moins de huit et le banc rougissait sans qu'aucune
-        # propriété du verrou ne soit en cause. Un banc qui dépend de la charge machine
-        # mesure la machine.
+        top = os.path.join(d, 'TOP')
+        code = "import sys,os,time;sys.path.insert(0,%r);import git_guard\nopen(%r+'/READY-%%s','w').write('1')\nwhile not os.path.exists(%r): time.sleep(0.005)\nj=git_guard.acquerir('actor-%%s','commit',['f.md'],depot=%r)\nprint('ACQUIRED' if j else 'REFUSED',flush=True)\nif j:\n    time.sleep(1.5)\n    git_guard.liberer(j,%r)\n" % (os.path.join(BRAIN, 'hooks'), d, top, d, d)
+        procs = [subprocess.Popen([sys.executable, '-c', code % (i, i)], stdout=subprocess.PIPE, text=True) for i in range(8)]
         limite = time.time() + 30
-        while len([f for f in os.listdir(d) if f.startswith("PRET-")]) < 8:
+        while len([f for f in os.listdir(d) if f.startswith('READY-')]) < 8:
             if time.time() > limite:
-                ko("seulement %d/8 processus en place — banc non concluant"
-                   % len([f for f in os.listdir(d) if f.startswith("PRET-")]))
+                ko('case_5: check 98')
                 return
             time.sleep(0.01)
-        open(top, "w").write("go")
+        open(top, 'w').write('go')
         sorties = [p.communicate()[0].strip() for p in procs]
-        gagnants = sorties.count("GAGNE")
+        gagnants = sorties.count('ACQUIRED')
         if gagnants == 1:
-            ok("8 processus lâchés ensemble → 1 gagnant, %d refusés" % sorties.count("REFUSE"))
+            ok('case_5: check 106')
         else:
-            ko("%d gagnants au lieu de 1 — l'exclusion mutuelle ne tient pas" % gagnants)
-        refus = [e for e in journal(d) if e["evenement"] == "refuse"]
-        if refus and all(e.get("proprietaire_actuel") for e in refus):
-            ok("les %d refus nomment le propriétaire qui détenait git à cet instant"
-               % len(refus))
+            ko('case_5: check 108')
+        refus = [e for e in journal(d) if e['event'] == 'refused']
+        if refus and all((e.get('current_owner') for e in refus)):
+            ok('case_5: check 111')
         else:
-            ko("un refus ne dit pas qui possédait git — l'information manquante d'aujourd'hui")
-        if not [e for e in journal(d) if e["evenement"] == "recuperation_zombie"]:
-            ok("aucune récupération pendant la course : personne n'a volé un verrou vivant")
+            ko('case_5: check 114')
+        if not [e for e in journal(d) if e['event'] == 'zombie_recovery']:
+            ok('case_5: check 116')
         else:
-            ko("un verrou VIVANT a été récupéré pendant la course")
+            ko('case_5: check 118')
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 6. verrou zombie → récupération GOUVERNÉE ────────────────────────────────
-def sabotage_6():
-    print("\n6. VERROU ZOMBIE — propriétaire mort, récupération gouvernée")
+def case_6():
+    print('case_6: scenario 125')
     d = depot()
     try:
-        mort = subprocess.Popen([sys.executable, "-c", "pass"])
+        mort = subprocess.Popen([sys.executable, '-c', 'pass'])
         mort.wait()
-        json.dump({"acteur": "fantome", "pid": mort.pid, "demarrage": "jadis",
-                   "operation": "commit", "perimetre": ["f.md"], "ts": time.time(),
-                   "head_avant": "x"}, open(lock_path(d), "w"))
+        json.dump({'actor': 'ghost', 'pid': mort.pid, 'started': 'long-ago', 'operation': 'commit', 'scope': ['f.md'], 'ts': time.time(), 'head_before': 'x'}, open(lock_path(d), 'w'))
         diag = git_guard.diagnostic(d)
-        if diag["etat"] == "recuperable":
-            ok("diagnostic : récupérable (%s)" % diag.get("raison"))
+        if diag['state'] == 'recoverable':
+            ok('case_6: check 135')
         else:
-            ko("un propriétaire mort est vu « %s » — le verrou resterait pris à jamais"
-               % diag["etat"])
-        j = git_guard.acquerir("repreneur", "commit", ["f.md"], depot=d)
+            ko('case_6: check 137')
+        j = git_guard.acquerir('repreneur', 'commit', ['f.md'], depot=d)
         if j:
-            ok("acquisition après récupération : obtenue")
+            ok('case_6: check 141')
         else:
-            ko("impossible de reprendre un verrou zombie")
-        ev = [e["evenement"] for e in journal(d)]
-        if "recuperation_zombie" in ev:
-            ok("la récupération est TRACÉE avant d'avoir lieu (%s)" %
-               [e for e in journal(d) if e["evenement"] == "recuperation_zombie"][0]["raison"])
+            ko('case_6: check 143')
+        ev = [e['event'] for e in journal(d)]
+        if 'zombie_recovery' in ev:
+            ok('case_6: check 146')
         else:
-            ko("récupération silencieuse — aucune trace de qui a été retiré")
+            ko('case_6: check 149')
         git_guard.liberer(j, d)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 7. propriétaire VIVANT, TTL dépassé → NE PAS VOLER ───────────────────────
-def sabotage_7():
-    print("\n7. PROPRIÉTAIRE VIVANT MAIS TTL DÉPASSÉ — le verrou ne se vole pas")
+def case_7():
+    print('case_7: scenario 157')
     d = depot()
-    dormeur = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(60)"])
+    dormeur = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
     try:
         time.sleep(0.3)
-        json.dump({"acteur": "push-lent", "pid": dormeur.pid,
-                   "demarrage": git_guard._demarrage(dormeur.pid),
-                   "operation": "push", "perimetre": None,
-                   "ts": time.time() - 10 * git_guard.TTL,     # 50 minutes d'âge
-                   "head_avant": "x"}, open(lock_path(d), "w"))
+        json.dump({'actor': 'slow-push', 'pid': dormeur.pid, 'started': git_guard._demarrage(dormeur.pid), 'operation': 'push', 'scope': None, 'ts': time.time() - 10 * git_guard.TTL, 'head_before': 'x'}, open(lock_path(d), 'w'))
         diag = git_guard.diagnostic(d)
-        if diag["etat"] == "tenu" and diag.get("ttl_depasse"):
-            ok("TTL dépassé (%.0f s > %.0f s) ET propriétaire vivant → état « tenu », "
-               "raison « %s »" % (diag["age_s"], diag["ttl_s"], diag.get("raison")))
+        if diag['state'] == 'held' and diag.get('ttl_exceeded'):
+            ok('case_7: check 169')
         else:
-            ko("état « %s » — un propriétaire vivant a été déclaré récupérable sur son ÂGE"
-               % diag["etat"])
-        j = git_guard.acquerir("voleur", "commit", ["f.md"], depot=d)
+            ko('case_7: check 172')
+        j = git_guard.acquerir('thief', 'commit', ['f.md'], depot=d)
         if j is None:
-            ok("acquisition REFUSÉE — le verrou n'a pas été volé")
+            ok('case_7: check 176')
         else:
-            ko("VOL : le verrou d'un processus vivant a été pris parce qu'il était ancien")
-        if os.path.exists(lock_path(d)) and \
-                json.load(open(lock_path(d)))["acteur"] == "push-lent":
-            ok("le verrou appartient toujours à son propriétaire d'origine")
+            ko('case_7: check 178')
+        if os.path.exists(lock_path(d)) and json.load(open(lock_path(d)))['actor'] == 'slow-push':
+            ok('case_7: check 181')
         else:
-            ko("le fichier de verrou a été écrasé")
+            ko('case_7: check 183')
     finally:
-        dormeur.kill(); dormeur.wait()
+        dormeur.kill()
+        dormeur.wait()
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 8. propriétaire TUÉ en pleine transaction ────────────────────────────────
-def sabotage_8():
-    print("\n8. PROPRIÉTAIRE TUÉ EN PLEINE TRANSACTION — inspectable puis déterministe")
+def case_8():
+    print('case_8: scenario 191')
     d = depot()
     try:
-        code = ("import sys,time;sys.path.insert(0,%r);import git_guard;"
-                "git_guard.acquerir('tue-en-vol','commit',['f.md'],depot=%r);"
-                "print('PRIS',flush=True);time.sleep(60)"
-                % (os.path.join(BRAIN, "hooks"), d))
-        p = subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, text=True)
-        p.stdout.readline()                       # attendre la prise réelle du verrou
+        code = "import sys,time;sys.path.insert(0,%r);import git_guard;git_guard.acquerir('killed-mid-flight','commit',['f.md'],depot=%r);print('HELD',flush=True);time.sleep(60)" % (os.path.join(BRAIN, 'hooks'), d)
+        p = subprocess.Popen([sys.executable, '-c', code], stdout=subprocess.PIPE, text=True)
+        p.stdout.readline()
         os.kill(p.pid, signal.SIGKILL)
         p.wait()
         if os.path.exists(lock_path(d)):
-            v = json.load(open(lock_path(d)))
-            ok("état INSPECTABLE après SIGKILL : verrou de « %s », pid %s, opération %s"
-               % (v["acteur"], v["pid"], v["operation"]))
+            json.load(open(lock_path(d)))
+            ok('case_8: check 204')
         else:
-            ko("le verrou a disparu — plus rien à inspecter après le crash")
-        etats = {git_guard.diagnostic(d)["etat"] for _ in range(5)}
-        if etats == {"recuperable"}:
-            ok("diagnostic DÉTERMINISTE sur 5 lectures : recuperable")
+            ko('case_8: check 207')
+        states = {git_guard.diagnostic(d)['state'] for _ in range(5)}
+        if states == {'recoverable'}:
+            ok('case_8: check 210')
         else:
-            ko("diagnostic instable : %s" % etats)
-        j = git_guard.acquerir("suivant", "commit", ["f.md"], depot=d)
-        ok("reprise obtenue après crash") if j else ko("reprise impossible après crash")
-        # la récupération n'a rien publié : aucun commit n'est apparu
-        n = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=d,
-                           capture_output=True, text=True).stdout.strip()
-        ok("aucune publication silencieuse pendant la récupération (%s commit)" % n) \
-            if n == "1" else ko("un commit est apparu pendant la récupération")
+            ko('case_8: check 212')
+        j = git_guard.acquerir('suivant', 'commit', ['f.md'], depot=d)
+        ok('case_8: check 214') if j else ko('case_8: check 214')
+        n = subprocess.run(['git', 'rev-list', '--count', 'HEAD'], cwd=d, capture_output=True, text=True).stdout.strip()
+        ok('case_8: check 218') if n == '1' else ko('case_8: check 219')
         git_guard.liberer(j, d)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 9. identité absente → refus EXPLICITE ────────────────────────────────────
-def sabotage_9():
-    print("\n9. IDENTITÉ ABSENTE — refus explicite, jamais d'attribution silencieuse")
+def case_9():
+    print('case_9: scenario 227')
     d = depot()
     try:
-        for mauvais in (None, "", "   ", 42):
-            if git_guard.acquerir(mauvais, "commit", ["f.md"], depot=d) is not None:
-                ko("acteur %r accepté — une mutation git serait devenue anonyme" % mauvais)
+        for mauvais in (None, '', '   ', 42):
+            if git_guard.acquerir(mauvais, 'commit', ['f.md'], depot=d) is not None:
+                ko('case_9: check 232')
                 break
         else:
-            ok("None, chaîne vide, blancs et non-chaîne : tous REFUSÉS")
-        refus = [e for e in journal(d) if e["evenement"] == "refus_identite_absente"]
-        ok("les %d refus sont journalisés" % len(refus)) if len(refus) == 4 else \
-            ko("%d refus journalisés sur 4" % len(refus))
+            ok('case_9: check 235')
+        refus = [e for e in journal(d) if e['event'] == 'refused_missing_identity']
+        ok('case_9: check 237') if len(refus) == 4 else ko('case_9: check 238')
         if not os.path.exists(lock_path(d)):
-            ok("aucun verrou n'a été créé au nom de personne")
+            ok('case_9: check 240')
         else:
-            ko("un verrou anonyme existe")
+            ko('case_9: check 242')
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 10. PID réutilisé — le PID seul ne suffit pas à identifier ───────────────
-def sabotage_10():
-    print("\n10. PID RÉUTILISÉ — un pid vivant n'est pas forcément LE propriétaire")
+def case_10():
+    print('case_10: scenario 249')
     d = depot()
-    dormeur = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(60)"])
+    dormeur = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
     try:
         time.sleep(0.3)
-        # pid bien vivant, mais l'heure de démarrage enregistrée n'est pas la sienne :
-        # c'est exactement la signature d'un PID recyclé par le système.
-        json.dump({"acteur": "ancien", "pid": dormeur.pid,
-                   "demarrage": "Mon Jan  1 00:00:00 1990", "operation": "commit",
-                   "perimetre": None, "ts": time.time(), "head_avant": "x"},
-                  open(lock_path(d), "w"))
+        json.dump({'actor': 'old-owner', 'pid': dormeur.pid, 'started': 'Mon Jan  1 00:00:00 1990', 'operation': 'commit', 'scope': None, 'ts': time.time(), 'head_before': 'x'}, open(lock_path(d), 'w'))
         diag = git_guard.diagnostic(d)
-        if diag["etat"] == "recuperable" and "réutilisé" in (diag.get("raison") or ""):
-            ok("détecté : %s" % diag["raison"])
+        if diag['state'] == 'recoverable' and 'reused' in (diag.get('reason') or ''):
+            ok('case_10: check 262')
         else:
-            ko("PID recyclé vu « %s » — le verrou serait gardé par un innocent"
-               % diag["etat"])
+            ko(f'PID reuse was not detected: {diag}')
     finally:
-        dormeur.kill(); dormeur.wait()
+        dormeur.kill()
+        dormeur.wait()
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 11. libérer ne retire que SON verrou ─────────────────────────────────────
-def sabotage_11():
-    print("\n11. LIBÉRATION — on ne retire jamais le verrou d'un autre")
+def case_11():
+    print('case_11: scenario 273')
     d = depot()
     try:
-        vrai = git_guard.acquerir("proprietaire", "commit", ["f.md"], depot=d)
-        faux = dict(vrai, acteur="usurpateur", pid=vrai["pid"] + 1, ts=vrai["ts"] + 1)
-        git_guard.liberer(faux, d)
+        real = git_guard.acquerir('owner', 'commit', ['f.md'], depot=d)
+        fake = dict(real, actor='impostor', pid=real['pid'] + 1, ts=real['ts'] + 1)
+        git_guard.liberer(fake, d)
         if os.path.exists(lock_path(d)):
-            ok("un jeton étranger ne libère pas le verrou en place")
+            ok('case_11: check 280')
         else:
-            ko("VOL PAR LIBÉRATION : un tiers a retiré le verrou du propriétaire")
-        git_guard.liberer(vrai, d)
-        ok("le vrai propriétaire libère") if not os.path.exists(lock_path(d)) else \
-            ko("le propriétaire n'arrive pas à libérer son propre verrou")
+            ko('case_11: check 282')
+        git_guard.liberer(real, d)
+        ok('case_11: check 284') if not os.path.exists(lock_path(d)) else ko('case_11: check 285')
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
-# ── 12. le journal répond-il à LA question ? ─────────────────────────────────
-def sabotage_12():
-    print("\n12. LE JOURNAL — « qui a tenté quoi, quand, pendant que qui possédait git ? »")
+def case_12():
+    print('case_12: scenario 292')
     d = depot()
     try:
-        with git_guard.transaction("acteur-A", "commit", ["f.md"], depot=d):
-            subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "x"], cwd=d)
-            refuse = git_guard.acquerir("acteur-B", "reset", ["f.md"], depot=d)
+        with git_guard.transaction('actor-A', 'commit', ['f.md'], depot=d):
+            subprocess.run(['git', 'commit', '-q', '--allow-empty', '-m', 'x'], cwd=d)
+            refused = git_guard.acquerir('actor-B', 'reset', ['f.md'], depot=d)
         j = journal(d)
         manque = []
-        acquis = next((e for e in j if e["evenement"] == "acquis"), {})
-        for champ in ("acteur", "pid", "operation", "perimetre", "head_avant", "quand"):
-            if not acquis.get(champ) and acquis.get(champ) != []:
-                manque.append("acquis." + champ)
-        ref = next((e for e in j if e["evenement"] == "refuse"), {})
-        if not ref.get("proprietaire_actuel"):
-            manque.append("refuse.proprietaire_actuel")
-        lib = next((e for e in j if e["evenement"] == "libere"), {})
-        for champ in ("head_apres", "fichiers_commites", "duree_s"):
+        acquired = next((e for e in j if e['event'] == 'acquired'), {})
+        for champ in ('actor', 'pid', 'operation', 'scope', 'head_before', 'when'):
+            if not acquired.get(champ) and acquired.get(champ) != []:
+                manque.append('acquired.' + champ)
+        ref = next((e for e in j if e['event'] == 'refused'), {})
+        if not ref.get('current_owner'):
+            manque.append('refused.current_owner')
+        lib = next((e for e in j if e['event'] == 'released'), {})
+        for champ in ('head_after', 'committed_files', 'duration_s'):
             if champ not in lib:
-                manque.append("libere." + champ)
+                manque.append('released.' + champ)
         if manque:
-            ko("champs absents du journal : %s" % ", ".join(manque))
+            ko('case_12: check 312')
         else:
-            ok("acquisition, refus nommant le propriétaire, et libération certifiant "
-               "HEAD après + fichiers réels")
-        if refuse is None and ref.get("acteur") == "acteur-B" \
-                and ref["proprietaire_actuel"].get("acteur") == "acteur-A":
-            ok("le refus de B nomme A comme détenteur — l'information qui manquait le 25/08")
+            ok('case_12: check 314')
+        if refused is None and ref.get('actor') == 'actor-B' and (ref['current_owner'].get('actor') == 'actor-A'):
+            ok('case_12: check 318')
         else:
-            ko("le journal ne relie pas le refusé au détenteur")
-        # le résultat réel est OBSERVÉ, pas recopié de l'intention
-        if lib.get("head_a_bouge") is True and lib.get("head_apres") != lib.get("head_avant"):
-            ok("la libération CERTIFIE le résultat réel (HEAD %s → %s)"
-               % (lib["head_avant"][:7], lib["head_apres"][:7]))
+            ko('case_12: check 320')
+        if lib.get('head_moved') is True and lib.get('head_after') != lib.get('head_before'):
+            ok('case_12: check 323')
         else:
-            ko("la libération n'observe pas le résultat réel")
+            ko('case_12: check 326')
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
-
 def main():
-    print("=" * 78)
-    print("SABOTAGES DE git_guard — la primitive, pas la course git")
-    print("  TTL = %.0f s · dépôts jetables · aucun accès au tronc" % git_guard.TTL)
-    print("=" * 78)
-    for f in (sabotage_5, sabotage_6, sabotage_7, sabotage_8, sabotage_9,
-              sabotage_10, sabotage_11, sabotage_12):
+    print('main: scenario 332')
+    print('main: scenario 333')
+    print('main: scenario 334')
+    print('main: scenario 335')
+    for f in (case_5, case_6, case_7, case_8, case_9, case_10, case_11, case_12):
         try:
             f()
-        except Exception as e:
-            ko("%s a levé : %s" % (f.__name__, e))
-    print("\n" + "-" * 78)
+        except Exception as error:
+            ko(f'{f.__name__} raised: {error}')
+    print('main: scenario 342')
     if fails:
-        print("ROUGE — %d sabotage(s) en échec :" % len(fails))
+        print('main: scenario 344')
         for f in fails:
-            print("   · %s" % f)
+            print('main: scenario 346')
         return 1
-    print("VERT — les 8 sabotages du verrou passent.")
-    print("  Portée : le MÉCANISME du verrou. Ne dit rien des producteurs, qui ne")
-    print("  l'appellent pas encore.")
+    print('main: scenario 348')
+    print('main: scenario 349')
+    print('main: scenario 350')
     return 0
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

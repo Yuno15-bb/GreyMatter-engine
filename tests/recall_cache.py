@@ -2,20 +2,20 @@
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """
-recall_cache.py — un index périmé est pire qu'un index lent.
+recall_cache.py — a stale index is worse than a slow one.
 
-Le corpus de rappel est caché, parce que le reconstruire à chaque prompt coûtait
-243 ms sur un tronc de 241 fiches et croissait linéairement. Ce cache achète de
-la vitesse et introduit la seule panne que ce projet ne peut pas se permettre :
-servir des fiches qui ne disent plus ce qu'elles disaient. Rien n'en serait
-visible — le rappel continuerait de répondre, avec assurance, à côté.
+The recall corpus is cached, because rebuilding it on every prompt cost 243 ms
+on a 241-note trunk and grew linearly. That cache buys speed and introduces the
+one failure this project cannot afford: serving notes that no longer say what
+they said. Nothing about it would be visible — recall would keep answering,
+confidently, out of date.
 
-Donc chaque façon dont le tronc peut changer doit l'invalider, et chaque façon
-dont le cache peut mal tourner doit dégrader en « plus lent », jamais en
-« faux » et jamais en « planté » — ceci tourne dans un hook, et un hook qui
-lève emporte le rappel de la session avec lui.
+So every way the trunk can change has to invalidate it, and every way the cache
+can go wrong has to degrade into "slower", never into "wrong" and never into
+"crashed" — this runs inside a hook, and a hook that throws takes the session's
+recall with it.
 
-Lancement : python3 tests/recall_cache.py
+Run: python3 tests/recall_cache.py
 """
 import importlib.util
 import os
@@ -56,9 +56,9 @@ def main():
         cache = trunk / "state" / "recall-index.json"
 
         def note(name, body):
-            # L'empreinte lit le mtime à la nanoseconde, mais un test qui écrit
-            # deux fois dans le même tic resterait un mensonge sur un système de
-            # fichiers à horodatage plus grossier. Une courte pause le tient honnête.
+            # mtime has nanosecond resolution in the fingerprint, but a test
+            # that writes twice within the same tick would still be a lie on a
+            # filesystem with coarser stamps. A short sleep keeps it honest.
             time.sleep(0.01)
             (trunk / "lessons" / f"{name}.md").write_text(
                 f"---\nname: {name}\ndescription: \"d\"\n---\n{body}\n", encoding="utf-8")
@@ -66,40 +66,40 @@ def main():
         note("alpha", "cache deployment stale artifact")
 
         first = m.load_corpus()
-        check("le fichier de cache est écrit", cache.exists())
+        check("the cache file is written", cache.exists())
         second = m.load_corpus()
-        check("un cache valide renvoie un corpus identique", first == second)
+        check("a cache hit returns the identical corpus", first == second)
 
-        print("▸ chaque façon de changer le tronc doit l'invalider")
+        print("▸ every way a trunk changes must invalidate it")
         note("alpha", "offline queue outbox retry resync")
         docs = m.load_corpus()
-        check("fiche modifiée → nouveaux tokens servis",
+        check("edited note → new tokens served",
               "outbox" in docs[0]["tokens"],
-              "le cache a servi le contenu précédent de la fiche")
+              "the cache served the note's previous content")
 
         note("beta", "token refresh expiry")
-        check("fiche ajoutée → indexée", len(m.load_corpus()) == 2)
+        check("added note → indexed", len(m.load_corpus()) == 2)
 
         (trunk / "lessons" / "beta.md").unlink()
-        check("fiche supprimée → retirée", len(m.load_corpus()) == 1)
+        check("deleted note → dropped", len(m.load_corpus()) == 1)
 
-        # Un renommage garde mtime et taille : seul le chemin change. Si
-        # l'empreinte ignorait les chemins, le rappel continuerait de désigner un
-        # fichier qui n'existe plus, et la fiche s'ouvrirait sur rien.
+        # A rename keeps mtime and size: only the path changes. If the
+        # fingerprint ignored paths, recall would keep pointing at a file that
+        # no longer exists, and the note would open on nothing.
         (trunk / "lessons" / "alpha.md").rename(trunk / "lessons" / "renamed.md")
         docs = m.load_corpus()
-        check("fiche renommée → nouveau chemin servi",
+        check("renamed note → new path served",
               docs and docs[0]["path"].endswith("renamed.md"),
-              f"sert encore {docs[0]['path'] if docs else 'rien'}")
+              f"still serving {docs[0]['path'] if docs else 'nothing'}")
 
-        print("▸ un cache cassé dégrade en lent, jamais en faux ni en mort")
+        print("▸ a broken cache degrades to slow, never to wrong or dead")
         cache.write_text("{ not json at all", encoding="utf-8")
-        check("cache corrompu → reconstruit", len(m.load_corpus()) == 1)
+        check("corrupt cache → rebuilt", len(m.load_corpus()) == 1)
 
-        # On plante dans le cache une version que le code refuse ET un contenu
-        # qui ne peut venir que de lui. Une assertion sur le NOMBRE de fiches
-        # passerait dans les deux cas — ce contrôle plus faible a laissé passer
-        # une mutation tout en restant vert.
+        # The cache is planted with a version the code does not accept AND with
+        # content that could only come from it. Asserting on the note COUNT
+        # would pass either way — that weaker check let a mutation through
+        # while still reporting green.
         import json as _json
         stale = _json.loads(cache.read_text(encoding="utf-8"))
         stale["version"] = 0
@@ -107,22 +107,22 @@ def main():
                           "desc": "", "tokens": ["ghost"]}]
         cache.write_text(_json.dumps(stale), encoding="utf-8")
         served = {d["name"] for d in m.load_corpus()}
-        check("version de cache ancienne → jetée, pas servie",
+        check("older cache version → discarded, not served",
               "SHOULD-NOT-BE-SERVED" not in served,
-              "un cache écrit sous d'autres règles de tokenisation a été servi tel quel")
+              "a cache written under different tokenisation rules was served as-is")
 
-        os.chmod(trunk / "state", 0o500)          # dossier d'état en lecture seule
+        os.chmod(trunk / "state", 0o500)          # read-only state directory
         try:
-            check("cache non inscriptible → le rappel répond quand même",
+            check("unwritable cache → recall still answers",
                   len(m.load_corpus()) == 1)
         finally:
             os.chmod(trunk / "state", 0o700)
 
         print()
         if FAILS:
-            print(f"❌ {FAILS} échec(s) — le cache de rappel peut servir des fiches périmées")
+            print(f"❌ {FAILS} failure(s) — the recall cache can serve stale notes")
             return 1
-        print("✅ le cache s'invalide à chaque changement du tronc, et n'échoue jamais durement")
+        print("✅ the cache is invalidated by every trunk change, and never fails hard")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

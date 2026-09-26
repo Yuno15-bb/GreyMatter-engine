@@ -1,51 +1,50 @@
 ---
-description: Transformer ce qui vient d'être compris en fiche C Brain — rangée dans la bonne zone, reliée à ce qui s'y rattache, indexée. À déclencher quand l'utilisateur dit « retiens ça », « note-le », « garde cette leçon », « distille la session », ou quand un problème non trivial vient d'être résolu et que le raisonnement serait sinon perdu.
+description: Turn what was just worked out into a C Brain note — filed in the right zone, linked to what it relates to, indexed. Use when the user says "remember this", "save that", "note it down", "distill this session", or when a non-obvious problem has just been solved and the reasoning would otherwise be lost.
 ---
 
-# Distiller en fiche
+# Distill into a note
 
-Une session se termine et son raisonnement part avec elle, sauf si quelque
-chose est écrit. Ceci l'écrit, dans la forme que le tronc attend.
+A session ends and its reasoning goes with it unless something is written down.
+This writes it down, in the shape the trunk expects.
 
-## Ce qui mérite une fiche
+## What deserves a note
 
-Seulement ce qu'un lecteur futur ne pourrait pas re-déduire à bon compte :
+Only what a future reader could not re-derive cheaply:
 
-- un défaut et **comment il a été trouvé**, pas seulement le correctif ;
-- une décision, ses alternatives, et pourquoi elles ont perdu ;
-- une contrainte qui ne se voit pas dans le code.
+- a defect and **how it was found**, not just the fix;
+- a decision, its alternatives, and why they lost;
+- a constraint that is not visible in the code.
 
-Pas : ce que le dépôt consigne déjà, ce qui ne vaut que pour cette
-conversation, ni un résumé d'un travail lisible dans le diff.
+Not: what the repository already records, what only matters to this
+conversation, or a summary of work anyone could read from the diff.
 
-## Forme
+## Shape
 
-Un fait par fichier, dans `~/.c-brain/trunk/<zone>/<slug>.md` où la zone est
-`lessons` (inter-projets), `projects/<nom>`, `meta` (façons de travailler) ou
+One fact per file, in `~/.c-brain/trunk/<zone>/<slug>.md` where zone is
+`lessons` (cross-project), `projects/<name>`, `meta` (ways of working) or
 `life`.
 
 ```markdown
 ---
-name: <slug-court-en-kebab-case>
-description: <une ligne — c'est là-dessus que le rappel classe, donc qu'elle DISE le fait>
+name: <short-kebab-case-slug>
+description: <one line — this is what recall ranks on, so make it say the fact>
 metadata:
   type: reference
 ---
 
-<le fait, énoncé pour être utile sans cette conversation>
+<the fact, stated so it is useful without this conversation>
 
-Why: <ce qui le rend non évident>
+Why: <what makes it non-obvious>
 
-How to apply: <le réflexe qu'il doit produire la prochaine fois>
+How to apply: <the reflex it should produce next time>
 ```
 
-Relie les fiches voisines par `[[leur-slug]]`. Relie généreusement — un lien
-vers une fiche qui n'existe pas encore marque quelque chose à écrire, pas une
-erreur.
+Link related notes with `[[their-slug]]`. Link generously — a link to a note
+that does not exist yet marks something worth writing, not an error.
 
-## Ensuite
+## Then
 
-- Ajoute une ligne dans `MEMORY.md` : `- [Titre](chemin.md) — accroche`.
-- **Vérifie d'abord qu'une fiche ne couvre pas déjà le sujet** et mets celle-là
-  à jour. Deux fiches sur un même sujet, c'est ainsi qu'un tronc se met à mentir.
-- Convertis les dates relatives en dates absolues. « Mardi dernier » pourrit.
+- Add one line to `MEMORY.md`: `- [Title](path.md) — hook`.
+- **Check first whether a note already covers it** and update that one instead.
+  Two notes on one subject is how a trunk starts lying.
+- Convert relative dates to absolute ones. "Last Tuesday" rots.

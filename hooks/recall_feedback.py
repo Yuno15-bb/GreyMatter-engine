@@ -1,131 +1,131 @@
 #!/usr/bin/env python3
-"""recall_feedback — ferme la boucle usage → classement.
+"""recall_feedback — closes the usage → ranking loop.
 
-LE PROBLÈME QU'IL RÉSOUT. `inject_recall.py` écrit dans `state/recall_log.jsonl` en
-mode « a » et **personne ne relit ce fichier**. Idem pour `state/read_log.jsonl`, relu
-seulement par la visualisation 3D. Le Brain journalisait donc depuis des mois ce qui a
-servi et ce qui n'a jamais servi, et n'en tirait rien : 2,3 % des fiches suggérées sont
-réellement ouvertes, et rien ne corrigeait ce taux.
+THE PROBLEM IT SOLVES. `inject_recall.py` appends to `state/recall_log.jsonl` and
+**nobody ever reads that file back**. Same for `state/read_log.jsonl`, read only by the
+3D visualisation. So for months the Brain had been logging what served and what never
+served, and drawing nothing from it: 2.3% of suggested notes are actually opened, and
+nothing corrected that rate.
 
-CE QU'IL CALCULE. Pour chaque fiche, le nombre de fois où elle a été **suggérée puis
-réellement ouverte dans la même session**. C'est le seul signal honnête disponible :
-« suggérée » seul ne prouve rien, « ouverte » seul peut venir d'une recherche manuelle.
+WHAT IT COMPUTES. For each note, the number of times it was **suggested and then
+actually opened within the same session**. That is the only honest signal available:
+"suggested" alone proves nothing, "opened" alone can come from a manual search.
 
-CE QU'IL NE FAIT PAS, DÉLIBÉRÉMENT.
-  • Aucune pénalité pour les fiches jamais ouvertes. Une fiche peut être excellente et
-    mal décrite ; la punir au classement l'enterre définitivement et personne ne le voit.
+WHAT IT DELIBERATELY DOES NOT DO.
+  • No penalty for notes that are never opened. A note can be excellent and badly
+    described; punishing it in the ranking buries it for good and nobody ever sees it.
 
-    ⚠️ ET SURTOUT : « souvent proposée, jamais ouverte » N'EST PAS un défaut.
-    Vérifié à la main sur les 50 fiches concernées — **une seule** avait une description
-    réellement vague. Les autres sont dans l'autre cas, exactement inverse : leur
-    description répond DÉJÀ à la question, donc ne pas ouvrir la fiche est un SUCCÈS.
-    Exemple : `separation-pouvoirs-agent-teams`, proposée 73 fois, jamais ouverte — sa
-    description dit tout en une ligne.
-    Le fichier de sortie s'appelait `a-revoir-description.json` : ce nom présupposait le
-    défaut et aurait poussé à réécrire 50 fiches, c'est-à-dire à détruire ce qui marche.
-    Il décrit maintenant l'OBSERVATION, pas un verdict. C'est un point de départ
-    d'enquête, à lire fiche par fiche.
-  • Aucune suppression. Ce fichier ne touche à aucune fiche.
+    ⚠️ AND ABOVE ALL: "often suggested, never opened" IS NOT a defect.
+    Checked by hand over the 50 notes concerned — **exactly one** had a genuinely vague
+    description. The others are the opposite case: their description ALREADY answers the
+    question, so not opening the note is a SUCCESS.
+    Example: `separation-pouvoirs-agent-teams`, suggested 73 times, never opened — its
+    description says everything in one line.
+    The output file used to be called `descriptions-to-rewrite.json`: that name presumed
+    the defect and would have pushed someone to rewrite 50 notes, that is, to destroy
+    what works. It now describes the OBSERVATION, not a verdict. It is a starting point
+    for an investigation, to be read note by note.
+  • No deletion. This file touches no note.
 
-Sorties :
-  state/recall-utilite.json                  {chemin: {sugg, hit, dernier}} — lu par brain_recall
-  state/souvent-proposee-jamais-ouverte.json  observation brute, PAS un verdict (cf. plus bas)
+Outputs:
+  state/recall-utility.json                  {path: {sugg, hit, last}} — read by brain_recall
+  state/often-suggested-never-opened.json  raw observation, NOT a verdict (see above)
 
-Usage :
-  recall_feedback.py            recalcule les deux fichiers
-  recall_feedback.py --rapport  recalcule et imprime un résumé lisible
+Usage:
+  recall_feedback.py           recompute both files
+  recall_feedback.py --report  recompute and print a readable summary
 """
 import os, sys, json, collections, datetime
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
-ETAT = os.path.join(BRAIN, "state")
-UTILITE = os.path.join(ETAT, "recall-utilite.json")
-SOUVENT_JAMAIS = os.path.join(ETAT, "souvent-proposee-jamais-ouverte.json")
+STATE = os.path.join(BRAIN, "state")
+UTILITY = os.path.join(STATE, "recall-utility.json")
+OFTEN_NEVER = os.path.join(STATE, "often-suggested-never-opened.json")
 
-# Une lecture qui précède de peu sa suggestion compte quand même : les horodatages du
-# hook et de l'outil de lecture ne sont pas posés au même instant.
+# A read that slightly precedes its suggestion still counts: the hook's timestamp and the
+# read tool's timestamp are not written at the same instant.
 TOLERANCE_S = 60
-# Au-delà, « souvent proposée, jamais ouverte » cesse d'être du hasard.
-SEUIL_A_REVOIR = 8
+# Past this, "often suggested, never opened" stops being chance.
+REVIEW_THRESHOLD = 8
 
 
-def _lire(nom):
-    p = os.path.join(ETAT, nom)
+def _read(name):
+    p = os.path.join(STATE, name)
     if not os.path.exists(p):
         return []
     out = []
     with open(p, encoding="utf-8") as f:
-        for ligne in f:
+        for line in f:
             try:
-                d = json.loads(ligne)
+                d = json.loads(line)
             except Exception:
-                continue                      # ligne tronquée par un hook tué : on saute
+                continue                      # line truncated by a killed hook: skip it
             if d.get("path") and d.get("sid"):
                 out.append(d)
     return out
 
 
-def calculer():
-    suggestions, premiere = collections.defaultdict(set), {}
-    for d in _lire("recall_log.jsonl"):
+def compute():
+    suggestions, first = collections.defaultdict(set), {}
+    for d in _read("recall_log.jsonl"):
         suggestions[d["path"]].add(d["sid"])
-        cle = (d["path"], d["sid"])
-        premiere[cle] = min(premiere.get(cle, d["ts"]), d["ts"])
+        key = (d["path"], d["sid"])
+        first[key] = min(first.get(key, d["ts"]), d["ts"])
 
-    lectures = collections.defaultdict(list)
-    for d in _lire("read_log.jsonl"):
-        lectures[(d["path"], d["sid"])].append(d["ts"])
+    reads = collections.defaultdict(list)
+    for d in _read("read_log.jsonl"):
+        reads[(d["path"], d["sid"])].append(d["ts"])
 
-    # ADR-0018 / M5 (2026-09-19) : l'usage ne classe plus, il ANNOTE. Une annotation qui
-    # ne dit pas QUAND ne vaut rien — « ouverte 5 fois » peut dater de trois mois. La date
-    # se calcule ici, dans la boucle qui tient déjà les horodatages : le rappel, lui, lit
-    # un nombre déjà écrit et ne paie rien de plus à chaque prompt.
-    utilite = {}
-    for chemin, sids in suggestions.items():
+    # ADR-0018 / M5 (2026-09-19): usage no longer ranks, it ANNOTATES. An annotation that
+    # does not say WHEN is worthless — "opened 5 times" may date from three months ago. The date
+    # is computed here, in the loop that already holds the timestamps: recall itself reads
+    # a number already written and pays nothing more on each prompt.
+    utility = {}
+    for path, sids in suggestions.items():
         derniers = []
         for sid in sids:
-            vues = [ts for ts in lectures.get((chemin, sid), ())
-                    if ts >= premiere[(chemin, sid)] - TOLERANCE_S]
-            if vues:                          # même règle qu'avant : au moins une lecture
-                derniers.append(max(vues))    # qui suit la suggestion, à la tolérance près
-        utilite[chemin] = {"sugg": len(sids), "hit": len(derniers)}
+            vues = [ts for ts in reads.get((path, sid), ())
+                    if ts >= first[(path, sid)] - TOLERANCE_S]
+            if vues:                          # same rule as before: at least one read
+                derniers.append(max(vues))    # following the suggestion, within tolerance
+        utility[path] = {"sugg": len(sids), "hit": len(derniers)}
         if derniers:
-            utilite[chemin]["dernier"] = datetime.datetime.fromtimestamp(
+            utility[path]["last"] = datetime.datetime.fromtimestamp(
                 max(derniers)).strftime("%Y-%m-%d")
 
-    a_revoir = sorted(
-        ({"path": c, "sugg": v["sugg"]} for c, v in utilite.items()
-         if v["hit"] == 0 and v["sugg"] >= SEUIL_A_REVOIR),
+    to_review = sorted(
+        ({"path": p, "sugg": v["sugg"]} for p, v in utility.items()
+         if v["hit"] == 0 and v["sugg"] >= REVIEW_THRESHOLD),
         key=lambda x: -x["sugg"])
-    return utilite, a_revoir
+    return utility, to_review
 
 
-def ecrire(chemin, donnees):
-    os.makedirs(os.path.dirname(chemin), exist_ok=True)
-    tmp = f"{chemin}.{os.getpid()}.tmp"          # atomique : jamais de demi-fichier
+def write(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"            # atomic: never a half-written file
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(donnees, f, ensure_ascii=False)
-    os.replace(tmp, chemin)
+        json.dump(data, f, ensure_ascii=False)
+    os.replace(tmp, path)
 
 
 def main():
-    utilite, a_revoir = calculer()
-    ecrire(UTILITE, utilite)
-    ecrire(SOUVENT_JAMAIS, a_revoir)
+    utility, to_review = compute()
+    write(UTILITY, utility)
+    write(OFTEN_NEVER, to_review)
 
-    if "--rapport" not in sys.argv:
+    if "--report" not in sys.argv:
         return 0
-    sugg = sum(v["sugg"] for v in utilite.values())
-    hit = sum(v["hit"] for v in utilite.values())
-    print(f"{len(utilite)} fiches suggérées · {sugg} couples (fiche, session)")
-    print(f"suggérées PUIS ouvertes : {hit} ({hit / sugg * 100:.1f} %)" if sugg else "aucune suggestion")
-    porteuses = sorted((v["hit"], v["sugg"], c) for c, v in utilite.items() if v["hit"])
-    print(f"\nfiches qui servent vraiment ({len(porteuses)}) :")
-    for h, s, c in sorted(porteuses, reverse=True)[:8]:
-        print(f"  {h:3d}/{s:<3d}  {c}")
-    print(f"\nproposées ≥{SEUIL_A_REVOIR}× et jamais ouvertes ({len(a_revoir)}) — observation,")
-    print("pas un défaut : une description qui répond déjà rend la lecture inutile.")
-    for x in a_revoir[:8]:
+    sugg = sum(v["sugg"] for v in utility.values())
+    hit = sum(v["hit"] for v in utility.values())
+    print(f"{len(utility)} notes suggested · {sugg} (note, session) pairs")
+    print(f"suggested THEN opened: {hit} ({hit / sugg * 100:.1f}%)" if sugg else "no suggestion")
+    carrying = sorted((v["hit"], v["sugg"], p) for p, v in utility.items() if v["hit"])
+    print(f"\nnotes that really serve ({len(carrying)}):")
+    for h, s, p in sorted(carrying, reverse=True)[:8]:
+        print(f"  {h:3d}/{s:<3d}  {p}")
+    print(f"\nsuggested ≥{REVIEW_THRESHOLD}× and never opened ({len(to_review)}) — an observation,")
+    print("not a defect: a description that already answers makes the read pointless.")
+    for x in to_review[:8]:
         print(f"  {x['sugg']:3d}×  {x['path']}")
     return 0
 

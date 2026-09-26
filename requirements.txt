@@ -1,6 +1,6 @@
-# Moteur de rappel sémantique (OPTIONNEL).
-# Sans ces paquets, C Brain retombe automatiquement sur BM25 (lexical), qui
-# marche très bien. Ne les installe que si tu veux un rappel par embeddings.
-# Volontairement léger : model2vec = embeddings statiques, SANS PyTorch.
+# Semantic recall backend (OPTIONAL).
+# Without these packages, C Brain automatically falls back to BM25 (lexical),
+# which works very well. Install them only if you want embeddings-based recall.
+# Deliberately light: model2vec = static embeddings, with NO PyTorch.
 model2vec
 numpy

@@ -1,48 +1,52 @@
 #!/usr/bin/env python3
-"""brain_racine — la définition unique de « quel Brain suis-je en train de mesurer ? ».
+"""brain_racine — the single definition of "which Brain am I measuring?".
 
-TROIS RACINES, TROIS NOTIONS. Les confondre est le défaut que ce module existe pour
-fermer :
+THREE ROOTS, THREE NOTIONS. Confusing them is the defect this module exists to
+close:
 
-    CODE_ROOT   où vivent mes scripts, fixtures, ressources voisines.  → __file__
-    BRAIN_ROOT  l'arbre de données que j'agis : corpus, state, cartes. → BRAIN_HOME
-    HOME        le foyer de l'utilisateur : Bureau, coffres, sauvegardes. → ~
+    CODE_ROOT   where my scripts, fixtures and neighbouring resources live. → __file__
+    BRAIN_ROOT  the data tree I act on: corpus, state, maps.               → BRAIN_HOME
+    HOME        the user's home: Desktop, vaults, backups.                 → ~
 
-Sur le tronc de l'auteur, les trois coïncident — et c'est exactement ce qui a rendu le
-défaut invisible pendant des mois. Ils divergent dès qu'on clone, qu'on ouvre un worktree,
-ou qu'on installe le paquet ailleurs.
+On the author's trunk the three coincide — and that is exactly what kept the defect
+invisible for months. They diverge as soon as you clone, open a worktree, or install
+the package somewhere else.
 
-POURQUOI UNE PRIMITIVE, ET SEULEMENT MAINTENANT. Le bon patron existait depuis le
-2026-08-03 dans `tests/invariants_brain.py:19-23`, avec la bonne raison écrite à côté, et
-n'avait jamais été propagé. Au 2026-08-21 il en existe cinq copies inline. Cinq copies d'une
-définition, c'est cinq occasions de diverger : `grep -l "def racine"` ne rendait rien.
+WHY A PRIMITIVE, AND ONLY NOW. The right pattern had existed since 2026-08-03 in
+`tests/invariants_brain.py:19-23`, with the right reason written next to it, and had
+never been propagated. On 2026-08-21 there were five inline copies of it. Five copies of
+one definition are five chances to diverge: `grep -l "def racine"` returned nothing.
 
-RÈGLE (spec gelée du 2026-08-20, clauses 1 à 5) :
-    1. `realpath` obligatoire — le symlink ~/.claude/projects/…/memory donne deux chemins
-       pour un seul arbre, et deux chemins font deux racines.
-    2. jamais `~/.c-brain/trunk` littéral — mesuré : 7 sites qu'aucune variable ne détournait.
-    3. jamais le `cwd` — il n'a aucun effet aujourd'hui ; créer la dépendance serait un recul.
-    4. `BRAIN_HOME` défini mais VIDE ≡ absent — mesuré le 2026-08-20.
-    5. une seule implémentation — ce fichier.
+RULE (spec frozen on 2026-08-20, clauses 1 to 5):
+    1. `realpath` is mandatory — the ~/.claude/projects/…/memory symlink gives two paths
+       for a single tree, and two paths make two roots.
+    2. never a literal `~/.c-brain/trunk` OUTSIDE this file — measured: 7 sites no
+       variable could redirect. Here it is the one default, and BRAIN_HOME overrides it.
+    3. never the `cwd` — it has no effect today; creating the dependency would be a step back.
+    4. `BRAIN_HOME` set but EMPTY ≡ unset — measured on 2026-08-20.
+    5. a single implementation — this file.
 """
 import os
 
 
 def brain_root(depuis=None):
-    """Racine canonique du Brain MESURÉ.
+    """Canonical root of the Brain being MEASURED: `BRAIN_HOME`, else `~/.c-brain/trunk`.
 
-    `depuis` : un chemin du module appelant (typiquement `__file__`). Il ne sert QUE de
-    repli, pour trouver le dépôt qui héberge le code quand personne n'a demandé de Brain
-    explicite. Il ne prime jamais sur `BRAIN_HOME`."""
+    `depuis` (the caller's `__file__`) is accepted and NOT used for the identity. The
+    folder above the code is never the trunk in an installed engine: the hooks run as
+    `~/.c-brain/trunk/hooks/X.py`, `hooks` is a symlink into the engine, and `realpath`
+    resolves it BEFORE applying `..` — measured on 2026-09-25, the "parent of the code"
+    landed in `~/.c-brain/versions/<version>`, the frozen engine doctor checks against
+    its manifest. Every state file would have been written there. Under the plugin,
+    the code sits in the plugin cache: no trunk at all."""
     demande = os.environ.get("BRAIN_HOME")
-    if demande:                                   # "" est faux : clause 4
+    if demande:                                   # "" is falsy: clause 4
         return os.path.realpath(demande)
-    ancre = depuis or __file__
-    return os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(ancre)), ".."))
+    return os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
 
 
 def code_root(depuis):
-    """Racine du CODE appelant. Légitime, et distincte du Brain : c'est là que vivent les
-    fixtures, les scripts voisins, les ressources du programme. Ne jamais l'utiliser comme
-    identité du Brain simplement parce que les deux coïncident sur le tronc auteur."""
+    """Root of the calling CODE. Legitimate, and distinct from the Brain: that is where the
+    fixtures, neighbouring scripts and program resources live. Never use it as the Brain's
+    identity just because the two coincide on the author's trunk."""
     return os.path.dirname(os.path.abspath(depuis))

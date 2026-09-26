@@ -1,30 +1,8 @@
 #!/usr/bin/env python3
-"""
-extrait_obligatoire.py — E1 « pas d'extrait, pas de fait », rendu réfutable.
+"""E1: a newly added sourced note must quote an exact excerpt.
 
-CE QU'IL PROUVE. `agents/narcissus.md`, section « MISSION — distillateur », demande depuis le 2026-09-18 que chaque fait
-porte l'extrait exact de sa source. Une consigne est une prose, et **une prose ne rougit
-jamais** : tant qu'aucun contrôle ne refuse une fiche sans extrait, la règle n'existe que
-sur le papier. Ce banc monte un tronc jetable, y ajoute des fiches, et vérifie que le
-garde-fou du commit (`tests/provenance_fiches.py --check --nouvelles`) dit NON quand il
-doit dire non — et se tait quand il doit se taire.
-
-POURQUOI UN DÉPÔT GIT JETABLE. La barrière lit `git diff --cached` : sans index, elle ne
-voit aucune fiche « ajoutée » et passerait au vert quoi qu'on écrive. Un banc qui ne peut
-pas rougir ne protège de rien (lessons/test-d-equivalence-vert-aussi-quand-le-code-est-
-inerte.md). On fabrique donc un vrai dépôt, dans /tmp, jamais le tronc vivant.
-
-LES DEUX MUETS COMPTENT AUTANT QUE LES ROUGES. Un contrôle qui rougit sur tout est aussi
-inutile qu'un contrôle qui ne rougit sur rien : il se désactive au premier commit gênant.
-Les cas « muet » vérifient les deux exemptions assumées — `kind: unknown` n'a rien à citer,
-et les fiches déjà en place ne sont pas rattrapées.
-
-VÉRIFIER LE MOTIF, PAS SEULEMENT LA COULEUR. Chaque rouge attendu doit mentionner « E1 » :
-sans ça, un refus pour provenance absente passerait pour une preuve de ce banc.
-
-Lancer :
-  python3 tests/extrait_obligatoire.py
-  python3 tests/extrait_obligatoire.py --check
+The pre-commit gate reads Git's index, so each case runs in its own temporary
+repository. An unknown origin and an already committed note are exempt.
 """
 import argparse
 import os
@@ -33,185 +11,134 @@ import subprocess
 import sys
 import tempfile
 
-ICI = os.path.dirname(os.path.abspath(__file__))
-BARRIERE = os.path.join(ICI, "provenance_fiches.py")
-
-AVEC_EXTRAIT = """---
-title: Le cache du lecteur PDF garde l'ancienne version
-description: "Réécrire un PDF au même chemin peut laisser Aperçu afficher la version d'avant."
-topic: outillage-et-environnement
+HERE = os.path.dirname(os.path.abspath(__file__))
+GATE = os.path.join(HERE, "provenance_fiches.py")
+EXCERPT = "The PDF reader kept the previous rendering."
+WITH_EXCERPT = """---
+title: The PDF reader cache retained the previous version
+description: "Rewriting a PDF at the same path can show stale content."
+topic: machine-and-process
 provenance:
   kind: internal_experience
-  ref: "sessions/archive/2026-09-18-essai.md"
+  ref: "sessions/archive/2026-09-18-trial.md"
   captured_at: 2026-09-18
-  extrait: "constaté le 31/08, reproduit à l'identique le 01/09"
+  extrait: "The PDF reader kept the previous rendering."
 authority:
   validated: false
   scope: repository
   confidence: medium
 ---
 
-Réécrire un PDF au même chemin laisse parfois le lecteur afficher la version précédente.
+A reader may display the previous PDF after a rewrite at the same path.
 
-## Correctif
+## Remedy
 
-Changer le nom du fichier à chaque rendu, ou vider le cache avant de regarder.
+Change the filename on each render or clear the reader cache.
 """
-
-SANS_ORIGINE = """---
-title: Une note dont l'origine s'est perdue
-description: "Un fait ancien, dont personne ne sait plus d'où il sort."
-topic: outillage-et-environnement
+UNKNOWN = """---
+title: An observation with an unknown origin
+description: "An older observation without a retained source."
+topic: machine-and-process
 provenance:
   kind: unknown
 ---
 
-Le corps de la fiche, sans intérêt pour ce banc.
+The note body is irrelevant to this bench.
 """
 
 
-def env_propre(**ajouts):
-    """L'environnement DÉBARRASSÉ de tout ce que git y pose quand il appelle un hook.
-
-    LE DÉFAUT QUE CETTE FONCTION FERME — mesuré le 2026-09-19, en production.
-    Ce banc monte un dépôt jetable dans /tmp et y lance `git init`, `git add -A`,
-    `git commit`. Lancé à la main, c'est hermétique. Lancé PAR LE PRE-COMMIT, ça ne
-    l'est plus : git exporte `GIT_INDEX_FILE` et `GIT_DIR` vers ses hooks, et un
-    `subprocess` en hérite. Le `git add -A` du dépôt jetable écrivait donc
-    `lessons/fiche-ancienne.md` dans l'index DU VRAI DÉPÔT, avec une empreinte qui
-    n'existe nulle part dans sa base d'objets.
-
-    Conséquence observée : tout commit passant par le hook mourait sur
-    « error: invalid object 100644 176d280d… for 'lessons/fiche-ancienne.md' /
-    error: Error building trees » — un message qui ne nomme ni le banc, ni la cause,
-    et qui survivait à `git reset` puisque la pollution était reposée à chaque essai.
-    Les quatre zones étaient refusées d'affilée sans qu'aucun banc ne rougisse.
-
-    `cwd=` ne protège de rien : `GIT_DIR` prime sur le répertoire courant. C'est
-    l'environnement qu'il faut nettoyer, pas le chemin.
-    """
-    e = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    e.update(ajouts)
-    return e
+def clean_env(**extra):
+    """Drop Git hook variables that could redirect commands to the caller's index."""
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update(extra)
+    return env
 
 
-def tronc_jetable():
-    """Un dépôt git neuf, avec UNE fiche déjà commitée : le passé, qu'on ne rattrape pas."""
-    d = tempfile.mkdtemp(prefix="banc-extrait-")
-    for sous in ("projects/socle", "lessons", "meta", "state"):
-        os.makedirs(os.path.join(d, sous), exist_ok=True)
-    ecrire(d, "lessons/fiche-ancienne.md", AVEC_EXTRAIT.replace(
-        '  extrait: "constaté le 31/08, reproduit à l\'identique le 01/09"\n', ""))
-    for cmd in (["git", "init", "-q"],
-                ["git", "config", "user.email", "banc@local"],
-                ["git", "config", "user.name", "Banc"],
-                ["git", "add", "-A"],
-                ["git", "commit", "-q", "-m", "le passé"]):
-        subprocess.run(cmd, cwd=d, env=env_propre(), capture_output=True, text=True)
-    return d
+def write(root, rel, content):
+    with open(os.path.join(root, rel), "w", encoding="utf-8") as note:
+        note.write(content)
 
 
-def ecrire(d, rel, txt):
-    open(os.path.join(d, rel), "w", encoding="utf-8").write(txt)
+def repository():
+    root = tempfile.mkdtemp(prefix="excerpt-bench-")
+    for subdir in ("projects/base", "lessons", "meta", "state"):
+        os.makedirs(os.path.join(root, subdir), exist_ok=True)
+    write(root, "lessons/old-note.md", WITH_EXCERPT.replace(
+        f'  extrait: "{EXCERPT}"\n', ""))
+    for command in (("git", "init", "-q"),
+                    ("git", "config", "user.email", "bench@local"),
+                    ("git", "config", "user.name", "Bench"),
+                    ("git", "add", "-A"),
+                    ("git", "commit", "-q", "-m", "existing note")):
+        result = subprocess.run(command, cwd=root, env=clean_env(), capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+    return root
 
 
-def stager(d, rel, txt):
-    """Écrit une fiche ET la met dans l'index : c'est l'index que la barrière regarde."""
-    ecrire(d, rel, txt)
-    subprocess.run(["git", "add", rel], cwd=d, env=env_propre(),
-                   capture_output=True, text=True)
+def stage(root, content):
+    rel = "lessons/new-note.md"
+    write(root, rel, content)
+    result = subprocess.run(["git", "add", rel], cwd=root, env=clean_env(),
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
-def verdict(d):
-    """Ce que dirait le pre-commit sur ce tronc-là : (code de sortie, texte affiché)."""
-    r = subprocess.run([sys.executable, BARRIERE, "--check", "--nouvelles"],
-                       cwd=d, env=env_propre(BRAIN_HOME=d),
-                       capture_output=True, text=True)
-    return r.returncode, r.stdout + r.stderr
+def verdict(root, gate=GATE):
+    result = subprocess.run([sys.executable, gate, "--check", "--nouvelles"],
+                            cwd=root, env=clean_env(BRAIN_HOME=root),
+                            capture_output=True, text=True)
+    return result.returncode, result.stdout + result.stderr
 
 
-CAS = []
-
-
-def cas(nom, doit_rougir, motif=None):
-    def deco(f):
-        CAS.append((nom, doit_rougir, motif, f))
-        return f
-    return deco
-
-
-@cas("fiche neuve AVEC son extrait", False)
-def _c1(d):
-    stager(d, "lessons/fiche-neuve.md", AVEC_EXTRAIT)
-
-
-@cas("fiche neuve SANS ligne extrait", True, "E1")
-def _c2(d):
-    stager(d, "lessons/fiche-neuve.md", AVEC_EXTRAIT.replace(
-        '  extrait: "constaté le 31/08, reproduit à l\'identique le 01/09"\n', ""))
-
-
-@cas("extrait présent mais VIDE", True, "E1")
-def _c3(d):
-    stager(d, "lessons/fiche-neuve.md", AVEC_EXTRAIT.replace(
-        '"constaté le 31/08, reproduit à l\'identique le 01/09"', '""'))
-
-
-@cas("extrait fait de blancs", True, "E1")
-def _c4(d):
-    stager(d, "lessons/fiche-neuve.md", AVEC_EXTRAIT.replace(
-        '"constaté le 31/08, reproduit à l\'identique le 01/09"', '"   "'))
-
-
-@cas("origine déclarée inconnue, sans extrait — exemption assumée", False)
-def _c5(d):
-    stager(d, "lessons/fiche-neuve.md", SANS_ORIGINE)
-
-
-@cas("fiche ancienne sans extrait, non ajoutée — pas de rattrapage", False)
-def _c6(d):
-    pass  # rien n'est ajouté : seule la fiche déjà commitée existe
+CASES = (
+    ("new note with excerpt", WITH_EXCERPT, False),
+    ("new note without excerpt", WITH_EXCERPT.replace(f'  extrait: "{EXCERPT}"\n', ""), True),
+    ("empty excerpt", WITH_EXCERPT.replace(f'"{EXCERPT}"', '""'), True),
+    ("whitespace excerpt", WITH_EXCERPT.replace(f'"{EXCERPT}"', '"   "'), True),
+    ("unknown origin", UNKNOWN, False),
+    ("existing note without excerpt", None, False),
+)
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true")
-    a = ap.parse_args()
-
-    print(f"E1 — l'extrait obligatoire, {len(CAS)} cas\n")
-    ennuis = []
-    for nom, doit_rougir, motif, f in CAS:
-        d = tronc_jetable()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--sabotage", action="store_true",
+                        help="Invert the expected outcome of the missing-excerpt case")
+    args = parser.parse_args()
+    failures = []
+    print(f"E1 excerpt gate — {len(CASES)} cases")
+    for label, content, expect_red in CASES:
+        root = repository()
         try:
-            # Le tronc doit être VERT avant le sabotage, sinon le rouge ne prouve rien.
-            code0, _ = verdict(d)
-            if code0 != 0:
-                ennuis.append(f"{nom} : le tronc d'essai rougit AVANT le sabotage")
+            gate = GATE
+            if args.sabotage:
+                gate_dir = os.path.join(root, "test-gate")
+                os.makedirs(gate_dir)
+                shutil.copy(os.path.join(HERE, "provenance_invariants.py"), gate_dir)
+                source = open(GATE, encoding="utf-8").read()
+                before = 'and not str(prov.get("extrait") or "").strip()):'
+                assert before in source, "sabotage target has changed"
+                gate = os.path.join(gate_dir, "provenance_fiches.py")
+                with open(gate, "w", encoding="utf-8") as script:
+                    script.write(source.replace(before, 'and False):'))
+            initial, output = verdict(root, gate)
+            if initial:
+                failures.append(f"{label}: baseline failed: {output[-200:]}")
                 continue
-            f(d)
-            code, texte = verdict(d)
-            rouge = code != 0
-            if rouge != doit_rougir:
-                attendu = "rouge" if doit_rougir else "vert"
-                ennuis.append(f"{nom} : attendu {attendu}, obtenu "
-                              f"{'rouge' if rouge else 'vert'}")
-            elif doit_rougir and motif and motif not in texte:
-                ennuis.append(f"{nom} : rouge, mais pour un autre motif que « {motif} »")
-            etat = "ROUGE" if rouge else "vert "
-            ok = "✅" if not [e for e in ennuis if e.startswith(nom)] else "❌"
-            print(f"  {ok} {etat}  {nom}")
+            if content is not None:
+                stage(root, content)
+            code, output = verdict(root, gate)
+            passed = (bool(code) == expect_red and (not expect_red or "E1" in output))
+            print(("  PASS " if passed else "  FAIL ") + label)
+            if not passed:
+                failures.append(f"{label}: exit={code}, E1={'E1' in output}")
         finally:
-            shutil.rmtree(d, ignore_errors=True)
-
-    print(f"\n  {len(CAS) - len(ennuis)}/{len(CAS)} cas conformes")
-    for e in ennuis:
-        print(f"     ↳ {e}")
-    if a.check and ennuis:
-        print("\n❌ E1 n'est pas tenu par un contrôle : la consigne reste une prose")
-        return 1
-    if a.check:
-        print("\n✅ une fiche neuve sans extrait est refusée, et seulement celle-là")
-    return 0
+            shutil.rmtree(root, ignore_errors=True)
+    print(f"{len(CASES) - len(failures)}/{len(CASES)} cases conform")
+    for failure in failures:
+        print("  " + failure)
+    return 1 if args.check and failures else 0
 
 
 if __name__ == "__main__":

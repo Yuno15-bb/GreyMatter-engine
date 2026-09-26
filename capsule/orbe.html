@@ -2,26 +2,25 @@
 <meta charset="utf-8">
 <title>Capsule — orbe</title>
 <!--
-  LE COMPAGNON DE BUREAU, VERSION ORBE (2026-08-01).
+  THE DESKTOP COMPANION, ORB VERSION (2026-08-01).
 
-  Remplace le personnage Lottie. Page SÉPARÉE d'index.html à dessein : la
-  capsule « boîte » garde sa créature canvas, et le mode libre n'a plus à
-  cohabiter avec 1 400 lignes qui ne le concernent pas.
+  Replaces the Lottie character. A page SEPARATE from index.html on purpose: the
+  "box" capsule keeps its canvas creature, and the free mode no longer has to
+  live with 1,400 lines that do not concern it.
 
-  La coquille réutilisable vit dans `orbe/` — elle ne connaît ni la capsule ni
-  le Brain. Le projet d'origine est sur le Bureau (`~/Desktop/Orbe`), avec sa
-  démo et ses leçons.
+  The reusable shell lives in `orbe/` — it knows neither the capsule nor
+  the Brain. Its rendering code and examples live in `orbe/`.
 -->
 <script>
-  // Posé AVANT la feuille de style : sinon la première image montre l'orbe sortie.
+  // Set BEFORE the stylesheet: otherwise the first frame shows the orb out.
   if (location.search.includes('encoche')) document.documentElement.dataset.encoche = '1';
-  // ?seule : l'orbe sans ses libellés, pour le panneau de la barre de menus (ilot.html),
-  // qui dit lui-même qui travaille et sur quoi.
+  // ?seule: the orb without its labels, for the menu bar panel (ilot.html),
+  // which itself says who is working and on what.
   if (location.search.includes('seule')) document.documentElement.dataset.seule = '1';
-  // ?ilot : l'orbe du panneau de la barre de menus. l'auteur, 24/09 : « l'écriture
-  // dans l'orbe + le glow ont disparu » — elle garde le pavé de code. Puis : « supprime
-  // l'écriture sous l'orbe, elle est déjà là à gauche » — le nom et la ligne du
-  // dessous s'effacent, comme le compteur de fiches.
+  // ?ilot: the orb of the menu bar panel. The author, 24/09: "the writing
+  // in the orb + the glow have disappeared" — it keeps the code pad. Then: "remove
+  // the writing under the orb, it is already there on the left" — the name and the line
+  // below fade out, like the note counter.
   if (location.search.includes('ilot')) document.documentElement.dataset.ilot = '1';
 </script>
 <style>
@@ -30,144 +29,144 @@
   #scene { position:absolute; inset:0; }
   html[data-seule] #dit, html[data-seule] #fiche, html[data-seule] #pave, html[data-seule] #restant { display:none !important; }
   html[data-ilot] #restant, html[data-ilot] #dit, html[data-ilot] #fiche { display:none !important; }
-  /* ⚠ SANS CETTE RÈGLE, le canvas se met en page à sa taille de TAMPON (300 px
-     sur un écran retina) dans une fenêtre de 150 : l'orbe déborde en bas à
-     droite et tout le reste — pavé, pastille, qui sont centrés sur la FENÊTRE —
-     paraît décalé sur le côté. Le rendu ne plante pas, il se décentre.
-     Elle a été effacée une fois par une suppression de bloc qui a mordu au-delà
-     de sa cible ; le défaut n'était visible que sur le vrai bureau. */
+  /* ⚠ WITHOUT THIS RULE, the canvas lays out at its BUFFER size (300 px
+     on a retina screen) in a 150 window: the orb overflows at the bottom
+     right and everything else — pad, badge, centred on the WINDOW —
+     looks shifted to the side. The render does not crash, it goes off-centre.
+     It was erased once by a block deletion that bit beyond
+     its target; the defect only showed on the real desktop. */
   canvas { width:100%; height:100%; display:block; }
 
-  /* ⚠ PAS DE SOUFFLE EN CSS. Tenté puis MESURÉ, puis retiré : une animation
-     CSS sur une fenêtre transparente toujours-au-dessus force WindowServer à
-     recomposer à la cadence de l'écran, même si le rendu WebGL, lui, dort.
-     Coût relevé au repos : 17 % de CPU contre 2,2 %. « Le compositeur, c'est
-     gratuit » est vrai dans une page web ordinaire, faux pour un HUD posé sur
-     le bureau. On paie donc la fluidité du repos en CADENCE DE RENDU, ce qui
-     est mesurable et borné. Cf. [[electron-hud-backgroundthrottling-saccade]]. */
+  /* ⚠ NO BREATHING IN CSS. Tried, then MEASURED, then removed: a CSS
+     animation on an always-on-top transparent window forces WindowServer to
+     recomposite at the screen's rate, even while the WebGL render sleeps.
+     Cost measured at rest: 17 % CPU against 2.2 %. "The compositor is
+     free" is true in an ordinary web page, false for a HUD sitting on
+     the desktop. So the smoothness at rest is paid in RENDER RATE, which
+     is measurable and bounded. */
 
-  /* ── LE LIBELLÉ, GRAVÉ DANS LE VERRE ─────────────────────────────────────
-     ⚠ TROIS TENTATIVES. Les deux premières ratées pour la même raison de fond :
-       elles cherchaient à rendre le texte lisible CONTRE le bureau, au lieu de
-       le faire appartenir à l'orbe.
-       1. Pilule noire → un composant d'interface collé sur un objet qui n'en
-          est pas un.
-       2. Texte clair à halo sombre → l'air gravé, mais gravé dans le BUREAU. Le
-          halo détoure chaque lettre : incrustation de jeu vidéo, et ça salit
-          tout ce qui passe derrière.
-       3. Mélange `screen` → le texte entrait bien dans la matière… et
-          DISPARAISSAIT sur un bureau clair. `screen` ne peut qu'éclaircir : sur
-          du blanc il n'a plus rien à ajouter. Mesuré sur la planche à trois
-          fonds, invisible sur le clair.
-     Ce qui marche : le poser SUR la sphère — pas sous elle, pas devant le
-     bureau — dans le bas, la zone que l'éclairage laisse la plus sombre, et
-     n'employer qu'une ombre PORTÉE VERS LE BAS. Une ombre directionnelle se lit
-     comme du relief ; un contour se lit comme un détourage. C'est la seule
-     différence entre « gravé » et « collé ». */
-  /* ── LE LIBELLÉ, POSÉ DANS L'OMBRE DE L'ORBE ──────────────────────────────
-     ⚠ QUATRIÈME PLACEMENT, et les trois précédents ont chacun échoué pour une
-       raison différente — c'est la trace qui compte :
-       1. pilule noire sous l'orbe → un composant d'interface collé sur l'objet ;
-       2. halo sombre sous l'orbe → détourage « incrustation de jeu », sale dès
-          qu'il croise du texte de bureau ;
-       3. SUR la sphère → il appartenait enfin à l'objet… mais le mesh change de
-          forme ET de clarté à chaque mécanique. Sur `committing`, dont le bas
-          est bosselé et brillant, la moitié des lettres se faisait manger. On
-          ne pose pas un texte fixe sur une surface qui bouge.
-     Ce qui tient : le libellé retourne SOUS l'orbe — là, la géométrie est
-     stable quelle que soit la mécanique — mais il n'y flotte pas seul : il est
-     posé dans l'OMBRE PORTÉE de la sphère. L'ombre appartient à la scène, pas à
-     une interface ; elle épouse l'objet, elle ne le détoure pas. Et elle donne
-     le contraste que le texte ne peut pas se donner à lui-même, sur un bureau
-     clair comme sur un bureau sombre. */
-  /* ⚠ 2026-09-20 — OPAQUE, PLUS DE .95 (L'utilisateur : « tout ce qui a écris sous les
-     orbs doit etre opaque »). Le blanc à 95 % laissait passer le bureau entre
-     les lettres : sur un fond d'écran clair, le libellé virait au gris sale.
-     Un texte posé sur une scène qu'on ne maîtrise pas se donne son opacité,
-     il ne l'emprunte pas au fond. */
-  /* 2026-09-20 — DESCENDU DE 2 pt (L'utilisateur : « baisse tres legerement l'ecriture
-     sous l'orbe desfois l'orbe passe dessus »). Sur les mécaniques les plus
-     gonflées — `synthesizing`, `challenging` — le bas du verre et sa lueur
-     descendaient jusqu'à toucher le haut des capitales. Mesuré sur le tournage
-     du 20/09 : le verre atteint y=265 px là où les capitales commencent à
-     y=254. Les deux lignes descendent ensemble pour garder leur écart. */
+  /* ── THE LABEL, ENGRAVED IN THE GLASS ─────────────────────────────────────
+     ⚠ THREE ATTEMPTS. The first two failed for the same underlying reason:
+       they tried to make the text readable AGAINST the desktop, instead of
+       making it belong to the orb.
+       1. Black pill → an interface component stuck on an object that is
+          not one.
+       2. Light text with a dark halo → looks engraved, but engraved in the DESKTOP. The
+          halo cuts out every letter: a video-game overlay, and it dirties
+          everything that passes behind.
+       3. `screen` blending → the text did enter the material… and
+          DISAPPEARED on a light desktop. `screen` can only lighten: on
+          white it has nothing left to add. Measured on the three-background
+          board, invisible on the light one.
+     What works: set it ON the sphere — not under it, not in front of the
+     desktop — at the bottom, the area the lighting leaves darkest, and
+     use only a shadow CAST DOWNWARD. A directional shadow reads
+     as relief; an outline reads as a cut-out. That is the only
+     difference between "engraved" and "stuck on". */
+  /* ── THE LABEL, SET IN THE ORB'S SHADOW ──────────────────────────────
+     ⚠ FOURTH PLACEMENT, and the three before each failed for a
+       different reason — the trail is what counts:
+       1. black pill under the orb → an interface component stuck on the object;
+       2. dark halo under the orb → a "game overlay" cut-out, dirty as soon
+          as it crosses desktop text;
+       3. ON the sphere → it finally belonged to the object… but the mesh changes
+          shape AND brightness with each mechanic. On `committing`, whose bottom
+          is bumpy and shiny, half the letters got eaten. One
+          does not set fixed text on a moving surface.
+     What holds: the label goes back UNDER the orb — there, the geometry is
+     stable whatever the mechanic — but it does not float there alone: it is
+     set in the sphere's CAST SHADOW. The shadow belongs to the scene, not to
+     an interface; it hugs the object, it does not cut it out. And it gives
+     the contrast the text cannot give itself, on a light desktop
+     as on a dark one. */
+  /* ⚠ 2026-09-20 — OPAQUE, NO MORE .95 (the user: "everything written under the
+     orbs must be opaque"). White at 95 % let the desktop through between
+     the letters: on a light wallpaper, the label turned dirty grey.
+     Text set on a scene we do not control provides its own opacity,
+     it does not borrow it from the background. */
+  /* 2026-09-20 — LOWERED BY 2 pt (the user: "lower the writing under the orb
+     very slightly, sometimes the orb passes over it"). On the most
+     swollen mechanics — `synthesizing`, `challenging` — the bottom of the glass and its glow
+     came down to touch the top of the capitals. Measured on the
+     20/09 shoot: the glass reaches y=265 px where the capitals start at
+     y=254. Both lines go down together to keep their gap. */
   #dit { position:absolute; left:50%; bottom:12.5px; transform:translateX(-50%);
          white-space:nowrap; color:#fff;
-         /* 2026-08-08 — +1,5 px sur les deux lignes à la demande de l'auteur. Le
-            libellé monte AUSSI : ne grossir que la ligne du dessous inverserait
-            la hiérarchie que la casse est seule à porter. */
+         /* 2026-08-08 — +1.5 px on both lines at the author's request. The
+            label goes up TOO: enlarging only the line below would invert
+            the hierarchy that the case alone carries. */
          font:600 9px/1.2 ui-sans-serif,-apple-system,sans-serif;
          letter-spacing:1.4px; text-indent:1.4px;
-         /* 2026-09-20 — LE NOM EST RECENTRÉ, PAS LA LIGNE (L'utilisateur : « décale les
-            noms un peu vers la droite pour les recentrer avec le reste »). Les
-            trois points comptent dans la largeur du bloc : centrer le bloc
-            poussait le NOM de 8 px vers la gauche, mesuré sur le tournage —
-            centre du mot à 133,5 px quand la ligne du dessous est à 149,5. Une
-            marge à gauche égale à la largeur des points remet le mot au milieu,
-            d'aplomb avec la petite ligne et avec l'orbe. */
+         /* 2026-09-20 — THE NAME IS RE-CENTRED, NOT THE LINE (the user: "shift the
+            names a bit to the right to re-centre them with the rest"). The
+            three dots count in the block's width: centring the block
+            pushed the NAME 8 px to the left, measured on the shoot —
+            word centre at 133.5 px when the line below is at 149.5. A
+            left margin equal to the dots' width puts the word back in the middle,
+            plumb with the small line and with the orb. */
          padding-left:16px;
-         /* ⚠ L'OMBRE PORTÉE A ÉTÉ RETIRÉE (2026-08-04, demande de l'auteur :
-            « supprime l'ombre noire sous les WORKING / SYNTHESIZING »).
-            C'était une ellipse sombre de 126 px posée derrière le libellé pour
-            lui donner du contraste sur n'importe quel bureau. Elle tenait ce
-            rôle, mais elle pose une tache noire sous une orbe devenue
-            franchement transparente — les deux ne vont plus ensemble : depuis
-            le verre traversant, le seul morceau opaque de l'objet était son
-            ombre.
-            Le contraste repose donc entièrement sur les lettres elles-mêmes :
-            une ombre portée COURTE et une lueur sombre très serrée, qui
-            épousent la forme des glyphes au lieu de dessiner une zone. C'est
-            la même distinction que pour le pavé — une ombre, jamais un
-            contour, jamais un fond. */
+         /* ⚠ THE CAST SHADOW WAS REMOVED (2026-08-04, the author's request:
+            "remove the black shadow under WORKING / SYNTHESIZING").
+            It was a 126 px dark ellipse set behind the label to
+            give it contrast on any desktop. It did that
+            job, but it puts a black stain under an orb that has become
+            plainly transparent — the two no longer go together: since
+            the see-through glass, the only opaque piece of the object was its
+            shadow.
+            Contrast therefore rests entirely on the letters themselves:
+            a SHORT cast shadow and a very tight dark glow, which
+            hug the glyphs instead of drawing an area. It is
+            the same distinction as for the pad — a shadow, never an
+            outline, never a background. */
          text-shadow:0 1px 1.5px rgba(4,7,12,.85),
                      0 0 2.5px rgba(4,7,12,.55);
          opacity:0; transition:opacity .28s ease; pointer-events:none; }
   #dit.vu { opacity:1; }
 
-  /* ── SUR QUOI ────────────────────────────────────────────────────────────
-     Le libellé dit ce que la machine FAIT ; il ne dit pas sur QUOI. « FILING »
-     pendant deux minutes ne donne aucun repère : on ne sait pas si le travail
-     avance ni s'il porte sur ce qu'on croit. Cette seconde ligne nomme la
-     fiche — ou le fichier — réellement en cours.
-     ⚠ Elle est en casse normale, sans interlettrage : c'est un TITRE, pas une
-       étiquette. Si les deux lignes avaient la même graisse et les mêmes
-       majuscules, on lirait un bloc de deux libellés et le repère se perdrait.
-       La hiérarchie se fait ici par la casse et la clarté, pas par la taille —
-       la taille reste toutefois plancher, voir ci-dessous.
-     ⚠ 146 px de large maximum, coupé par des points de suspension : un slug de
-       fiche fait couramment 60 caractères, et la fenêtre en fait 150.
-     ⚠ 2026-08-08 — « on ne distingue pas l'écriture sous le WORKING » (l'auteur,
-       capture du vrai bureau). Trois causes cumulées, toutes corrigées ici :
-         · 6 px en graisse 500 : trop peu de matière par glyphe une fois
-           l'anticrénelage passé ;
-         · aucune séparation d'avec le fond — le texte du bureau traverse
-           ENTRE les lettres et brouille le mot. Le libellé du dessus y échappe
-           par ses capitales et son interlettrage, pas par sa taille ;
-         · collée à 2 px du bord bas, la ligne tombait pile dans la ligne de
-           texte du bureau qui suit.
-       Réponse : 7 px / 600, et un halo sombre à plusieurs couches SERRÉ sur les
-       glyphes. La hiérarchie tient toujours — capitales + interlettrage en
-       haut, casse normale en bas — donc 7 px ne fait pas des deux lignes un
-       bloc de deux libellés. */
-  /* ── PASTILLE « RESTE À TRAITER » (2026-08-14, demande de l'auteur) ────────────
-     Combien de fiches attendent encore le jardinier. La source de vérité est
-     la file state/a-classer.md — celle que `on_fiche_write.py` alimente tout seul.
-     Posée en HAUT À DROITE : le bas de la fenêtre est déjà pris par le libellé
-     et la ligne de fiche, et le centre par le pavé.
-     Pas d'ombre portée en ellipse (retirée en 2026-08-04) : on tient le
-     contraste par un aplat opaque + un liseré, comme un badge d'application. */
-  /* 2026-08-14 — RAPPROCHÉ DE L'ORBE (L'utilisateur : « rapproche »). Collé au coin de
-     la fenêtre, le compteur flottait tout seul dans le vide du bureau et ne se
-     rattachait visuellement à rien. Posé au bord de la sphère, il se lit comme
-     une étiquette DE l'orbe, pas comme un élément du bureau. */
+  /* ── ON WHAT ────────────────────────────────────────────────────────────
+     The label says what the machine DOES; it does not say on WHAT. "FILING"
+     for two minutes gives no bearing: one cannot tell whether the work
+     is progressing nor whether it is on what one thinks. This second line names the
+     note — or the file — actually in progress.
+     ⚠ It is in normal case, without letter-spacing: it is a TITLE, not a
+       label. If both lines had the same weight and the same
+       capitals, one would read a block of two labels and the bearing would be lost.
+       The hierarchy here comes from case and brightness, not size —
+       size still has a floor, see below.
+     ⚠ 146 px wide at most, cut with an ellipsis: a note slug
+       commonly runs 60 characters, and the window is 150.
+     ⚠ 2026-08-08 — "you can't make out the writing under WORKING" (the author,
+       capture of the real desktop). Three combined causes, all fixed here:
+         · 6 px at weight 500: too little matter per glyph once
+           anti-aliasing is done;
+         · no separation from the background — desktop text runs
+           BETWEEN the letters and blurs the word. The label above escapes it
+           through its capitals and letter-spacing, not its size;
+         · stuck 2 px from the bottom edge, the line fell right on the line of
+           desktop text that follows.
+       Answer: 7 px / 600, and a multi-layer dark halo TIGHT on the
+       glyphs. The hierarchy still holds — capitals + letter-spacing at the
+       top, normal case at the bottom — so 7 px does not turn the two lines into a
+       block of two labels. */
+  /* ── "LEFT TO PROCESS" BADGE (2026-08-14, the author's request) ────────────
+     How many notes are still waiting for the gardener. The source of truth is
+     the queue state/a-classer.md — the one `on_fiche_write.py` feeds on its own.
+     Set at the TOP RIGHT: the bottom of the window is already taken by the label
+     and the note line, and the centre by the pad.
+     No elliptical cast shadow (removed on 2026-08-04): contrast is held
+     by an opaque fill + a thin border, like an app badge. */
+  /* 2026-08-14 — MOVED CLOSER TO THE ORB (the user: "bring it closer"). Stuck in the
+     window's corner, the counter floated alone in the desktop's emptiness and
+     visually attached to nothing. Set at the sphere's edge, it reads as
+     a label OF the orb, not as a desktop element. */
   #restant { position:absolute; top:27px; right:23px; display:none;
              color:rgba(255,255,255,.95); letter-spacing:.6px;
              font:700 9px/1.2 ui-sans-serif,-apple-system,sans-serif;
-             /* Même traitement que #fiche : pas d'aplat ni de pastille (l'auteur,
-                2026-08-14 : « pas de pastille plutôt un 1/4 »). Le contraste
-                tient par trois couches d'ombre — deux serrées qui éteignent le
-                fond entre les lettres, une large et faible qui décolle le mot
-                du bureau sans dessiner de zone. */
+             /* Same treatment as #fiche: no fill and no pill (the author,
+                2026-08-14: "no pill, rather a 1/4"). Contrast
+                holds through three shadow layers — two tight ones that switch off the
+                background between the letters, a wide faint one that lifts the word
+                off the desktop without drawing an area. */
              text-shadow:0 0 1px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.75),
                          0 0 7px rgba(0,0,0,.45); }
   #restant .tot { opacity:.62; font-weight:600; }
@@ -177,28 +176,28 @@
            white-space:nowrap; text-align:center;
            color:#fff; letter-spacing:.1px;
            font:600 8.5px/1.2 ui-sans-serif,-apple-system,sans-serif;
-           /* ⚠ Ombre PLUS APPUYÉE que celle du libellé, à l'inverse de ce que
-              la hiérarchie laisserait croire : cette ligne est plus fine et
-              plus longue, donc elle a moins de matière pour se détacher. Vue
-              sur planche à fond clair, la version douce se noyait dans le
-              texte de bureau derrière. Le rang se lit à la casse, pas à la
-              faiblesse du contraste.
-              Les deux couches serrées (1 px et 2 px) éteignent le fond entre
-              les lettres ; la troisième, large et faible, décolle le mot du
-              bureau sans dessiner de zone — une ombre, jamais un contour. */
+           /* ⚠ A HEAVIER shadow than the label's, contrary to what
+              the hierarchy would suggest: this line is thinner and
+              longer, so it has less matter to stand out with. Seen
+              on a light-background board, the soft version drowned in the
+              desktop text behind. Rank reads in the case, not in
+              weak contrast.
+              The two tight layers (1 px and 2 px) switch off the background between
+              the letters; the third, wide and faint, lifts the word off the
+              desktop without drawing an area — a shadow, never an outline. */
            text-shadow:0 1px 1.5px rgba(4,7,12,1),
                        0 0 2px rgba(4,7,12,1),
                        0 0 5px rgba(4,7,12,.8);
            opacity:0; transition:opacity .28s ease; pointer-events:none; }
   #fiche.vu { opacity:1; }
-  /* Les trois points disent que ça CONTINUE — une passe d'agent dure des
-     minutes pendant lesquelles le libellé, lui, ne change jamais. */
-  /* ⚠ 2026-09-20 — LES POINTS NE CLIGNOTENT PLUS EN TRANSPARENCE. Ils disaient
-     « ça continue » en descendant à 25 % d'opacité ; c'est exactement ce que
-     l'auteur a refusé (« doit etre opaque »). Le même message passe par le
-     MOUVEMENT : trois points pleins qui sautent l'un après l'autre, comme
-     l'indicateur de frappe de Messages. Rien ne devient translucide, et la
-     continuité reste lisible. */
+  /* The three dots say it CONTINUES — an agent pass lasts
+     minutes during which the label never changes. */
+  /* ⚠ 2026-09-20 — THE DOTS NO LONGER BLINK THROUGH TRANSPARENCY. They said
+     "it continues" by dropping to 25 % opacity; that is exactly what
+     the author refused ("must be opaque"). The same message goes through
+     MOTION: three solid dots jumping one after the other, like
+     the typing indicator in Messages. Nothing turns translucent, and
+     continuity stays readable. */
   #dit .pt { display:inline-block; opacity:1;
              animation:pt 1.35s ease-in-out infinite; }
   #dit .pt:nth-child(2) { animation-delay:.18s; }
@@ -207,21 +206,21 @@
                   35%         { transform:translateY(-1.2px) } }
   @media (prefers-reduced-motion: reduce) { #dit .pt { animation:none; transform:none } }
 
-  /* ── LE NOM DU VAISSEAU BRILLE ────────────────────────────────────────────
-     Demande de l'auteur le 2026-09-20 : « le nom des agents doit briller avec cet
-     effet autour des lettres », avec en référence la bibliothèque `metal-fx`
-     (preset « chromatic »). Capture du rendu réel regardée avant d'écrire :
-     un liseré d'UN pixel qui court autour de la forme, et sur ce liseré la
-     couleur se sépare en rose, vert et cyan — l'intérieur, lui, ne change pas.
-     Ce que fait leur shader : une aberration chromatique (les canaux rouge et
-     bleu décalés de part et d'autre) sur une teinte bleu froid #88ccff.
-     Ici pas de WebGL pour trois mots de 9 px : les mêmes fanges sont posées
-     en ombres portées colorées, décalées d'un demi-pixel de chaque côté, et
-     l'angle de ce décalage TOURNE en 5 s — c'est ce lent voyage qui fait lire
-     « métal » plutôt que « texte mal imprimé ».
-     ⚠ Ne s'applique qu'au NOM : les points et la ligne du dessous restent nets.
-     Les deux couches sombres sont en FIN de pile, donc sous les couleurs : le
-     contraste sur bureau clair reste tenu sans éteindre les franges. */
+  /* ── THE SHIP'S NAME SHINES ────────────────────────────────────────────
+     The author's request on 2026-09-20: "the agents' name must shine with that
+     effect around the letters", with the `metal-fx` library as reference
+     (preset "chromatic"). A capture of the real render was looked at before writing:
+     a ONE-pixel rim running around the shape, and on that rim the
+     colour splits into pink, green and cyan — the inside does not change.
+     What their shader does: a chromatic aberration (red and blue
+     channels shifted to either side) on a cold blue tint #88ccff.
+     No WebGL here for three 9 px words: the same fringes are laid
+     as coloured cast shadows, shifted half a pixel to each side, and
+     the angle of that shift TURNS in 5 s — that slow travel is what makes it read
+     "metal" rather than "badly printed text".
+     ⚠ Applies to the NAME only: the dots and the line below stay sharp.
+     The two dark layers are at the END of the stack, so under the colours: the
+     contrast on a light desktop holds without switching off the fringes. */
   #dit .nom.brille {
     text-shadow:
       .55px 0 .6px rgba(255,110,165,.9), -.55px 0 .6px rgba(110,225,255,.92),
@@ -247,121 +246,121 @@
       0 1px 1.5px rgba(4,7,12,.9),             0 0 2.5px rgba(4,7,12,.6); } }
   @media (prefers-reduced-motion: reduce) { #dit .nom.brille { animation:none } }
 
-  /* ── LE PAVÉ — les lignes réellement écrites, DANS l'orbe ──────────────────
-     Reprise du `drawCodeBg` de l'ancienne capsule, avec les deux corrections
-     que son propre commentaire réclamait :
-       · là-bas il défilait un fichier d'agent FIGÉ ; ici ce sont les vraies
-         lignes en train d'être écrites (le flux de diffs de la session) ;
-       · là-bas il était COUPÉ en mode libre — « sur le bureau c'est un pavé qui
-         recouvre ce que l'utilisateur lit ». Enfermé dans le disque de l'orbe,
-         l'objection tombe : il ne déborde plus sur rien.
-     Il est POSÉ SUR le rendu, pas dedans : le shader du moteur `orbe/` est
-     partagé avec le projet du Bureau, et un pavé de texte n'a rien à y faire.
-     Le `screen` + le masque radial font le reste — la lumière du texte se mêle
-     à celle de la matière, et s'éteint sur les bords comme sur une sphère. */
-  /* ⚠ DEUX FOIS TROP LARGE, DEUX FOIS. 124 px d'abord, puis 96 — et 96 débordait
-     encore. La faute était de viser une largeur MOYENNE : le mesh n'a pas la
-     même largeur selon la mécanique. Relevé au banc, cinq états : 103 px pour
-     `synthesizing`… mais 84 pour `challenging` et 85 pour `committing`. Un
-     pavé se dimensionne sur le PLUS ÉTROIT, sinon il bave sur le bureau dans
-     les états les plus fins — et c'est là qu'on le remarque, parce que le texte
-     vert flotte alors dans le vide. 78 px laisse la marge du dégradé. */
-  /* ⚠ `mix-blend-mode:screen` RETIRÉ (2026-08-04), retour de l'auteur « l'écriture
-     en arrière-plan n'est pas assez claire ». `screen` ne peut qu'ÉCLAIRCIR :
-     sur les crêtes claires de la matière il n'avait presque plus rien à
-     ajouter, et le verre étant désormais traversant, le texte se retrouve
-     par endroits directement sur le bureau — blanc compris, où `screen` ne
-     donne rien du tout. Le gain d'opacité qui compensait (`.88`) ne pouvait pas
-     rattraper ça : le mode de fusion était le problème.
-     Il est donc peint NORMALEMENT, et c'est une ombre — pas un contour — qui
-     lui donne son contraste : elle épouse les lettres et tient aussi bien sur
-     un bureau blanc que sombre. Même principe que le libellé. */
+  /* ── THE PAD — the lines really being written, INSIDE the orb ──────────────────
+     Taken from the old capsule's `drawCodeBg`, with the two fixes
+     its own comment asked for:
+       · there it scrolled a FROZEN agent file; here it is the real
+         lines being written (the session's diff stream);
+       · there it was CUT in free mode — "on the desktop it is a block that
+         covers what the user reads". Enclosed in the orb's disc,
+         the objection falls: it no longer spills over anything.
+     It is laid ON the render, not in it: the `orbe/` engine's shader is
+     shared with the Desktop project, and a text pad has no business there.
+     The `screen` + the radial mask do the rest — the text's light mixes
+     with the material's, and fades at the edges as on a sphere. */
+  /* ⚠ TWICE TOO WIDE, TWICE. 124 px first, then 96 — and 96 still
+     overflowed. The mistake was aiming at an AVERAGE width: the mesh does not have the
+     same width across mechanics. Measured on the bench, five states: 103 px for
+     `synthesizing`… but 84 for `challenging` and 85 for `committing`. A
+     pad is sized on the NARROWEST, otherwise it smears onto the desktop in
+     the thinnest states — and that is where it gets noticed, because the green
+     text then floats in the void. 78 px leaves the gradient's margin. */
+  /* ⚠ `mix-blend-mode:screen` REMOVED (2026-08-04), the author's feedback "the
+     background writing is not light enough". `screen` can only LIGHTEN:
+     on the material's light ridges it had almost nothing left to
+     add, and the glass now being see-through, the text ends up
+     in places directly on the desktop — white included, where `screen`
+     gives nothing at all. The opacity gain that compensated (`.88`) could not
+     make up for it: the blend mode was the problem.
+     So it is painted NORMALLY, and it is a shadow — not an outline — that
+     gives it contrast: it hugs the letters and holds as well on
+     a white desktop as on a dark one. Same principle as the label. */
   #pave { position:absolute; left:50%; top:50%; width:78px; height:78px;
           transform:translate(-50%,-50%); border-radius:50%; overflow:hidden;
           opacity:0; transition:opacity .5s ease; pointer-events:none;
-          /* le texte s'éteint vers le bord : sans ça il se coupe net sur le
-             cercle et le pavé se lit comme un autocollant, pas comme un dedans */
+          /* the text fades toward the edge: without it, it cuts sharply on the
+             circle and the pad reads as a sticker, not as an inside */
           -webkit-mask-image:radial-gradient(circle at 50% 46%,
                              #000 22%, rgba(0,0,0,.68) 46%, transparent 66%); }
   #pave.vu { opacity:1; }
-  /* ── LA COURBURE ──────────────────────────────────────────────────────────
-     Les lignes ne sont plus empilées : chacune est POSÉE sur une latitude de la
-     sphère. Deux effets, et c'est le second qui compte pour l'utilisateur :
-       · elle se resserre horizontalement en s'éloignant de l'équateur (la corde
-         d'un cercle), ce qui donne le volume ;
-       · les latitudes se TASSENT vers les pôles, donc il tient nettement plus
-         de lignes dans la même hauteur qu'avec un empilement régulier.
-     Chaque ligne est placée en absolu et transformée : le rouleau, lui, ne
-     bouge plus du tout. */
-  /* ⚠ 5,5 px sur 26 fentes : à l'équateur les latitudes ne sont espacées que de
-     ~4,5 px, donc les lignes se CHEVAUCHAIENT. Un texte qui se marche dessus se
-     lit comme une texture, pas comme du code. 6 px sur 18 fentes → ~6,4 px
-     d'écart : moins de lignes, mais chacune se lit. */
+  /* ── THE CURVATURE ──────────────────────────────────────────────────────────
+     The lines are no longer stacked: each one is SET on a latitude of the
+     sphere. Two effects, and the second is the one that counts for the user:
+       · it narrows horizontally moving away from the equator (the chord
+         of a circle), which gives the volume;
+       · the latitudes CROWD toward the poles, so clearly more
+         lines fit in the same height than with a regular stack.
+     Each line is placed absolutely and transformed: the scroll itself no
+     longer moves at all. */
+  /* ⚠ 5.5 px over 26 slots: at the equator the latitudes are only
+     ~4.5 px apart, so the lines OVERLAPPED. Text stepping on itself
+     reads as a texture, not as code. 6 px over 18 slots → ~6.4 px
+     apart: fewer lines, but each one reads. */
   #pave .rouleau { position:absolute; inset:0;
                    font:600 6px/7.6px ui-monospace,SFMono-Regular,Menlo,monospace;
                    white-space:pre; letter-spacing:-.05px; }
-  /* ⚠ L'ÉCRITURE EST TOUJOURS VERTE, jamais teintée par la famille. Le pavé ne
-     dit pas QUI travaille — la couleur du corps et la pastille s'en chargent
-     déjà. Lui dit qu'il s'écrit du code, et le vert de terminal le dit d'un
-     coup d'œil sur n'importe quel fond. Une teinte qui change avec l'agent
-     ajouterait un troisième signal de couleur pour zéro information. */
+  /* ⚠ THE WRITING IS ALWAYS GREEN, never tinted by the family. The pad does
+     not say WHO is working — the body colour and the badge already
+     do that. It says code is being written, and terminal green says so at a
+     glance on any background. A tint that changes with the agent
+     would add a third colour signal for zero information. */
   #pave .l { position:absolute; left:0; width:100%; text-align:center;
              color:#6dfaa2; opacity:.92;
-             /* l'ombre fait le contraste, pas un contour : un halo sombre serré
-                + une retombée d'un pixel. Lisible sur bureau blanc comme sur
-                bureau sombre, sans détourer les lettres. */
+             /* the shadow makes the contrast, not an outline: a tight dark halo
+                + a one-pixel drop. Readable on a white desktop as on a
+                dark one, without cutting out the letters. */
              text-shadow:0 0 1.5px rgba(0,22,12,.95), 0 0 4px rgba(0,30,16,.6),
                          0 1px 1px rgba(0,0,0,.55);
              will-change:transform; overflow:hidden; text-overflow:clip; }
-  /* On reste dans le vert : seule la LUMINOSITÉ distingue ajouté, retiré et
-     en-tête. Du rouge franc se battrait avec la teinte de l'orbe. */
+  /* We stay in the green: only BRIGHTNESS tells added, removed and
+     header apart. A frank red would fight the orb's hue. */
   #pave .l.plus  { color:#9dffc4; opacity:1; }
   #pave .l.moins { color:#4fae76; opacity:.72; }
   #pave .l.tete  { color:#e6fff1; opacity:1; }
   @media (prefers-reduced-motion: reduce) { #pave .rouleau { transition:none } }
 
 
-  /* ── L'ORBE DANS L'ENCOCHE ─────────────────────────────────────────────────
-     l'auteur, 24/09 : « il doit apparaître dans l'encoche et y rester jusqu'à la
-     fin », « comme une notif qui apparaît ». L'encoche est un TROU dans la dalle :
-     aucun pixel ne s'y affiche. Être « dans l'encoche », c'est donc que
-     l'ENCOCHE GRANDIT : un noir exactement de sa largeur (pas une aile de plus,
-     L'utilisateur : « sans espace supplémentaire sur les côtés ») descend sous elle et
-     porte l'orbe, à sa taille réelle. Au repos ce noir a la hauteur de l'encoche
-     et se confond avec elle : il n'y a rien à voir.
-     `#bloc` porte TOUT le dessin de l'orbe du bureau (orbe, nom, ligne, pavé),
-     inchangé ; seul le bloc voyage. `--decal` et `--barre` viennent de main.js. */
+  /* ── THE ORB IN THE NOTCH ─────────────────────────────────────────────────
+     The author, 24/09: "it must appear in the notch and stay there until the
+     end", "like a notification appearing". The notch is a HOLE in the panel:
+     no pixel shows there. Being "in the notch" therefore means the
+     NOTCH GROWS: a black exactly its width (not one wing more,
+     the user: "without extra space on the sides") comes down under it and
+     carries the orb, at its real size. At rest this black has the notch's height
+     and merges with it: there is nothing to see.
+     `#bloc` carries ALL the desktop orb's drawing (orb, name, line, pad),
+     unchanged; only the block travels. `--decal` and `--barre` come from main.js. */
   html[data-encoche]:not([data-pret]) body > * { visibility:hidden; }
-  /* ⚠ LE CADRE DOIT LAISSER RESPIRER LE TEXTE. Première version : le noir
-     s'arrêtait au ras de la ligne du dessous — l'auteur, 24/09 : « working frôle le
-     bord bas ». 10 px sous la dernière ligne, pas un de plus : « un meilleur
-     cadre qui reste petit ». Puis, même jour : « que l'encoche fasse un carré ».
-     La largeur ne peut pas bouger (179 pt, celle du trou, mesurée : plus
-     étroit, le trou dépasserait) : c'est la HAUTEUR qui descend. Le cadre sorti
-     fait `--haut` (158 pt depuis le haut de l'écran) et l'orbe `--echelle`
-     (0,9 — L'utilisateur : « la nouvelle taille de l'orb est bonne garde la »). ⚠ Ce que l'auteur voit n'est pas ce que la capture voit : sur la vraie
-     dalle, le noir du cadre se soude au trou ET au bord noir au-dessus de
-     l'écran, et paraît plus haut qu'il ne l'est en pixels. Son œil tranche.
-     L'ANIMATION, dans l'ordre (L'utilisateur : « une bien meilleure animation ») :
-       sortie  — le cadre s'ouvre sur un RESSORT (un léger dépassement puis
-                 retour, comme l'îlot de l'iPhone), l'orbe se dessine dedans en
-                 sortant d'un flou, puis le texte monte de 6 px ;
-       rentrée — l'inverse, plus vite : le texte part, l'orbe se referme dans le
-                 flou, le cadre remonte sans rebond.
-     Les ressorts sont de vraies courbes physiques, calculées dans le script et
-     posées en `linear()` (--ressort-*), pas des courbes de Bézier à l'œil. */
+  /* ⚠ THE FRAME MUST LET THE TEXT BREATHE. First version: the black
+     stopped flush with the line below — the author, 24/09: "working grazes the
+     bottom edge". 10 px under the last line, not one more: "a better
+     frame that stays small". Then, same day: "make the notch a square".
+     The width cannot move (179 pt, the hole's, measured: any
+     narrower and the hole would stick out): the HEIGHT is what comes down. The frame, out,
+     is `--haut` (158 pt from the top of the screen) and the orb `--echelle`
+     (0.9 — the user: "the orb's new size is good, keep it"). ⚠ What the author sees is not what the capture sees: on the
+     panel, the frame's black fuses with the hole AND the black border above
+     the screen, and looks taller than it is in pixels. Their eye decides.
+     THE ANIMATION, in order (the user: "a much better animation"):
+       out  — the frame opens on a SPRING (a slight overshoot then
+                 back, like the iPhone's island), the orb draws itself inside
+                 coming out of a blur, then the text rises 6 px;
+       in   — the reverse, faster: the text leaves, the orb closes into the
+                 blur, the frame goes back up without a bounce.
+     The springs are real physical curves, computed in the script and
+     set as `linear()` (--ressort-*), not Bezier curves eyeballed. */
   #ile { display:none; }
   html[data-encoche] #ile { display:block; position:absolute; top:0; left:0; right:0;
     height:var(--barre, 33px); background:#000; border-radius:0 0 12px 12px;
     transition:height .42s var(--ressort-rentree, ease) .16s, border-radius .42s ease .16s; }
-  /* Le rayon suit l'échelle (30 pt à 0,9) : réduit d'un tiers, le cadre garde sa forme. */
+  /* The radius follows the scale (30 pt at 0.9): shrunk by a third, the frame keeps its shape. */
   html[data-encoche][data-sortie] #ile { height:var(--haut, 116px);
     border-radius:0 0 calc(33.3px * var(--echelle, .6)) calc(33.3px * var(--echelle, .6));
     transition:height .72s var(--ressort-sortie, ease), border-radius .5s ease; }
-  /* L'encre de l'orbe commence à 27,5 pt dans sa boîte : on la pose 5 pt sous
-     le bas de l'encoche, à l'échelle `--echelle`. l'auteur, 24/09 soir : « remonte
-     légèrement l'orb mais très légèrement » → 2 pt au lieu de 5 (le texte
-     retrouve ses 10 pt de marge au-dessus du bas du cadre). */
+  /* The orb's ink starts at 27.5 pt in its box: we set it 5 pt under
+     the bottom of the notch, at scale `--echelle`. The author, 24/09 evening: "raise
+     the orb slightly, but very slightly" → 2 pt instead of 5 (the text
+     gets back its 10 pt of margin above the bottom of the frame). */
   html[data-encoche] #bloc { position:absolute; left:50%;
     top:calc(var(--barre, 33px) + 2px - 27.5px * var(--echelle, .6));
     width:150px; height:150px; margin-left:-75px;
@@ -385,7 +384,7 @@
 <div id="dit"></div>
 <div id="fiche"></div>
 <div id="pave"><div class="rouleau"></div></div>
-<div id="restant" title="fiches en attente de rangement"></div>
+<div id="restant" title="notes waiting to be filed"></div>
 
 <script type="module">
 const { ipcRenderer } = require('electron');
@@ -396,6 +395,15 @@ const { creerOrbe } = await import('./orbe/orbe.js');
 const { reglage }   = await import('./orbe/palettes.js');
 
 const STATUT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
+// The canonical windows, same file as main.js and brain_status.py. Read on each poll
+// rather than cached: the orb runs for days, and a value edited in between should take.
+const FRAICHEUR = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+function fenetresFraicheur() {
+  try {
+    const j = JSON.parse(fs.readFileSync(FRAICHEUR, 'utf8'));
+    return { live: j.liveness_stale_seconds || 30, activity: j.activity_stale_seconds || 120 };
+  } catch (e) { return { live: 30, activity: 120 }; }
+}
 const snoise = await fetch('./orbe/snoise.glsl').then(r => r.text());
 
 const REDUIT = window.matchMedia &&
@@ -403,41 +411,41 @@ const REDUIT = window.matchMedia &&
 
 const depart = reglage('idle');
 const orbe = creerOrbe(document.getElementById('c'), depart.meca, snoise, depart);
-// Le panneau de la pastille naît replié : son orbe attend qu'on lui dise « vu ».
+// The badge's panel is born folded: its orb waits to be told "seen".
 let cible = depart, vu = !document.documentElement.dataset.ilot;
-// Exposé pour le banc de vérification : on regarde le rendu de CETTE page,
-// pas d'une démo dont la mise en page rétrécit l'orbe à 69 px.
+// Exposed for the verification bench: we look at the render of THIS page,
+// not of a demo whose layout shrinks the orb to 69 px.
 window.__orbe = orbe;
 
-/* ── LE DOSAGE DU VERRE ─────────────────────────────────────────────────────
-   0 = matière pleine · 1 = verre franc. Choisi à 0,55 sur planche comparative,
-   les trois valeurs posées sur un même faux bureau (`/tmp/orbe/cmp.png`).
-   ⚠ 0,55 ÉTAIT UN COMPROMIS IMPOSÉ PAR L'ANCIEN MODÈLE. Là-bas, monter le
-     verre baissait l'opacité de TOUT le corps : la teinte de la famille se
-     diluait avec, et à 1,0 Inspection et Transformation redevenaient deux
-     bulles incolores sur un fond bleu-violet.
-     Le modèle d'ABSORPTION (2026-08-04) déplace la couleur sur la TRANCHE :
-     le cœur peut être franchement vide sans que la famille s'efface, puisque
-     ce n'est plus la surface pleine qui la porte. Le compromis tombe → 1,0.
-     La contrainte physique, elle, ne tombe pas : sur un bureau violet, la
-     famille violette sera toujours la plus faible. C'est la mécanique et la
-     pastille qui la rattrapent. */
+/* ── DOSING THE GLASS ─────────────────────────────────────────────────────
+   0 = solid matter · 1 = clear glass. Chosen at 0.55 on a comparison board,
+   the three values set on the same fake desktop (`/tmp/orbe/cmp.png`).
+   ⚠ 0.55 WAS A COMPROMISE FORCED BY THE OLD MODEL. There, raising the
+     glass lowered the opacity of the WHOLE body: the family's hue
+     diluted with it, and at 1.0 Inspection and Transformation became two
+     colourless bubbles on a blue-violet background again.
+     The ABSORPTION model (2026-08-04) moves the colour to the EDGE:
+     the core can be plainly empty without the family fading, since
+     it is no longer the solid surface that carries it. The compromise falls → 1.0.
+     The physical constraint does not fall: on a violet desktop, the
+     violet family will always be the weakest. The mechanic and the
+     badge make up for it. */
 orbe.setVerre(1.0);
 
-/* ── CADENCE : on paie la fluidité là où elle se voit ───────────────────────
-   Mesuré, orbe de 150 px : 60 i/s ≈ 12 %, 12 i/s ≈ 5,4 %, 2 i/s ≈ 0,6 %. Un
-   compagnon permanent ne peut pas tenir 12 % à vie.
-   ⚠ REPOS À 12, PAS À 4. À 4 i/s il y a 250 ms entre deux images, et la
-     respiration du repos y avançait par crans visibles. Le repos est de loin
-     l'état le plus longtemps affiché ; il mérite ses quelques points de CPU
-     plutôt que de donner l'impression d'un objet cassé.
-   Un fondu de mécanique tourne à 60 — en dessous, le morphing avance par crans
-   et se lit comme une saccade. */
-/* ── SORTIR / RENTRER (mode encoche seulement) ──────────────────────────────
-   La sortie suit l'état DÉJÀ lu pour l'orbe (garde de fraîcheur comprise) :
-   aucun second avis sur « est-ce qu'on travaille ». La rentrée attend 4 s, sinon
-   l'orbe ferait l'aller-retour entre deux appels d'outils d'un même travail.
-   Rentrée, elle ne peint presque plus (cadence 1). */
+/* ── RATE: smoothness is paid where it shows ───────────────────────
+   Measured, 150 px orb: 60 f/s ≈ 12 %, 12 f/s ≈ 5.4 %, 2 f/s ≈ 0.6 %. A
+   permanent companion cannot hold 12 % for life.
+   ⚠ REST AT 12, NOT 4. At 4 f/s there are 250 ms between two frames, and the
+     resting breath moved in visible notches. Rest is by far
+     the state shown the longest; it deserves its few points of CPU
+     rather than giving the impression of a broken object.
+   A mechanic cross-fade runs at 60 — below that, the morphing moves in notches
+   and reads as stutter. */
+/* ── OUT / IN (notch mode only) ──────────────────────────────
+   Going out follows the state ALREADY read for the orb (freshness guard included):
+   no second opinion on "are we working". Going in waits 4 s, otherwise
+   the orb would go back and forth between two tool calls of the same job.
+   Tucked in, it barely paints any more (rate 1). */
 const ENCOCHE = document.documentElement.dataset.encoche === '1';
 let rentree = ENCOCHE, force = false, attenteRentree = null;
 function sortir(v) {
@@ -449,15 +457,15 @@ function sortir(v) {
     attenteRentree = setTimeout(() => {
       attenteRentree = null; rentree = true;
       delete document.documentElement.dataset.sortie;
-      setTimeout(majCadence, 700);       // laisser l'orbe finir sa rentrée à pleine cadence
+      setTimeout(majCadence, 700);       // let the orb finish going in at full rate
     }, force ? 0 : 4000);
   }
 }
-// Pour le banc : forcer la sortie ou la rentrée sans attendre un vrai travail.
+// For the bench: force going out or in without waiting for real work.
 window.__sortir = (v) => { force = true; sortir(v); };
-/* Un ressort amorti, échantillonné en courbe `linear()` : x(t) pour une masse
-   unité, raideur k, amortissement c, sur la durée donnée. Au-delà de la durée
-   la courbe est à 1 : la durée CSS doit couvrir le temps de pose du ressort. */
+/* A damped spring, sampled as a `linear()` curve: x(t) for a unit
+   mass, stiffness k, damping c, over the given duration. Beyond the duration
+   the curve is at 1: the CSS duration must cover the spring's settling time. */
 function ressort(k, c, duree) {
   const w0 = Math.sqrt(k), z = c / (2 * w0), pts = [];
   for (let i = 0; i <= 48; i++) {
@@ -472,52 +480,58 @@ function ressort(k, c, duree) {
 }
 if (ENCOCHE) {
   const st = document.documentElement.style;
-  st.setProperty('--ressort-sortie',  ressort(260, 20, 0.72));   // ~8 % de dépassement
-  st.setProperty('--ressort-rentree', ressort(400, 40, 0.42));   // amorti critique : pas de rebond
+  st.setProperty('--ressort-sortie',  ressort(260, 20, 0.72));   // ~8 % overshoot
+  st.setProperty('--ressort-rentree', ressort(400, 40, 0.42));   // critically damped: no bounce
   require('electron').ipcRenderer.on('cap-encoche', (_e, g) => {
     document.documentElement.style.setProperty('--decal', g.decal + 'px');
     document.documentElement.style.setProperty('--barre', g.barre + 'px');
     document.documentElement.style.setProperty('--haut', g.haut + 'px');
     document.documentElement.style.setProperty('--echelle', g.echelle);
   });
-  // Tout le dessin de l'orbe du bureau passe dans un seul bloc, qui voyage.
+  // All of the desktop orb's drawing goes into a single block, which travels.
   const bloc = document.createElement('div'); bloc.id = 'bloc';
   ['scene', 'dit', 'fiche', 'pave', 'restant'].forEach((id) => bloc.appendChild(document.getElementById(id)));
   document.body.appendChild(bloc);
   document.documentElement.dataset.pret = '1';
 }
 
-// Tournage (CAPSULE_TOURNAGE=1) : 60 partout. l'auteur, 24/09 : la vidéo « saccade à
-// certains moments, à d'autres c'est lisse » — c'était l'orbe qui passait de 30
-// (travail) à 60 (transition) : une cadence qui change se voit à l'image.
-// ⚠ l'auteur, 25/09 : « mon pc rame énormément […] il faut impérativement la
-//   rendre extrêmement légère ». Mesuré ce jour-là, pastille lancée seule sur un
-//   faux statut : chaque image par seconde coûte ~1,2 % d'un cœur à la pastille
-//   et ~0,8 % à WindowServer, QUELLE QUE SOIT la taille de l'orbe. La cadence
-//   est donc le seul levier, et elle se règle par endroit :
-//     · ?seule (pastille, 20 pt) : à cette taille, 4 i/s ne montre pas de crans ;
-//       au repos, 1 i/s suffit à une respiration qui bouge de moins d'un point ;
-//     · ?ilot (panneau) : 16 en travail, le seuil du pavé (voir tournerPave).
+// Filming (CAPSULE_TOURNAGE=1): 60 everywhere. The author, 24/09: the video "stutters at
+// some moments, at others it's smooth" — it was the orb switching from 30
+// (work) to 60 (transition): a changing rate shows on screen.
+// ⚠ The author, 25/09: "my PC lags enormously […] it absolutely has to be
+//   made extremely light". Measured that day, badge launched alone on a
+//   fake status: each frame per second costs ~1.2 % of a core to the badge
+//   and ~0.8 % to WindowServer, WHATEVER the orb's size. The rate
+//   is therefore the only lever, and it is set per place:
+//     · ?seule (badge, 20 pt): at that size, 4 f/s shows no notches;
+//       at rest, 1 f/s is enough for a breath that moves less than a point;
+//     · ?ilot (panel): 16 at work, the pad's threshold (see tournerPave).
 const DANS = document.documentElement.dataset;
-const CADENCE = (typeof process !== 'undefined' && process.env.CAPSULE_TOURNAGE === '1')
+const ENV = typeof process !== 'undefined' ? process.env : {};
+const CADENCE = ENV.CAPSULE_CADENCE
+  ? { repos: +ENV.CAPSULE_CADENCE, travail: +ENV.CAPSULE_CADENCE, transition: +ENV.CAPSULE_CADENCE }
+  : ENV.CAPSULE_TOURNAGE === '1'
   ? { repos: 60, travail: 60, transition: 60 }
-  : DANS.seule ? { repos: 1, travail: 4, transition: 12 }
-  : DANS.ilot  ? { repos: 12, travail: 16, transition: 30 }
+  : DANS.seule || DANS.ilot ? { repos: 1, travail: 30, transition: 60 }
   : { repos: 12, travail: 30, transition: 60 };
+// Work needs regular frames; at rest the small orb slows its clock so sparse
+// frames read as stillness rather than a jump between positions.
+const TEMPO_REPOS = (DANS.seule || DANS.ilot) && !ENV.CAPSULE_CADENCE ? 0.1 : 1;
 let occupe = false;
 function majCadence() {
   if (!vu || document.hidden || rentree) return orbe.setCadence(1);
-  if (orbe.enTransition()) return orbe.setCadence(CADENCE.transition);
+  if (orbe.enTransition()) { orbe.setTempo(1); return orbe.setCadence(CADENCE.transition); }
+  orbe.setTempo(occupe ? 1 : TEMPO_REPOS);
   orbe.setCadence(occupe ? CADENCE.travail : CADENCE.repos);
 }
 setInterval(majCadence, 200);
 
-/* Les couleurs voyagent en continu ; la mécanique se fond en 1,4 s.
-   ⚠ filet anti-NaN : une valeur non finie contaminerait la géométrie pour
-   toute la session, sans la moindre erreur en console. */
+/* Colours travel continuously; the mechanic cross-fades in 1.4 s.
+   ⚠ anti-NaN net: a non-finite value would contaminate the geometry for
+   the whole session, without a single error in the console. */
 const lerp = (a, b, k) => a + (b - a) * k;
-// ⚠ 25/09 : ce minuteur tournait 30 fois par seconde à vie, couleurs arrivées ou
-//   non. Arrivé à la cible, il se tait jusqu'au prochain état.
+// ⚠ 25/09: this timer ran 30 times a second for life, colours arrived or
+//   not. Once at the target, it goes quiet until the next state.
 let cibleAtteinte = null;
 const ecartCouleur = (c, h) => { const t = new THREE.Color(h); return Math.abs(c.r - t.r) + Math.abs(c.g - t.g) + Math.abs(c.b - t.b); };
 setInterval(() => {
@@ -538,50 +552,50 @@ setInterval(() => {
       && pret('uDisp', 'disp') && pret('uFreq', 'freq') && pret('uSpeed', 'speed') && pret('uRimI', 'rimI')) cibleAtteinte = cible;
 }, 1000 / 30);
 
-/* ── L'ÉTAT ────────────────────────────────────────────────────────────────
-   ⚠ GARDE DE FRAÎCHEUR. `status.json` peut rester sur « busy » avec un
-   horodatage périmé : au-delà de 30 s sans battement, on considère que plus
-   rien ne travaille. Le battement est posé par hooks/brain_battement.py, sur
-   chaque appel d'outil. */
-/* ⚠ UN SEUL SYSTÈME. Le jeu précédent mélangeait des RÔLES (GARDENER,
-   ARCHIVIST) et des ACTIONS (FIXING, SAVING) : moins systémique que le reste de
-   l'objet, et surtout faux — le jardinier porte à lui seul quatre activités,
-   donc un nom de rôle ne dit pas ce qui se passe. L'orbe dit CE QUI SE FAIT.
-   Tous les libellés sont donc des actions en -ING, exactement les noms d'état. */
+/* ── THE STATE ────────────────────────────────────────────────────────────────
+   ⚠ FRESHNESS GUARD. `status.json` can stay on "busy" with a
+   stale timestamp: past the liveness window without a heartbeat, we consider that nothing
+   is working any more. The heartbeat is set by hooks/brain_battement.py, on
+   every tool call. The windows come from hooks/status_freshness.json. */
+/* ⚠ ONE SINGLE SYSTEM. The previous set mixed ROLES (GARDENER,
+   ARCHIVIST) and ACTIONS (FIXING, SAVING): less systemic than the rest of
+   the object, and above all wrong — the gardener alone carries four activities,
+   so a role name does not say what is happening. The orb says WHAT IS BEING DONE.
+   All labels are therefore -ING actions, exactly the state names. */
 const NOMS = { mapping:'MAPPING', auditing:'AUDITING', architecting:'ARCHITECTING',
   challenging:'CHALLENGING', filing:'FILING', archiving:'ARCHIVING',
   gardening:'GARDENING', correcting:'CORRECTING', working:'WORKING',
   distilling:'DISTILLING', synthesizing:'SYNTHESIZING', committing:'COMMITTING' };
-/* ⚠ 20/09 — DYLAN A RENOMMÉ LES AGENTS EN QUATRE VAISSEAUX (« on met les nouveaux
-   noms », fiche renommage-agents-familles-2026-09-20). Quand l'activité appartient
-   à un vaisseau, le libellé porte SON NOM et l'action descend dans la ligne du
-   dessous : « NOSTROMO » puis « auditing · hooks and links ». La table suit
-   `hooks/brain_upkeep.py` (ACT) et `hooks/brain_status.py` : auditing = mécanicien,
-   mapping/filing = jardinier.
+/* ⚠ 20/09 — THE AUTHOR RENAMED THE AGENTS INTO FOUR SHIPS ("we put the new
+   names in"). When the activity belongs
+   to a ship, the label carries ITS NAME and the action goes down to the line
+   below: "NOSTROMO" then "auditing · hooks and links". The table follows
+   `hooks/brain_upkeep.py` (ACT) and `hooks/brain_status.py`: auditing = mechanic,
+   mapping/filing = gardener.
 
-   ⚠ 20/09 au soir — LA SESSION ENTRE DANS LA FAMILLE, elle aussi. Version d'avant :
-   working, committing et correcting gardaient leur -ING « parce qu'ils n'ont pas
-   d'auteur parmi les vaisseaux ». Faux, et surtout invisible à l'usage — la session
-   travaille QUASIMENT TOUT LE TEMPS, donc l'orbe affichait « WORKING » en permanence
-   et un nom de vaisseau ne passait que quelques secondes par jour. l'auteur, en voyant
-   l'écart : « j'avais nostromo mais là j'ai working je ne comprend pas », puis
-   « doivent adopter des noms similaire également avec le même effet glow ».
+   ⚠ 20/09 evening — THE SESSION JOINS THE FAMILY too. Version before:
+   working, committing and correcting kept their -ING "because they have no
+   author among the ships". Wrong, and above all invisible in use — the session
+   works ALMOST ALL THE TIME, so the orb showed "WORKING" permanently
+   and a ship's name only appeared for a few seconds a day. The author, seeing
+   the gap: "I had nostromo but now I have working, I don't understand", then
+   "they must adopt similar names too, with the same glow effect".
 
-   TORRENS, et le choix n'est pas libre. La série obéit à une règle mesurée le 20/09
-   (fiche du renommage, § « ce que la recherche a trouvé ») : les vaisseaux d'Alien
-   portent presque tous un nom tiré de JOSEPH CONRAD — Nostromo d'après le roman de
-   1904, Narcissus d'après Le Nègre du Narcisse, Sulaco la ville de Nostromo. Le
-   Torrens est le clipper dont Conrad a été second capitaine de novembre 1891 à juin
-   1893 : le DERNIER navire où il a travaillé avant d'être écrivain. Et dans Alien:
-   Isolation, l'USCSS Torrens est le vaisseau à bord duquel on est pendant qu'on va
-   chercher l'enregistreur du Nostromo. C'est exactement la place de la session :
-   le navire où l'on est, pendant que le travail se fait.
-   MOTHER était le candidat évident et il est INTERDIT : le nom est pris depuis le
-   14/08 par la signature visuelle du Brain (planete-mother-2026-08-14), et un
-   homonyme a déjà coûté deux défauts ici.
+   TORRENS, and the choice is not free. The series obeys a rule measured on 20/09:
+   the Alien ships
+   almost all bear a name drawn from JOSEPH CONRAD — Nostromo after the
+   1904 novel, Narcissus after The Nigger of the 'Narcissus', Sulaco the town in Nostromo. The
+   Torrens is the clipper on which Conrad was first mate from November 1891 to June
+   1893: the LAST ship he worked on before becoming a writer. And in Alien:
+   Isolation, the USCSS Torrens is the ship you are aboard while you go
+   fetch the Nostromo's flight recorder. That is exactly the session's place:
+   the ship you are on, while the work gets done.
+   MOTHER was the obvious candidate and it is FORBIDDEN: the name has been taken since
+   14/08 by the Brain's visual signature, and a
+   homonym already cost two defects here.
 
-   CONSÉQUENCE MÉCANIQUE : les douze états ont maintenant un vaisseau, donc `NOMS`
-   ci-dessus ne sert plus que de filet pour un état inconnu. On le garde pour ça. */
+   MECHANICAL CONSEQUENCE: the twelve states now have a ship, so `NOMS`
+   above only serves as a net for an unknown state. We keep it for that. */
 const VAISSEAUX = { auditing:'NOSTROMO',
   mapping:'NARCISSUS', filing:'NARCISSUS', gardening:'NARCISSUS', distilling:'NARCISSUS',
   challenging:'SULACO', architecting:'SULACO', archiving:'SULACO',
@@ -594,30 +608,30 @@ const pave = document.getElementById('pave');
 const rouleau = pave.querySelector('.rouleau');
 let dernier = null;
 
-/* ── LE FLUX D'ÉCRITURE RÉEL ────────────────────────────────────────────────
-   `~/.claude/companion/sessions/<id>.jsonl` : une ligne par outil d'écriture,
-   avec le diff unifié réellement appliqué. C'est la MÊME source que le panneau
-   live du compagnon — pas un fichier d'agent figé comme dans l'ancienne capsule.
-   ⚠ On prend le fichier le plus RÉCEMMENT ÉCRIT, pas le plus récemment créé :
-     plusieurs sessions peuvent être ouvertes, seule celle qui travaille compte. */
+/* ── THE REAL WRITING STREAM ────────────────────────────────────────────────
+   `~/.claude/companion/sessions/<id>.jsonl`: one line per writing tool,
+   with the unified diff really applied. It is the SAME source as the companion's live
+   panel — not a frozen agent file as in the old capsule.
+   ⚠ We take the most RECENTLY WRITTEN file, not the most recently created:
+     several sessions can be open, only the one that works counts. */
 const FLUX = path.join(os.homedir(), '.claude', 'companion', 'sessions');
-const LARGEUR = 19;    // caractères tenables dans 78 px à 6 px de fonte
-const GARDE   = 90;    // lignes conservées : au-delà, on paie du DOM invisible
+const LARGEUR = 19;    // characters that fit in 78 px at a 6 px font
+const GARDE   = 90;    // lines kept: beyond that, we pay for invisible DOM
 let fluxFichier = null, fluxTaille = 0, lignes = [], dernierFichier = null;
 
-/* ── LA LIGNE « SUR QUOI » ──────────────────────────────────────────────────
-   `status.json` porte déjà un champ `detail`, mais il est HÉTÉROGÈNE selon qui
-   l'écrit — et c'est ça, tout le travail ici :
-     · `on_fiche_write.py` y met un slug de fiche nu ...... `format-arbre-projet`
-     · `brain_upkeep.py`  y met « agent : raison » ........ `jardinier: 3 à ranger`
-     · `on_fiche_write.py` y met aussi de la prose ........ `mise à jour de la carte`
-     · `brain_battement.py` (mes propres passes) .......... rien du tout
-   Un slug se résout en VRAI TITRE ; une phrase s'affiche telle quelle ; et
-   l'absence se rattrape sur le dernier fichier écrit. Sans ce dernier cas la
-   ligne serait vide pendant les passes les plus longues — donc absente pile
-   quand on regarde, exactement le défaut déjà corrigé sur le pavé.
-   ⚠ Tout est mis en cache, échecs compris : la résolution ouvre des dossiers,
-     et `lire()` tourne toutes les 700 ms. */
+/* ── THE "ON WHAT" LINE ──────────────────────────────────────────────────
+   `status.json` already carries a `detail` field, but it is HETEROGENEOUS depending on who
+   writes it — and that is all the work here:
+     · `on_fiche_write.py` puts a bare note slug ........... `format-arbre-projet`
+     · `brain_upkeep.py`  puts "agent: reason" ............. `gardener: 3 to file`
+     · `on_fiche_write.py` also puts prose ................. `updating the map`
+     · `brain_battement.py` (my own passes) ................ nothing at all
+   A slug resolves to a REAL TITLE; a sentence shows as is; and
+   absence is made up for with the last file written. Without this last case the
+   line would be empty during the longest passes — so absent right
+   when one looks, exactly the defect already fixed on the pad.
+   ⚠ Everything is cached, failures included: resolution opens folders,
+     and `lire()` runs every 700 ms. */
 const TRONC = path.join(os.homedir(), '.c-brain', 'trunk');
 const RACINES = ['lessons', 'meta', 'life', 'projects', 'agents', 'sessions'];
 const cacheTitre = {};
@@ -627,7 +641,7 @@ function cheminFiche(slug) {
     const base = path.join(TRONC, r);
     const direct = path.join(base, slug + '.md');
     try { if (fs.existsSync(direct)) return direct; } catch (e) {}
-    // un seul niveau de sous-dossier : `projects/<projet>/<slug>.md`
+    // a single level of subfolder: `projects/<project>/<slug>.md`
     try {
       for (const sous of fs.readdirSync(base, { withFileTypes: true })) {
         if (!sous.isDirectory()) continue;
@@ -639,8 +653,8 @@ function cheminFiche(slug) {
   return null;
 }
 
-/** Titre lisible d'une fiche : frontmatter `title:`, sinon premier `# `,
- *  sinon le slug rendu lisible. Jamais d'exception vers l'appelant. */
+/** Readable title of a note: front matter `title:`, else the first `# `,
+ *  else the slug made readable. Never an exception toward the caller. */
 function titreDeFichier(p, repli) {
   try {
     const tete = fs.readFileSync(p, 'utf8').slice(0, 2000).split('\n');
@@ -661,14 +675,14 @@ function surQuoi(detail) {
   if (brut) {
     if (cacheTitre[brut] !== undefined) return cacheTitre[brut];
     let sortie = brut;
-    // un slug nu — pas d'espace, pas de deux-points — se résout en titre
+    // a bare slug — no space, no colon — resolves to a title
     if (/^[a-z0-9][a-z0-9-]*$/.test(brut)) {
       const p = cheminFiche(brut);
       sortie = p ? titreDeFichier(p, brut.replace(/-/g, ' ')) : brut.replace(/-/g, ' ');
     }
     return cacheTitre[brut] = sortie;
   }
-  // repli : le dernier fichier réellement écrit
+  // fallback: the last file really written
   if (!dernierFichier) return '';
   if (cacheTitre['~' + dernierFichier] !== undefined) return cacheTitre['~' + dernierFichier];
   const nom = dernierFichier.split('/').pop();
@@ -688,7 +702,7 @@ function fichierActif(sansAge) {
       const st = fs.statSync(path.join(FLUX, f));
       if (st.mtimeMs > bestTs) { bestTs = st.mtimeMs; best = path.join(FLUX, f); }
     }
-    // Un flux qui n'a pas bougé depuis 3 min ne raconte plus le présent.
+    // A stream that has not moved for 3 min no longer tells the present.
     return (best && (sansAge || Date.now() - bestTs < 180000)) ? best : null;
   } catch (e) { return null; }
 }
@@ -700,16 +714,16 @@ function classe(l) {
   return '';
 }
 
-/* ── LE REPLI ───────────────────────────────────────────────────────────────
-   Quand aucun diff n'est arrivé depuis 3 min, le pavé se vidait et l'orbe
-   redevenait muette ALORS QU'UN AGENT TRAVAILLE — c'est précisément le moment
-   où l'on regarde. Un agent passe de longues minutes à lire et réfléchir sans
-   rien écrire : « rien n'a été écrit » ne veut pas dire « rien ne se passe ».
-   On retombe donc sur le fichier que CET agent exécute — le comportement de
-   l'ancienne capsule, gardé ici comme filet et non comme source principale. */
-/* Depuis le 2026-09-20 les 8 agents sont regroupés en 4 VAISSEAUX. Le fichier de
-   repli est celui de la FAMILLE ; plusieurs activités tombent donc sur le même,
-   ce qui est exact : c'est bien ce fichier-là que l'agent exécute. */
+/* ── THE FALLBACK ───────────────────────────────────────────────────────────────
+   When no diff had arrived for 3 min, the pad emptied and the orb
+   went mute again WHILE AN AGENT IS WORKING — precisely the moment
+   one looks. An agent spends long minutes reading and thinking without
+   writing anything: "nothing was written" does not mean "nothing is happening".
+   So we fall back on the file THIS agent executes — the old capsule's
+   behaviour, kept here as a net and not as the main source. */
+/* Since 2026-09-20 the 8 agents are grouped into 4 SHIPS. The fallback
+   file is the FAMILY's; several activities therefore land on the same one,
+   which is right: that is indeed the file the agent executes. */
 const SOURCE_AGENT = {
   distilling:'agents/narcissus.md', gardening:'agents/narcissus.md',
   filing:'agents/narcissus.md', correcting:'agents/narcissus.md',
@@ -726,18 +740,18 @@ function lignesAgent(etat) {
     const brut = fs.readFileSync(path.join(os.homedir(), '.c-brain', 'trunk', rel), 'utf8');
     return cacheAgent[rel] = brut.split('\n')
       .map(l => l.replace(/\t/g, '  ').trim())
-      // ⚠ Les fiches d'agent sont du Markdown : sans ce tri, une fente sur
-      //   quatre affiche « --- », « ``` » ou une ligne de tableau. Le pavé doit
-      //   ressembler à du travail, pas à de la ponctuation qui défile.
+      // ⚠ Agent files are Markdown: without this filter, one slot in
+      //   four shows "---", "```" or a table row. The pad must
+      //   look like work, not like scrolling punctuation.
       .filter(l => l.length > 2 && !/^[-`#*_|>=:\s]+$/.test(l))
       .slice(0, 400)
       .map(l => ({ t: l.slice(0, LARGEUR), c: '' }));
   } catch (e) { return cacheAgent[rel] = []; }
 }
 
-// ⚠ l'auteur, 24/09 : « surtout en anglais et anonymiser ». En tournage, le pavé
-//   ne lit AUCUN fichier réel : il déroule un code neutre, en anglais, inventé
-//   pour la vidéo. Sinon une fiche personnelle défile, lisible à l'image.
+// ⚠ The author, 24/09: "above all in English and anonymised". When filming, the pad
+//   reads NO real file: it unrolls neutral code, in English, invented
+//   for the video. Otherwise a personal note scrolls by, readable on screen.
 const PAVE_TOURNAGE = {
   synthesizing: `── notes/digest.ts
 + export async function weeklyDigest(notes) {
@@ -788,24 +802,24 @@ function lireFlux(etat) {
     lignes = l; return true;
   }
   let f = fichierActif();
-  // ⚠ l'auteur, 24/09 : « l'écriture dans l'orbe a encore disparu ». Cause : sans
-  //   diff écrit depuis 3 min, `working` n'a pas de fichier d'agent de repli
-  //   (SOURCE_AGENT) → pavé vide. Dans la barre de menus, la dernière écriture
-  //   réelle, même ancienne, vaut mieux qu'une orbe muette pendant le travail.
+  // ⚠ The author, 24/09: "the writing in the orb has disappeared again". Cause: with no
+  //   diff written for 3 min, `working` has no fallback agent file
+  //   (SOURCE_AGENT) → empty pad. In the menu bar, the last real
+  //   write, even an old one, beats a mute orb during work.
   if (!f && HOTE && !lignesAgent(etat).length) f = fichierActif(true);
   if (!f) {
     const repli = lignesAgent(etat);
-    // ⚠ ne renvoyer `true` que si le contenu CHANGE : sinon on repeint le pavé
-    // à chaque tour de `lire()` et le défilement repart de zéro sans arrêt.
+    // ⚠ only return `true` if the content CHANGES: otherwise the pad is repainted
+    // on every turn of `lire()` and the scroll restarts from zero endlessly.
     if (lignes === repli) return false;
     lignes = repli; fluxFichier = null; fluxTaille = 0;
     return true;
   }
   let taille = 0;
   try { taille = fs.statSync(f).size; } catch (e) { return false; }
-  // ⚠ Ne relire QUE si le fichier a grossi. Sans ce garde, on redécoupe un
-  //   fichier de 100 Ko toutes les 1,5 s pour rien, et le pavé se reconstruit
-  //   entièrement — donc il scintille alors que rien n'a été écrit.
+  // ⚠ Re-read ONLY if the file has grown. Without this guard, a 100 KB file
+  //   is re-split every 1.5 s for nothing, and the pad rebuilds
+  //   entirely — so it flickers although nothing was written.
   if (f === fluxFichier && taille === fluxTaille) return false;
   fluxFichier = f; fluxTaille = taille;
   let brut = '';
@@ -815,26 +829,26 @@ function lireFlux(etat) {
     if (!ligne.trim()) continue;
     let j; try { j = JSON.parse(ligne); } catch (e) { continue; }
     if (j.type !== 'diff' || !Array.isArray(j.diff)) continue;
-    // Retenu pour la ligne « sur quoi » : quand `status.json` n'a pas de
-    // `detail` — le cas de mes propres passes, où le battement écrit
-    // « working » sans rien d'autre — le dernier fichier réellement écrit est
-    // le seul repère disponible, et c'est le bon.
+    // Kept for the "on what" line: when `status.json` has no
+    // `detail` — the case of my own passes, where the heartbeat writes
+    // "working" and nothing else — the last file really written is
+    // the only bearing available, and it is the right one.
     dernierFichier = j.rel || j.file || dernierFichier;
     out.push({ t: '── ' + (j.rel || j.file || '?'), c: 'tete' });
     for (const d of j.diff) {
-      // ⚠ L'INDENTATION DÉCENTRAIT TOUT LE PAVÉ (2026-08-08). Les lignes sont
-      //   CENTRÉES dans le disque, et `white-space:pre` conserve les espaces de
-      //   tête : une ligne indentée de douze espaces se centre AVEC eux, donc
-      //   son texte part vers la droite et sort du masque, pendant que la moitié
-      //   gauche du pavé reste vide. Visible dès qu'on regarde un fichier de
-      //   code profondément imbriqué — un shader, typiquement. On garde deux
-      //   espaces : assez pour voir qu'il y a un niveau, pas assez pour pousser
-      //   la ligne hors du disque. Et ça rend aussi 10 caractères utiles sur 19.
-      // ⚠ LE SIGNE DE DIFF PASSE AVANT L'INDENTATION — « +          vec3 x ». Un
-      //   premier essai n'ancrait le motif que sur l'espace (`^ {3,}`) : il ne
-      //   matchait donc AUCUNE ligne ajoutée ou retirée, c'est-à-dire presque
-      //   tout le pavé, et la planche est revenue identique. Le signe se capture
-      //   et se repose, sinon `classe()` ne reconnaît plus la ligne.
+      // ⚠ INDENTATION OFF-CENTRED THE WHOLE PAD (2026-08-08). The lines are
+      //   CENTRED in the disc, and `white-space:pre` keeps the leading
+      //   spaces: a line indented by twelve spaces is centred WITH them, so
+      //   its text heads right and leaves the mask, while the left half
+      //   of the pad stays empty. Visible as soon as one looks at a deeply
+      //   nested code file — a shader, typically. We keep two
+      //   spaces: enough to see there is a level, not enough to push
+      //   the line out of the disc. And it also makes 10 useful characters out of 19.
+      // ⚠ THE DIFF SIGN COMES BEFORE THE INDENTATION — "+          vec3 x". A
+      //   first try anchored the pattern on the space only (`^ {3,}`): it therefore
+      //   matched NO added or removed line, that is almost
+      //   the whole pad, and the board came back identical. The sign is captured
+      //   and put back, otherwise `classe()` no longer recognises the line.
       const t = d.replace(/\t/g, '  ').replace(/\s+$/, '')
                  .replace(/^([+-]?) {2,}/, '$1 ');
       if (!t) continue;
@@ -845,17 +859,17 @@ function lireFlux(etat) {
   return true;
 }
 
-/* ── LE PAVÉ COURBÉ ─────────────────────────────────────────────────────────
-   `FENTES` lignes fixes dans le DOM, réutilisées à chaque tour : on ne
-   reconstruit rien, on ne fait que déplacer. Reconstruire 30 nœuds toutes les
-   90 ms ferait recalculer la mise en page en continu pour 96 px de large.
-   Chaque fente k occupe une latitude θ ∈ ]−90°, +90°[ :
-     y  = R·sin θ        → les latitudes se tassent vers les pôles
-     sx = cos θ          → la ligne se resserre comme la corde d'un cercle
-   Le défilement fait glisser les latitudes, pas le bloc : le texte remonte le
-   long de la sphère au lieu de traverser un rectangle.
-   ⚠ Animé par `transform`, jamais par `top` : `top` refait la mise en page à
-     chaque image et fait travailler tout le compositeur pour 96 px. */
+/* ── THE CURVED PAD ─────────────────────────────────────────────────────────
+   `FENTES` fixed lines in the DOM, reused on every turn: nothing is
+   rebuilt, things are only moved. Rebuilding 30 nodes every
+   90 ms would recompute the layout continuously for 96 px of width.
+   Each slot k takes a latitude θ ∈ ]−90°, +90°[:
+     y  = R·sin θ        → latitudes crowd toward the poles
+     sx = cos θ          → the line narrows like the chord of a circle
+   Scrolling slides the latitudes, not the block: the text climbs
+   along the sphere instead of crossing a rectangle.
+   ⚠ Animated by `transform`, never by `top`: `top` redoes the layout on
+     every frame and makes the whole compositor work for 96 px. */
 const FENTES = 18, RAYON_TXT = 37;
 const fentes = [];
 for (let k = 0; k < FENTES; k++) {
@@ -868,20 +882,20 @@ for (let k = 0; k < FENTES; k++) {
 let defilement = 0;
 function tournerPave(dt = 0) {
   if (!occupe || !lignes.length || !vu || document.hidden) return;
-  // ⚠ RÉGLÉ EN TROIS FOIS, et les deux premiers essais ont dépassé la cible dans
-  //   les deux sens — 0,055 (0,6 ligne/s) : on croyait l'orbe figée ; 0,13
-  //   (2,2 lignes/s) : le texte fuyait, illisible même du coin de l'œil.
-  //   La bonne vitesse n'est pas « lisible » ni « vivante », c'est SUIVABLE :
-  //   l'œil doit pouvoir accrocher une ligne et la perdre sans effort.
-  //   0,075 ≈ 1,25 ligne/s.
-  // 1,25 ligne/s (0,075 par pas de 60 ms), désormais au temps réel écoulé :
-  // le pavé avance DANS les images de l'orbe (orbe.surImage), sans minuteur à lui.
+  // ⚠ TUNED IN THREE GOES, and the first two tries overshot the target in
+  //   both directions — 0.055 (0.6 line/s): the orb looked frozen; 0.13
+  //   (2.2 lines/s): the text ran away, unreadable even from the corner of the eye.
+  //   The right speed is neither "readable" nor "alive", it is FOLLOWABLE:
+  //   the eye must be able to catch a line and lose it without effort.
+  //   0.075 ≈ 1.25 line/s.
+  // 1.25 line/s (0.075 per 60 ms step), now in real elapsed time:
+  // the pad moves forward INSIDE the orb's frames (orbe.surImage), with no timer of its own.
   if (!REDUIT) defilement += 1.25 * dt;
   const base = Math.floor(defilement), frac = defilement - base;
   for (let k = 0; k < FENTES; k++) {
     const d = fentes[k];
-    // 0,97 plutôt que 1 : à l'exacte verticale du pôle, cos θ vaut 0 et la
-    // ligne disparaît en un trait — on s'arrête juste avant.
+    // 0.97 rather than 1: exactly above the pole, cos θ is 0 and the
+    // line vanishes into a stroke — we stop just before.
     const th = (((k - frac) / (FENTES - 1)) - 0.5) * Math.PI * 0.97;
     const y  = RAYON_TXT * Math.sin(th);
     const sx = Math.cos(th);
@@ -889,30 +903,30 @@ function tournerPave(dt = 0) {
     if (d._t !== l.t) { d.textContent = l.t; d._t = l.t; }
     if (d._c !== l.c) { d.className = 'l' + (l.c ? ' ' + l.c : ''); d._c = l.c; }
     d.style.transform = `translate(0, ${(37 + y).toFixed(1)}px) scaleX(${sx.toFixed(3)})`;
-    // la matière est plus épaisse vue de biais : le texte s'y noie
+    // the material is thicker seen at an angle: the text drowns in it
     d.style.opacity = (0.50 + 0.50 * Math.pow(sx, 0.9)).toFixed(2);
   }
 }
-// Un pas de 90 ms se voit avancer par crans le long des latitudes ; 60 ms, non.
-// D'où la cadence de travail du panneau à 16 i/s (62 ms), pas 12 : voir CADENCE.
-// ⚠ 25/09 : le pavé avait son minuteur (60 ms), décalé des images de l'orbe :
-//   chaque pas forçait une image de plus. Il avance maintenant dans la boucle
-//   de rendu — autant d'images que l'orbe, pas une de plus.
+// A 90 ms step is seen moving in notches along the latitudes; 60 ms is not.
+// Hence the panel's work rate at 16 f/s (62 ms), not 12: see CADENCE.
+// ⚠ 25/09: the pad had its own timer (60 ms), out of step with the orb's frames:
+//   each step forced one more frame. It now moves inside the render
+//   loop — as many frames as the orb, not one more.
 orbe.surImage = tournerPave;
 
-/* Les fentes sont permanentes : peindre ne fait qu'ouvrir ou fermer le pavé,
-   le contenu est posé par `tournerPave` à chaque tour. */
+/* The slots are permanent: painting only opens or closes the pad,
+   the content is set by `tournerPave` on every turn. */
 function peindrePave() {
   if (!lignes.length) { pave.classList.remove('vu'); return; }
   if (occupe) { pave.classList.add('vu'); tournerPave(); }
 }
 
-// ?seule / ?ilot : l'orbe est dans la pastille ou le panneau de la barre de
-// menus, et c'est la page hôte (ilot.html) qui lui DIT l'état. l'auteur, 24/09 :
-// « la sphère ne montre qu'un seul état même si elle passe à d'autres couleurs
-// ou vaisseaux » — en lisant le fichier de son côté, elle avait sa propre
-// garde de fraîcheur (30 s contre 180 pour la pastille) et pouvait ne pas
-// suivre ce que disait le panneau. Une seule source maintenant : l'hôte.
+// ?seule / ?ilot: the orb is in the menu bar badge or panel,
+// and it is the host page (ilot.html) that TELLS it the state. The author, 24/09:
+// "the sphere only shows one state even when it switches to other colours
+// or ships" — reading the file on its own side, it had its own
+// freshness guard (30 s against 180 for the badge) and could fail to
+// follow what the panel said. One single source now: the host.
 const HOTE = !!(document.documentElement.dataset.seule || document.documentElement.dataset.ilot);
 let impose = null;
 if (HOTE) window.addEventListener('message', (e) => {
@@ -924,51 +938,57 @@ function lire() {
   let st = { state:'idle' };
   if (HOTE) st = impose ? Object.assign({}, impose, { ts: Date.now() / 1000 }) : st;
   else try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
-  // Dans l'encoche, la fin est dite par le hook Stop (`idle` écrit à la fin de
-  // la réponse) : la garde de fraîcheur n'est plus qu'un filet si la session
-  // meurt. À 30 s, elle faisait rentrer l'orbe pendant que Claude réfléchissait.
-  const frais = (Date.now()/1000 - (st.ts || 0)) < (ENCOCHE ? 180 : 30);
-  const etat = (st.state === 'busy' && frais) ? (st.activity || 'working') : 'idle';
-  // ⚠ Le flux grossit SANS que l'état change : un même agent écrit des dizaines
-  //   de fois d'affilée. Le sortir du garde `etat === dernier` est le seul moyen
-  //   de voir arriver autre chose que le premier diff de chaque agent.
+  // In the notch, the end is told by the Stop hook (`idle` written at the end of
+  // the reply): the freshness guard is only a net if the session
+  // dies. At 30 s, it tucked the orb in while Claude was thinking.
+  const F = fenetresFraicheur();
+  const frais = (Date.now()/1000 - (st.ts || 0)) < (ENCOCHE ? Math.max(180, F.live) : F.live);
+  // An activity older than its own window is no longer named: the orb says
+  // "working" rather than a job that may have ended minutes ago.
+  const actFraiche = HOTE || (Date.now()/1000 - (st.activity_ts || 0)) < F.activity;
+  const etat = (st.state === 'busy' && frais)
+    ? ((actFraiche && st.activity) || 'working')
+    : 'idle';
+  // ⚠ The stream grows WITHOUT the state changing: the same agent writes dozens
+  //   of times in a row. Taking it out of the `etat === dernier` guard is the only way
+  //   to see anything arrive beyond each agent's first diff.
   occupe = etat !== 'idle';
   if (ENCOCHE && !force) sortir(occupe);
-  // ⚠ AVANT le garde `etat === dernier`, et c'est tout l'intérêt : le DÉTAIL
-  //   change sans que l'état bouge — « FILING » reste « FILING » pendant que
-  //   l'agent passe d'une fiche à l'autre. Posée après le garde, cette ligne
-  //   serait figée sur la première fiche de chaque passe. Même classe de défaut
-  //   que le pavé qui ne se rallumait pas.
+  // ⚠ BEFORE the `etat === dernier` guard, and that is the whole point: the DETAIL
+  //   changes without the state moving — "FILING" stays "FILING" while
+  //   the agent goes from one note to the next. Set after the guard, this line
+  //   would be frozen on the first note of each pass. Same class of defect
+  //   as the pad that did not light up again.
   if (occupe) {
-    const sur = surQuoi(st.detail);
-    // un vaisseau au libellé → l'action passe ici, devant le « sur quoi »
+    const sur = actFraiche ? surQuoi(st.detail) : '';
+    // a ship on the label → the action moves here, in front of the "on what"
     const quoi = VAISSEAUX[etat] ? (sur ? etat + ' · ' + sur : etat) : sur;
     if (fiche._t !== quoi) { fiche.textContent = quoi; fiche._t = quoi; }
     fiche.classList.toggle('vu', !!quoi);
   } else { fiche.classList.remove('vu'); }
-  // ⚠ AVANT : `if (lireFlux(etat)) peindrePave();` — le pavé n'était RALLUMÉ
-  //   que si le contenu venait de changer. Or `lireFlux` renvoie `false` dès que
-  //   le fichier n'a pas grossi (et le repli renvoie le même tableau). Donc un
-  //   agent qui reprend le travail après un passage au repos, sans écrire dans
-  //   la seconde, laissait le pavé ÉTEINT pour toute sa passe. Le contenu était
-  //   là, la classe `vu` ne revenait jamais. Vu sur planche : orbe muette sur
-  //   tous les états de travail sauf le premier.
-  //   La lecture peut être conditionnelle ; l'affichage, non.
-  // ⚠ 25/09 : chaque lecture du flux passe en revue ~180 fichiers. La pastille
-  //   (?seule) n'affiche pas le pavé, une orbe cachée ne l'affiche à personne.
+  // ⚠ BEFORE: `if (lireFlux(etat)) peindrePave();` — the pad was only LIT AGAIN
+  //   if the content had just changed. But `lireFlux` returns `false` as soon as
+  //   the file has not grown (and the fallback returns the same array). So an
+  //   agent resuming work after a spell at rest, without writing within
+  //   the second, left the pad OFF for its whole pass. The content was
+  //   there, the `vu` class never came back. Seen on a board: mute orb on
+  //   every work state but the first.
+  //   Reading may be conditional; displaying may not.
+  // ⚠ 25/09: each read of the stream goes through ~180 files. The badge
+  //   (?seule) does not show the pad, a hidden orb shows it to nobody.
   if (occupe && vu && !document.documentElement.dataset.seule) { lireFlux(etat); peindrePave(); }
   else if (!occupe) { pave.classList.remove('vu'); }
   if (etat === dernier) return;
   dernier = etat;
-  // l'état est porté sur le body : utile au style, et lisible au débogage
+  // the state is carried on the body: useful for styling, and readable when debugging
   document.body.dataset.etat = etat;
   cible = reglage(etat);
   if (!REDUIT) orbe.setMecanique(cible.meca);
   if (occupe) {
-    // textContent effacerait les points : on repose le libellé puis les trois
-    // spans, qui portent chacun leur propre décalage d'animation.
-    // Le nom vit dans son propre span : la brillance chromatique ne doit
-    // toucher que lui, jamais les trois points qui le suivent.
+    // textContent would erase the dots: we set the label back then the three
+    // spans, each of which carries its own animation offset.
+    // The name lives in its own span: the chromatic shine must
+    // touch it alone, never the three dots that follow it.
     const nom = document.createElement('span');
     nom.className = VAISSEAUX[etat] ? 'nom brille' : 'nom';
     nom.textContent = VAISSEAUX[etat] || NOMS[etat] || etat.toUpperCase();
@@ -983,49 +1003,49 @@ function lire() {
   else dit.classList.remove('vu');
   majCadence();
 }
-// Hébergée, l'orbe lit ce que la page hôte lui dit, à chaque message : son
-// propre tour de lecture faisait doublon.
+// Hosted, the orb reads what the host page tells it, on each message: its
+// own reading loop was a duplicate.
 if (!HOTE) setInterval(lire, 700);
-/* Exposé pour le TOURNAGE PAS À PAS (banc/film.cjs, FILM_PAS). Là-bas l'horloge
-   de la page est gelée et avancée d'un soixantième de seconde à la fois : si le
-   changement d'état attendait le minuteur ci-dessus, il tomberait n'importe où
-   dans une fenêtre de 0,7 s et chaque état n'occuperait plus le même nombre
-   d'images. Le film appelle donc la lecture lui-même, juste après avoir écrit
-   status.json. Rien d'autre ne s'en sert, et la page se comporte pareil sans. */
+/* Exposed for STEP-BY-STEP FILMING (banc/film.cjs, FILM_PAS). There the page's
+   clock is frozen and advanced one sixtieth of a second at a time: if the
+   state change waited for the timer above, it would fall anywhere
+   in a 0.7 s window and each state would no longer take the same number of
+   frames. So the film calls the read itself, right after writing
+   status.json. Nothing else uses it, and the page behaves the same without it. */
 window.__lire = lire;
 lire();
 
-/* ── COMBIEN DE FICHES RESTENT À TRAITER ────────────────────────────────────
-   Demande de l'auteur (2026-08-14) : « à chaque fois que l'orbe est lancé, elle
-   doit afficher une petite pastille notifiant combien de fiches elle doit
-   encore traiter ».
-   Source de vérité : `state/a-classer.md`, alimenté automatiquement par
-   `hooks/on_fiche_write.py`. Jusqu'au 2026-09-15 c'était l'Inbox de MEMORY.md ; elle en
-   est sortie parce qu'une seule ligne d'Inbox faisait refuser tous les commits (budget
-   de la carte + ADR-0015).
-   C'est le SEUL endroit qui dit ce qui attend, et il est déjà tenu à jour —
-   on ne recompte rien, on lit.
-   ⚠ Cadence lente exprès : `lire()` tourne à 700 ms pour l'état de l'agent,
-   mais l'Inbox ne bouge qu'à l'écriture d'une fiche. La relire 85 fois par
-   minute coûterait sans rien apprendre. 20 s suffisent, plus un appel au
-   lancement pour que la pastille soit juste dès la première image. */
+/* ── HOW MANY NOTES ARE LEFT TO PROCESS ────────────────────────────────────
+   The author's request (2026-08-14): "every time the orb is launched, it
+   must show a small badge saying how many notes it still has
+   to process".
+   Source of truth: `state/a-classer.md`, fed automatically by
+   `hooks/on_fiche_write.py`. Until 2026-09-15 it was the Inbox in MEMORY.md; it
+   left it because a single Inbox line made every commit get refused (the map's
+   budget + ADR-0015).
+   It is the ONLY place that says what is waiting, and it is already kept up to date —
+   we recount nothing, we read.
+   ⚠ Slow rate on purpose: `lire()` runs at 700 ms for the agent's state,
+   but the Inbox only moves when a note is written. Re-reading it 85 times a
+   minute would cost without teaching anything. 20 s is enough, plus a call at
+   launch so the badge is right from the first frame. */
 const RESTANT_EL = document.getElementById('restant');
 const A_CLASSER = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'a-classer.md');
 
 function compterEnAttente() {
   let t;
   try { t = fs.readFileSync(A_CLASSER, 'utf8'); }
-  catch (e) { return e.code === 'ENOENT' ? 0 : null; }   // pas de file = rien en attente
+  catch (e) { return e.code === 'ENOENT' ? 0 : null; }   // no queue = nothing waiting
   return t.split('\n').filter(l => l.trim().startsWith('- [')).length;
 }
 
-/* Le compteur affiche « 2/4 » : où on en est dans le LOT en cours.
-   Le reste à traiter se lit dans MEMORY.md, mais le TOTAL du lot, lui, ne s'y
-   lit nulle part — dès qu'une fiche est rangée elle disparaît de l'Inbox. On
-   mémorise donc le plus haut niveau atteint dans `state/orbe-lot.json`, ce qui
-   fait aussi survivre le lot à un relancement de l'orbe (sinon « 3/4 » se
-   retomberait à « 1/2 » au prochain démarrage, et la progression mentirait).
-   Le lot se referme tout seul quand l'Inbox se vide. */
+/* The counter shows "2/4": where we are in the current BATCH.
+   What is left to process is read in MEMORY.md, but the batch's TOTAL is
+   read nowhere — as soon as a note is filed it leaves the Inbox. So
+   we remember the highest level reached in `state/orbe-lot.json`, which
+   also lets the batch survive a restart of the orb (otherwise "3/4" would
+   fall back to "1/2" at the next start, and the progress would lie).
+   The batch closes on its own when the Inbox empties. */
 const LOT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'orbe-lot.json');
 
 function lireLot() {
@@ -1038,37 +1058,37 @@ function ecrireLot(total) {
 
 function majRestant() {
   const reste = compterEnAttente();
-  if (reste === null) return;                  // lecture ratée : on garde l'affichage précédent
+  if (reste === null) return;                  // failed read: keep the previous display
 
-  if (reste === 0) {                           // lot terminé : le compteur s'efface et se remet à zéro
+  if (reste === 0) {                           // batch done: the counter fades and resets
     RESTANT_EL.classList.remove('vu');
     if (lireLot() !== 0) ecrireLot(0);
     return;
   }
   let total = lireLot();
-  if (reste > total) { total = reste; ecrireLot(total); }   // de nouvelles fiches agrandissent le lot
+  if (reste > total) { total = reste; ecrireLot(total); }   // new notes enlarge the batch
 
-  // reste=4 sur 4 -> « 1/4 » (on est sur la première) ; reste=1 -> « 4/4 » ; reste=0 -> effacé.
+  // reste=4 of 4 -> "1/4" (we are on the first); reste=1 -> "4/4"; reste=0 -> hidden.
   const rang = total - reste + 1;
   RESTANT_EL.innerHTML = rang + '<span class="tot">/' + total + '</span>';
-  RESTANT_EL.title = rang + ' sur ' + total + ' — ' + reste
-                   + (reste > 1 ? ' fiches restent à ranger' : ' fiche reste à ranger');
+  RESTANT_EL.title = rang + ' of ' + total + ' — ' + reste
+                   + (reste > 1 ? ' notes left to file' : ' note left to file');
   RESTANT_EL.classList.add('vu');
 }
 majRestant();
 setInterval(majRestant, 20000);
 
 
-/* ── ATTRAPER L'ORBE ────────────────────────────────────────────────────────
-   La fenêtre laisse passer les clics (`setIgnoreMouseEvents(true, {forward:true})`)
-   sinon elle avalerait tout un carré de 150 px du bureau. `forward:true` fait
-   quand même remonter les mouvements de souris : on s'en sert pour savoir quand
-   le curseur est SUR l'orbe, et on ne redonne la main à la fenêtre qu'à ce
-   moment-là.
-   ⚠ On teste un DISQUE, pas le rectangle de la fenêtre : dans les coins, le
-     pixel est transparent — y bloquer le clic rendrait mort un bout de bureau
-     où l'utilisateur ne voit rien. */
-const RAYON = 62;   // px, l'orbe occupe ~124 px de large dans une fenêtre de 150
+/* ── CATCHING THE ORB ────────────────────────────────────────────────────────
+   The window lets clicks through (`setIgnoreMouseEvents(true, {forward:true})`)
+   otherwise it would swallow a whole 150 px square of the desktop. `forward:true` still
+   sends mouse moves up: we use them to know when
+   the cursor is ON the orb, and only give the window control back at that
+   moment.
+   ⚠ We test a DISC, not the window's rectangle: in the corners, the
+     pixel is transparent — blocking the click there would kill a patch of desktop
+     where the user sees nothing. */
+const RAYON = 62;   // px, the orb takes ~124 px of width in a 150 window
 let surOrbe = false, attrape = false;
 
 function dansOrbe(e) {
@@ -1078,23 +1098,23 @@ function dansOrbe(e) {
 }
 
 window.addEventListener('mousemove', (e) => {
-  if (attrape) return;                 // pendant le glissé, la main reste prise
-  if (ENCOCHE) return;                 // rien à attraper : le clic traverse
+  if (attrape) return;                 // while dragging, the hand stays taken
+  if (ENCOCHE) return;                 // nothing to catch: the click goes through
   const dedans = dansOrbe(e);
-  if (dedans === surOrbe) return;      // n'envoyer qu'aux TRANSITIONS
+  if (dedans === surOrbe) return;      // only send on TRANSITIONS
   surOrbe = dedans;
   document.body.style.cursor = dedans ? 'grab' : 'default';
   ipcRenderer.send('cap-interactive', dedans);
 });
 
 window.addEventListener('mousedown', (e) => {
-  if (ENCOCHE) return;                 // l'orbe de l'encoche ne se déplace pas
+  if (ENCOCHE) return;                 // the notch orb does not move
   if (e.button !== 0 || !dansOrbe(e)) return;
   attrape = true;
   document.body.style.cursor = 'grabbing';
-  // ⚠ Le suivi du curseur se fait DANS LE PROCESSUS PRINCIPAL, pas ici. En
-  //   glissant vite, le curseur sort de la fenêtre : le renderer cesse alors de
-  //   recevoir les mouvements et l'orbe resterait plantée en arrière du geste.
+  // ⚠ Cursor tracking happens IN THE MAIN PROCESS, not here. When
+  //   dragging fast, the cursor leaves the window: the renderer then stops
+  //   receiving moves and the orb would stay stuck behind the gesture.
   ipcRenderer.send('cap-drag-begin', { x: e.clientX, y: e.clientY });
 });
 
@@ -1105,10 +1125,10 @@ const lacher = () => {
   ipcRenderer.send('cap-drag-end');
 };
 window.addEventListener('mouseup', lacher);
-window.addEventListener('blur', lacher);   // filet : relâché hors de la fenêtre
+window.addEventListener('blur', lacher);   // net: released outside the window
 
-/* L'animation s'arrête quand personne ne la voit : fenêtre cachée, écran
-   éteint. Sans ça elle peint pour personne et fait recomposer WindowServer. */
+/* The animation stops when nobody sees it: hidden window, screen
+   off. Without it, it paints for nobody and makes WindowServer recomposite. */
 ipcRenderer.on('cap-visible', (_e, v) => { vu = v; majCadence(); });
 document.addEventListener('visibilitychange', majCadence);
 </script>

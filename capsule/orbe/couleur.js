@@ -1,16 +1,13 @@
-// OKLCh → sRGB, avec un VRAI contrôle de gamut.
+// OKLCh to sRGB, with a real gamut check.
 //
-// Pourquoi ce fichier existe alors qu'une conversion traînait déjà dans le
-// Brain : celle-ci écrêtait les canaux EN INTERNE (`min(1,max(0,u))`) avant de
-// rendre la couleur. Impossible, donc, de savoir si la couleur demandée était
-// tenable — tout contrôle fait après coup répond toujours « oui ».
-// Or l'écrêtage agit canal par canal, ce qui DÉPLACE la teinte : on demande un
-// bleu, on obtient un vert, et rien ne le signale.
+// The earlier Brain conversion clipped channels internally (`min(1,max(0,u))`)
+// before returning a color. A later gamut check therefore always said yes.
+// Channel-by-channel clipping also shifts the hue: requested blue can turn
+// green without any warning.
 //
-// Ici la conversion rend d'abord le linéaire BRUT (`versLineaire`), ce qui
-// permet de dire si la couleur tient. `hex()` cherche alors, par dichotomie, la
-// vivacité maximale réellement atteignable à la clarté demandée : la teinte est
-// préservée, c'est la vivacité qui cède.
+// This conversion returns unclipped linear values first (`versLineaire`), so
+// gamut can be checked. `hex()` then binary-searches the greatest achievable
+// chroma at the requested lightness, preserving hue by reducing chroma.
 
 const M = [
   [+4.0767416621, -3.3077115913, +0.2309699292],
@@ -18,7 +15,7 @@ const M = [
   [-0.0041960863, -0.7034186147, +1.7076147010],
 ];
 
-/** Linéaire sRGB NON écrêté — les valeurs hors [0,1] disent l'insuffisance. */
+/** Unclipped linear sRGB; values outside [0,1] reveal a gamut mismatch. */
 export function versLineaire(L, C, hDeg) {
   const h = (hDeg * Math.PI) / 180;
   const a = C * Math.cos(h), b = C * Math.sin(h);
@@ -38,8 +35,8 @@ const gamma = (u) => {
 };
 
 /**
- * Couleur hexadécimale la plus proche de (L,C,h) qui tienne vraiment à l'écran.
- * Si C est trop fort pour cette clarté, on le réduit — jamais la teinte.
+ * Closest displayable hexadecimal color to (L,C,h).
+ * Reduce excessive chroma at this lightness while preserving hue.
  */
 export function hex(L, C, hDeg) {
   let c = C;
@@ -56,7 +53,7 @@ export function hex(L, C, hDeg) {
   return '#' + d(r) + d(g) + d(b);
 }
 
-/** Vivacité maximale tenable à une clarté donnée, pour une teinte. */
+/** Greatest displayable chroma for a given lightness and hue. */
 export function chromaMax(L, hDeg) {
   let lo = 0, hi = 0.45;
   for (let i = 0; i < 18; i++) {

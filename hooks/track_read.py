@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""track_read — boucle de vérité (H3) : journalise quand une fiche du Brain est LUE.
+"""track_read — the truth loop: logs when a note in the trunk is actually READ.
 
 Hook PostToolUse (Read). Si un Read cible une fiche du tronc, on l'enregistre dans
-state/read_log.jsonl. Croisé avec recall_log.jsonl (ce qui a été remonté), ça donne
-l'UTILITÉ réelle de chaque fiche : remontée souvent mais jamais lue = peu utile ;
-jamais remontée ni lue depuis longtemps = poids mort (candidate archivage).
+state/read_log.jsonl. Cross-referenced with recall_log.jsonl (what was surfaced), it gives
+the real USEFULNESS of each note: surfaced often but never read = of little use;
+never surfaced nor read for a long time = dead weight (an archiving candidate).
 
-Signal fondé sur l'usage RÉEL, pas l'introspection. Sort toujours 0.
+A signal grounded in REAL usage, not introspection. Always exits 0.
 """
 import sys, os, json, time
 
@@ -43,12 +43,12 @@ def main():
 
 
 def refresh_live():
-    """Rallume la fiche sur la planète TOUT DE SUITE (~0,15 s) : sans ça, l'activité « en direct »
-    n'apparaîtrait qu'à la prochaine écriture de fiche ou à la fin de session — donc jamais en direct.
-    Best-effort et silencieux : un échec ici ne doit rien casser du hook."""
+    """Light the note up on the planet RIGHT NOW (~0.15 s): without this, "live" activity would
+    only surface at the next note written or at session end — so never live.
+    Best-effort and silent: a failure here must break nothing in the hook."""
     import subprocess
-    # recall_feedback : ferme la boucle usage → classement. Recalcule ici, au moment
-    # ou une lecture vient d'avoir lieu, plutot que d'ajouter une tache periodique.
+    # recall_feedback: closes the usage → ranking loop. Recomputed here, at the moment a
+    # read has just happened, rather than by adding one more periodic task.
     for script in ("coactivation.py", "graph_export.py", "recall_feedback.py"):
         try:
             subprocess.run([sys.executable, os.path.join(BRAIN, "hooks", script)],

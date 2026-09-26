@@ -1,48 +1,48 @@
 #!/usr/bin/env python3
-"""etat_projets — la fiche d'état de TOUS les projets, refaite à chaque passage.
+"""etat_projets — the status note of ALL projects, rebuilt on every pass.
 
-POURQUOI CE FICHIER EXISTE (2026-08-13). l'auteur a demandé « le topo de tout ce qu'il me
-reste à faire ». Le premier que j'ai produit récitait des « reste à faire » de juillet
-déjà réglés depuis, parce qu'il était copié des fiches au lieu d'être mesuré. Une fiche
-d'état écrite à la main pourrit en trois jours ; celle-ci se REGÉNÈRE.
+WHY THIS FILE EXISTS (2026-08-13). The author asked for "the rundown of everything I
+still have to do". The first one I produced recited July "left to do" items that had
+long been settled, because it was copied from the notes instead of being measured. A
+hand-written status note rots in three days; this one REGENERATES.
 
-LE PARTAGE, ET IL EST LE CŒUR DU TRUC :
+THE SPLIT, AND IT IS THE HEART OF THE THING:
 
-  1. MESURÉ MAINTENANT — l'état des dépôts git (dernier commit, travail non enregistré,
-     commits non poussés, absence de sauvegarde hors machine). Vrai à la seconde près,
-     jamais recopié, jamais périmé.
+  1. MEASURED NOW — the state of the git repositories (last commit, unsaved work,
+     unpushed commits, no off-machine backup). True to the second,
+     never copied, never stale.
 
-  2. DIT PAR LES FICHES — les points de reprise, lus dans `projects/**`. C'est du
-     déclaratif : ça peut être périmé, et la fiche le DIT au lieu de le cacher.
-     Chaque ligne porte l'âge de sa source.
+  2. SAID BY THE NOTES — the resume points, read from `projects/**`. This is
+     declarative: it can be stale, and the note SAYS so instead of hiding it.
+     Every line carries the age of its source.
 
-  3. EN ATTENTE DE DYLAN — `projects/decisions-dylan.json`, tenu à la main par Claude quand
-     une décision lui revient. Chaque entrée porte sa date : une décision qui traîne
-     depuis trois semaines se voit, au lieu de se fondre dans la liste.
+  3. WAITING ON THE OWNER — `projects/owner-decisions.json`, kept by hand by Claude when
+     a decision belongs to the owner. Every entry carries its date: a decision that has
+     been dragging for three weeks shows, instead of melting into the list.
 
-Ne fait AUCUN appel LLM : c'est une ronde mécanique, comme le machiniste. Gratuite,
-donc elle peut tourner deux fois par jour sans jamais discuter avec le quota.
+Makes NO LLM call: it is a mechanical round, like the machinist. Free,
+so it can run twice a day without ever arguing with the quota.
 
-⚠️ POURQUOI MESURE ET ANNONCE SONT SÉPARÉES (2026-08-13, trouvé en regardant la sortie).
-Branché naïvement sur launchd, ce script s'exécutait sans erreur et rendait « 5 dépôts »
-au lieu de 22 : macOS REFUSE à un service launchd l'accès à ~/Desktop (TCC), où vivent
-la plupart des dépôts de travail. Code de sortie 0, fiche écrite, 17 projets évaporés en
-silence — le défaut exact de `brain status`, à six semaines d'intervalle.
+⚠️ WHY MEASUREMENT AND ANNOUNCEMENT ARE SEPARATE (2026-08-13, found by looking at the output).
+Plugged naively into launchd, this script ran without error and returned "5 repositories"
+instead of 22: macOS DENIES a launchd service access to ~/Desktop (TCC), where most
+working repositories live. Exit code 0, note written, 17 projects vanished
+silently — the exact defect of `brain status`, six weeks apart.
 
-Donc :
-  • la MESURE tourne là où l'accès existe — dans une session Claude (hook), qui hérite
-    des autorisations du terminal ;
-  • l'ANNONCE de 8 h et 19 h lit la dernière mesure et DIT SON ÂGE, au lieu d'en
-    fabriquer une fausse ;
-  • un garde-fou refuse d'écraser une mesure complète par une mesure amputée.
+So:
+  • the MEASUREMENT runs where access exists — in a Claude session (hook), which inherits
+    the terminal's permissions;
+  • the 8 am and 7 pm ANNOUNCEMENT reads the last measurement and STATES ITS AGE, instead of
+    fabricating a false one;
+  • a safeguard refuses to overwrite a complete measurement with a truncated one.
 
-Pour que la ronde mesure elle-même : donner l'Accès complet au disque à /usr/bin/python3
-(Réglages Système › Confidentialité). Non requis — l'annonce reste juste sans lui.
+For the round to measure by itself: give Full Disk Access to /usr/bin/python3
+(System Settings › Privacy). Not required — the announcement stays accurate without it.
 
-Usage :
-    python3 hooks/etat_projets.py              # mesure (si possible) + fiche + annonce
-    python3 hooks/etat_projets.py --annonce    # annonce depuis la dernière mesure, n'écrit rien
-    python3 hooks/etat_projets.py --notifier   # + notification macOS (launchd matin/soir)
+Usage:
+    python3 hooks/etat_projets.py              # measure (if possible) + note + announcement
+    python3 hooks/etat_projets.py --announce   # announce from the last measurement, writes nothing
+    python3 hooks/etat_projets.py --notify     # + macOS notification (launchd morning/evening)
 """
 from __future__ import annotations
 
@@ -54,20 +54,20 @@ import sys
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 HOME = os.path.expanduser("~")
-FICHE = os.path.join(BRAIN, "projects", "etat-des-projets.md")
-# Dans projects/ et pas state/ : state/ est ignoré par git, la liste des décisions
-# dues par l'auteur ne survivrait pas à un `git clone`. C'est du savoir, pas de l'état machine.
-DECISIONS = os.path.join(BRAIN, "projects", "decisions-dylan.json")
-CACHE = os.path.join(BRAIN, "state", "etat-projets.json")
+FICHE = os.path.join(BRAIN, "projects", "project-status.md")
+# In projects/ and not state/: state/ is ignored by git, the list of decisions
+# owed by the author would not survive a `git clone`. It is knowledge, not machine state.
+DECISIONS = os.path.join(BRAIN, "projects", "owner-decisions.json")
+CACHE = os.path.join(BRAIN, "state", "project-status.json")
 
-# En dessous de cette fraction du plus grand nombre de dépôts déjà vu, la mesure est
-# tenue pour AMPUTÉE (accès refusé) et n'écrase rien. 0,6 laisse passer la disparition
-# légitime de quelques dépôts, jamais l'évaporation de tout un dossier.
+# Below this fraction of the largest number of repositories ever seen, the measurement is
+# held to be TRUNCATED (access denied) and overwrites nothing. 0.6 lets through the
+# legitimate disappearance of a few repositories, never the vanishing of a whole folder.
 SEUIL_AMPUTATION = 0.6
 
 EXCLUS = ("/Library/", "/node_modules/", "/.venv", "/.codex/", "/_archive/", "/.Trash/")
 
-# Un dépôt qui n'a pas bougé depuis plus de ça n'est plus « en pause », il dort.
+# A repository that has not moved for longer than this is no longer "paused", it sleeps.
 JOURS_ACTIF = 7
 JOURS_PAUSE = 30
 
@@ -81,7 +81,7 @@ def _git(repo: str, *args: str) -> str:
 
 
 def depots() -> list[dict]:
-    """Tous les dépôts git de la machine, avec leur état réel."""
+    """All git repositories on the machine, with their real state."""
     try:
         r = subprocess.run(
             ["find", HOME, "-maxdepth", "7", "-name", ".git", "-not", "-path", "*/Library/*"],
@@ -107,21 +107,21 @@ def depots() -> list[dict]:
         sale = len([l for l in _git(repo, "status", "--porcelain").splitlines() if l.strip()])
         non_pousse = _git(repo, "rev-list", "--count", "@{u}..HEAD")
         out.append({
-            "nom": os.path.basename(repo),
-            "chemin": repo.replace(HOME, "~"),
-            "dernier": iso,
-            "jours": jours,
-            "sale": sale,
-            "non_pousse": int(non_pousse) if non_pousse.isdigit() else None,
+            "name": os.path.basename(repo),
+            "path": repo.replace(HOME, "~"),
+            "last": iso,
+            "days": jours,
+            "dirty": sale,
+            "unpushed": int(non_pousse) if non_pousse.isdigit() else None,
             "remote": bool(_git(repo, "remote")),
-            "sujet": _git(repo, "log", "-1", "--pretty=%s")[:90],
+            "subject": _git(repo, "log", "-1", "--pretty=%s")[:90],
         })
-    out.sort(key=lambda d: d["jours"])
+    out.sort(key=lambda d: d["days"])
     return out
 
 
 def reprises() -> list[dict]:
-    """Points de reprise déclarés dans les fiches projet (déclaratif, pas mesuré)."""
+    """Resume points declared in the project notes (declarative, not measured)."""
     sys.path.insert(0, os.path.join(BRAIN, "hooks"))
     try:
         import brain_anticipate
@@ -130,7 +130,7 @@ def reprises() -> list[dict]:
         return []
     maintenant = dt.datetime.now().timestamp()
     for it in items:
-        it["jours"] = int((maintenant - it["mtime"]) // 86400)
+        it["days"] = int((maintenant - it["mtime"]) // 86400)
     return items
 
 
@@ -143,115 +143,115 @@ def decisions() -> list[dict]:
     aujourdhui = dt.date.today()
     for d in data:
         try:
-            d["jours"] = (aujourdhui - dt.date.fromisoformat(d.get("depuis", ""))).days
+            d["days"] = (aujourdhui - dt.date.fromisoformat(d.get("since", ""))).days
         except ValueError:
-            d["jours"] = None
+            d["days"] = None
     return data
 
 
 def alertes(reps: list[dict]) -> list[str]:
-    """Ce qui mérite un geste, par ordre de gravité. Vide = rien ne cloche."""
+    """What deserves an action, by order of severity. Empty = nothing is wrong."""
     a = []
     for d in reps:
         if not d["remote"]:
-            a.append(f"**{d['nom']}** n'a aucune sauvegarde hors machine (pas de dépôt distant)")
+            a.append(f"**{d['name']}** has no off-machine backup (no remote repository)")
     for d in reps:
-        if d["sale"]:
-            a.append(f"**{d['nom']}** : {d['sale']} fichier(s) de travail jamais enregistrés "
-                     f"(dernier commit il y a {d['jours']} j)")
+        if d["dirty"]:
+            a.append(f"**{d['name']}**: {d['dirty']} working file(s) never committed "
+                     f"(last commit {d['days']} d ago)")
     for d in reps:
-        if d["non_pousse"]:
-            a.append(f"**{d['nom']}** : {d['non_pousse']} commit(s) jamais poussés")
+        if d["unpushed"]:
+            a.append(f"**{d['name']}**: {d['unpushed']} commit(s) never pushed")
     return a
 
 
 def rendre(reps, reprs, decs) -> str:
     ts = dt.datetime.now()
-    actifs = [d for d in reps if d["jours"] <= JOURS_ACTIF]
-    pause = [d for d in reps if JOURS_ACTIF < d["jours"] <= JOURS_PAUSE]
-    dorment = [d for d in reps if d["jours"] > JOURS_PAUSE]
+    actifs = [d for d in reps if d["days"] <= JOURS_ACTIF]
+    pause = [d for d in reps if JOURS_ACTIF < d["days"] <= JOURS_PAUSE]
+    dorment = [d for d in reps if d["days"] > JOURS_PAUSE]
     al = alertes(reps)
 
     L = []
     L.append("---")
-    L.append("name: etat-des-projets")
-    L.append('description: "État de TOUS les projets, regénéré automatiquement deux fois par jour '
-             "(hooks/etat_projets.py). Partie MESURÉE (dépôts git) + partie DÉCLARÉE (points de "
-             'reprise des fiches, potentiellement périmés) + décisions en attente du propriétaire."')
-    L.append("topic: projets-clients")   # sinon la régénération effacerait le sujet (carte, 23/09)
+    L.append("name: project-status")
+    L.append('description: "Status of ALL projects, regenerated automatically twice a day '
+             "(hooks/etat_projets.py). A MEASURED part (git repositories) + a DECLARED part "
+             '(resume points from the notes, possibly stale) + decisions waiting on the owner."')
+    L.append("topic: client-projects")   # otherwise regeneration would erase the topic (map, 2026-09-23)
     L.append("metadata:")
     L.append("  type: project")
     L.append("  node_type: memory")
     L.append("---")
     L.append("")
-    L.append("# État des projets")
+    L.append("# Project status")
     L.append("")
-    L.append(f"*Regénéré le {ts.strftime('%Y-%m-%d à %H:%M')}. Ne pas éditer à la main : "
-             "le prochain passage écrase tout.*")
-    L.append("")
-
-    L.append("## En clair")
-    L.append("")
-    L.append("Cette page est le tableau de bord de TOUS les projets de l'auteur, refait tout seul "
-             "deux fois par jour. Personne ne l'écrit à la main : le passage suivant remplace "
-             "tout ce qu'on y aurait tapé.")
-    L.append("")
-    L.append("Elle sépare deux choses qu'il ne faut pas confondre. Ce qui est **mesuré** vient "
-             "directement des dépôts de code sur la machine — du travail jamais enregistré, des "
-             "enregistrements jamais envoyés ailleurs, un projet sans aucune copie hors du Mac. "
-             "Ce qui est **déclaré** vient des fiches que j'écris, et vaut ce que vaut la fiche.")
-    L.append("")
-    L.append("On la lit pour une seule question : est-ce qu'un travail risque de disparaître, "
-             "et est-ce qu'une décision attend l'auteur ?")
+    L.append(f"*Regenerated on {ts.strftime('%Y-%m-%d at %H:%M')}. Do not edit by hand: "
+             "the next pass overwrites everything.*")
     L.append("")
 
-    L.append("## ⚠️ Ce qui demande un geste")
+    L.append("## En clair")   # i18n-ok — section name read by graph_export.EN_CLAIR
+    L.append("")
+    L.append("This page is the dashboard of ALL the author's projects, rebuilt by itself "
+             "twice a day. Nobody writes it by hand: the next pass replaces "
+             "anything typed into it.")
+    L.append("")
+    L.append("It separates two things that must not be confused. What is **measured** comes "
+             "straight from the code repositories on the machine — work never saved, "
+             "saves never sent anywhere else, a project with no copy off the Mac. "
+             "What is **declared** comes from the notes I write, and is worth what the note is worth.")
+    L.append("")
+    L.append("It is read for one question only: is some work at risk of disappearing, "
+             "and is a decision waiting on the author?")
+    L.append("")
+
+    L.append("## ⚠️ What needs an action")
     L.append("")
     if al:
         for x in al:
             L.append(f"- {x}")
     else:
-        L.append("Rien. Tout est enregistré, poussé, sauvegardé hors machine.")
+        L.append("Nothing. Everything is committed, pushed, backed up off the machine.")
     L.append("")
 
-    L.append("## 🙋 En attente d'une décision de l'auteur")
+    L.append("## 🙋 Waiting on a decision from the author")
     L.append("")
     if decs:
         for d in decs:
-            age = f" — ouvert depuis **{d['jours']} j**" if d.get("jours") is not None else ""
-            L.append(f"- **{d.get('projet', '?')}** : {d.get('texte', '')}{age}")
+            age = f" — open for **{d['days']} d**" if d.get("days") is not None else ""
+            L.append(f"- **{d.get('project', '?')}**: {d.get('text', '')}{age}")
     else:
-        L.append("Rien en attente.")
+        L.append("Nothing waiting.")
     L.append("")
 
-    L.append("## 📊 Les projets, par activité réelle")
+    L.append("## 📊 Projects, by real activity")
     L.append("")
-    L.append("Mesuré à l'instant sur les dépôts git — cette partie ne peut pas être périmée.")
+    L.append("Measured just now on the git repositories — this part cannot be stale.")
     L.append("")
-    for titre, groupe in (("Actifs (≤ 7 jours)", actifs),
-                          ("En pause (8 à 30 jours)", pause),
-                          ("Dormants (> 30 jours)", dorment)):
+    for titre, groupe in (("Active (≤ 7 days)", actifs),
+                          ("Paused (8 to 30 days)", pause),
+                          ("Dormant (> 30 days)", dorment)):
         L.append(f"### {titre} — {len(groupe)}")
         L.append("")
         if not groupe:
-            L.append("*(aucun)*")
+            L.append("*(none)*")
             L.append("")
             continue
-        L.append("| Projet | Dernier commit | Dernier sujet |")
+        L.append("| Project | Last commit | Last subject |")
         L.append("|---|---|---|")
         for d in groupe:
-            L.append(f"| `{d['nom']}` | {d['dernier']} ({d['jours']} j) | {d['sujet']} |")
+            L.append(f"| `{d['name']}` | {d['last']} ({d['days']} d) | {d['subject']} |")
         L.append("")
 
-    L.append("## 🧭 Ce que les fiches disent qu'il faut reprendre")
+    L.append("## 🧭 What the notes say to pick up")
     L.append("")
-    L.append("⚠️ **Déclaratif, pas mesuré.** Ces lignes sont écrites dans les fiches ; certaines "
-             "peuvent être réglées depuis. L'âge dit à quel point il faut s'en méfier — "
-             "au-delà de 14 jours, re-prouver avant d'annoncer.")
+    L.append("⚠️ **Declarative, not measured.** These lines are written in the notes; some "
+             "may have been settled since. The age says how far to distrust them — "
+             "beyond 14 days, re-prove before announcing.")
     L.append("")
     for it in reprs[:12]:
-        vieux = " 🕸️" if it["jours"] > 14 else ""
-        L.append(f"- **{it['name']}** ({it['jours']} j{vieux}) — {it['reprise']}")
+        vieux = " 🕸️" if it["days"] > 14 else ""
+        L.append(f"- **{it['name']}** ({it['days']} d{vieux}) — {it['reprise']}")
     L.append("")
     return "\n".join(L) + "\n"
 
@@ -267,60 +267,60 @@ def lire_cache() -> dict:
 def ecrire_cache(reps: list[dict], plafond: int) -> None:
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     with open(CACHE, "w", encoding="utf-8") as f:
-        json.dump({"mesure_le": dt.datetime.now().isoformat(timespec="seconds"),
-                   "depots": reps, "depots_max": plafond}, f, ensure_ascii=False, indent=1)
+        json.dump({"measured_at": dt.datetime.now().isoformat(timespec="seconds"),
+                   "repos": reps, "repos_max": plafond}, f, ensure_ascii=False, indent=1)
 
 
 def amputee(reps: list[dict], cache: dict) -> bool:
-    """La mesure a-t-elle perdu l'accès à une partie du disque ?
+    """Has the measurement lost access to part of the disk?
 
-    Se juge sur le PLAFOND historique, pas sur la mesure précédente : deux passages
-    amputés de suite feraient sinon descendre la référence jusqu'à valider la panne.
+    Judged against the historical CEILING, not the previous measurement: otherwise two
+    truncated passes in a row would lower the reference until the failure is validated.
     """
-    plafond = int(cache.get("depots_max") or 0)
+    plafond = int(cache.get("repos_max") or 0)
     return plafond > 0 and len(reps) < SEUIL_AMPUTATION * plafond
 
 
 def annonce(reps, reprs, decs, age=None) -> str:
-    actifs = [d for d in reps if d["jours"] <= JOURS_ACTIF]
+    actifs = [d for d in reps if d["days"] <= JOURS_ACTIF]
     al = alertes(reps)
-    moment = "matin" if dt.datetime.now().hour < 14 else "soir"
-    vu = "" if age is None else f" — mesuré {age}"
-    lignes = [f"🌳 État des projets ({moment}) — {len(reps)} dépôts, "
-              f"{len(actifs)} actifs cette semaine{vu}."]
+    moment = "morning" if dt.datetime.now().hour < 14 else "evening"
+    vu = "" if age is None else f" — measured {age}"
+    lignes = [f"🌳 Project status ({moment}) — {len(reps)} repositories, "
+              f"{len(actifs)} active this week{vu}."]
     if al:
-        lignes.append(f"⚠️  {len(al)} chose(s) à régler : {al[0]}")
+        lignes.append(f"⚠️  {len(al)} thing(s) to settle: {al[0]}")
     else:
-        lignes.append("✅ Rien à régler : tout est enregistré, poussé, sauvegardé.")
+        lignes.append("✅ Nothing to settle: everything is committed, pushed, backed up.")
     if decs:
-        vieille = max(decs, key=lambda d: d.get("jours") or 0)
-        lignes.append(f"🙋 {len(decs)} décision(s) en attente — la plus ancienne : "
-                      f"{vieille.get('projet')} ({vieille.get('jours')} j)")
+        vieille = max(decs, key=lambda d: d.get("days") or 0)
+        lignes.append(f"🙋 {len(decs)} decision(s) waiting — the oldest: "
+                      f"{vieille.get('project')} ({vieille.get('days')} d)")
     if reprs:
-        lignes.append(f"🧭 À reprendre en tête : {reprs[0]['name']}")
+        lignes.append(f"🧭 First to pick up: {reprs[0]['name']}")
     lignes.append(f"📄 {FICHE.replace(HOME, '~')}")
     return "\n".join(lignes)
 
 
-ANNONCE = os.path.join(BRAIN, "state", "ronde-a-annoncer.json")
+ANNONCE = os.path.join(BRAIN, "state", "round-to-announce.json")
 
 
 def notifier(texte: str) -> None:
-    """Annonce la ronde par DEUX canaux, dont un vérifiable.
+    """Announces the round through TWO channels, one of which is verifiable.
 
-    Le 2026-08-14, L'utilisateur : « un résumé ce matin ne s'est pas lancé ». Le service AVAIT tourné
-    (`runs = 4, last exit code = 0`, ligne « matin » dans le log) et `osascript` avait renvoyé 0.
-    Mais aucune bannière n'est jamais apparue : `osascript` lancé depuis un agent launchd poste
-    ses notifications au nom de Script Editor, qui n'est même pas enregistré dans le Centre de
-    notifications (0 occurrence dans `com.apple.ncprefs` après une tentative). Autrement dit le
-    canal échoue en silence ET rend 0 — nouvelle instance de « un code de sortie n'est jamais
-    l'observable », appliquée cette fois au canal d'annonce lui-même.
+    On 2026-08-14, the user: "a summary this morning didn't launch". The service HAD run
+    (`runs = 4, last exit code = 0`, a "morning" line in the log) and `osascript` had returned 0.
+    But no banner ever appeared: `osascript` launched from a launchd agent posts
+    its notifications on behalf of Script Editor, which is not even registered in the
+    Notification Center (0 occurrences in `com.apple.ncprefs` after an attempt). In other words the
+    channel fails silently AND returns 0 — a new instance of "an exit code is never
+    the observable", applied this time to the announcement channel itself.
 
-    On garde donc la bannière en best-effort, mais on dépose surtout un MARQUEUR que la
-    prochaine session Claude Code affichera : le seul endroit où l'on est certain que l'utilisateur
-    regarde, c'est là où il travaille.
+    So the banner is kept as best-effort, but above all a MARKER is dropped that the
+    next Claude Code session will display: the only place where we are certain the user
+    is looking is where they work.
     """
-    titre = "C Brain — état des projets"
+    titre = "C Brain — project status"
     corps = texte.split("\n")[1] if "\n" in texte else texte
     corps = corps.replace('"', "'").replace("**", "")
     try:
@@ -331,27 +331,27 @@ def notifier(texte: str) -> None:
     except Exception:
         pass
 
-    # Le canal qui, lui, se vérifie : un fichier, lu au démarrage de la prochaine session.
+    # The channel that CAN be verified: a file, read at the start of the next session.
     try:
         os.makedirs(os.path.dirname(ANNONCE), exist_ok=True)
         with open(ANNONCE, "w", encoding="utf-8") as f:
-            json.dump({"texte": texte, "ecrit_le": dt.datetime.now().isoformat(),
-                       "annonce_le": None}, f, ensure_ascii=False, indent=2)
-    except Exception as e:                      # jamais fatal : la ronde a déjà écrit sa fiche
-        print(f"⚠️  marqueur d'annonce non écrit : {e}")
+            json.dump({"text": texte, "written_at": dt.datetime.now().isoformat(),
+                       "announced_at": None}, f, ensure_ascii=False, indent=2)
+    except Exception as e:                      # never fatal: the round has already written its note
+        print(f"⚠️  announcement marker not written: {e}")
 
 
 def _age(iso: str) -> str:
     try:
         delta = dt.datetime.now() - dt.datetime.fromisoformat(iso)
     except Exception:
-        return "à une date inconnue"
+        return "at an unknown date"
     h = int(delta.total_seconds() // 3600)
     if h < 1:
-        return "il y a moins d'une heure"
+        return "less than an hour ago"
     if h < 24:
-        return f"il y a {h} h"
-    return f"il y a {h // 24} j"
+        return f"{h} h ago"
+    return f"{h // 24} d ago"
 
 
 def main() -> int:
@@ -360,22 +360,22 @@ def main() -> int:
     reps = depots()
 
     degrade = amputee(reps, cache)
-    if degrade or "--annonce" in sys.argv:
-        # On n'écrase RIEN : on parle de la dernière mesure complète, en disant son âge.
-        reps = cache.get("depots", reps)
-        texte = annonce(reps, reprs, decs, age=_age(cache.get("mesure_le", "")))
+    if degrade or "--announce" in sys.argv:
+        # We overwrite NOTHING: we speak of the last complete measurement, stating its age.
+        reps = cache.get("repos", reps)
+        texte = annonce(reps, reprs, decs, age=_age(cache.get("measured_at", "")))
         if degrade:
-            texte += ("\n⚠️  mesure du moment ignorée : accès disque refusé à ce service "
-                      "(le Bureau n'était pas lisible). La fiche n'a pas été touchée.")
+            texte += ("\n⚠️  current measurement ignored: disk access denied to this service "
+                      "(the Desktop was not readable). The note was not touched.")
     else:
-        ecrire_cache(reps, max(len(reps), int(cache.get("depots_max") or 0)))
+        ecrire_cache(reps, max(len(reps), int(cache.get("repos_max") or 0)))
         os.makedirs(os.path.dirname(FICHE), exist_ok=True)
         with open(FICHE, "w", encoding="utf-8") as f:
             f.write(rendre(reps, reprs, decs))
         texte = annonce(reps, reprs, decs)
 
     print(texte)
-    if "--notifier" in sys.argv:
+    if "--notify" in sys.argv:
         notifier(texte)
     return 0
 

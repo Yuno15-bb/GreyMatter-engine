@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Socle commun des hooks du Companion (suivi live des modifs, rendu dans la barre).
 
-Contraintes non négociables :
+Non-negotiable constraints:
   - stdlib seule (Python 3.9 sur la machine cible) ;
-  - JAMAIS bloquant : tout est enveloppé côté appelant, un échec est silencieux ;
-  - JAMAIS de secret affiché : les fichiers sensibles sont signalés, pas montrés.
+  - NEVER blocking: everything is wrapped on the caller side, a failure is silent;
+  - NEVER a secret shown: sensitive files are reported, not displayed.
 """
 
 import hashlib
@@ -16,12 +16,12 @@ import time
 
 HOME = os.path.expanduser("~")
 BASE = os.path.join(HOME, ".claude", "companion")
-SESSIONS = os.path.join(BASE, "sessions")   # <sid>.jsonl : le flux d'événements
-SNAP = os.path.join(BASE, "snap")           # pré-images posées par PreToolUse
+SESSIONS = os.path.join(BASE, "sessions")   # <sid>.jsonl: the event stream
+SNAP = os.path.join(BASE, "snap")           # before-images stored by PreToolUse
 AGG = os.path.join(BASE, "agg")             # totaux par session, pour la barre
 
-MAX_DIFF_LINES = 500        # au-delà, on tronque : inutile de stocker un pavé
-MAX_FILE_BYTES = 2_000_000  # au-delà, on ne diffe pas (binaire, bundle, asset)
+MAX_DIFF_LINES = 500        # beyond this we truncate: no point storing a wall of text
+MAX_FILE_BYTES = 2_000_000  # beyond this we do not diff (binary, bundle, asset)
 
 # --- Secrets : liste noire de chemins, puis de lignes ------------------------
 SECRET_PATH = re.compile(
@@ -51,7 +51,7 @@ def read_hook_input():
 
 
 def target_path(tool_input):
-    """Chemin du fichier visé, quel que soit l'outil d'édition."""
+    """The path of the targeted file, whichever editing tool was used."""
     if not isinstance(tool_input, dict):
         return None
     for key in ("file_path", "notebook_path", "path"):
@@ -71,18 +71,18 @@ def is_secret_path(fpath):
 
 
 def mask_line(line):
-    """Masque la VALEUR d'une ligne sensible, garde la clé (utile au diagnostic)."""
+    """Masks the VALUE of a sensitive line, keeps the key (useful for diagnosis)."""
     if not SECRET_LINE.search(line):
         return line
     m = re.match(r"^([+\-\s]?\s*[\w\.\-\[\]\"']{0,60}?\s*[:=]\s*)(.+)$", line)
     if m:
-        return m.group(1) + "••• masqué"
-    return (line[:1] if line[:1] in "+- " else "") + "••• ligne masquée"
+        return m.group(1) + "••• masked"
+    return (line[:1] if line[:1] in "+- " else "") + "••• line masked"
 
 
 def append_event(sid, event):
-    """Ajoute un événement au flux de la session. Append-only : jamais de réécriture
-    en bloc du fichier (cf. leçon file-reecrite-en-bloc-apres-await-perd-les-ecritures)."""
+    """Appends an event to the session stream. Append-only: never a wholesale
+    rewrite of the file, which would drop writes that landed in between."""
     ensure_dirs()
     event.setdefault("ts", now())
     path = os.path.join(SESSIONS, sid + ".jsonl")
@@ -99,8 +99,8 @@ def project_name(cwd):
     return base or cwd
 
 
-# --- Plus aucune fenêtre ----------------------------------------------------
+# --- No window at all -------------------------------------------------------
 # Le suivi est rendu par ~/.claude/statusline.py (2e ligne, via status_part.py) :
-# INTÉGRÉ à la session, tout en bas, en permanence. L'ancrage d'une fenêtre Electron
-# à la fenêtre Terminal a été retiré — une fenêtre flottante finit toujours par
+# INTEGRATED into the session, at the very bottom, permanently. Anchoring an Electron
+# window to the Terminal window was removed — a floating window always ends up
 # recouvrir ce qu'on veut lire, et deux sessions donnaient deux panneaux illisibles.

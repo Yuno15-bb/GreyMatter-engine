@@ -1,267 +1,338 @@
-# 🧠 C Brain
+# GreyMatter
 
-[![CI](https://github.com/Yuno15-bb/c-brain/actions/workflows/ci.yml/badge.svg?branch=fr)](https://github.com/Yuno15-bb/c-brain/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Yuno15-bb/c-brain?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/c-brain/releases/latest)
-[![Licence](https://img.shields.io/github/license/Yuno15-bb/c-brain?color=8a8f98)](LICENSE)
-[![Plateforme](https://img.shields.io/badge/plateforme-macOS-8a8f98)](#compatibilité)
+[![CI](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Yuno15-bb/GreyMatter-engine?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/GreyMatter-engine/releases/latest)
+[![Licence](https://img.shields.io/github/license/Yuno15-bb/GreyMatter-engine?color=8a8f98)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
 
-> 🇫🇷 Ceci est la **branche française**. La version anglaise, celle que tout le
-> monde installe par défaut, est sur [`main`](https://github.com/Yuno15-bb/c-brain).
+**GreyMatter turns each session with your CLI agent into memory it can reuse —
+distilled into a note, filed, linked, and handed back the moment you ask for
+it. From any project, and without leaving your machine.**
 
-<p align="center">
-  <img src="docs/media/capsule.webp" alt="La capsule : une orbe de verre posée sur le bureau, dont la matière et la teinte changent au travail de chaque agent — distillation, jardinage, classement, correction, cartographie, architecture, contestation, archivage, synthèse, audit, sauvegarde — avec le code en train d'être écrit qui défile à l'intérieur" width="168">
-</p>
-<p align="center"><sub>Tes agents, au travail. En direct, dans le coin de ton écran.</sub></p>
+<table width="100%">
+<tr>
+<td width="74%" align="center">
+  <img src="docs/media/planet.webp" alt="The knowledge map, turning: hundreds of notes arranged by resemblance in phosphor orange on black. The cursor lands on a note and a panel gives its region, title and summary; then the structure button is clicked and the map reorganises into the filing; then a family is clicked and opens as a sphere of its own" width="100%">
+</td>
+<td width="26%" align="center">
+  <img src="docs/media/capsule.webp" alt="The capsule: a glass orb sitting on the desktop, its material and hue changing as each agent works — idle, gardening, challenging, committing — with the lines being written scrolling inside it and the current task named underneath" width="168">
+</td>
+</tr>
+<tr>
+<td align="center"><sub><b>Map</b></sub></td>
+<td align="center"><sub><b>Agents</b></sub></td>
+</tr>
+</table>
 
-**C Brain transforme chaque session avec ton agent CLI en mémoire réutilisable —
-distillée en fiche, rangée, reliée, et rendue automatiquement la fois où ça
-compte. Depuis n'importe quel projet, et sans quitter ta machine.**
+Your agent is brilliant within a session and amnesic between two. Solve
+something on Monday, explain it again on Thursday. GreyMatter is the part that
+remembers.
 
-Ton agent est excellent dans une session et amnésique entre deux. Tu résous
-quelque chose lundi, tu le réexpliques jeudi. C Brain est la partie qui se
-souvient.
-
-Plus le travail s'accumule, plus l'arbre devient utile — l'inverse d'un
-historique de conversation, qui ne fait que s'allonger.
+The more work piles up, the more useful the tree gets — the opposite of a
+conversation history, which only gets longer.
 
 ---
 
-## Ce que ça fait concrètement
+## What it actually does
 
-**La mémoire elle-même** — c'est ça le produit, et ça suffit :
+**The memory itself** — this is the product, and it is all you need:
 
-| | |
-|---|---|
-| 🌳 **Un tronc** | tes leçons, projets, méthode — en markdown, chez toi, versionnable |
-| 🔎 **Rappel automatique** | à chaque question, les fiches pertinentes sont injectées dans le contexte |
-| 📈 **Il apprend de l'usage** | ce qui t'a servi remonte — avec une place réservée aux fiches jamais vues, pour ne pas tourner en rond |
-| 🕰️ **Il connaît son âge** | les fiches jamais revérifiées entrent dans une file de revue, datée par l'historique git |
-| 🤖 **4 vaisseaux, 8 missions** | quatre noms à retenir ; derrière eux, huit rôles étroits qui distillent, rangent, relient, contestent, synthétisent, élaguent, réparent, surveillent la machine |
-| 🔁 **Boucle fermée** | fin de session → archivage → distillation → rangement, sans rien demander |
-| ⬆️ **Mises à jour** | le moteur s'actualise **tout seul** à chaque session ; **tes fiches ne sont jamais touchées** |
+- **A trunk.** Your lessons, projects and method, as markdown on your machine, versioned with git.
+- **Recall on request.** Ask — `brain recall "…"`, `?brain` in a message, or a plain
+  "any notes on…" — and the two or three notes that match are handed to your agent.
+  `BRAIN_RECALL_AUTO=1` makes it fire on every prompt instead ([why it no longer does](#and-on-a-real-trunk-what-does-it-change)).
+- **It does not go round in circles.** Notes are ranked by relevance alone, and one slot
+  in three is kept for notes the search rarely surfaces, so the same few do not win forever.
+- **It knows its own age.** Notes never re-checked enter a review queue, dated from the git history.
+- **Four agents, eight missions.** Narcissus distills each session and files the result;
+  Sulaco challenges, links and archives; Anesidora writes syntheses across projects;
+  Nostromo repairs the wiring and watches the machine.
+- **A closed loop.** Session ends → archive → distill → file, without being asked.
+- **Updates.** The engine updates itself **every session**; **your notes are never touched**.
 
-**Et deux façons de le regarder**, qui sont des extensions et s'installent à
-part — `./install.sh --core-only` laisse les deux de côté :
+**And two ways to look at it**, which are extensions and install separately —
+`./install.sh --core-only` leaves both out:
 
-| | |
-|---|---|
-| 🥚 **Une capsule** | petite fenêtre Electron qui montre les agents travailler, en direct |
-| 🪐 **Une planète** | ton savoir en globe 3D navigable, régénéré à chaque lancement |
+- **A capsule.** A glass orb on your desktop showing the agents at work, live.
+- **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
 
 <p align="center">
-  <img src="docs/media/architecture.png" alt="Comment une session devient de la mémoire : le tronc — ~/.c-brain/trunk, qui porte les fiches, MEMORY.md et l'état — est lu et écrit par trois étapes de hooks à l'intérieur de ta session. À chaque prompt, inject_recall se sert de BM25 et d'embeddings pour choisir les quelques fiches qui répondent à ta demande, et les colle dans le prompt. Pendant la session, post_diff, track_read, on_fiche_write et pre_snapshot enregistrent ce qui est écrit et lu. À la fin, archive_session et auto_maintain archivent la session puis réveillent les agents, en deux couches : la couche 1 lance toujours le distillateur puis le jardinier, ce dernier conditionné à la réussite réelle du premier ; la couche 2 ne réveille au plus qu'un agent parmi le challenger, l'architecte, l'archiviste et le mécanicien, et seulement si son capteur franchit un seuil et que douze heures ont passé. En bas, les trois façons de le regarder : la capsule qui lit state/status.json, la planète bâtie par graph_export, et le CLI brain — status, review, selftest, update — chaque étape automatique relançable à la main" width="900">
+  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 5 ms at 100 notes and 47 ms at 1,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="880">
 </p>
 
-### Il est bon à quel point, ce rappel ?
+### How good is the recall?
 
-Mesuré, pas affirmé — `tests/recall_benchmark.py`, sur un corpus synthétique où
-trouver la réponse veut dire choisir **une** fiche parmi ~120 qui partagent son
-sujet et l'essentiel de son vocabulaire :
+Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
+where finding the answer means picking one note out of ~120 that share its
+subject and most of its vocabulary:
 
-| fiches | P@1 | P@3 | MRR | hors sujet dans ce qu'il injecte | par prompt |
+| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search |
 |---|---|---|---|---|---|
-| 100 | 0,94 | 0,98 | 0,96 | 35 % | 5 ms |
-| 1000 | 0,79 | 0,93 | 0,86 | 24 % | 47 ms |
-| 5000 | 0,46 | 0,83 | 0,64 | 39 % | — |
+| 100 | 0.94 | 0.98 | 0.96 | 35% | 5 ms |
+| 1000 | 0.79 | 0.93 | 0.86 | 24% | 47 ms |
+| 5000 | 0.46 | 0.83 | 0.64 | 39% | — |
 
-Il tient jusqu'à environ mille fiches et se dégrade nettement au-delà. Publié
-ici parce qu'un outil de mémoire qui refuse de dire à quel point il se souvient
-demande une confiance qu'il n'a pas gagnée. La CI tient ces chiffres comme des
-seuils.
+It holds to about a thousand notes and degrades sharply past that. Published
+here because a memory tool that will not say how well it remembers is asking
+for trust it has not earned. The CI enforces these numbers as thresholds.
 
-⚠️ **Ce banc ne mesure PAS tout.** Son corpus est synthétique, donc son
-vocabulaire est cohérent : il ne dit rien de la morphologie (« ranger » contre
-« rangement ») ni du mélange français/anglais, qui sont deux causes réelles de
-fiche introuvable. Ses chiffres n'ont pas bougé quand ces deux points ont été
-corrigés — c'est une limite du banc, pas l'absence d'effet.
+**This bench does NOT measure everything.** Its corpus is synthetic, so its
+vocabulary is coherent by construction: it says nothing about morphology
+("ranger" versus "rangement") nor about the French/English mix, which are two
+real causes of an unfindable note. Its numbers did not move when those two
+points were fixed — that is a limit of the bench, not the absence of an effect.
 
-### Et sur un vrai tronc, ça change quoi ?
+### And on a real trunk, what does it change?
 
-Mesuré le 2026-08-12 sur le Brain vivant de l'auteur (312 fiches), 10 questions
-portant sur des faits réels de son travail, 50 exécutions isolées les unes des
-autres :
+Measured on 2026-08-12 against the author's living Brain (312 notes), 10
+questions about real facts of the author's work, 50 runs isolated from one another:
 
-| ce dont dispose l'assistant | bonnes réponses | tokens par échange |
+| what the assistant has | right answers | tokens per exchange |
 |---|---|---|
-| rien | **0/10** | 178 k |
-| le tronc + la carte, **sans** rappel automatique | **8/10** | 264 k |
-| **le système complet** | **10/10** | **168 k** |
+| nothing | **0/10** | 178 k |
+| the trunk + the map, **without** recall | **8/10** | 264 k |
+| **the full system**, recall on every prompt | **10/10** | **168 k** |
 
-Le rappel automatique ne coûte pas de contexte, il en **économise** : sans
-suggestion, l'assistant doit chercher, et chercher brûle des tours. Le détail du
-protocole — et les trois campagnes qu'il a fallu jeter avant d'obtenir une mesure
-honnête — est dans le tronc de l'auteur, pas ici.
+When the question is about the trunk, recall does not cost context, it **saves**
+it: with no suggestion the assistant has to search, and searching burns turns.
+The detail of the protocol — and the three campaigns that had to be thrown away
+before an honest measurement came out — lives in the author's trunk, not here.
 
-## Installation
+**Why recall now waits to be asked.** Most prompts are not questions about the
+trunk. Over the following month of daily use, 3,256 notes were offered on their
+own and 139 of them were opened afterwards — 4.27 %. The suggestion block cost
+its noise on every message for a service rendered about four times in a hundred,
+so since 2026-09-09 it fires only when you ask. The search itself did not
+change: the numbers above still hold whenever you do.
 
-**En plugin Claude Code** — la voie courte, et celle qui se met à jour toute
-seule (elle installe la version **anglaise** : le plugin suit `main`) :
+## Install
+
+**As a Claude Code plugin** — the short way, and the one that updates itself:
 
 ```
-/plugin marketplace add Yuno15-bb/c-brain
+/plugin marketplace add Yuno15-bb/GreyMatter-engine
 /plugin install c-brain@c-brain
 ```
 
-Ça te donne toute la mémoire : le tronc, le rappel automatique, les quatre vaisseaux
-et leurs huit missions,
-la commande `brain`, et trois commandes que tu peux taper — `/c-brain:recall`,
-`/c-brain:distill`, `/c-brain:doctor`. Le tronc `~/.c-brain/trunk` est créé à ta première
-session, et on te le dit. Ça n'installe **pas** la capsule, la planète ni les
-tâches planifiées — un plugin ne peut pas installer un service d'arrière-plan,
-et prétendre le contraire te laisserait avec une fenêtre qui ne s'ouvre jamais.
+That gives you the whole memory: the trunk, recall, the four agents,
+the `brain` command, and three commands you can type — `/c-brain:recall`,
+`/c-brain:distill`, `/c-brain:doctor`. It creates `~/.c-brain/trunk` on your first session and
+tells you so. It does **not** set up the capsule, the planet or the scheduled
+jobs — a plugin cannot install a background service, and pretending otherwise
+would leave you with a window that never opens.
 
-**L'install complète, en français** — tout ce qui précède, plus la capsule, la
-planète et la maintenance sans surveillance. Colle ceci dans ton CLI :
+**The full install** — everything above, plus the capsule, the planet and the
+unattended maintenance:
 
 ```
-Installe C Brain : clone https://github.com/Yuno15-bb/c-brain dans ~/dev/c-brain
-sur la branche fr, lis son INSTALL.md, puis exécute ./install.sh et montre-moi
-le résultat de la vérification finale.
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+then run ./install.sh and show me the final verification output.
 ```
 
-Ou à la main : `git clone -b fr … && cd c-brain && ./install.sh`
+Or by hand: `git clone … && cd c-brain && ./install.sh`
 
-**La mémoire et rien d'autre** — pas de fenêtre Electron, pas de globe 3D, pas
-de tâche de fond :
+> **Upgrading from v1.28.1 or earlier?** Read
+> [docs/UPGRADING.md](docs/UPGRADING.md) first — a one-time warning about
+> uncommitted changes in your engine checkout, the renamed agents, and recall
+> on request. Your notes are not affected.
+
+**The memory and nothing else** — no Electron window, no 3D globe, no
+background job:
 
 ```bash
 ./install.sh --core-only
 ```
 
-Détails, prérequis et désinstallation : **[INSTALL.md](INSTALL.md)**.
+Details, prerequisites and uninstall: **[INSTALL.md](INSTALL.md)**.
 
-## L'idée qui tient tout
+## The idea holding it all together
 
 ```
-~/.c-brain/engine  ← le MOTEUR. Du code. Se met à jour, se remplace, se jette.
-~/.c-brain/trunk     ← le TRONC. Tes fiches. Ne bouge que quand TU écris.
+~/.c-brain/engine  ← link to the ACTIVE version under versions/. Code, replaceable, disposable.
+~/.c-brain/trunk     ← the TRUNK. Your notes. Changes only when YOU write.
 ```
 
-Les deux ne se mélangent jamais. C'est ce qui permet à une mise à jour d'arriver
-sans le moindre risque pour ton travail — et à `uninstall.sh` de tout retirer en
-laissant ta connaissance intacte.
+The two never mix. That is what lets an update land with zero risk to your work —
+and lets `uninstall.sh` remove everything while leaving your knowledge intact.
 
-Le point de `~/.c-brain` le **cache dans le Finder**. L'installation pose donc
-un raccourci `C Brain` dans ton dossier personnel, tagué en rouge, qui ouvre ton
-tronc — une mémoire qu'on ne peut pas voir est une mémoire à laquelle on ne
-touche jamais (`--no-shortcut` si tu n'en veux pas).
+Both live behind a leading dot, out of the way. Your notes should not: the
+install puts a **`C Brain` shortcut in your home folder**, tagged, so the one
+part that is yours is the one part you can see. That folder, the `~/.c-brain`
+paths and the `/c-brain:` commands keep the engine's original name: they are
+addresses, and an address that changes breaks every install that already
+follows it.
 
 <p align="center">
-  <img src="docs/media/where-it-lands.png" alt="Un dossier personnel dans le Finder : les habituels Applications, Bureau, Documents, Téléchargements, Films, Musique et Images — plus un dossier C Brain tagué en rouge, désigné par une flèche" width="900">
+  <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged C Brain folder, with an arrow pointing at it" width="900">
 </p>
 
-## Ce que ça ne fait pas
+## What it does not do
 
-- **Ça ne fait aucune requête de son côté.** Aucune télémétrie, aucun appel
-  réseau hors `git pull`. Ce qui voyage, c'est ce que tes prompts emportent
-  déjà : le hook de rappel ajoute le nom, la description et le chemin de deux ou
-  trois fiches à un prompt que tu envoyais de toute façon, et les agents que tu
-  lances lisent des fiches entières. Les deux partent chez ton fournisseur de
-  modèle, comme le reste de ton message. [`SECURITY.md`](SECURITY.md) dit
-  précisément où passe la ligne.
-- **Ça se met à jour tout seul, et il faut le savoir.** Chaque démarrage de
-  session installe la dernière version publiée, en arrière-plan — donc du code
-  venu du dépôt tourne chez toi sans que tu l'aies demandé. Le tronc n'est
-  jamais touché, une version dont le selftest est rouge est défaite
-  automatiquement, et `brain update --auto-off` rend le comportement d'avant
-  (signaler sans installer).
-- **Ça ne livre aucun contenu.** Ton arbre démarre vide — voir
-  [`skills/README.md`](skills/README.md) pour la philosophie : on transmet la
-  méthode, pas le vécu de quelqu'un d'autre.
+- **It makes no request of its own.** No telemetry, no network call beyond
+  `git pull`. What travels is what your prompts already carry: when you ask
+  for recall, the hook adds the name, description and path of two or three
+  notes to that prompt, and agents you start read whole notes. Both go to your
+  model provider, like the rest of your message. [`SECURITY.md`](SECURITY.md)
+  spells out where the line is.
+- **It updates itself, and you should know that.** Every session start installs
+  the latest published version, in the background — so code from the repo runs
+  on your machine without you asking. The trunk is never touched, a version
+  whose selftest goes red is undone automatically, and
+  `brain update --auto-off` restores the old behaviour (report without
+  installing).
+- **It ships no knowledge.** Your tree starts empty, and the three skills it
+  does ship only drive the tool. See [`skills/README.md`](skills/README.md) for
+  the reasoning: we pass on the method, not somebody else's lived experience.
 
-## Les extensions
+## The extensions
 
-Aucune des deux ci-dessous n'est le produit. Ce sont des façons de le *regarder*
-— agréables, facultatives, et entièrement sautées par `./install.sh --core-only`.
-L'installation en plugin ne les met jamais en place, parce qu'un plugin ne peut
-pas installer un service d'arrière-plan.
+Neither of the two below is the product. They are how you *watch* it — pleasant,
+optional, and skipped entirely by `./install.sh --core-only`. The plugin install
+never sets them up at all, because a plugin cannot install a background service.
 
-### La capsule
+### The capsule
+
+A pane of living glass in the corner of your screen. It does not decorate: it
+carries three separate channels, and the first two read **without colour**.
+
+| Channel | What it says |
+|---|---|
+| **Fluid mechanic** | the nature of the work — swell, sweep, vortex, shards |
+| **Speed and amplitude** | how intense that step is |
+| **Hue** | the family of agent — four, not thirteen |
+
+Inside the sphere, the lines your agents are **actually writing** scroll by, bent
+around the curve. When nothing has been written for a while it falls back to the
+file the running agent executes — because an agent spends long minutes reading
+without writing, and that is exactly when you look at it.
+
+It clears itself off the desktop a minute after the work ends, and comes back on
+the first agent. Clicks pass straight through it, except on the sphere itself:
+grab it there and drop it wherever you like.
 
 <p align="center">
-  <img src="docs/media/capsule.webp" alt="La capsule : une petite fenêtre qui parcourt tous les états des agents — distillation, jardinage, rangement, correction, cartographie, architecture, contestation, archivage, synthèse, audit, commit, puis retour au repos" width="190">
+  <img src="docs/media/capsule.webp" alt="The capsule: a glass orb in the corner of the screen, cycling through every agent state — distilling, gardening, filing, correcting, mapping, architecting, challenging, archiving, synthesizing, auditing, committing, then back to idle" width="190">
 </p>
-<p align="center"><sub>À sa taille réelle, un état par famille — puis le retour au repos.</sub></p>
+<p align="center"><sub>At its real size, one state per family — then back to rest.</sub></p>
 
-### La planète
+Rest costs about 5 % of one core, work about 9 %. The cost follows the frame
+rate, almost not the geometry — so the rate drops at rest and rises only during
+transitions, where a dropped frame would read as a stutter.
 
-Ton savoir en globe 3D, régénéré à chaque lancement depuis les fiches. Les
-continents sont les domaines, les arcs sont les liens `[[...]]` que les agents
-ont tissés. Survoler une fiche allume ses connexions ; un double-clic l'épingle.
+### The planet
 
-Deux vues, et c'est là qu'elle devient utile : `V` montre le **rangement** —
-où tu as classé une fiche ; `S` montre le **sens** — ce à quoi elle ressemble,
-dossiers ignorés. Une fiche seule dans son coin sur le globe mais collée à cinq
-autres en vue *sens*, c'est un lien que tu n'as pas encore écrit.
+Every note is a dot, every `[[link]]` an arc, rebuilt from your trunk on each
+launch — projects become cities, cross-cutting lessons become regions.
 
-Les points chauffent quand on les lit et s'éteignent tout seuls ; les pastilles
-⚠ ✦ ↻ ▷ signalent ce qui est contesté, tenu pour acquis, resté ouvert, ou
-rejouable en 3D.
+What opens is the **meaning map**: every note placed next to what it resembles,
+folders ignored. That is where the map earns its place — two notes sitting
+against each other here while your filing keeps them apart is a link you have
+not written yet.
 
-📖 **[Documentation complète de la planète](docs/planete.md)** — les deux vues,
-la lecture d'un point, les pastilles, et ce que la carte ne sait pas faire.
+The **filing** is the second view, not the first: a small globe in the left
+column holds it, one cluster per region. Aim a region in it and the same notes
+light up in the map. `V` brings the filing back full size when you want to walk
+it.
+
+Point at a note: its links light up and the panel gives you the region, the
+title and the summary — nothing more, because hovering is how you sweep. Click
+it and the panel opens out: the plain-language section, the full note behind it,
+and the connections at the end.
+
+Points warm up as you read them and fade on their own; the ⚠ ✦ ↻ ▷ markers flag
+what was challenged, held as a conviction, left open, or is replayable in 3D.
 
 <p align="center">
-  <img src="docs/media/planet.webp" alt="La planète de connaissance : le globe tourne, le curseur se pose sur une fiche, ses arcs de liens s'allument et un panneau s'ouvre montrant la région de la fiche, ses sept connexions, sa description et le chemin de son fichier" width="900">
+  <img src="docs/media/planet.webp" alt="The knowledge map, turning: hundreds of notes arranged by resemblance in phosphor orange on black. The cursor lands on a note and a panel gives its region, title and summary; then the structure button is clicked and the map reorganises into the filing; then a family is clicked and opens as a sphere of its own" width="100%">
 </p>
+<p align="center"><sub>A showcase trunk of 375 notes and 1 474 links — the real shape of a working trunk, with generated titles. Yours starts empty.</sub></p>
 
-## Commandes
+**[Full planet documentation](docs/planet.md)** — the two views, reading a
+point, the markers, and what the map cannot do.
+
+## Commands
+
+Inside your agent, once the plugin is installed:
+
+```
+/c-brain:recall <subject>   what the trunk already knows about it
+/c-brain:distill            turn what was just worked out into a note
+/c-brain:doctor             check the wiring and the trunk
+```
+
+And in any shell:
 
 <p align="center">
-  <img src="docs/media/recall.png" alt="Terminal : brain demo pose trois fiches, brain recall les classe par pertinence, brain demo --remove les retire" width="820">
+  <img src="docs/media/recall.png" alt="Terminal: brain demo places three notes, brain recall ranks them by relevance, brain demo --remove takes them away" width="820">
 </p>
 
 ```bash
-brain status          où en est le tronc
-brain recall <mot>    chercher dans ta mémoire
-brain doctor          santé de l'arbre (liens morts, incohérences)
-brain review          audit global du tronc
-brain next            tes points de reprise
-brain selftest        vérifier l'installation
-brain update          mettre à jour le moteur  (--check · --rollback)
-                      automatique à chaque session : --auto-off / --auto-on
-brain version         version installée
+brain status          where the trunk stands
+brain recall <word>   search your memory
+brain doctor          tree health (dead links, inconsistencies)
+brain review          full audit of the trunk
+brain next            your resume points
+brain capsule         open the floating orb  (stop · status)
+brain selftest        verify the installation
+brain update          update the engine  (--check · --rollback)
+                      automatic every session: --auto-off / --auto-on
+brain version         installed version
 ```
 
-## Compatibilité
+## Compatibility
 
-**macOS.** launchd, Electron et `open` sont utilisés.
+**macOS.** launchd, Electron and `open` are used.
 
-**Linux n'est pas encore supporté, et l'écart est plus petit qu'il n'y paraît.**
-En lisant le code plutôt qu'en devinant : macOS n'est supposé qu'à **quatre
-endroits** — le contrôle de plateforme d'`install.sh`, les gabarits `launchd`, le
-lanceur `.command` du Bureau, et le tag Finder `xattr`. Claude Code n'est supposé
-que dans **un** fichier, `merge_settings.py`. Tout le reste — tronc, rappel,
-agents, CLI `brain`, hooks — est déjà du Python et du shell portables.
+**Claude Code** for the full experience: it is what fires the hooks (recall,
+archiving, autonomous maintenance, status line). With another CLI agent, GreyMatter
+installs and works **on demand** — trunk, agents, `brain`, planet, capsule — but
+without the closed loop. The installer detects this and says so, rather than
+pretending otherwise.
 
-C'est donc un cœur portable avec deux adaptateurs minces, pas un produit macOS.
-L'ordre prévu : **des unités `systemd` à la place de `launchd`, une entrée
-`.desktop` à la place du `.command`, pas de tag Finder, et `--core-only` comme
-forme par défaut sous Linux.** Aucune date là-dessus : dire quels quatre endroits
-doivent changer est plus utile qu'une promesse.
+**Linux is not supported yet, and the gap is smaller than it looks.** Reading
+the code rather than guessing: macOS is assumed in exactly four places — the
+platform check in `install.sh`, the `launchd` job templates, the Desktop app
+bundle, and the Finder `xattr` tag. Claude Code is assumed in one
+file, `merge_settings.py`. Everything else — the trunk, recall, the agents, the
+`brain` CLI, the hooks themselves — is portable Python and shell already.
 
-**Claude Code** pour l'expérience complète : c'est lui qui déclenche les hooks
-(rappel, archivage, maintenance autonome, ligne d'état). Avec un autre agent CLI,
-C Brain s'installe et fonctionne **à la demande** — tronc, agents, `brain`,
-planète, capsule — mais sans boucle automatique. L'installeur le détecte et te le
-dit plutôt que de faire semblant.
+So this is a portable core with two thin adapters, not a macOS product. The
+order it will be done in: **`systemd` units in place of `launchd`, a `.desktop`
+entry in place of the `.command` file, no Finder tag, and `--core-only` as the
+default shape on Linux.** No date attached to that; saying which four places
+have to change is more use than a promise.
 
-## Pour les curieux
+## Language
 
-- [`docs/cadrage-c-brain.md`](docs/cadrage-c-brain.md) — le design-doc : le
-  problème, les alternatives rejetées, les pièges rencontrés et comment ils ont
-  été refermés.
-- `sync.sh` + `rules.json` + `leakcheck.py` — la chaîne qui extrait ce moteur
-  d'un Brain réel sans en laisser fuir une ligne de vécu.
+`main` is the product, and it is English: the docs, the installer, the CLI,
+the agents, the hooks and the capsule and planet interfaces. The French
+original lives on the **`fr` branch**, the staging copy the engine is extracted
+from; see [`docs/translation.md`](docs/translation.md).
+
+Recall understands requests in French as well as English. A single setting
+that switches every surface to French, without a second install, is planned
+and not built.
+
+## For the curious
+
+- [`docs/design-doc.md`](docs/design-doc.md) — the problem, the rejected
+  alternatives, the traps hit along the way and how each was closed.
+- `sync.sh` + `rules.json` + `leakcheck.py` — the chain that extracts this engine
+  from a real, personal Brain without letting a single line of lived experience
+  escape.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how the two branches relate, and why a
+  hand-edited engine file on `fr` disappears on the next sync.
+- [`SECURITY.md`](SECURITY.md) — what this writes to your machine, what runs
+  unattended, and how to report a hole privately.
+- [`CHANGELOG.md`](CHANGELOG.md) — generated from the tags, so it cannot drift.
 
 ## Licence
 
-**Apache 2.0** — voir [LICENSE](LICENSE).
+**Apache 2.0** — see [LICENSE](LICENSE).
 
-Tu peux l'utiliser, l'étudier, le modifier, le redistribuer et construire dessus,
-y compris commercialement. La licence inclut une clause de brevets, et demande
-seulement de conserver l'attribution et d'indiquer tes modifications.
+You may use it, study it, modify it, redistribute it, and build on it, including
+commercially. The licence includes a patent grant, and asks only that you keep
+the attribution and state your changes.
 
-Tout ce que tu écris avec — tes notes, ton tronc, tes skills — t'appartient, et
-cette licence n'en revendique rien.
-
+Everything you write with it — your notes, your trunk, your skills — is yours,
+and this licence makes no claim on it.

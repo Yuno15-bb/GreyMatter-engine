@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# bin/brain — fait de `brain` une commande nue dans l'outil Bash quand C Brain
-# est installé en PLUGIN. Les fichiers de bin/ sont mis sur le PATH tant que le
-# plugin est actif : c'est le seul moyen pour un utilisateur de plugin d'avoir
-# le CLI sans lancer install.sh.
+# bin/brain — makes `brain` a bare command inside the Bash tool when C Brain is
+# installed as a plugin. Files in bin/ are put on the PATH while the plugin is
+# enabled, so this is the only way a plugin user gets the CLI without running
+# install.sh.
 #
-# Il ne réimplémente rien : le vrai script est à la racine du plugin et
-# travaille sur ~/.c-brain/trunk, dont plugin_bootstrap.py repointe les liens
-# moteur à chaque SessionStart.
+# It does not reimplement anything: the real script sits at the plugin root and
+# works off ~/.c-brain/trunk, whose engine links plugin_bootstrap.py re-points
+# on every SessionStart.
 set -euo pipefail
 exec "$(cd "$(dirname "$0")/.." && pwd -P)/brain" "$@"

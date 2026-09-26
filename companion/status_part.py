@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Ligne « modifications » de la barre de bas de session.
 
-Pas de fenêtre : le suivi vit DANS la session, tout en bas, en permanence.
-Importé par ~/.claude/statusline.py, qui lui passe le session_id.
+No window: the tracker lives INSIDE the session, at the very bottom, permanently.
+Imported by ~/.claude/statusline.py, which passes it the session_id.
 
-Agrégation INCRÉMENTALE avec curseur : on ne relit jamais tout le flux à chaque
-redessin. Le curseur n'avance qu'après traitement réussi des lignes
-(cf. leçon curseur-avance-avant-traitement-perd-le-lot).
+INCREMENTAL aggregation with a cursor: the whole stream is never re-read on every
+redraw. The cursor only advances after the lines have been processed successfully
+— advancing it first would let one exception swallow the whole batch.
 """
 
 import json
@@ -18,7 +18,7 @@ BASE = os.path.expanduser("~/.claude/companion")
 SESSIONS = os.path.join(BASE, "sessions")
 AGG = os.path.join(BASE, "agg")
 PORTS = (3000, 5173, 4321, 8080, 8000, 4200)
-PORT_TTL = 6           # secondes : on ne sonde pas les ports à chaque redessin
+PORT_TTL = 6           # seconds: we do not probe ports on every redraw
 MAX_NAME = 34
 
 
@@ -54,7 +54,7 @@ def _save_agg(sid, a):
 
 
 def aggregate(sid):
-    """Relit uniquement les octets nouveaux du flux et met à jour les totaux."""
+    """Re-reads only the new bytes of the stream and updates the totals."""
     feed = os.path.join(SESSIONS, sid + ".jsonl")
     a = _load_agg(sid)
     try:
@@ -62,7 +62,7 @@ def aggregate(sid):
     except OSError:
         return None
     if size < a["offset"]:
-        a = _load_agg("__vide__")          # flux recréé : on repart de zéro
+        a = _load_agg("__empty__")         # stream recreated: we start over
         a["offset"] = 0
     if size == a["offset"]:
         return a if a["files"] or a["last"] else None
@@ -72,7 +72,7 @@ def aggregate(sid):
         chunk = f.read(size - a["offset"])
 
     lines = chunk.split("\n")
-    tail = lines.pop()                     # ligne incomplète : au prochain tour
+    tail = lines.pop()                     # incomplete line: next round
     consumed = 0
     for line in lines:
         consumed += len(line.encode("utf-8")) + 1
@@ -81,7 +81,7 @@ def aggregate(sid):
         try:
             ev = json.loads(line)
         except ValueError:
-            continue                        # ligne illisible : on avance quand même
+            continue                        # unreadable line: we move on anyway
         if ev.get("type") == "end":
             a["ended"] = True
             continue
@@ -96,7 +96,7 @@ def aggregate(sid):
         a["last_add"] = ev.get("added") or 0
         a["last_rem"] = ev.get("removed") or 0
         a["last_ts"] = ev.get("ts") or 0
-    a["offset"] += consumed                 # curseur avancé APRÈS traitement
+    a["offset"] += consumed                 # cursor advanced AFTER processing
     _save_agg(sid, a)
     return a
 
@@ -114,7 +114,7 @@ def _probe(port):
 
 
 def dev_port():
-    """Port de dev ouvert, avec cache court : c'est le repère « l'app tourne »."""
+    """An open dev port, with a short cache: the "the app is running" signal."""
     cache = os.path.join(BASE, "port.json")
     now = time.time()
     try:
@@ -146,7 +146,7 @@ def ago(ts):
 
 
 def line(sid, color=True):
-    """La ligne à afficher, ou '' s'il n'y a rien à dire."""
+    """The line to display, or '' when there is nothing to say."""
     if not sid:
         return ""
     a = aggregate(sid)
@@ -175,7 +175,7 @@ def line(sid, color=True):
     p = dev_port()
     parts.append(col("32", "app :" + str(p)) if p else col("90", "app —"))
 
-    # Dernier rechargement de l'onglet navigateur : le repère « ce que je vois est à jour »
+    # Last browser-tab reload: the "what I see is up to date" signal
     r = reload_state()
     if r.get("ts"):
         parts.append(col("36", "↻ " + ago(r["ts"])))

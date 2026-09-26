@@ -1,14 +1,14 @@
-/* Filme l'orbe pour la démo du README.
+/* Films the orb for the README demo.
 
-   ⚠ TROIS PIÈGES, tous payés une fois :
-     · une fenêtre CACHÉE fige les couleurs — `document.hidden` coupe
-       l'interpolation, la mécanique change mais jamais la teinte ;
-     · un fond en DÉGRADÉ dessine un carré visible autour de la vignette une
-       fois posée dans la page — il faut la couleur exacte du fond, à plat ;
-     · une étape plus courte que DEUX FOIS le fondu (1,4 s) ne montre jamais
-       l'objet stable, seulement des transitions enchaînées.
-   Encodage : img2webp -d 50 -lossy -q 88 -sharp_yuv -m 6. En dessous de q≈88,
-   les dégradés du verre et le texte de 5 px repartent en macro-blocs.
+   ⚠ THREE TRAPS, each paid for once:
+     · a HIDDEN window freezes the colours — `document.hidden` cuts the
+       interpolation, the mechanic changes but never the hue;
+     · a GRADIENT background draws a visible square around the thumbnail once
+       it sits in the page — it needs the page's exact background colour, flat;
+     · a step shorter than TWICE the cross-fade (1.4 s) never shows the
+       stable object, only chained transitions.
+   Encoding: img2webp -d 50 -lossy -q 88 -sharp_yuv -m 6. Below q≈88,
+   the glass gradients and the 5 px text break back into macro-blocks.
 */
 'use strict';
 const { app, BrowserWindow } = require('electron');
@@ -17,19 +17,19 @@ const fs = require('fs'), path = require('path'), cp = require('child_process');
 const PAGE = path.join(__dirname, '..', 'orbe.html');
 const STATUS = path.join(__dirname, '..', '..', 'hooks', 'brain_status.py');
 const OUT = process.env.FILM_OUT || '/tmp/film';
-// ⚠ LE PAVÉ SE NOURRIT PAR SON ENTRÉE, PAS PAR UNE POIGNÉE. Première tentative :
-//   une fonction exposée sur `window` pour poser les lignes. Elle a écrasé
-//   `window.__orbe`, déjà pris par l'objet orbe (planche.cjs et silhouette.cjs
-//   s'en servent), puis elle s'est fait repeindre par le lecteur de flux une
-//   seconde plus tard. On écrit donc un VRAI fichier de session, au format que
-//   la page lit déjà : même chemin de code que sur un vrai bureau, rien à
-//   maintenir dans la page, et le tournage prouve du même coup que ce chemin
-//   marche. Le fichier est supprimé à la fin.
+// ⚠ THE PAD IS FED THROUGH ITS INPUT, NOT THROUGH A HANDLE. First attempt:
+//   a function exposed on `window` to set the lines. It overwrote
+//   `window.__orbe`, already taken by the orb object (planche.cjs and silhouette.cjs
+//   use it), then got repainted by the stream reader one second
+//   later. So we write a REAL session file, in the format the page
+//   already reads: the same code path as on a real desktop, nothing to
+//   maintain in the page, and the shoot proves at the same time that this path
+//   works. The file is deleted at the end.
 //
-//   Pourquoi c'est nécessaire : le pavé montre le code RÉELLEMENT écrit par la
-//   session en cours. Parfait sur le bureau de quelqu'un, impubliable dans un
-//   README — la vignette en ligne a montré pendant deux semaines du français
-//   tiré des fichiers de l'auteur.
+//   Why it is needed: the pad shows the code REALLY written by the
+//   current session. Perfect on someone's desktop, unpublishable in a
+//   README — the online thumbnail showed for two weeks French text
+//   pulled from the author's files.
 const FLUX_DIR = path.join(require('os').homedir(), '.claude', 'companion', 'sessions');
 const FLUX_FAUX = path.join(FLUX_DIR, 'zzz-film-demo.jsonl');
 const DIFFS = [
@@ -48,63 +48,63 @@ function poserFluxFictif() {
     JSON.stringify({ type: 'diff', rel, diff })).join('\n') + '\n');
 }
 const ETATS = [
-  // ⚠ LE RYTHME DU FILM N'EST PAS LE RYTHME DE L'ORBE. Première version : douze
-  //   états à 1,4 s. Or le FONDU de mécanique dure 1,4 s à lui seul — on ne
-  //   voyait donc jamais un état stable, seulement des transitions enchaînées.
-  //   Règle : une étape doit durer AU MOINS deux fois le fondu.
-  //   Le budget se prend sur le NOMBRE d'états, jamais sur leur durée.
-  // ⚠ `synthesizing` écarté à la demande de l'auteur.
-  // Le troisième champ est le DÉTAIL affiché sous l'état : il vaut un sujet
-  // fictif, pas « demo ». Un mot de débogage sous une vignette de README se lit
-  // comme un oubli, et c'est ce qu'il est.
-  // ⚠ LA DURÉE SE PAIE EN OCTETS, ET LA QUALITÉ N'EST PAS NÉGOCIABLE : le verre
-  //   repart en macro-blocs sous q≈88 (voir l'en-tête). À 45 i/s et q90, chaque
-  //   seconde coûte ~300 Ko dans le README — donc on coupe des SECONDES, jamais
-  //   la qualité. Le plancher reste « deux fois le fondu », soit 3 s.
+  // ⚠ THE FILM'S RHYTHM IS NOT THE ORB'S RHYTHM. First version: twelve
+  //   states at 1.4 s. But the mechanic CROSS-FADE alone lasts 1.4 s — so one
+  //   never saw a stable state, only chained transitions.
+  //   Rule: a step must last AT LEAST twice the cross-fade.
+  //   The budget is taken from the NUMBER of states, never from their duration.
+  // ⚠ `synthesizing` left out at the author's request.
+  // The third field is the DETAIL shown under the state: it is a fictional
+  // subject, not "demo". A debugging word under a README thumbnail reads
+  // as an oversight, and that is what it is.
+  // ⚠ DURATION IS PAID IN BYTES, AND QUALITY IS NOT NEGOTIABLE: the glass
+  //   breaks into macro-blocks below q≈88 (see the header). At 45 f/s and q90, each
+  //   second costs ~300 KB in the README — so we cut SECONDS, never
+  //   quality. The floor stays "twice the cross-fade", i.e. 3 s.
   ['idle',        'idle', 2000, ''],
   ['gardening',   'busy', 3200, 'filing three new notes'],
   ['committing',  'busy', 3200, 'one zone per commit'],
   ['idle',        'idle', 2200, ''],
 ];
-// ⚠ LE PLAN DE TOURNAGE SE DÉPLACE, LE PLANCHER NON. `FILM_ETATS` remplace la
-//   liste ci-dessus, au format `etat:millisecondes:detail|…` — il sert aux
-//   formats de plateforme (15 s pour LinkedIn/GitHub/portfolio, 20/09) sans
-//   toucher à la démo du README, qui reste le défaut. Le plancher de 3 s est
-//   REFUSÉ à l'exécution, pas commenté : une étape plus courte que deux fondus
-//   ne montre jamais l'objet stable, et c'est exactement l'erreur que l'en-tête
-//   raconte avoir déjà payée une fois.
+// ⚠ THE SHOOTING PLAN MOVES, THE FLOOR DOES NOT. `FILM_ETATS` replaces the
+//   list above, in the format `state:milliseconds:detail|…` — it serves the
+//   platform formats (15 s for LinkedIn/GitHub/portfolio, 20/09) without
+//   touching the README demo, which stays the default. The 3 s floor is
+//   REFUSED at run time, not commented: a step shorter than two cross-fades
+//   never shows the stable object, and that is exactly the mistake the header
+//   says was already paid for once.
 if (process.env.FILM_ETATS) {
   ETATS.length = 0;
   for (const bloc of process.env.FILM_ETATS.split('|')) {
     const [etat, ms, ...reste] = bloc.split(':');
     const duree = Number(ms);
     if (!Number.isFinite(duree) || duree < 3000) {
-      console.error(`⛔ ${etat} : ${ms} ms — sous le plancher de 3000 ms (deux fondus).`);
+      console.error(`⛔ ${etat}: ${ms} ms — below the 3000 ms floor (two cross-fades).`);
       process.exit(4);
     }
     ETATS.push([etat, etat === 'idle' ? 'idle' : 'busy', duree, reste.join(':')]);
   }
 }
-// ⚠ ET ON PART D'UNE FORME POSÉE. Sans ça, la première image du film est un
-//   fondu depuis l'état que la session avait laissé dans status.json — sur une
-//   boucle, ce raccord se voit. `FILM_PRE` pose l'état d'ouverture AVANT le
-//   chargement : les 4,3 s d'attente qui suivent dépassent les 2,6 s de pose.
+// ⚠ AND WE START FROM A SETTLED SHAPE. Without it, the film's first frame is a
+//   cross-fade from the state the session left in status.json — on a
+//   loop, that seam shows. `FILM_PRE` sets the opening state BEFORE
+//   loading: the 4.3 s of waiting that follow exceed the 2.6 s of settling.
 const PRE = process.env.FILM_PRE || '';
 
-// ⚠ NI `PAS`, NI `capturePage()`. Un aller-retour de capture coûte ~50 ms : la
-//   boucle plafonnait à 20 i/s, et l'auteur l'a vue saccader à côté de la carte,
-//   filmée à 45. On passe par le SCREENCAST du protocole de débogage, qui pousse
-//   les images au rythme du rendu au lieu de les demander une par une.
-// ⚠ ET ON SUR-ÉCHANTILLONNE : fenêtre 3× plus grande + `setZoomFactor(3)`, donc
-//   la mise en page reste 150×150 en pixels CSS mais elle est RENDUE en 450×450.
-//   Réduite ensuite à 336 px, elle est lissée. Sans ça, le bord du verre sort en
-//   marches d'escalier — « pixélisé sur les bords », constaté sur la vignette
-//   publiée, qui était captée à la taille d'affichage.
-// ⚠ LE ZOOM EST UN RÉGLAGE, PAS UNE CONSTANTE. Par défaut 3 : on sur-échantillonne
-//   pour que le bord du verre reste lisse une fois la vignette réduite. Mais quand
-//   on filme POUR LE POSER SUR UN VRAI BUREAU à taille réelle, il faut `FILM_ZOOM=1` :
-//   l'orbe est alors rendue exactement comme sur le bureau (150 pt, 300 px en rétine),
-//   et le fond découpé du bureau est utilisé au pixel près, sans ré-échantillonnage.
+// ⚠ NEITHER `PAS` NOR `capturePage()`. A capture round trip costs ~50 ms: the
+//   loop capped at 20 f/s, and the author saw it stutter next to the map,
+//   filmed at 45. We go through the debugging protocol's SCREENCAST, which pushes
+//   frames at the rendering pace instead of asking for them one by one.
+// ⚠ AND WE SUPERSAMPLE: a window 3× larger + `setZoomFactor(3)`, so
+//   the layout stays 150×150 in CSS pixels but is RENDERED at 450×450.
+//   Scaled down to 336 px afterwards, it is smoothed. Without it, the glass edge
+//   comes out as staircase steps — "pixelated on the edges", seen on the
+//   published thumbnail, which was captured at display size.
+// ⚠ ZOOM IS A SETTING, NOT A CONSTANT. Default 3: we supersample
+//   so the glass edge stays smooth once the thumbnail is scaled down. But when
+//   filming TO PLACE IT ON A REAL DESKTOP at real size, use `FILM_ZOOM=1`:
+//   the orb is then rendered exactly as on the desktop (150 pt, 300 px on retina),
+//   and the cut-out desktop background is used pixel for pixel, with no resampling.
 const ZOOM = Number(process.env.FILM_ZOOM || 3);
 const COTE = 150;
 
@@ -114,24 +114,24 @@ app.whenReady().then(async () => {
   if (app.dock) app.dock.hide();
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
-  // ⚠ `show: false` FIGE LES COULEURS. La page saute son interpolation quand
-  //   `document.hidden` est vrai — c'est voulu, on ne peint pas pour personne.
-  //   Mais en tournage ça donne une orbe grise : la mécanique change, la teinte
-  //   jamais. Il faut donc une fenêtre RÉELLEMENT visible pour filmer.
+  // ⚠ `show: false` FREEZES THE COLOURS. The page skips its interpolation when
+  //   `document.hidden` is true — on purpose, we don't paint for nobody.
+  //   But when filming that gives a grey orb: the mechanic changes, the hue
+  //   never does. So filming needs a REALLY visible window.
   const w = new BrowserWindow({
     width: COTE * ZOOM, height: COTE * ZOOM, show: true, frame: false, x: 60, y: 120,
     webPreferences: { nodeIntegration: true, contextIsolation: false,
                       backgroundThrottling: false, zoomFactor: ZOOM },
   });
-  // ⚠ ON OUVRE LA PAGE SUR UN ÉTAT OCCUPÉ, TOUJOURS. Le pavé de code ne se
-  //   peint que si l'orbe travaille (`if (occupe)` dans orbe.html) : ouvrir sur
-  //   « repos » le laisse vide, et le garde ci-dessous refuse alors de filmer —
-  //   constaté le 20/09 en posant `FILM_PRE=idle` avant le chargement. On amorce
-  //   donc en occupé, on contrôle le pavé, ET SEULEMENT APRÈS on pose l'état
-  //   d'ouverture voulu. Sans cette amorce explicite, le tournage dépendait de
-  //   ce que la session avait laissé dans status.json — vrai par accident.
+  // ⚠ WE ALWAYS OPEN THE PAGE ON A BUSY STATE. The code pad only
+  //   paints while the orb works (`if (occupe)` in orbe.html): opening on
+  //   "idle" leaves it empty, and the guard below then refuses to film —
+  //   seen on 20/09 when setting `FILM_PRE=idle` before loading. So we prime
+  //   busy, check the pad, AND ONLY THEN set the wanted opening
+  //   state. Without this explicit priming, the shoot depended on
+  //   what the session had left in status.json — right by accident.
   cp.execFileSync('python3', [STATUS, 'busy', 'working', 'film']);
-  poserFluxFictif();          // AVANT le chargement : la page lit dès sa première passe
+  poserFluxFictif();          // BEFORE loading: the page reads from its very first pass
   await w.loadFile(PAGE);
   w.webContents.setZoomFactor(ZOOM);
   await new Promise(r => setTimeout(r, 2500));
@@ -139,64 +139,64 @@ app.whenReady().then(async () => {
   await w.webContents.executeJavaScript(`(() => {
     const bg = document.createElement('div');
     bg.style.cssText = 'position:fixed;inset:0;z-index:-1;'
-      // ⚠ FOND PLAT, ET EXACTEMENT celui de la page. Un dégradé, même discret,
-      //   dessine un CARRÉ visible autour de la démo une fois posée dans le
-      //   README : le centre est plus clair que la page, les bords non. Le
-      //   raccord se voit, et c'est ce qui fait « bâclé ». #0d1117 = le fond de
-      //   GitHub en thème sombre, donc la vignette disparaît dans la page.
-      // ⚠ FILM_FOND pose une IMAGE à la place du fond plat. C'est le seul moyen
-      //   honnête de filmer le verre au-dessus d'un vrai bureau : le verre est
-      //   RÉELLEMENT transparent, il réfracte ce qu'il y a derrière. Composer le
-      //   fond après coup donnerait un disque opaque collé sur une photo.
-      //   L'image doit être la découpe exacte de la zone où vit la capsule,
-      //   à la résolution du tournage (COTE * ZOOM * 2 en rétine).
+      // ⚠ A FLAT BACKGROUND, EXACTLY the page's. A gradient, even a subtle one,
+      //   draws a visible SQUARE around the demo once placed in the
+      //   README: the centre is lighter than the page, the edges are not. The
+      //   seam shows, and that is what reads as "sloppy". #0d1117 = GitHub's
+      //   dark-theme background, so the thumbnail disappears into the page.
+      // ⚠ FILM_FOND sets an IMAGE instead of the flat background. It is the only
+      //   honest way to film the glass over a real desktop: the glass is
+      //   REALLY transparent, it refracts what is behind it. Compositing the
+      //   background afterwards would give an opaque disc stuck on a photo.
+      //   The image must be the exact cut-out of the area where the capsule lives,
+      //   at the shooting resolution (COTE * ZOOM * 2 on retina).
       + (${JSON.stringify(process.env.FILM_FOND || '')}
           ? 'background:url("file://' + ${JSON.stringify(process.env.FILM_FOND || '')} + '") center/cover no-repeat'
           : 'background:#0d1117');
     document.body.prepend(bg);
-    /* ⚠ MÊME PIÈGE QUE planche.cjs, trouvé le 2026-08-04 : monter #scene en
-       z-index:1 fait passer le canvas DEVANT le pavé de code et le libellé.
-       La vignette publiée jusqu'ici montrait donc une orbe MUETTE — le
-       défilement du code, qui est la moitié de l'intérêt, n'y a jamais été
-       filmé. Le fond suffit avec son z-index:-1 ; on remonte explicitement
-       les deux surcouches. */
+    /* ⚠ SAME TRAP AS planche.cjs, found on 2026-08-04: raising #scene to
+       z-index:1 puts the canvas IN FRONT OF the code pad and the label.
+       The thumbnail published until then showed a MUTE orb — the
+       scrolling code, half the point, had never been
+       filmed. The background is enough with its z-index:-1; we explicitly raise
+       both overlays. */
     document.getElementById('scene').style.zIndex = '0';
     document.getElementById('pave').style.zIndex = '2';
     document.getElementById('dit').style.zIndex = '2';
     return true; })()`);
 
-  // ⚠ L'ORBE ÉCONOMISE SES IMAGES, ET ÇA SE VOIT AU FILM. Sur le bureau elle
-  //   tourne à 12 i/s au repos, 30 au travail, 60 pendant un fondu (CADENCE dans
-  //   orbe.html, remise toutes les 200 ms) — un compagnon permanent ne peut pas
-  //   payer 60 à vie. Filmée telle quelle, la prise du 20/09 comptait 152 images
-  //   identiques à la précédente sur 862 et 226 sauts : « un peu de saccade »,
-  //   mot pour mot. On fige donc 60 i/s en rendant `setCadence` muet : le
-  //   minuteur de la page continue d'appeler, plus rien ne bouge.
+  // ⚠ THE ORB SAVES FRAMES, AND IT SHOWS ON FILM. On the desktop it
+  //   runs at 12 f/s at rest, 30 at work, 60 during a cross-fade (CADENCE in
+  //   orbe.html, reset every 200 ms) — a permanent companion cannot
+  //   pay 60 for life. Filmed as is, the 20/09 take counted 152 frames
+  //   identical to the previous one out of 862, and 226 jumps: "a bit of stutter",
+  //   word for word. So we freeze 60 f/s by making `setCadence` mute: the
+  //   page's timer keeps calling, nothing moves any more.
   await w.webContents.executeJavaScript(
     `window.__orbe.setCadence(60); window.__orbe.setCadence = () => {}; true`);
 
-  // ⚠ LE SEUL TÉMOIN QUI COMPTE EST LE TEXTE À L'ÉCRAN. La valeur rendue par
-  //   l'injection a été un `NaN` inexplicable pendant trois essais, et pendant ce
-  //   temps la vraie question — « qu'est-ce qui est écrit dans le pavé ? » — avait
-  //   une réponse simple et directe. On lit les fentes, on cherche du français, on
-  //   cherche un mot qu'on vient d'injecter. Ni l'un ni l'autre ne se devine.
-  await new Promise(r => setTimeout(r, 1800));    // le rouleau doit avoir défilé
+  // ⚠ THE ONLY WITNESS THAT COUNTS IS THE TEXT ON SCREEN. The value returned by
+  //   the injection was an inexplicable `NaN` for three attempts, while
+  //   the real question — "what is written in the pad?" — had
+  //   a simple, direct answer. We read the slots, look for French, and
+  //   look for a word we just injected. Neither can be guessed.
+  await new Promise(r => setTimeout(r, 1800));    // the scroll must have moved
   const lu = await w.webContents.executeJavaScript(
     `[...document.querySelectorAll('#pave .l')].map(e=>e.textContent).join(' ')`);
-  if (/[àâçéèêëîïôùûœ]/i.test(lu)) {
-    console.error(`⛔ du français dans le pavé : « ${lu.replace(/\s+/g,' ').trim().slice(0, 90)} »`);
+  if (/[àâçéèêëîïôùûœ]/i.test(lu)) {   // i18n-ok: this line LOOKS FOR French
+    console.error(`⛔ French in the pad: "${lu.replace(/\s+/g,' ').trim().slice(0, 90)}"`);
     app.exit(5); return;
   }
   if (!/rank|bm25|recall|store|search/i.test(lu)) {
-    console.error(`⛔ les lignes du banc ne sont pas à l'écran : « ${lu.replace(/\s+/g,' ').trim().slice(0, 90)} »`);
+    console.error(`⛔ the bench lines are not on screen: "${lu.replace(/\s+/g,' ').trim().slice(0, 90)}"`);
     app.exit(6); return;
   }
-  console.log(`  pavé : en anglais, lignes du banc — « ${lu.replace(/\s+/g,' ').trim().slice(0, 46)}… »`);
+  console.log(`  pad: in English, bench lines — "${lu.replace(/\s+/g,' ').trim().slice(0, 46)}…"`);
 
-  // ⚠ L'ÉTAT D'OUVERTURE SE POSE ICI, PAS AVANT : le pavé vient d'être
-  //   contrôlé, on peut maintenant redescendre au repos. Les 2,6 s sont celles
-  //   du banc — en dessous, la première image du film est une forme
-  //   intermédiaire qui n'existe dans aucun état.
+  // ⚠ THE OPENING STATE IS SET HERE, NOT BEFORE: the pad has just been
+  //   checked, we can now come back down to idle. The 2.6 s are the
+  //   bench's — below that, the film's first frame is an intermediate
+  //   shape that exists in no state.
   if (PRE) {
     cp.execFileSync('python3',
       [STATUS, PRE === 'idle' ? 'idle' : 'busy', PRE === 'idle' ? '' : PRE].filter(x => x !== ''));
@@ -208,27 +208,27 @@ app.whenReady().then(async () => {
   const images = [];
   const t0 = Date.now();
   if (process.env.FILM_PAS) {
-    // ⚠ PAS À PAS, SUR UNE HORLOGE VIRTUELLE — c'est le seul tournage qui ne
-    //   PEUT PAS saccader. Le screencast ci-dessous filme en temps réel : chaque
-    //   reconstruction du pavé au changement d'état (78–85 ms), chaque lecture
-    //   du statut toutes les 0,7 s (~28 ms) et chaque hoquet de la machine
-    //   deviennent une image manquante, donc un à-coup — mesuré le 20/09 sur la
-    //   prise 4 : 26 trous de plus de 25 ms sur 912 images, dont un à chaque
-    //   changement d'état, là où l'œil regarde. Ici on GÈLE l'horloge de la page
-    //   (Emulation.setVirtualTimePolicy), on l'avance de 16,667 ms, on laisse
-    //   la boucle rendre une image, on la capture, et on recommence. Le temps de
-    //   capture ne coûte plus rien à l'animation : une image = un soixantième de
-    //   seconde de l'orbe, EXACTEMENT, quelle que soit la charge de la machine.
-    //   La vitesse au film est donc la vitesse réelle des états (l'auteur, 20/09 :
-    //   « la vitesse des animations doit être la vitesse réelle des états »).
-    // ⚠ MAIS L'HORLOGE DES ANIMATIONS CSS NE SUIT PAS. Mesuré : sous temps
-    //   virtuel, performance.now, Date.now et les minuteurs avancent du budget
-    //   demandé ; document.timeline, elle, avance du temps RÉEL écoulé (983 ms
-    //   réelles pour 2 000 ms virtuelles). Les trois points qui clignotent sous
-    //   le libellé et les fondus d'opacité du pavé et du libellé tourneraient
-    //   donc trois fois trop lentement au film. On les prend en main : chaque
-    //   animation est mise en pause dès qu'elle apparaît et son curseur avance
-    //   du même pas que l'horloge virtuelle.
+    // ⚠ STEP BY STEP, ON A VIRTUAL CLOCK — the only shoot that CANNOT
+    //   stutter. The screencast below films in real time: every
+    //   rebuild of the pad on a state change (78–85 ms), every read
+    //   of the status every 0.7 s (~28 ms) and every hiccup of the machine
+    //   becomes a missing frame, hence a jolt — measured on 20/09 on
+    //   take 4: 26 gaps over 25 ms out of 912 frames, one at each
+    //   state change, right where the eye looks. Here we FREEZE the page's clock
+    //   (Emulation.setVirtualTimePolicy), advance it by 16.667 ms, let
+    //   the loop render a frame, capture it, and start again. Capture time
+    //   no longer costs the animation anything: one frame = one sixtieth of a
+    //   second of the orb, EXACTLY, whatever the machine's load.
+    //   Speed on film is therefore the real speed of the states (the author, 20/09:
+    //   "the animation speed must be the real speed of the states").
+    // ⚠ BUT THE CSS ANIMATION CLOCK DOES NOT FOLLOW. Measured: under virtual
+    //   time, performance.now, Date.now and timers advance by the requested
+    //   budget; document.timeline advances by REAL elapsed time (983 ms
+    //   real for 2,000 ms virtual). The three dots blinking under
+    //   the label and the opacity fades of the pad and the label would
+    //   therefore run three times too slowly on film. We take them over: each
+    //   animation is paused as soon as it appears and its cursor advances
+    //   in step with the virtual clock.
     await w.webContents.executeJavaScript(`(() => {
       const pris = new WeakMap();
       window.__pas = (ms) => {
@@ -245,8 +245,8 @@ app.whenReady().then(async () => {
       dbg.on('message', h);
     });
     await dbg.sendCommand('Emulation.setVirtualTimePolicy', { policy: 'pause' });
-    // Un pas : l'horloge avance, les animations CSS suivent, la boucle de rendu
-    // (qui tourne sur le vrai rAF de l'écran) peint une fois avec ce temps-là.
+    // One step: the clock advances, the CSS animations follow, the render loop
+    // (which runs on the screen's real rAF) paints once with that time.
     const pas = async () => {
       const p = expire();
       await dbg.sendCommand('Emulation.setVirtualTimePolicy', { policy: 'advance', budget: PAS });
@@ -254,9 +254,9 @@ app.whenReady().then(async () => {
       await w.webContents.executeJavaScript(
         `window.__pas(${PAS}); new Promise(r => requestAnimationFrame(() => r()))`);
     };
-    // Le plan, joué image par image. Le changement d'état est lu par la page
-    // sur-le-champ (`lire()`), pas au prochain tour de son minuteur de 700 ms :
-    // chaque état occupe ainsi exactement le même nombre d'images.
+    // The plan, played frame by frame. The state change is read by the page
+    // immediately (`lire()`), not at the next turn of its 700 ms timer:
+    // each state thus takes exactly the same number of frames.
     const jouer = async (capturer) => {
       for (const [etat, st, duree, detail] of ETATS) {
         cp.execFileSync('python3', [STATUS, st, st === 'busy' ? etat : '', detail]
@@ -271,38 +271,38 @@ app.whenReady().then(async () => {
         }
       }
     };
-    // ⚠ UN TOUR À BLANC AVANT LE TOUR FILMÉ, POUR LE RACCORD DE BOUCLE. Les
-    //   couleurs voyagent par lissage (4,5 % par tick à 30 Hz) : trois secondes
-    //   après le dernier changement, il reste ~11 % du chemin vers la teinte du
-    //   repos. La première image, elle, part d'un repos posé à 100 %. Sur une
-    //   boucle, ce raccord teinte-à-teinte se voit. Joué deux fois, le plan
-    //   commence exactement dans l'état où il finit.
+    // ⚠ A DRY RUN BEFORE THE FILMED RUN, FOR THE LOOP SEAM. The
+    //   colours travel by smoothing (4.5 % per tick at 30 Hz): three seconds
+    //   after the last change, ~11 % of the way to the idle hue is still
+    //   left. The first frame, though, starts from an idle set at 100 %. On a
+    //   loop, that hue-to-hue seam shows. Played twice, the plan
+    //   starts exactly in the state where it ends.
     if (process.env.FILM_BLANC) await jouer(false);
-    // ⚠ LA VITESSE AU FILM DOIT ÊTRE LA VITESSE RÉELLE DE L'ORBE (l'auteur, 20/09).
-    //   Elle se prouve sur l'horloge de l'animation elle-même : `uTime` est le
-    //   temps que le shader a vu passer. S'il avance d'autant de secondes que le
-    //   film en dure, l'orbe tourne à sa vitesse — ni ralenti ni accéléré. On ne
-    //   se fie pas au fait que « le temps virtuel a l'air de marcher ».
+    // ⚠ SPEED ON FILM MUST BE THE ORB'S REAL SPEED (the author, 20/09).
+    //   It is proven on the animation's own clock: `uTime` is the
+    //   time the shader saw pass. If it advances by as many seconds as the
+    //   film lasts, the orb runs at its speed — neither slowed nor sped up. We do
+    //   not trust that "virtual time seems to work".
     const horloge = () => w.webContents.executeJavaScript('window.__orbe._u.uTime.value');
     const tA = await horloge();
     await jouer(true);
     const tB = await horloge();
     const duFilm = images.length / 60, deLOrbe = tB - tA;
-    console.log(`  vitesse : ${deLOrbe.toFixed(3)} s d'animation pour ${duFilm.toFixed(3)} s de film ` +
-                `(écart ${((deLOrbe / duFilm - 1) * 100).toFixed(2)} %)`);
+    console.log(`  speed: ${deLOrbe.toFixed(3)} s of animation for ${duFilm.toFixed(3)} s of film ` +
+                `(gap ${((deLOrbe / duFilm - 1) * 100).toFixed(2)} %)`);
     if (Math.abs(deLOrbe / duFilm - 1) > 0.02) {
-      console.error(`⛔ l'orbe n'avance pas à sa vitesse réelle — le film serait ${deLOrbe < duFilm ? 'ralenti' : 'accéléré'}.`);
+      console.error(`⛔ the orb does not run at its real speed — the film would be ${deLOrbe < duFilm ? 'slowed' : 'sped up'}.`);
       app.exit(7); return;
     }
     await dbg.sendCommand('Emulation.setVirtualTimePolicy', { policy: 'advance', budget: 1e9 });
   } else {
-  // Le screencast : on attache le débogueur, on écoute, on acquitte chaque image.
-  // Sans l'acquittement, Chromium cesse d'en envoyer au bout de quelques-unes.
+  // The screencast: attach the debugger, listen, acknowledge every frame.
+  // Without the acknowledgement, Chromium stops sending them after a few.
   dbg.on('message', (_e, methode, params) => {
     if (methode !== 'Page.screencastFrame') return;
-    // L'horodatage vient du compositeur : c'est lui qui dit QUAND l'image a
-    // existé. Sans lui, on attribue une cadence constante à des images qui ne
-    // le sont pas, et le film accélère ou freine au gré des trous de capture.
+    // The timestamp comes from the compositor: it says WHEN the frame
+    // existed. Without it, we assign a constant rate to frames that are
+    // not constant, and the film speeds up or slows down with the capture gaps.
     images.push({ d: params.data, t: params.metadata.timestamp });
     dbg.sendCommand('Page.screencastFrameAck', { sessionId: params.sessionId }).catch(() => {});
   });
@@ -318,8 +318,8 @@ app.whenReady().then(async () => {
   await dbg.sendCommand('Page.stopScreencast');
   }
   const secondes = (Date.now() - t0) / 1000;
-  // Liste pour le démultiplexeur `concat` de ffmpeg : chaque image porte sa
-  // vraie durée, et `fps=60` recale ensuite sur une cadence constante.
+  // List for ffmpeg's `concat` demuxer: each frame carries its
+  // real duration, and `fps=60` then resyncs to a constant rate.
   const liste = [];
   images.forEach((img, i) => {
     const nom = String(i).padStart(4, '0') + '.png';
@@ -328,23 +328,23 @@ app.whenReady().then(async () => {
     const duree = suiv ? Math.max(0.001, suiv.t - img.t) : 1 / 60;
     liste.push(`file '${nom}'`, `duration ${duree.toFixed(5)}`);
   });
-  liste.push(`file '${String(images.length - 1).padStart(4, '0')}.png'`);   // concat : la dernière se répète
+  liste.push(`file '${String(images.length - 1).padStart(4, '0')}.png'`);   // concat: the last one repeats
   fs.writeFileSync(path.join(OUT, 'liste.txt'), liste.join('\n') + '\n');
-  // Régularité de la prise : le seul chiffre qui prédit la saccade.
+  // Regularity of the take: the only number that predicts stutter.
   const dts = images.slice(1).map((img, i) => (img.t - images[i].t) * 1000);
   const trous = dts.filter(x => x > 25).length;
   const doublons = images.slice(1).filter((img, i) => img.d === images[i].d).length;
-  console.log(`  intervalles : médiane ${dts.sort((a, b) => a - b)[dts.length >> 1].toFixed(1)} ms, ` +
-              `max ${Math.max(...dts).toFixed(1)} ms, trous > 25 ms : ${trous}, images en double : ${doublons}`);
+  console.log(`  intervals: median ${dts.sort((a, b) => a - b)[dts.length >> 1].toFixed(1)} ms, ` +
+              `max ${Math.max(...dts).toFixed(1)} ms, gaps > 25 ms: ${trous}, duplicate frames: ${doublons}`);
   fs.rmSync(FLUX_FAUX, { force: true });
   if (process.env.FILM_PAS) {
-    console.log(`${images.length} images pas à pas = ${(images.length / 60).toFixed(2)} s d'orbe à 60 i/s exact ` +
-                `(tournées en ${secondes.toFixed(1)} s réelles), dans ${OUT}`);
+    console.log(`${images.length} frames step by step = ${(images.length / 60).toFixed(2)} s of orb at exactly 60 f/s ` +
+                `(shot in ${secondes.toFixed(1)} real s), in ${OUT}`);
   } else {
     const ips = Math.round(images.length / secondes);
-    console.log(`${images.length} images en ${secondes.toFixed(1)} s → ${ips} i/s, ${COTE * ZOOM}px, dans ${OUT}`);
-    // Un film de 20 i/s à côté d'une carte à 45 se voit tout de suite : on refuse.
-    if (ips < 35) console.error(`⛔ ${ips} i/s — trop lent. La fenêtre est-elle vraiment visible ?`);
+    console.log(`${images.length} frames in ${secondes.toFixed(1)} s → ${ips} f/s, ${COTE * ZOOM}px, in ${OUT}`);
+    // A 20 f/s film next to a map at 45 shows immediately: we refuse.
+    if (ips < 35) console.error(`⛔ ${ips} f/s — too slow. Is the window really visible?`);
   }
   app.quit();
 });

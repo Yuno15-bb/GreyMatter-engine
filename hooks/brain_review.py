@@ -2,28 +2,28 @@
 """brain_review — AUDIT GLOBAL du contenu/topologie du tronc (≠ brain_audit).
 
 Trois audits distincts coexistent, ne pas confondre :
-  - brain_audit  = santé du PIPELINE (distillation, quota, file d'attente).
-  - brain_doctor = défauts PONCTUELS (liens morts, orphelins, frontmatter, nommage).
-  - brain_review (ICI) = vue d'ensemble AGRÉGÉE de la SANTÉ DU SAVOIR : rassemble
-    en UN seul rapport ce que mesurent déjà topology + utility + challenger +
-    doctor, plus deux contrôles neufs (fiches périmées >3 mois, chemins d'infra
-    incohérents), pour donner à un humain/agent une vue complète du tronc d'un
-    coup d'œil — sans avoir à lire cinq JSON séparés.
+  - brain_audit  = health of the PIPELINE (distillation, quota, queue).
+  - brain_doctor = INDIVIDUAL defects (dead links, orphans, front matter, naming).
+  - brain_review (HERE) = an AGGREGATED view of KNOWLEDGE HEALTH: gathers
+    into ONE report what topology + utility + challenger + doctor already
+    measure, plus two new checks (notes stale for >3 months, inconsistent
+    infrastructure paths), so a human or an agent gets a complete view of the
+    trunk at a glance — without reading five separate JSON files.
 
-Séparation des pouvoirs (cf. lessons/separation-pouvoirs-agent-teams.md) :
+Separation of powers:
   ce module MESURE et PROPOSE, il ne MODIFIE AUCUNE fiche — exactement comme
-  topology/utility (mécanique, cheap, zéro LLM). Le JUGEMENT et le geste restent
+  topology/utility (mechanical, cheap, zero LLM). JUDGEMENT and action stay
   aux agents : l'architecte tisse les liens, le challenger tranche les doutes,
-  l'archiviste propose l'archivage, le jardinier range, le mécanicien répare
-  l'infra. brain_review n'écrit QUE state/review.{json,md}.
+  the archivist proposes archiving, the gardener files, the mechanic repairs
+  the infrastructure. brain_review writes ONLY state/review.{json,md}.
 
 Usage :
-  brain_review.py            → régénère topology+utility, agrège tout, écrit
-                               state/review.{json,md}, affiche le résumé markdown.
-  brain_review.py --stale    → n'appelle pas les moteurs, lit les états existants
-                               (rapide ; indique la fraîcheur des données).
-  brain_review.py --json     → imprime aussi le JSON agrégé sur stdout.
-  brain_review.py --quiet    → écrit les fichiers, pas d'affichage.
+  brain_review.py            → regenerates topology+utility, aggregates everything, writes
+                               state/review.{json,md}, prints the markdown summary.
+  brain_review.py --stale    → does not call the engines, reads existing state
+                               (fast; reports how fresh the data is).
+  brain_review.py --json     → also prints the aggregated JSON on stdout.
+  brain_review.py --quiet    → writes the files, prints nothing.
 """
 import os, re, sys, json, time, glob, subprocess
 
@@ -44,7 +44,7 @@ def _rj(name, default):
 
 
 def _run(engine, *args):
-    """Lance un moteur de mesure (topology/utility) pour rafraîchir son état."""
+    """Runs a measuring engine (topology/utility) to refresh its state."""
     p = os.path.join(HOOKS, engine)
     if not os.path.exists(p):
         return
@@ -72,7 +72,7 @@ def _all_fiches():
 
 
 def _git_last_ts():
-    """Timestamp du dernier commit par fichier, en une seule passe git."""
+    """Timestamp of the last commit per file, in a single git pass."""
     last = {}
     try:
         r = subprocess.run(["git", "-C", BRAIN, "log", "--format=@%ct", "--name-only"],
@@ -82,14 +82,14 @@ def _git_last_ts():
             if line.startswith("@"):
                 cur = int(line[1:])
             elif line.strip() and line not in last:
-                last[line.strip()] = cur      # 1re occurrence = commit le plus récent
+                last[line.strip()] = cur      # first occurrence = the most recent commit
     except Exception:
         pass
     return last
 
 
 def stale_fiches():
-    """Fiches dont le dernier commit remonte à plus de STALE_DAYS jours."""
+    """Notes whose last commit is older than STALE_DAYS days."""
     now = time.time()
     last = _git_last_ts()
     out = []
@@ -102,25 +102,25 @@ def stale_fiches():
                 continue
         age_days = (now - ts) / 86400
         if age_days > STALE_DAYS:
-            out.append({"fiche": rel, "jours": int(age_days),
+            out.append({"note": rel, "days": int(age_days),
                         "date": time.strftime("%Y-%m-%d", time.localtime(ts))})
-    out.sort(key=lambda x: x["jours"], reverse=True)
+    out.sort(key=lambda x: x["days"], reverse=True)
     return out
 
 
-# Fiches d'INFRA seulement : y décrire un chemin périmé est un vrai bug. Ailleurs
-# (sessions/archive, journaux projet), un ancien home est un fait HISTORIQUE daté,
-# pas une incohérence — on ne le signale pas (bruit).
+# INFRASTRUCTURE notes only: describing a stale path there is a real bug. Elsewhere
+# (sessions/archive, project logs), an old home is a dated HISTORICAL fact,
+# not an inconsistency — we do not report it (noise).
 INFRA_DIRS = ("meta", "agents")
 
 
 def path_incoherences():
-    """Chemins incohérents dans les fiches d'INFRA : référence à un home qui n'est
+    """Inconsistent paths in INFRASTRUCTURE notes: a reference to a home that is not
     pas celui de la machine courante (migration de compte, copier-coller d'une
     autre machine). Constat, pas correction.
 
-    Le nom d'utilisateur est DÉRIVÉ, jamais codé en dur : c'est exactement le
-    bug qui avait cassé la distillation lors d'une migration de compte."""
+    The user name is DERIVED, never hardcoded: that is exactly the bug that
+    broke distillation during an account migration."""
     me = os.path.basename(os.path.expanduser("~"))
     other = re.compile(r"/Users/(?!" + re.escape(me) + r"\b)([A-Za-z0-9._-]+)")
     hits = []
@@ -132,9 +132,9 @@ def path_incoherences():
         for i, line in enumerate(lines, 1):
             m = other.search(line)
             if m:
-                hits.append({"fiche": rel, "ligne": i,
-                             "type": f"chemin d'un autre utilisateur ({m.group(1)})",
-                             "extrait": line.strip()[:160]})
+                hits.append({"note": rel, "line": i,
+                             "type": f"path of another user ({m.group(1)})",
+                             "excerpt": line.strip()[:160]})
     return hits
 
 
@@ -148,47 +148,48 @@ def build():
     review = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M"),
         "topology_generated_at": topo.get("generated_at"),
-        # ⚠️ DEUX COMPTEURS, DEUX ENSEMBLES DIFFÉRENTS — corrigé le 2026-09-20 (C bis, B4).
-        #   Cette ligne lisait `topo.get("n_fiches", doctor.get("fiches"))`, ce qui a l'air
-        #   d'un défaut anodin et n'en est pas : les deux nombres ne comptent pas la même
-        #   chose. brain_topology compte LES FICHES TISSÉES DANS LE GRAPHE — cinq zones
-        #   (agents, lessons, life, meta, projects), frontmatter avec un `name:`, README et
-        #   cartes structurelles exclus. brain_doctor compte LES FICHIERS MARKDOWN DU DÉPÔT
-        #   — douze zones, skills/ et tools/ compris. MESURÉ ce jour-là : 726 contre 946,
-        #   un écart de 220, imprimés sous le même mot « fiches » sans que rien ne dise que
-        #   la mesure avait changé. Reproduit en cachant topology.json : la ligne de résumé
-        #   passait de « 726 fiches · 2968 liens · 1 composante(s) » à
-        #   « 945 fiches · None liens · None composante(s) · topologie mesurée le None ».
-        #   Donc : pas de substitution. Sans topologie ces champs restent None et le rapport
-        #   DIT qu'il n'a pas regardé, la seule chose que l'ancienne ligne ne savait pas
-        #   exprimer. Le compte du docteur est gardé, sous son propre nom, pour ce qu'il est.
-        "n_fiches": topo.get("n_fiches"),
-        "n_liens": topo.get("n_liens"),
-        "n_fichiers_depot": doctor.get("fiches"),
+        # ⚠️ TWO COUNTERS, TWO DIFFERENT SETS — corrected 2026-09-20 (C bis, B4).
+        #   This line used to read `topo.get("n_notes", doctor.get("notes"))`, which
+        #   looks like a harmless default and is not: the two numbers do not count the
+        #   same thing. brain_topology counts NOTES WOVEN INTO THE GRAPH — five zones
+        #   (agents, lessons, life, meta, projects), frontmatter with a `name:`, README
+        #   and structural maps excluded. brain_doctor counts MARKDOWN FILES IN THE
+        #   REPOSITORY — twelve zones, skills/ and tools/ included. MEASURED on the
+        #   author's trunk that day: 726 against 946, a gap of 220, printed under the
+        #   same word "notes" with nothing saying the measurement had changed.
+        #   Reproduced by hiding topology.json: the summary line went from
+        #   "726 notes · 2968 links · 1 component(s)" to
+        #   "945 notes · None links · None component(s) · topology measured on None".
+        #   So: no substitution. A missing topology leaves these fields None and the
+        #   report SAYS it did not look, which is the one thing the old line could not
+        #   express. The doctor's count is kept, under its own name, as what it is.
+        "n_notes": topo.get("n_notes"),
+        "n_links": topo.get("n_links"),
+        "n_files_in_repo": doctor.get("notes"),
         # — topology (l'architecte tisse / reclasse) —
-        "liens_manquants": topo.get("liens_manquants", []),
-        "isolees": topo.get("isolees", []),
+        "missing_links": topo.get("missing_links", []),
+        "isolated": topo.get("isolated", []),
         "faiblement_liees": topo.get("faiblement_liees", []),
-        "n_composantes": topo.get("n_composantes"),
-        "composantes": topo.get("composantes", []),
-        "placement_incoherent": topo.get("placement_incoherent", []),
-        # — utility (l'archiviste élague) —
-        "poids_mort": util.get("poids_mort", []),
+        "n_components": topo.get("n_components"),
+        "components": topo.get("components", []),
+        "odd_placement": topo.get("odd_placement", []),
+        # — utility (the archivist prunes) —
+        "dead_weight": util.get("dead_weight", []),
         "ignorees": util.get("ignorees", []),
         # — challenger (tranche les doutes) —
-        "doutes": challenges,
-        "recouvrements": coherence,
-        # — doctor (défauts ponctuels ; le mécanicien/jardinier répare) —
-        "liens_morts": doctor.get("liens_morts", []),
-        "orphelins": doctor.get("orphelins", []),
-        "hors_index": doctor.get("hors_index", []),
-        "memory_trop_lourd": doctor.get("memory_trop_lourd", []),
-        "nommage": doctor.get("nommage", []),
+        "doubts": challenges,
+        "overlaps": coherence,
+        # — doctor (individual defects; the mechanic/gardener repairs) —
+        "dead_links": doctor.get("dead_links", []),
+        "orphans": doctor.get("orphans", []),
+        "off_index": doctor.get("off_index", []),
+        "memory_too_heavy": doctor.get("memory_too_heavy", []),
+        "naming": doctor.get("naming", []),
         "frontmatter": doctor.get("frontmatter", []),
         "drift_git": doctor.get("drift_git"),
-        # — contrôles neufs de brain_review —
-        "fiches_perimees": stale_fiches(),
-        "chemins_incoherents": path_incoherences(),
+        # — brain_review's own new checks —
+        "stale_notes": stale_fiches(),
+        "odd_paths": path_incoherences(),
     }
     return review
 
@@ -200,44 +201,44 @@ def _n(x):
 def to_markdown(r):
     L = []
     a = L.append
-    a(f"# Audit global du tronc — {r['generated_at']}")
-    if r.get("n_fiches") is None:
-        # « Rien à signaler » et « je n'ai pas regardé » ne doivent pas s'écrire pareil — la
-        # propriété que tests/doctor_contract.py énonce pour le docteur, appliquée ici.
-        a("\n⚠️  Topologie non mesurée : ce rapport ne contient ni compte de fiches, ni de"
-          " liens, ni de composantes. Relancer brain_review.py sans --stale pour la mesurer.")
-        if r.get("n_fichiers_depot"):
-            a(f"    (brain_doctor compte {r['n_fichiers_depot']} fichiers markdown dans le"
-              " dépôt — un autre ensemble : il inclut skills/, tools/ et les cartes.)\n")
+    a(f"# Global trunk audit — {r['generated_at']}")
+    if r.get("n_notes") is None:
+        # "Nothing to report" and "I did not look" must not print the same way — the
+        # property tests/doctor_contract.py states for the doctor, applied here.
+        a("\n⚠️  Topology not measured: no note, link or component count in this report."
+          " Run brain_review.py without --stale to measure it.")
+        if r.get("n_files_in_repo"):
+            a(f"    (brain_doctor counts {r['n_files_in_repo']} markdown files in the"
+              " repository — a different set: it includes skills/, tools/ and the maps.)\n")
         else:
             a("")
     else:
-        a(f"\n{r['n_fiches']} fiches · {r['n_liens']} liens · {r['n_composantes']} composante(s)"
-          f" · topologie mesurée le {r.get('topology_generated_at','?')}\n")
+        a(f"\n{r['n_notes']} notes woven · {r['n_links']} links · {r['n_components']} component(s)"
+          f" · topology measured on {r.get('topology_generated_at','?')}\n")
 
-    a("## 🔴 À traiter (par ordre d'impact)\n")
+    a("## 🔴 To handle (by impact)\n")
     rows = [
-        ("Liens manquants (fiches proches non reliées)", "liens_manquants", "→ architecte : tisser"),
-        ("Fiches isolées (0-1 lien)", "isolees", "→ architecte : relier"),
-        ("Composantes déconnectées (>1)", None, ""),
-        ("Placements incohérents (voisins d'un autre domaine)", "placement_incoherent", "→ jardinier : reclasser"),
-        ("Poids mort (jamais consulté / utile)", "poids_mort", "→ archiviste : archiver"),
-        ("Doutes du challenger (périmé/faux/contredit)", "doutes", "→ challenger : trancher"),
-        ("Recouvrements forts (doublon ?)", "recouvrements", "→ jardinier : dédupe/contradiction"),
-        ("Fiches périmées (>3 mois)", "fiches_perimees", "→ archiviste : vérifier fraîcheur"),
-        ("Chemins d'infra incohérents", "chemins_incoherents", "→ mécanicien : corriger l'infra"),
-        ("Liens morts", "liens_morts", "→ mécanicien/jardinier"),
-        ("Orphelins (hors carte)", "orphelins", "→ jardinier : indexer"),
-        ("Hors carte (MEMORY + lessons/INDEX)", "hors_index", "→ jardinier : indexer"),
-        ("MEMORY.md au-dessus de 20 ko", "memory_trop_lourd", "→ jardinier : alléger la carte de démarrage"),
+        ("Missing links (close notes not connected)", "missing_links", "→ architect: weave"),
+        ("Isolated notes (0-1 link)", "isolated", "→ architect: connect"),
+        ("Disconnected components (>1)", None, ""),
+        ("Odd placement (neighbours from another domain)", "odd_placement", "→ gardener: refile"),
+        ("Dead weight (never consulted / useful)", "dead_weight", "→ archivist: archive"),
+        ("Challenger doubts (stale/false/contradicted)", "doubts", "→ challenger: settle"),
+        ("Heavy overlaps (duplicate?)", "overlaps", "→ gardener: dedupe/contradiction"),
+        ("Stale notes (>3 months)", "stale_notes", "→ archivist: check freshness"),
+        ("Inconsistent infrastructure paths", "odd_paths", "→ mechanic: fix the infrastructure"),
+        ("Dead links", "dead_links", "→ mechanic/gardener"),
+        ("Orphans (off the map)", "orphans", "→ gardener: index it"),
+        ("Off-map (MEMORY + lessons/INDEX)", "off_index", "→ gardener: index it"),
+        ("MEMORY.md above 20 kB", "memory_too_heavy", "→ gardener: lighten the startup map"),
     ]
     for label, key, who in rows:
-        n = (r["n_composantes"] - 1 if key is None and r.get("n_composantes") else _n(r.get(key)))
+        n = (r["n_components"] - 1 if key is None and r.get("n_components") else _n(r.get(key)))
         if not n or n <= 0:
             continue
         a(f"- **{label}** : {n} {who}")
-    if all((_n(r.get(k)) == 0) for _, k, _ in rows if k) and (r.get("n_composantes") or 1) <= 1:
-        a("- ✅ Rien de saillant — le tronc est sain.")
+    if all((_n(r.get(k)) == 0) for _, k, _ in rows if k) and (r.get("n_components") or 1) <= 1:
+        a("- ✅ Nothing outstanding — the trunk is healthy.")
 
     def section(title, items, fmt, cap=25):
         if not items:
@@ -248,21 +249,21 @@ def to_markdown(r):
         if len(items) > cap:
             a(f"- … et {len(items)-cap} autres (voir state/review.json)")
 
-    section("Fiches périmées (>3 mois)", r["fiches_perimees"],
-            lambda x: f"`{x['fiche']}` — {x['jours']} j ({x['date']})")
-    section("Chemins d'infra incohérents", r["chemins_incoherents"],
-            lambda x: f"`{x['fiche']}:{x['ligne']}` — {x['type']} — `{x['extrait']}`")
-    section("Fiches isolées", r["isolees"], lambda x: f"`{x}`" if isinstance(x, str) else f"`{x.get('fiche', x)}`")
-    section("Placements incohérents", r["placement_incoherent"],
-            lambda x: f"`{x.get('fiche', x)}`" if isinstance(x, dict) else f"`{x}`")
-    section("Liens manquants", r["liens_manquants"],
+    section("Stale notes (>3 months)", r["stale_notes"],
+            lambda x: f"`{x['note']}` — {x['days']} j ({x['date']})")
+    section("Inconsistent infrastructure paths", r["odd_paths"],
+            lambda x: f"`{x['note']}:{x['line']}` — {x['type']} — `{x['excerpt']}`")
+    section("Isolated notes", r["isolated"], lambda x: f"`{x}`" if isinstance(x, str) else f"`{x.get('note', x)}`")
+    section("Odd placement", r["odd_placement"],
+            lambda x: f"`{x.get('note', x)}`" if isinstance(x, dict) else f"`{x}`")
+    section("Liens manquants", r["missing_links"],
             lambda x: (f"`{x.get('a','?')}` ↔ `{x.get('b','?')}` (sim {x.get('sim','?')})" if isinstance(x, dict) else f"`{x}`"))
-    section("Poids mort", r["poids_mort"], lambda x: f"`{x}`")
-    section("Doutes du challenger", r["doutes"],
-            lambda x: f"`{x.get('fiche','?')}` — {x.get('probleme','')[:160]}" if isinstance(x, dict) else f"{x}")
+    section("Poids mort", r["dead_weight"], lambda x: f"`{x}`")
+    section("Challenger doubts", r["doubts"],
+            lambda x: f"`{x.get('note','?')}` — {x.get('problem','')[:160]}" if isinstance(x, dict) else f"{x}")
 
-    a("\n---\n*brain_review CONSTATE et PROPOSE ; il ne modifie aucune fiche. "
-      "Le jugement et le geste reviennent aux agents (séparation des pouvoirs).*")
+    a("\n---\n*brain_review OBSERVES and PROPOSES; it modifies no note. "
+      "Judgement and action belong to the agents (separation of powers).*")
     return "\n".join(L)
 
 

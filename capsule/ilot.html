@@ -2,11 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<!-- L'activité en direct dans la barre de menus : une seule page, deux costumes.
-     ?pilule  → la pastille posée dans la barre (orbe miniature + nom et action) ;
-     ?panneau → le panneau qui tombe au clic (qui travaille, sur quoi, les étapes, l'orbe).
-     Mise en page tirée de la référence de l'auteur (Activité en direct sur Mac, 24/09),
-     « avec un format différent » : la voiture et la photo deviennent l'orbe et les vaisseaux. -->
+<!-- Live activity in the menu bar: a single page, two costumes.
+     ?pilule  → the pill set in the bar (miniature orb + name and action);
+     ?panneau → the panel that drops on click (who is working, on what, the steps, the orb).
+     Layout taken from the author's reference (Live Activity on Mac, 24/09),
+     "with a different format": the car and the photo become the orb and the ships. -->
+<!-- i18n-ok: 'panneau' and 'pilule' are mode identifiers, read from the URL -->
 <script>document.documentElement.dataset.mode = location.search.includes('panneau') ? 'panneau' : 'pilule';</script>
 <style>
   :root { --c1:#e9dcff; --c2:#9b7bff; --c3:#231a3d; --rim:#f3eeff; }
@@ -15,34 +16,34 @@
                font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; color:#fff; }
   .num { font-variant-numeric: tabular-nums; }
 
-  /* ── LA PASTILLE ─────────────────────────────────────────────────────────
-     Référence : capsule sombre 85 × 26 pt, marque à gauche, chrono à droite.
-     ⚠ 24/09, L'utilisateur : « les contours de la pastille font un pic sur les
-       extrémités ». Cause mesurée à la loupe : l'anneau qui pulsait autour de la
-       bille (rayon 16 pt) sortait de la capsule (rayon 13) à gauche. Désormais
-       rien ne dépasse — `overflow:hidden` — et l'orbe est CONCENTRIQUE : 20 pt,
-       3 pt de marge partout, donc son bord suit celui de la capsule.
-     ⚠ L'utilisateur : « quand la pastille est dépliée ce n'est pas l'orbe qu'on voit » —
-       ouverte, elle affichait un chevron à la place. Elle garde l'orbe et le chrono ;
-       seul le fond s'éclaircit. */
+  /* ── THE PILL ────────────────────────────────────────────────────────────
+     Reference: dark capsule 85 × 26 pt, mark on the left, timer on the right.
+     ⚠ 24/09, the user: "the pill's outline makes a spike at the
+       ends". Cause measured under the magnifier: the ring that pulsed around the
+       bead (radius 16 pt) left the capsule (radius 13) on the left. Now
+       nothing sticks out — `overflow:hidden` — and the orb is CONCENTRIC: 20 pt,
+       3 pt of margin all round, so its edge follows the capsule's.
+     ⚠ The user: "when the pill is expanded it is not the orb we see" —
+       open, it showed a chevron instead. It keeps the orb and the timer;
+       only the background gets lighter. */
   #pilule { display:none; position:absolute; inset:0; border-radius:13px; box-sizing:border-box; overflow:hidden;
             background:rgba(22,22,24,.94); box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
             align-items:center; justify-content:space-between; padding:0 10px 0 3px;
             transition:background .25s ease, box-shadow .25s ease; }
   html[data-mode="pilule"] #pilule { display:flex; }
-  /* ⚠ 24/09, second retour de l'auteur sur les « bouts pointus » : avec un rayon
-     de 13 px, la moindre différence entre la hauteur réelle de la fenêtre et
-     26 laissait un plat vertical au bout, cassé en deux angles. Un rayon
-     « infini » donne un demi-cercle quelle que soit la hauteur. */
+  /* ⚠ 24/09, the author's second feedback on the "pointy ends": with a radius
+     of 13 px, the slightest difference between the window's real height and
+     26 left a vertical flat at the end, broken into two corners. An
+     "infinite" radius gives a half-circle whatever the height. */
   #pilule { border-radius:999px; }
-  /* Verre liquide natif posé derrière (ilot.js) : le fond CSS s'efface, il ne
-     reste qu'un liseré de lumière pour tenir le bord sur un fond clair. */
+  /* Native liquid glass set behind (ilot.js): the CSS background fades, only
+     a rim of light remains to hold the edge on a light background. */
   html[data-verre] #pilule { background:transparent; box-shadow:inset 0 0 0 .5px rgba(255,255,255,.28); }
   html[data-verre][data-ouvert] #pilule { background:rgba(255,255,255,.12); }
-  /* ⚠ l'auteur, 24/09 : « dans la mini capsule, au lieu de mettre un compteur, mets
-     le nom et l'action ». Le chrono ne vit plus que dans le panneau. La largeur
-     suit le texte : la page mesure `.txt` et l'envoie ('ilot-largeur'), le
-     processus principal élargit la place réservée dans la barre d'autant. */
+  /* ⚠ the author, 24/09: "in the mini capsule, instead of a counter, put
+     the name and the action". The timer now lives only in the panel. The width
+     follows the text: the page measures `.txt` and sends it ('ilot-largeur'), the
+     main process widens the space reserved in the bar by as much. */
   #pilule { justify-content:flex-start; gap:7px; }
   #pilule .txt { flex:none; white-space:nowrap; font-size:12px; line-height:26px;
                  transition:opacity .14s ease, transform .14s ease; }
@@ -54,46 +55,46 @@
   #pilule .nom { transition:color .4s ease; }
   html[data-ouvert] #pilule { background:rgba(58,58,62,.94); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); }
 
-  /* La vraie orbe (orbe.html?seule), pas une imitation : la page laisse de l'air
-     autour de la sphère, donc la fenêtre est plus grande que le rond qui la montre. */
+  /* The real orb (orbe.html?seule), not an imitation: the page leaves air
+     around the sphere, so the window is larger than the round that shows it. */
   .mini { width:20px; height:20px; border-radius:50%; overflow:hidden; flex:none; position:relative; }
   .mini iframe { position:absolute; left:-7px; top:-7px; width:34px; height:34px; border:0; pointer-events:none; }
 
-  /* ── LE PANNEAU ──────────────────────────────────────────────────────────
-     Règles d'Apple (HIG Live Activities), appliquées une à une après la première
-     version, que l'auteur a jugée « à retravailler sérieusement » :
-       · « expanded = an enlarged version of the compact » : la bille de la pastille
-         devient l'orbe à gauche, le chrono de la pastille devient le grand chrono
-         à droite — les deux gardent leur côté ;
-       · « display the logo mark without a container, don't use the entire app
-         icon » : appliquée puis annulée par l'auteur (« remets le logo », plus bas) ;
-       · « only use the space needed » : pas de sous-titre de remplissage, la piste
-         est là dès la première étape (25/09 : sinon le panneau sautait au 2e vaisseau), la fenêtre prend la hauteur mesurée ;
-       · marge standard de 14 pt, partout la même. */
+  /* ── THE PANEL ───────────────────────────────────────────────────────────
+     Apple's rules (HIG Live Activities), applied one by one after the first
+     version, which the author judged "to be seriously reworked":
+       · "expanded = an enlarged version of the compact": the pill's bead
+         becomes the orb on the left, the pill's timer becomes the big timer
+         on the right — both keep their side;
+       · "display the logo mark without a container, don't use the entire app
+         icon": applied then cancelled by the author ("put the logo back", below);
+       · "only use the space needed": no filler subtitle, the track
+         is there from the first step (25/09: otherwise the panel jumped at the 2nd ship), the window takes the measured height;
+       · standard margin of 14 pt, the same everywhere. */
   #panneau { display:none; position:absolute; left:0; right:0; top:0; padding:14px; box-sizing:border-box;
              transform-origin:50% 0; }
   html[data-mode="panneau"] #panneau { display:block; }
-  /* Le liseré que dessinait l'ombre de la fenêtre, retirée le 25/09 (voir ilot.js,
-     creerPanneau) : 24 px de page = les 18 pt du verre, zoom de 0,75 compris. */
+  /* The rim the window's shadow used to draw, removed on 25/09 (see ilot.js,
+     creerPanneau): 24 px of page = the glass's 18 pt, 0.75 zoom included. */
   html[data-verre] #panneau { border-radius:24px; box-shadow:inset 0 0 0 .5px rgba(255,255,255,.28); }
-  /* Replié, le panneau est caché mais sa page tourne : ses animations s'arrêtent. */
+  /* Folded, the panel is hidden but its page runs: its animations stop. */
   html[data-mode="panneau"]:not([data-vu]) * { animation-play-state:paused !important; }
   html[data-ouvert] #panneau { animation:tombe .42s cubic-bezier(.2,1.3,.4,1) both; }
   @keyframes tombe { from { opacity:0; transform:translateY(-8px) scale(.96) } to { opacity:1; transform:none } }
   @media (prefers-reduced-motion: reduce) { html[data-ouvert] #panneau { animation:none } }
 
-  /* ⚠ l'auteur, 24/09 : « remets le logo ». La règle d'Apple (pas l'icône entière
-     de l'app) cède devant sa décision : l'en-tête logo + nom revient, comme sur
-     sa référence. L'orbe repasse à droite, à la place de l'image. */
+  /* ⚠ the author, 24/09: "put the logo back". Apple's rule (not the whole app
+     icon) gives way to their decision: the logo + name header comes back, as on
+     their reference. The orb goes back to the right, in place of the image. */
   .tete { display:flex; align-items:center; gap:7px; height:22px; }
   .tete img { width:22px; height:22px; border-radius:6px; }
   .tete b { font-size:15px; font-weight:700; letter-spacing:-.1px; }
-  /* ⚠ l'auteur, 24/09 : « l'écriture dans l'orbe + le glow ont disparu ». L'orbe
-     du panneau est de nouveau l'orbe ENTIÈRE (pavé de code + nom qui brille),
-     rendue à sa taille native de 150 pt puis réduite : à 84 pt de fenêtre, le
-     pavé (78 pt fixes) et le libellé ne tenaient plus dans la sphère. */
-  /* l'auteur, 24/09 : « aggrandi légèrement l'orbe (grande) » : .8 → .9, donc
-     135 pt d'orbe ; le panneau et la marge droite du texte suivent. */
+  /* ⚠ the author, 24/09: "the writing in the orb + the glow have disappeared". The
+     panel's orb is again the WHOLE orb (code pad + glowing name),
+     rendered at its native size of 150 pt then scaled down: at 84 pt of window, the
+     pad (a fixed 78 pt) and the label no longer fitted in the sphere. */
+  /* the author, 24/09: "enlarge the orb slightly (big)": .8 → .9, so
+     135 pt of orb; the panel and the text's right margin follow. */
   #panneau { min-height:138px; }
   .corps { position:static; padding-right:128px; }
   #orbe { position:absolute; right:2px; top:2px; width:150px; height:150px; border:0; pointer-events:none;
@@ -101,20 +102,20 @@
   .ligne { margin-top:8px; display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
   .vaisseau { font-size:19px; font-weight:800; letter-spacing:1.4px; line-height:23px;
               color:color-mix(in oklab, var(--c1) 55%, var(--c2)); transition:color 1s; }
-  /* l'auteur, 24/09 : « fais glow un peu les noms en grand et colorés ». Une lueur
-     de la teinte du vaisseau, serrée puis large.
-     ⚠ 25/09 : elle respirait (text-shadow animé), ce qui repeignait le panneau
-       60 fois par seconde. Elle est fixe, au milieu de son ancienne respiration. */
+  /* the author, 24/09: "make the names glow a little, big and coloured". A glow
+     in the ship's hue, tight then wide.
+     ⚠ 25/09: it breathed (animated text-shadow), which repainted the panel
+       60 times a second. It is fixed, in the middle of its former breath. */
   .vaisseau { text-shadow:0 0 6px color-mix(in oklab, var(--c2) 82%, transparent),
                           0 0 17px color-mix(in oklab, var(--c2) 52%, transparent); }
   html[data-fini] .vaisseau { color:#fff; letter-spacing:0; text-shadow:none; }
-  /* l'auteur, 24/09 : « les 3 petits points animés à côté de l'état ont disparu ».
-     Les mêmes que sous l'orbe (orbe.html, #dit .pt) : trois points pleins qui
-     sautent l'un après l'autre tant que le travail court, absents une fois fini.
-     ⚠ 25/09 : en animation CSS, ils forçaient 60 images/s au panneau. Ils sautent
-       maintenant par crans (un point levé à la fois, voir sauterPoints). */
+  /* the author, 24/09: "the 3 little animated dots next to the state have disappeared".
+     The same as under the orb (orbe.html, #dit .pt): three solid dots that
+     jump one after the other while the work runs, absent once finished.
+     ⚠ 25/09: as a CSS animation, they forced 60 frames/s on the panel. They now jump
+       in notches (one dot raised at a time, see sauterPoints). */
   .pts { margin-left:-6px; font-size:19px; font-weight:800; color:inherit; }
-  .pts i { display:inline-block; font-style:normal; }
+  .pts i { display:inline-block; font-style:normal; transition:transform .17s ease-in-out; }
   .pts i.haut { transform:translateY(-2.5px); }
   html[data-fini] .pts { display:none; }
   html[data-repos] .grand { display:none; }
@@ -122,10 +123,10 @@
   .sous { margin-top:1px; font-size:13px; font-weight:600; line-height:17px; opacity:.62;
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  /* Les étapes : un arrêt par vaisseau passé dans ce travail. Tant que le travail
-     court, la suite est INCONNUE : le rail après l'étape en cours est en
-     pointillés, sans arrivée. L'arrivée (coche) n'existe qu'une fois fini. */
-  .piste { position:relative; height:34px; margin-top:12px; margin-right:128px; display:none; }  /* la piste s'arrête avant l'orbe */
+  /* The steps: one stop per ship that took part in this work. While the work
+     runs, what comes next is UNKNOWN: the rail after the current step is
+     dotted, with no arrival. The arrival (check mark) only exists once finished. */
+  .piste { position:relative; height:34px; margin-top:12px; margin-right:128px; display:none; }  /* the track stops before the orb */
   html[data-etapes] .piste { display:block; }
   .rail { position:absolute; left:8px; right:8px; top:6px; height:0; border-top:3px dotted rgba(255,255,255,.22); }
   .plein { position:absolute; left:8px; top:6px; height:3px; border-radius:2px; background:rgba(255,255,255,.9);
@@ -133,8 +134,10 @@
   .arret { position:absolute; top:0; width:15px; height:15px; margin-left:-7.5px; border-radius:50%;
            background:var(--teinte); box-shadow:0 0 0 2.5px #fff; }
   .arret.ici { box-shadow:0 0 0 2.5px #fff, 0 0 10px 2px var(--teinte); }
-  /* Le pouls de l'étape en cours bat par crans, au rythme des trois points (sauterPoints). */
+  .arret.ici { transition:transform .6s ease-in-out; }
+  /* The current step's pulse beats in notches, in time with the three dots (sauterPoints). */
   .arret.ici.gonfle { transform:scale(1.18); }
+  @media (prefers-reduced-motion: reduce) { .pts i, .arret.ici { transition:none; } }
   .arret.fin { background:#fff; display:grid; place-items:center; }
   .arret.fin svg { width:9px; height:9px; }
   .nom-arret { position:absolute; top:21px; font-size:10px; font-weight:700; letter-spacing:.8px; opacity:.5;
@@ -160,19 +163,17 @@
 
 <script type="module">
 const { ipcRenderer } = require('electron');
-// ⚠ l'auteur, 24/09 : « surtout en anglais et anonymiser ». Les vidéos publiques se tournent
-//   avec CAPSULE_TOURNAGE=1 : le panneau parle anglais. Au quotidien, rien ne change.
-const EN = process.env.CAPSULE_TOURNAGE === '1';
-const TXT = EN ? { repos: 'Idle', dernier: 'last run', etape: 'step', etapes: 'steps', fini: 'Done', par: 'by' }
-               : { repos: 'Au repos', dernier: 'dernier travail', etape: 'étape', etapes: 'étapes', fini: 'Terminé', par: 'par' };
+// The panel speaks English. In the author's own copy it speaks French day to day,
+//   and CAPSULE_TOURNAGE=1 switched it to English for public videos.
+const TXT = { repos: 'Idle', dernier: 'last run', etape: 'step', etapes: 'steps', fini: 'Done', par: 'by' };
 const { reglage } = await import('./orbe/palettes.js');
 const racine = document.documentElement;
 const $ = (s) => document.querySelector(s);
-// ⚠ l'auteur, 25/09 : « mon pc rame énormément […] si c'est la capsule il faut
-//   impérativement la rendre extrêmement légère ». Mesuré avant : 61 % d'un cœur
-//   pendant le travail, 28 % au repos. La même page sert les deux fenêtres, et
-//   chacune chargeait LES DEUX orbes WebGL, dont une jamais montrée. Chaque
-//   fenêtre ne charge plus que l'orbe qu'elle affiche.
+// ⚠ the author, 25/09: "my PC is lagging enormously […] if it's the capsule it
+//   absolutely must be made extremely light". Measured before: 61 % of a core
+//   during work, 28 % at rest. The same page serves both windows, and
+//   each one loaded BOTH WebGL orbs, one of them never shown. Each
+//   window now loads only the orb it displays.
 const PANNEAU_MODE = racine.dataset.mode === 'panneau';
 for (const f of document.querySelectorAll('iframe[data-src]')) {
   if (f.closest(PANNEAU_MODE ? '#panneau' : '#pilule')) f.src = f.dataset.src; else f.remove();
@@ -183,21 +184,21 @@ const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math
 const teintes = (etat) => { const r = reglage(etat); return { c1:r.c1, c2:r.c2, c3:r.c3, rim:r.rim }; };
 function poserCouleurs(el, etat) { const t = teintes(etat); for (const k in t) el.style.setProperty('--' + k, t[k]); }
 
-// Un slug de fiche se lit en mots ; un texte libre passe tel quel.
+// A note slug reads as words; free text passes as is.
 const lisible = (d) => /^[a-z0-9][a-z0-9-]*$/.test(d || '') ? d.replace(/-/g, ' ') : (d || '');
 
-// Le chrono ne se voit que dans le panneau ouvert ; ailleurs, il ne tourne pas.
-// Réécrire le même texte repeint quand même : on n'écrit que ce qui change.
+// The timer is only seen in the open panel; elsewhere, it does not run.
+// Rewriting the same text still repaints: we only write what changes.
 function chrono() {
   if (!course || !PANNEAU_MODE) return;
-  const t = mmss((course.fin || (Date.now() + decalage)) - course.t0), el = $('#panneau .grand');
+  const t = mmss((course.fin || (Date.now() + decalage)) - course.t0), el = $('#panneau .grand');  // i18n-ok: element ids
   if (el.textContent !== t) el.textContent = t;
 }
 setInterval(() => { if (racine.hasAttribute('data-vu')) chrono(); }, 250);
 
-// Trois points qui sautent l'un après l'autre, puis un temps de pause, et le
-// pouls de l'étape en cours : quatre crans de 340 ms (le cycle de 1,35 s
-// d'avant). Trois changements par seconde au lieu de soixante images.
+// Three dots that jump one after the other, then a pause, and the
+// current step's pulse: four notches of 340 ms (the 1.35 s cycle
+// of before). Three changes a second instead of sixty frames.
 const MOUVEMENT_REDUIT = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let phasePoints = 0;
 function sauterPoints() {
@@ -209,12 +210,12 @@ function sauterPoints() {
 }
 setInterval(sauterPoints, 340);
 
-// L'orbe (pastille et panneau) suit CE travail, pas sa propre lecture du fichier.
-// Redit à chaque message (700 ms) : une orbe qui a fini de charger après coup
-// rattrape l'état au suivant.
-// `vu` : le panneau replié est une fenêtre CACHÉE qui tourne encore (le
-// ralenti d'arrière-plan est coupé pour qu'elle reste mesurable). Sans ce mot,
-// son orbe continuait à 12-30 images/s pour personne.
+// The orb (pill and panel) follows THIS work, not its own reading of the file.
+// Said again on each message (700 ms): an orb that finished loading late
+// catches up with the state at the next one.
+// `vu`: the folded panel is a HIDDEN window that still runs (the
+// background throttling is off so it stays measurable). Without this word,
+// its orb went on at 12-30 frames/s for nobody.
 function direOrbe() {
   const m = { vu: !PANNEAU_MODE || racine.hasAttribute('data-vu') };
   if (course) {
@@ -223,23 +224,23 @@ function direOrbe() {
   }
   document.querySelectorAll('iframe').forEach((f) => f.contentWindow && f.contentWindow.postMessage(m, '*'));
 }
-// l'auteur, 24/09 : « quand la mini change de taille ou d'état le changement
-// saccade ». Avant, le texte changeait d'un coup, débordait, puis la fenêtre
-// sautait 120 ms plus tard. Maintenant : le texte s'efface, la pastille glisse
-// à sa nouvelle largeur (fenêtre animée par macOS), puis le texte revient.
-// ⚠ l'auteur, 25/09 : « les à-coups inter-états sont insupportables ». Troisième
-//   passe sur cet axe : tant que la largeur suit le texte, chaque changement
-//   d'état refait la place dans la barre, macOS pousse toutes les icônes et le
-//   panneau glisse avec. La largeur ne suit donc plus le texte : c'est celle du
-//   plus long libellé possible (tous les vaisseaux et leurs actions, « Done »,
-//   le repos), mesurée une fois. Elle ne change plus jamais ; seul le texte
-//   passe en fondu.
+// the author, 24/09: "when the mini changes size or state the change
+// stutters". Before, the text changed at once, overflowed, then the window
+// jumped 120 ms later. Now: the text fades, the pill slides
+// to its new width (window animated by macOS), then the text comes back.
+// ⚠ the author, 25/09: "the jolts between states are unbearable". Third
+//   pass on this axis: as long as the width follows the text, each change
+//   of state redoes the space in the bar, macOS pushes all the icons and the
+//   panel slides with it. So the width no longer follows the text: it is that of the
+//   longest possible label (all the ships and their actions, "Done",
+//   idle), measured once. It never changes again; only the text
+//   crossfades.
 let largeurFixe = 0;
 function mesurerLargeurFixe(voc) {
   if (largeurFixe || !voc) return;
   const txt = $('#pilule .txt'), nom = $('#pilule .nom'), act = $('#pilule .act');
   const avant = [nom.textContent, act.textContent];
-  const paires = Object.entries(voc).map(([a, v]) => [v, a]).concat([[TXT.fini, ''], ['GreyMatter', EN ? 'idle' : 'repos']]);
+  const paires = Object.entries(voc).map(([a, v]) => [v, a]).concat([[TXT.fini, ''], ['GreyMatter', 'idle']]);
   for (const [n, a] of paires) { nom.textContent = n; act.textContent = a; largeurFixe = Math.max(largeurFixe, txt.offsetWidth); }
   [nom.textContent, act.textContent] = avant;
 }
@@ -253,7 +254,7 @@ function textePilule(nom, act) {
   const poser = () => {
     $('#pilule .nom').textContent = nom;
     $('#pilule .act').textContent = act;
-    // 3 (marge) + 20 (orbe) + 7 (écart) + texte + 11 (marge droite)
+    // 3 (margin) + 20 (orb) + 7 (gap) + text + 11 (right margin)
     const l = Math.max(60, Math.min(240, Math.ceil(3 + 20 + 7 + Math.max(largeurFixe, txt.offsetWidth) + 11)));
     const change = l !== largeurEnvoyee;
     largeurEnvoyee = l;
@@ -263,8 +264,8 @@ function textePilule(nom, act) {
   clearTimeout(fondu);
   if (premier) return poser();
   txt.classList.add('efface');
-  // Le texte revient quand la pastille est arrivée à sa place (message du
-  // processus principal), ou au plus tard 0,7 s après — même largeur, pas de message.
+  // The text comes back when the pill has reached its place (message from the
+  // main process), or at the latest 0.7 s after — same width, no message.
   fondu = setTimeout(() => { fondu = setTimeout(() => txt.classList.remove('efface'), poser() ? 700 : 40); }, 140);
 }
 function peindre() {
@@ -272,12 +273,12 @@ function peindre() {
   const st = course.stations, ici = st[st.length - 1], fini = !!course.fin, repos = !!course.repos;
   racine.toggleAttribute('data-fini', fini);
   racine.toggleAttribute('data-repos', repos);
-  // Au repos (L'utilisateur : « même si au repos la mini capsule reste ») : la pastille
-  // dit GreyMatter · repos ; le panneau garde le dernier travail en une ligne.
+  // At rest (the user: "even at rest the mini capsule stays"): the pill
+  // says GreyMatter · idle; the panel keeps the last work on one line.
   if (repos) {
     poserCouleurs(racine, 'idle');
     if (racine.dataset.mode !== 'panneau') {
-      textePilule('GreyMatter', EN ? 'idle' : 'repos');
+      textePilule('GreyMatter', 'idle');
       return;
     }
     const d = course.dernier;
@@ -295,21 +296,21 @@ function peindre() {
   }
   const n = st.length;
   $('.vaisseau').textContent = fini ? TXT.fini : (ici ? ici.vaisseau : '');
-  // Le sous-titre dit ce qui se fait et sur quoi — rien d'autre. Sans détail,
-  // l'action seule : un « en cours » de remplissage ne dit rien (première version).
-  // Le détail d'un agent (« stale notes ») prime ; sans lui, le grand thème.
+  // The subtitle says what is being done and on what — nothing else. Without detail,
+  // the action alone: a filler "in progress" says nothing (first version).
+  // An agent's detail ("stale notes") comes first; without it, the broad theme.
   const detail = lisible(course.detail) || course.theme || '';
   $('.sous').textContent = fini
     ? (n > 1 ? n + ' ' + TXT.etapes : TXT.par + ' ' + (ici ? ici.vaisseau : ''))
     : (ici ? (detail ? ici.etat + ' · ' + detail : ici.etat) : '');
-  // Dès la première étape (l'auteur, 25/09, les à-coups) : la piste apparaissait au
-  // deuxième vaisseau et le panneau grandissait d'un coup de 46 pt.
+  // From the first step (the author, 25/09, the jolts): the track appeared at the
+  // second ship and the panel grew by 46 pt at once.
   racine.toggleAttribute('data-etapes', n >= 1);
   const piste = $('.piste');
   piste.querySelectorAll('.arret, .nom-arret').forEach((x) => x.remove());
   if (n >= 1) {
-    // Arrêts répartis ; en cours, la dernière place est la suite inconnue.
-    // n places : les étapes, puis au bout l'arrivée (fini) ou la suite inconnue (en cours).
+    // Stops spread out; in progress, the last place is the unknown continuation.
+    // n places: the steps, then at the end the arrival (finished) or the unknown continuation (in progress).
     const places = n;
     const pos = (i) => 'calc(8px + (100% - 16px) * ' + (i / places) + ')';
     st.forEach((x, i) => {
@@ -326,10 +327,10 @@ function peindre() {
       if (i === 0) { l.style.transform = 'translateX(-7.5px)'; }
       piste.appendChild(l);
     });
-    // ⚠ l'auteur, 24/09 : « les noms se chevauchent » — à cinq étapes, 50 pt par
-    //   arrêt pour des noms de 70 à 80 pt. Sous 84 pt d'écart, seul le nom de
-    //   l'étape en cours (ou de la dernière, une fois fini) reste écrit ; la
-    //   pastille de couleur dit déjà quel vaisseau est passé.
+    // ⚠ the author, 24/09: "the names overlap" — at five steps, 50 pt per
+    //   stop for names of 70 to 80 pt. Under 84 pt of gap, only the name of
+    //   the current step (or of the last, once finished) stays written; the
+    //   colour dot already says which ship went by.
     const ecart = (piste.clientWidth - 16) / places;
     if (ecart < 84) piste.querySelectorAll('.nom-arret').forEach((l, i) => { if (i !== n - 1) l.remove(); });
     if (fini) {
@@ -339,13 +340,13 @@ function peindre() {
     }
     $('.plein').style.width = 'calc((100% - 16px) * ' + ((fini ? n : n - 1) / places) + ')';
   }
-  // La fenêtre prend la hauteur du contenu (Apple : 84 à 160 pt).
+  // The window takes the content's height (Apple: 84 to 160 pt).
   requestAnimationFrame(() => ipcRenderer.send('ilot-hauteur', $('#panneau').offsetHeight));
 }
 
 ipcRenderer.on('ilot', (_e, c) => {
   if (!c) return direOrbe();
-  // data-vu, pas data-ouvert : poser data-ouvert en retard rejouerait la chute du panneau.
+  // data-vu, not data-ouvert: setting data-ouvert late would replay the panel's drop.
   if (PANNEAU_MODE && racine.hasAttribute('data-vu') !== !!c.ouvert) { racine.toggleAttribute('data-vu', !!c.ouvert); chrono(); }
   decalage = c.maintenant - Date.now();
   const avant = JSON.stringify(course && [course.stations, course.fin, course.detail, course.theme]);

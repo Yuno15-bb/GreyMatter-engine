@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""brain_topology — vue GLOBALE de la cohésion du C Brain (Horizon 2, niveau graphe).
+"""brain_topology — the GLOBAL view of the trunk's cohesion, at graph level.
 
-Là où check_coherence regarde les fiches DEUX PAR DEUX (recouvrement local) et où
-brain_doctor traque les défauts ponctuels (liens morts, orphelins), CE module prend
-de la hauteur : il lit TOUT le graphe `[[...]]` + la similarité de contenu, et calcule
-la **structure d'ensemble** pour révéler ce qui se voit seulement de loin :
+Where check_coherence looks at notes TWO BY TWO (local overlap) and
+brain_doctor hunts individual defects (dead links, orphans), THIS module steps
+back: it reads the WHOLE `[[...]]` graph plus content similarity, and computes
+the **overall structure** to reveal what is only visible from a distance:
 
-  - liens MANQUANTS  : 2 fiches très proches par le contenu mais qui ne se citent pas
-                       → l'or de la cohésion (surtout entre projets différents).
-  - fiches ISOLÉES   : 0 ou 1 lien dans tout l'arbre (présentes dans la carte mais
-                       déconnectées du tissu de connaissance).
-  - sous-ensembles   : composantes connexes du graphe de liens — un îlot détaché
+  - MISSING links    : two notes very close in content that do not cite each other
+                       → the gold of cohesion (especially across different projects).
+  - ISOLATED notes   : zero or one link in the whole tree (on the map but
+                       disconnected from the knowledge fabric).
+  - components       : connected components of the link graph — a detached island
                        = un pan de savoir qui ne dialogue avec rien.
-  - placement INCOHÉRENT : une fiche dont les voisins (liens) sont majoritairement
-                       d'un AUTRE domaine que le sien → peut-être mal classée.
-  - santé par domaine : densité interne, ponts inter-domaines (la valeur transverse).
+  - ODD placement    : a note whose neighbours (links) mostly belong to
+                       ANOTHER domain than its own → possibly misfiled.
+  - per-domain health: internal density, cross-domain bridges (the cross-cutting value).
 
-Séparation des pouvoirs (comme tout le Brain) :
-  - ICI (mécanique, cheap, zéro LLM) : MESURER la topologie → state/topology.json.
-  - ARCHITECTE (LLM) : JUGER quels liens tisser, quels îlots relier, quoi reclasser.
+Separation of powers (as everywhere else here):
+  - HERE (mechanical, cheap, zero LLM): MEASURE the topology → state/topology.json.
+  - ARCHITECT (LLM): JUDGE which links to weave, which islands to reconnect, what to refile.
 
 Usage :
   brain_topology.py            → rapport lisible (terminal)
@@ -30,7 +30,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    import brain_recall as recall          # réutilise fold/tokenize/STOP + la règle SKIP_PARTS
+    import brain_recall as recall          # reuses fold/tokenize/STOP + the SKIP_PARTS rule
 except Exception:
     recall = None
 
@@ -40,15 +40,17 @@ DOMAINS = ("projects", "lessons", "meta", "life", "agents")
 STRUCTURAL_MAPS = {os.path.join("lessons", "INDEX.md")}
 
 LINK = re.compile(r"\[\[([^\]]+)\]\]")
-# placeholders de syntaxe présents dans les docs d'agents — jamais de vrais liens
-NOT_A_LINK = {"slug", "lien", "liens", "...", "exemples", "nom-du-fichier", "name"}
+# syntax placeholders present in the agent docs — never real links
+# Bilingual on purpose (see brain_doctor.EXAMPLE_WHITELIST).
+NOT_A_LINK = {"slug", "name", "link", "links", "another-note", "examples", "...",
+              "lien", "liens", "exemples", "nom-du-fichier"}
 
-MISS_MIN = 0.30     # cosinus TF-IDF : au-delà = assez proches pour SE CITER (< 0.45 = seuil doublon)
-MISS_TOP = 25       # nb max de suggestions de liens remontées
+MISS_MIN = 0.30     # TF-IDF cosine: above this = close enough to CITE each other (< 0.45 = duplicate threshold)
+MISS_TOP = 25       # max number of link suggestions returned
 
 
 def load():
-    """Renvoie {name -> {domain, path, links:set, tokens:list}} pour les fiches de savoir."""
+    """Returns {name -> {domain, path, links:set, tokens:list}} for the knowledge notes."""
     fiches = {}
     for p in glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True):
         rel = os.path.relpath(p, BRAIN)
@@ -100,7 +102,7 @@ def cosine(a, b):
 def analyze():
     fiches = load()
     names = set(fiches)
-    # --- graphe de liens non orienté (ne garde que les liens résolus) ---
+    # --- undirected link graph (resolved links only) ---
     adj = defaultdict(set)
     for name, d in fiches.items():
         for tgt in d["links"]:
@@ -112,7 +114,7 @@ def analyze():
     isolated = sorted([n for n in names if degree[n] == 0])
     weak = sorted([n for n in names if degree[n] == 1])
 
-    # --- composantes connexes (sous-ensembles déconnectés) ---
+    # --- connected components (disconnected subsets) ---
     seen, components = set(), []
     for n in names:
         if n in seen:
@@ -129,7 +131,7 @@ def analyze():
         components.append(sorted(comp))
     components.sort(key=len, reverse=True)
 
-    # --- liens manquants : proches par le contenu mais non reliés ---
+    # --- missing links: close in content but not connected ---
     vecs = tfidf(fiches)
     ordered = sorted(names)
     missing = []
@@ -140,16 +142,16 @@ def analyze():
             sim = cosine(vecs[a], vecs[b])
             if sim >= MISS_MIN:
                 cross = fiches[a]["domain"] != fiches[b]["domain"]
-                # score = similarité + petit bonus « pont transverse » (sans écraser une paire forte)
+                # score = similarity + a small "cross-domain bridge" bonus (without crushing a strong pair)
                 missing.append({"a": a, "b": b, "sim": round(sim, 3), "cross_domain": cross,
                                 "score": round(sim + (0.08 if cross else 0), 3)})
     missing.sort(key=lambda x: x["score"], reverse=True)
     missing = missing[:MISS_TOP]
 
-    # --- placement incohérent : voisins majoritairement d'un autre domaine ---
-    # On IGNORE les patterns LÉGITIMES par construction (sinon que des faux positifs) :
-    #   une leçon/un objectif de vie pointe vers SON projet d'origine ; un projet vers les
-    #   leçons qu'il a engendrées ; le méta-Brain vers ses agents. Le reste = vraie question.
+    # --- odd placement: neighbours mostly from another domain ---
+    # We IGNORE the patterns that are LEGITIMATE by construction (otherwise it is all false positives):
+    #   a lesson or a life goal points at ITS originating project; a project points at the
+    #   lessons it produced; meta points at its agents. The rest is a real question.
     EXPECTED = {("lessons", "projects"), ("life", "projects"), ("projects", "lessons"),
                 ("life", "meta"), ("meta", "agents"), ("agents", "meta"), ("meta", "projects")}
     misfiled = []
@@ -161,10 +163,10 @@ def analyze():
         ext = Counter(fiches[x]["domain"] for x in nbs)
         dom_voisin, cnt = ext.most_common(1)[0]
         if dom_voisin != own and cnt > len(nbs) / 2 and (own, dom_voisin) not in EXPECTED:
-            misfiled.append({"fiche": n, "domaine": own, "voisins_surtout": dom_voisin,
+            misfiled.append({"note": n, "domain": own, "neighbours_mostly": dom_voisin,
                              "ratio": f"{cnt}/{len(nbs)}"})
 
-    # --- santé par domaine : densité interne + ponts inter-domaines ---
+    # --- per-domain health: internal density + cross-domain bridges ---
     intra, cross = 0, 0
     bridges = []
     edges = set()
@@ -184,14 +186,14 @@ def analyze():
 
     return {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "n_fiches": len(fiches), "n_liens": len(edges),
-        "liens_intra_domaine": intra, "ponts_inter_domaines": cross,
-        "domaines": dict(dom_counts),
-        "isolees": isolated, "faiblement_liees": weak,
-        "n_composantes": len(components),
-        "composantes": [c for c in components if len(c) < len(fiches)],  # tout sauf le continent principal
-        "liens_manquants": missing,
-        "placement_incoherent": misfiled,
+        "n_notes": len(fiches), "n_links": len(edges),
+        "liens_intra_domaine": intra, "cross_domain_bridges": cross,
+        "domains": dict(dom_counts),
+        "isolated": isolated, "faiblement_liees": weak,
+        "n_components": len(components),
+        "components": [c for c in components if len(c) < len(fiches)],  # tout sauf le continent principal
+        "missing_links": missing,
+        "odd_placement": misfiled,
         "ponts_existants": bridges,
     }
 
@@ -208,25 +210,25 @@ def main():
         print(json.dumps(data, ensure_ascii=False, indent=2))
         return
     # rapport lisible
-    print(f"🕸️  TOPOLOGIE DU BRAIN — {data['n_fiches']} fiches, {data['n_liens']} liens "
-          f"({data['liens_intra_domaine']} internes, {data['ponts_inter_domaines']} ponts inter-domaines)\n")
-    if data["isolees"]:
-        print(f"🏝️  ISOLÉES ({len(data['isolees'])}) — aucun lien dans tout l'arbre :")
-        for n in data["isolees"]:
+    print(f"🕸️  TRUNK TOPOLOGY — {data['n_notes']} notes, {data['n_links']} links "
+          f"({data['liens_intra_domaine']} internes, {data['cross_domain_bridges']} ponts inter-domaines)\n")
+    if data["isolated"]:
+        print(f"🏝️  ISOLATED ({len(data['isolated'])}) — no link anywhere in the tree:")
+        for n in data["isolated"]:
             print(f"     · {n}")
-    if len(data["composantes"]):
-        print(f"\n🧩 SOUS-ENSEMBLES DÉTACHÉS ({len(data['composantes'])} hors continent principal) :")
-        for c in data["composantes"][:8]:
+    if len(data["components"]):
+        print(f"\n🧩 DETACHED COMPONENTS ({len(data['components'])} outside the main continent):")
+        for c in data["components"][:8]:
             print(f"     · {{{', '.join(c)}}}")
-    print(f"\n🔗 LIENS MANQUANTS suggérés (proches mais ne se citent pas) — top {len(data['liens_manquants'])} :")
-    for m in data["liens_manquants"]:
+    print(f"\n🔗 SUGGESTED MISSING LINKS (close but not citing each other) — top {len(data['missing_links'])}:")
+    for m in data["missing_links"]:
         tag = " 🌉 PONT" if m["cross_domain"] else ""
         print(f"     [{m['sim']:.2f}]{tag}  {m['a']}  ⇄  {m['b']}")
-    if data["placement_incoherent"]:
-        print(f"\n📍 PLACEMENT À QUESTIONNER ({len(data['placement_incoherent'])}) :")
-        for x in data["placement_incoherent"]:
-            print(f"     · {x['fiche']} (dans {x['domaine']}) — voisins surtout {x['voisins_surtout']} ({x['ratio']})")
-    print("\n→ state/topology.json écrit. L'ARCHITECTE juge et tisse.")
+    if data["odd_placement"]:
+        print(f"\n📍 PLACEMENT WORTH QUESTIONING ({len(data['odd_placement'])}):")
+        for x in data["odd_placement"]:
+            print(f"     · {x['note']} (in {x['domain']}) — neighbours mostly {x['neighbours_mostly']} ({x['ratio']})")
+    print("\n→ state/topology.json written. The ARCHITECT judges and weaves.")
 
 
 if __name__ == "__main__":

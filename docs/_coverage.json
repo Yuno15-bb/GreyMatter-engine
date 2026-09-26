@@ -1,0 +1,55 @@
+{
+  "_read_me": "Which code each document claims to describe. Checked by tests/docs_aligned.py: if a watched path moved after the document was last edited, the document is UNREVIEWED — not proven wrong, proven unchecked. Add every new file under docs/ here; the check fails on any document it does not know about, because a doc nobody watches is exactly how prose goes stale. Keep the watched paths NARROW: a doc that watches the whole repository is behind every day and gets ignored, which is worse than no check at all.",
+  "docs": {
+    "docs/planet.md": {
+      "documents": [
+        "planet/index.html",
+        "planet/launch.sh",
+        "hooks/graph_export.py"
+      ],
+      "why": "The planet doc describes what the map shows and how it responds — all of it lives in index.html, fed by graph_export.py."
+    },
+    "docs/design-doc.md": {
+      "documents": [
+        "hooks/brain_recall.py",
+        "hooks/brain_doctor.py",
+        "hooks/auto_maintain.py",
+        "agents",
+        "brain"
+      ],
+      "why": "The design doc explains recall, the health check, the maintenance loop and the agent roster. It deliberately does NOT watch every hook: a doc that watches all 36 is behind every week and stops being read."
+    },
+    "docs/translation.md": {
+      "documents": [
+        "sync.sh",
+        "generalize.py",
+        "rules.json"
+      ],
+      "why": "The translation doc describes the fr → main chain: what is copied, what is rewritten, and by which rules."
+    },
+    "docs/UPGRADING.md": {
+      "documents": [
+        "install.sh",
+        "cbrain/update.sh"
+      ],
+      "why": "A one-time upgrade warning about what the OLDER updater does on its last run, plus what the installer and updater do from v1.29.0 on. It watches the two scripts whose behaviour it describes: if either changes, the promise made to somebody mid-upgrade has to be re-read."
+    },
+    "docs/install-model.md": {
+      "documents": [
+        "install.sh",
+        "cbrain/update.sh",
+        "uninstall.sh",
+        "cbrain/engine-paths.txt"
+      ],
+      "why": "The install model describes who owns the engine and how a version is built, switched and rolled back. It is only true while the installer, the updater and the uninstaller agree on it — those three write and read the versions/ tree between them."
+    },
+    "docs/verification-recipe.md": {
+      "documents": [
+        "leakcheck.py",
+        "publish.sh",
+        "install.sh"
+      ],
+      "why": "The recipe tells a reader how to verify the package for themselves — it is only true while these three behave as described."
+    }
+  }
+}

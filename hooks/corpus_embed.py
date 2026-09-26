@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""corpus_embed — embeddings + clustering de la COUCHE FROIDE (cf. carte-vivante-4-etages, Étage 1).
+"""corpus_embed — embeddings + clustering of the COLD LAYER.
 
-Pipeline (corpus_import → CE SCRIPT → distillation sélective) :
-  corpus/cold/**/*.md  →  embeddings model2vec  →  KMeans cosinus  →  corpus/CLUSTERS.md (thèmes)
+Pipeline (corpus_import → THIS SCRIPT → selective distillation):
+  corpus/cold/**/*.md  →  model2vec embeddings  →  cosine KMeans  →  corpus/CLUSTERS.md (themes)
 
-MÊME modèle que brain_embed.py (potion-base-8M) → corpus froid et fiches chaudes partagent le MÊME
-espace vectoriel (on pourra plus tard relier une fiche à ses conversations d'origine). Zéro-dépendance
-au-delà du venv du Brain (numpy + model2vec, PAS de sklearn) : KMeans cosinus réimplémenté en numpy.
+The SAME model as brain_embed.py → the cold corpus and the warm notes share the SAME
+vector space (so a note can later be traced back to its source conversations). No dependency
+beyond the venv (numpy + model2vec, NO sklearn): cosine KMeans reimplemented in numpy.
 
-Sorties (toutes sous corpus/, gitignoré, local-only) :
-  • state/corpus_embeddings.npz / .json  → vecteurs + méta (rel, source, title), réutilisable
+Outputs (all under corpus/, gitignored, local only):
+  • state/corpus_embeddings.npz / .json  → vectors + metadata (rel, source, title), reusable
   • state/corpus_clusters.json           → assignation cluster par conversation
-  • corpus/CLUSTERS.md                    → rapport LISIBLE : par cluster = taille, mix source, termes-clés, titres repré.
+  • corpus/CLUSTERS.md                    → a READABLE report: per cluster = size, source mix, key terms, sample titles.
 
 Usage (dans le venv ~/.c-brain/trunk/.venv) :
   corpus_embed.py [--k N] [--body-cap N]   # build : embeddings + clusters + rapport (k auto ≈ sqrt(n/2))
-  corpus_embed.py query [-k N] "..."       # recherche sémantique sur le corpus (canal séparé des fiches)
+  corpus_embed.py query [-k N] "..."       # semantic search over the corpus (a channel separate from the notes)
 """
 import os, re, sys, json, glob, argparse, datetime
 import numpy as np
@@ -27,8 +27,11 @@ NPZ = os.path.join(BRAIN, "state", "corpus_embeddings.npz")
 META = os.path.join(BRAIN, "state", "corpus_embeddings.json")
 CLUST = os.path.join(BRAIN, "state", "corpus_clusters.json")
 REPORT = os.path.join(BRAIN, "corpus", "CLUSTERS.md")
-MODEL = "minishlab/potion-base-8M"          # IDENTIQUE à brain_embed.py
+MODEL = "minishlab/potion-base-8M"          # IDENTICAL to brain_embed.py
 
+# BILINGUAL by necessity: this list filters YOUR conversations, not this codebase.
+# Keeping the French stop words is what stops "de", "que", "pour" from dominating
+# every cluster of a French corpus. Add your own language here.
 STOP = set("""au aux avec ce ces dans de des du elle en et eux il je la le les leur lui ma mais me
 même mes moi mon ne nos notre nous on ou par pas pour qu que qui sa se ses son sur ta te tes toi ton
 tu un une vos votre vous c d j l m n s t y est sont être ai as a avons avez ont fait faire plus moins
@@ -36,11 +39,14 @@ si comme tout tous cette ça cela donc alors aussi très peu bien encore the a a
 from has have i in is it its of on or that this to was were will with you your we my me he she they them
 do does did not no yes can could would should will just like get got make made how what when where why
 who which there here then than so up out about into over also their our""".split())
+# Accented letters are part of the class on purpose: without them, "problème"
+# would tokenize as "probl" + "me" and every French term would be shredded.
+# i18n-ok: this class describes the USER's words, not this codebase.
 WORD = re.compile(r"[a-zàâäéèêëïîôöùûüç]{3,}", re.I)
 
 
 def parse_cold(fp):
-    """→ (source, title, body_text). Strip frontmatter + icônes de rôle."""
+    """→ (source, title, body_text). Strips front matter + role icons."""
     raw = open(fp, encoding="utf-8").read()
     source, title = "?", os.path.basename(fp)
     body = raw
@@ -56,18 +62,18 @@ def parse_cold(fp):
                         title = json.loads(line.split(":", 1)[1].strip())
                     except Exception:
                         title = line.split(":", 1)[1].strip().strip('"')
-    body = re.sub(r"^#+ .*$", "", body, flags=re.M)          # titres markdown / rôles
-    body = re.sub(r"```.*?```", " ", body, flags=re.S)         # blocs de code = bruit thématique
+    body = re.sub(r"^#+ .*$", "", body, flags=re.M)          # markdown headings / roles
+    body = re.sub(r"```.*?```", " ", body, flags=re.S)         # code blocks = thematic noise
     return source, title, body.strip()
 
 
 def embed_text(title, body, cap):
-    # titre pondéré ×3 (signal thématique fort) + extrait de corps borné (model2vec moyenne les tokens)
+    # title weighted ×3 (a strong thematic signal) + a bounded body excerpt (model2vec averages tokens)
     return ((title + ". ") * 3) + body[:cap]
 
 
 def kmeans_cosine(X, k, iters=40, seed=0):
-    """KMeans sur vecteurs L2-normalisés (distance cosinus = euclidienne). Numpy pur, déterministe."""
+    """KMeans on L2-normalized vectors (cosine distance = euclidean). Pure numpy, deterministic."""
     rng = np.random.default_rng(seed)
     # init k-means++ (cosine)
     n = len(X)
@@ -92,11 +98,11 @@ def kmeans_cosine(X, k, iters=40, seed=0):
 
 
 def top_terms(docs_tokens, idx, global_df, n_docs, topn=8):
-    """Termes saillants d'un cluster : fréquence locale pondérée par rareté globale (TF·IDF-light)."""
+    """Salient terms of a cluster: local frequency weighted by global rarity (light TF·IDF)."""
     from collections import Counter
     c = Counter()
     for i in idx:
-        c.update(set(docs_tokens[i]))                          # présence par doc (pas brut)
+        c.update(set(docs_tokens[i]))                          # presence per document (not raw counts)
     out = []
     for w, df_local in c.most_common(60):
         idf = np.log(n_docs / (1 + global_df.get(w, 1)))
@@ -106,10 +112,10 @@ def top_terms(docs_tokens, idx, global_df, n_docs, topn=8):
 
 
 def cmd_query(k, q):
-    """Recherche sémantique sur le corpus froid — canal SÉPARÉ des fiches (ne pollue PAS brain_recall :
-    1230 convs brutes noieraient les ~85 fiches curées ; cf. pourquoi brain_embed exclut corpus/)."""
+    """Semantic search over the cold corpus — a channel SEPARATE from the notes (it does NOT pollute
+    brain_recall: thousands of raw conversations would drown the curated notes)."""
     if not os.path.exists(NPZ):
-        print("Pas d'index — lance d'abord: corpus_embed.py (build)", file=sys.stderr); return
+        print("No index — run corpus_embed.py (build) first", file=sys.stderr); return
     meta = json.load(open(META, encoding="utf-8"))
     X = np.load(NPZ)["v"].astype(np.float64)
     X = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-9)
@@ -124,7 +130,7 @@ def cmd_query(k, q):
 def build(a):
     files = sorted(glob.glob(os.path.join(COLD, "**", "*.md"), recursive=True))
     if not files:
-        print("Aucune conversation froide — lance d'abord corpus_import.py", file=sys.stderr); sys.exit(0)
+        print("No cold conversation — run corpus_import.py first", file=sys.stderr); sys.exit(0)
 
     rels, sources, titles, texts, tokens = [], [], [], [], []
     from collections import Counter
@@ -138,7 +144,7 @@ def build(a):
 
     n = len(files)
     k = a.k or max(12, int((n / 2) ** 0.5))
-    print(f"🧮 {n} conversations → embeddings (modèle {MODEL})…")
+    print(f"🧮 {n} conversations → embeddings (model {MODEL})…")
     model = StaticModel.from_pretrained(MODEL)
     X = np.asarray(model.encode(texts), dtype=np.float64)
     X = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-9)
@@ -154,14 +160,14 @@ def build(a):
     json.dump({"k": k, "assign": assign.tolist(), "rels": rels},
               open(CLUST, "w", encoding="utf-8"), ensure_ascii=False)
 
-    # rapport lisible : clusters triés par taille
+    # readable report: clusters sorted by size
     order = sorted(range(k), key=lambda j: -(assign == j).sum())
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    L = [f"# 🗺️ Corpus froid — {k} clusters thématiques",
+    L = [f"# 🗺️ Cold corpus — {k} thematic clusters",
          "",
          f"> {n} conversations ({sources.count('claude')} Claude · {sources.count('chatgpt')} ChatGPT) · "
-         f"généré {now} · modèle {MODEL}.",
-         "> Couche froide, lossless. La distillation en fiches chaudes reste séparée et sélective.",
+         f"generated {now} · model {MODEL}.",
+         "> The cold layer, lossless. Distillation into warm notes stays separate and selective.",
          ""]
     for rank, j in enumerate(order, 1):
         idx = [i for i in range(n) if assign[i] == j]

@@ -1,35 +1,35 @@
 {
-  "_lisez_moi": "Les poids du classement du rappel, sortis du code le 2026-08-15. Jusqu'ici ils vivaient en dur dans hooks/brain_recall.py : personne ne pouvait les lire sans lire le moteur, et aucun résultat ne pouvait dire d'où venait son score. RIEN N'A CHANGÉ DE COMPORTEMENT en les sortant — les valeurs ci-dessous sont exactement celles qui étaient en dur, et tests/golden_recall.py le vérifie. JSON et pas TOML : le python3 système est en 3.9, sans tomllib, et le Brain tient à sa règle zéro dépendance (cf. meta/decisions/adr-0001-bm25-reste-le-moteur-de-rappel.md). Même convention que meta/familles.json. Si ce fichier disparaît, le rappel repart sur ces mêmes valeurs par défaut : il ne peut pas tomber en panne à cause de sa configuration.",
+  "_readme": "The recall ranking weights, lifted out of hooks/brain_recall.py. Until they moved here nobody could read them without reading the engine, and no result could say where its score came from. NOTHING CHANGED IN BEHAVIOUR when they moved out: the values below are exactly the ones that were hardcoded, and tests/golden_recall-style barriers check that per query, not just on averages. JSON and not TOML: the system python3 can be 3.9, which has no tomllib, and this project keeps its zero-dependency rule. If this file disappears, recall falls back on these same defaults — it can never break because of its configuration.",
 
-  "_avant_de_toucher_a_un_poids": "python3 tests/golden_recall.py --check AVANT, la modification, puis APRÈS. Un poids qui gagne sur une requête et casse quinze autres est le défaut que ce garde-fou existe pour attraper. Si la référence doit bouger, ça se décide et ça s'écrit — ça ne se contourne pas en éditant _baseline.",
+  "_before_touching_a_weight": "Measure BEFORE, change, measure AFTER — per query, never only on averages. A weight that wins on one query and breaks fifteen others is exactly what this guard exists to catch, and three aggregates (P@1, P@3, MRR) cannot see two queries swapping their outcomes. If the reference has to move, that is a decision and it gets written down; it is not something you work around by editing the baseline.",
 
   "version": "ranking-v1",
 
   "index": {
-    "_pourquoi": "Poids appliqués au TEXTE INDEXÉ, pas au score : le nom et la description sont répétés N fois dans le document tokenisé. ⚠️ Toucher à cette section change l'index, donc invalide le cache — c'est voulu et automatique (config/ranking.json entre dans l'empreinte de _fingerprint).",
-    "poids_nom": 3,
-    "poids_description": 3,
-    "poids_pont_familles": 1,
-    "_pourquoi_le_pont_pese_1": "Mesuré le 2026-08-14 : à ×2, une fiche qui HÉRITE d'un mot par sa famille passe devant une fiche qui l'ÉCRIT dans sa description. Le pont rattrape ce que les mots ratent, il ne couvre jamais ce qu'ils trouvent. Cf. meta/decisions/adr-0002-familles-thematiques-second-axe.md"
+    "_why": "Weights applied to the INDEXED TEXT, not to the score: the name and the description are repeated N times in the tokenised document. ⚠️ Touching this section changes the index, so it invalidates the cache — that is deliberate and automatic, since this file is part of the index fingerprint.",
+    "name_weight": 3,
+    "description_weight": 3,
+    "family_bridge_weight": 0,
+    "_why_the_bridge_ships_at_0": "The bridge lets a note inherit the vocabulary of the thematic family it is tagged with (meta/familles.json) — the words people actually type but the notes do not use. The MECHANISM is here and configurable; it is OFF by default for two measured reasons. First, this package does not ship meta/familles.json yet, so the axis has nothing to read. Second, at weight 1 on a 15-case golden set over a real trunk, it demoted the note that literally answers the query from 1st to 2nd place and promoted an off-topic one: P@1 0.7333 -> 0.6667, MRR 0.8000 -> 0.7667. The bridge must catch what the words miss, never cover what they find. Turning it up is a decision that owes a measurement."
   },
 
   "bm25": {
-    "_pourquoi": "Paramètres Okapi BM25 standards. k1 = saturation de la fréquence d'un terme, b = force de la normalisation par la longueur du document. Jamais réglés spécifiquement pour ce corpus — ce sont les valeurs de référence de la littérature.",
+    "_why": "Standard Okapi BM25 parameters. k1 = saturation of a term's frequency, b = strength of the document-length normalisation. Never tuned for this corpus — these are the reference values from the literature.",
     "k1": 1.5,
     "b": 0.75
   },
 
-  "utilite": {
-    "_statut": "HORS CLASSEMENT depuis 2026-09-19 — ADR-0018, mecanisme M5 installe. L'usage ne multiplie plus le score : il est servi comme annotation (nombre d'ouvertures apres suggestion, date de la derniere) a cote du resultat, jamais dedans. Banc qui l'interdit de revenir : tests/utilite_hors_rang.py",
+  "utility": {
+    "_why": "Usage has been outside ranking since ADR-0018. It is shown as an annotation beside a result, never multiplied into its score.",
     "alpha": 0.0,
-    "_pourquoi_zero": "La cle reste pour ne pas casser les lecteurs geles, et vaut 0 : meme si quelqu'un reintroduisait la multiplication par erreur, elle serait inerte. Historique : alpha valait 0,2, MESURE et non choisi (part du top-3 occupee par des fiches a historique, sur 10 requetes : 0 → 3/30 · 0,2 → 8/30 · 0,5 → 12/30 · 1,0 → 15/30). Ce qui a ferme le dossier n'est pas la valeur mais la RESOLUTION : sous 1 % d'ecart lexical, l'ordre s'inverse une fois sur deux quand le corpus bouge, donc dans la seule bande ou le departage aurait le droit d'agir, rien ne distingue le service du bruit. Cf. meta/decisions/adr-0018-utilite-hors-classement-2026-08-30.md et adr-0003-feedback-utilite-alpha-0-2.md"
+    "_why_0_2": "Kept at zero for older readers: even if the multiplier returns by mistake, it remains inert. Earlier measurements over 10 queries gave historical notes 3/30 top-three slots at alpha=0, 8/30 at 0.2, 12/30 at 0.5, and 15/30 at 1.0. The final decision was about resolution: below a 1% lexical difference, corpus changes reverse the order roughly half the time, so the tie-break signal cannot be distinguished from noise."
   },
 
   "exploration": {
-    "_pourquoi": "Places réservées aux fiches peu vues. ⚠️ SA JUSTIFICATION A CHANGE le 2026-09-19 : il ne casse plus la boucle auto-renforcante du multiplicateur d'utilite, qui n'existe plus (ADR-0018, M5). Ce qui subsiste et vaut par soi-meme : la COUVERTURE — aucune fiche neuve ne devient invisible, le rappel ne sert pas eternellement le meme sous-ensemble. Cette fonction n'a AUCUN banc a ce jour : le creneau est donc maintenu PROVISOIREMENT (ADR-0018 §15). Il se declare (exploration: true), il ne substitue rien en silence. Cf. meta/decisions/adr-0004-exploration-une-place-sur-trois.md",
-    "denominateur": 3,
-    "_denominateur": "1 place sur N. À 3 et k=3, une place sur trois. Le quota des systèmes de recommandation (5-10 %) serait NUL ici : sur k=3, 5 % arrondit à zéro et la règle serait décorative.",
-    "seuil_peu_proposee": 3,
-    "_seuil": "En dessous de ce nombre de suggestions, une fiche est « peu vue » et a droit à une place d'exploration."
+    "_why": "Slots reserved for seldom-seen notes to cover new notes and prevent a fixed subset from monopolizing recall. The utility multiplier was removed by ADR-0018, so exploration no longer counters its feedback loop. This coverage rule remains provisional because it has no dedicated benchmark yet; results declare exploration explicitly.",
+    "denominator": 3,
+    "_denominator": "1 slot in N. At 3 with k=3, one slot in three. The 5-10% quota of recommender systems would be ZERO here: on k=3, 5% rounds down to nothing and the rule would be decorative.",
+    "rarely_suggested_threshold": 3,
+    "_threshold": "Below this number of suggestions a note counts as seldom seen and earns an exploration slot."
   }
 }

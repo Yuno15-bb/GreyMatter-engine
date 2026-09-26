@@ -2,24 +2,24 @@
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
-# update_rollback.sh — une mise à jour qu'on ne peut pas défaire n'en est pas une.
+# update_rollback.sh — an update that cannot be undone is not an update.
 #
-# POURQUOI ÇA EXISTE. `brain update` remplace le moteur, joue les migrations et
-# rejoue l'installeur, sur une machine où l'utilisateur garde des fiches qu'il
-# ne peut pas perdre. Tout ça est testable et rien ne l'était : la CI prouvait
-# que la PREMIÈRE install marche, jamais la seconde, et jamais le retour.
+# WHY THIS EXISTS. `brain update` swaps out the engine, runs migrations and
+# replays the installer, on a machine where the user keeps notes they cannot
+# afford to lose. Everything about that is testable and none of it was tested:
+# the CI proved the FIRST install works, never the second one, and never the
+# way back.
 #
-# Il tourne contre un faux amont LOCAL, pas GitHub. Un test qui dépend du vrai
-# distant échoue quand un tag bouge ou que le réseau hoquette, et un test qui
-# échoue pour des raisons étrangères au code est un test qu'on apprend à ignorer.
+# It runs against a LOCAL fake upstream, not GitHub. A test that depends on the
+# real remote fails when a tag moves or the network hiccups, and a test that
+# fails for reasons unrelated to the code is a test people learn to ignore.
 #
-# Les deux choses à prouver, par ordre de ce que ça coûte de se tromper :
-#   1. les fiches de l'utilisateur survivent à une mise à jour ET à un retour —
-#      un outil de mémoire qui perd la mémoire en changeant de version n'a
-#      aucune raison d'exister ;
-#   2. le moteur bouge vraiment, et revient vraiment.
+# The two things it must prove, in order of how much they cost when wrong:
+#   1. the user's notes survive an update AND a rollback — a memory tool that
+#      loses memory during a version change has no reason to exist;
+#   2. the engine actually moves, and actually comes back.
 #
-# Lancement : bash tests/update_rollback.sh   (macOS : install.sh vise Darwin)
+# Run: bash tests/update_rollback.sh          (macOS: install.sh targets Darwin)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -29,96 +29,92 @@ check() {  # check <label> <condition-as-exit-code> [detail]
   if [ "$1" = "0" ]; then echo "  ✅ $2"; else echo "  ❌ $2${3:+  — $3}"; FAILS=$((FAILS + 1)); fi
 }
 
-[ "$(uname)" = "Darwin" ] || { echo "⤳ sauté : install.sh vise macOS"; exit 0; }
+[ "$(uname)" = "Darwin" ] || { echo "⤳ skipped: install.sh targets macOS"; exit 0; }
 
 H="$(mktemp -d)"
 trap 'rm -rf "$H"' EXIT
 export HOME="$H"
 
-echo "▸ construction d'un amont local à deux versions"
+echo "▸ building a local upstream with two versions"
 git clone -q "$ROOT" "$H/upstream"
 cd "$H/upstream"
 git config user.email cbrain-test
 git config user.name cbrain-test
 git checkout -q -B main
 
-# ⚠ On superpose l'ARBRE DE TRAVAIL au clone. `git clone` copie l'historique
-# commité : sans ça, le test exerce en silence le dernier commit au lieu du code
-# sur le disque — ce qu'il faisait, et c'est ainsi que cette ligne est née : une
-# mutation volontairement introduite dans update.sh laissait la suite totalement
-# verte. Un test qui lit un autre code que celui qu'on modifie ne prouve rien.
+# ⚠ Overlay the WORKING TREE on top of the clone. `git clone` copies committed
+# history, so without this the test silently exercises the last commit instead
+# of the code on disk — which it did, and it is how this line came to exist: a
+# mutation deliberately introduced into update.sh left the suite fully green.
+# A test that reads different code than the one being changed proves nothing.
 rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" ./
 git add -A
 git diff --cached --quiet || git commit -q -m "test: working tree"
 
-# L'ANCIENNE version, c'est l'arbre de travail. La NOUVELLE ajoute un marqueur
-# qu'on peut chercher — preuve que le moteur a bougé, et non qu'il l'annonce.
-git tag -a v9.9.0 -m "test: old" 2>/dev/null || { echo "❌ v9.9.0 existe déjà"; exit 1; }
+# The OLD version is whatever the working tree is. The NEW one adds a marker we
+# can look for — proof the engine really moved, rather than reporting that it did.
+git tag -a v9.9.0 -m "test: old" 2>/dev/null || { echo "❌ v9.9.0 already exists"; exit 1; }
 echo "new-version-marker" > UPDATE_MARKER
 git add UPDATE_MARKER && git commit -q -m "test: new"
 git tag -a v9.9.1 -m "test: new"
 
-echo "▸ installation de l'ANCIENNE version"
+echo "▸ installing the OLD version"
 git clone -q "$H/upstream" "$H/engine-src"
 cd "$H/engine-src"
 git checkout -q v9.9.0
 mkdir -p "$H/.claude"
 printf '{"model": "opus"}\n' > "$H/.claude/settings.json"
 "$H/engine-src/install.sh" --no-launchd --no-capsule --no-shortcut >"$H/install.log" 2>&1 \
-  || { echo "❌ install échouée :"; tail -20 "$H/install.log"; exit 1; }
+  || { echo "❌ install failed:"; tail -20 "$H/install.log"; exit 1; }
 export PATH="$H/.local/bin:$PATH"
 
 TRUNK="$H/.c-brain/trunk"
-# Une fiche écrite par l'utilisateur. Elle doit rester intacte à chaque étape.
+# A note the user wrote. It must be untouched at every step below.
 mkdir -p "$TRUNK/lessons"
-printf -- "---\nname: mine\ndescription: \"ma fiche à moi\"\n---\ntravail que je ne peux pas perdre\n" \
+printf -- "---\nname: mine\ndescription: \"my own note\"\n---\nwork I cannot lose\n" \
   > "$TRUNK/lessons/mine.md"
 NOTE_SUM="$(shasum -a 256 "$TRUNK/lessons/mine.md" | cut -d' ' -f1)"
 
 [ "$(brain version 2>/dev/null | tr -d '[:space:]')" ] || true
-echo "  installée : $(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)"
+echo "  installed: $(basename "$(cd "$H/.c-brain/engine" && pwd -P)")"
 
-echo "▸ brain update --check annonce la version sans l'appliquer"
+echo "▸ brain update --check reports the newer version without applying it"
 brain update --check >"$H/check.log" 2>&1; rc=$?
-grep -q "v9.9.1" "$H/check.log"; check $? "--check nomme la nouvelle version" "$(tail -2 "$H/check.log")"
-[ "$rc" = "10" ]; check $? "--check sort en 10 (une mise à jour existe)" "obtenu $rc"
-[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "--check n'a rien appliqué"
+grep -q "v9.9.1" "$H/check.log"; check $? "--check names the new version" "$(tail -2 "$H/check.log")"
+[ "$rc" = "10" ]; check $? "--check exits 10 (an update exists)" "got $rc"
+[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "--check applied nothing"
 
-# D'OÙ, exactement. Une mise à jour fait tourner du code sur cette machine ;
-# nommer une version n'est pas nommer une source. Les deux lignes sont vérifiées
-# parce qu'une divulgation que personne ne contrôle est une divulgation qu'un
-# remaniement supprime en silence — elle ne casse rien en partant.
-grep -q "depuis :.*upstream" "$H/check.log"
-check $? "--check dit de quel remote viendrait le code" "$(tail -4 "$H/check.log")"
-grep -qE "commit : [0-9a-f]{7,}" "$H/check.log"
-check $? "--check nomme le commit exact vers lequel il irait" "$(tail -4 "$H/check.log")"
+# WHERE FROM, exactly. An update runs code on this machine; naming a version is
+# not naming a source. Both lines are asserted because a disclosure nobody
+# checks is one a refactor deletes in silence — it breaks nothing when it goes.
+grep -q "from:.*upstream" "$H/check.log"
+check $? "--check says which remote the code would come from" "$(tail -4 "$H/check.log")"
+grep -qE "commit: [0-9a-f]{7,}" "$H/check.log"
+check $? "--check names the exact commit it would move to" "$(tail -4 "$H/check.log")"
 
-echo "▸ brain update déplace le moteur"
-brain update >"$H/update.log" 2>&1 || { echo "❌ mise à jour échouée :"; tail -20 "$H/update.log"; FAILS=$((FAILS+1)); }
-[ -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "la nouvelle version est vraiment sur le disque" "$(tail -3 "$H/update.log")"
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.1" ]
-check $? "le moteur annonce le nouveau tag"
-# ⚠ Le fichier s'appelle `version-precedente` ici et `previous-version` sur
-# `main` : la traduction a renommé jusqu'aux fichiers d'état. Écrit en dur
-# plutôt que déduit, pour que le jour où l'un des deux bouge, ce test le dise.
-[ "$(cat "$H/.c-brain/state/version-precedente" 2>/dev/null)" = "v9.9.0" ]
-check $? "la version précédente a été enregistrée" "le retour n'aurait nulle part où aller"
+echo "▸ brain update moves the engine"
+brain update >"$H/update.log" 2>&1 || { echo "❌ update failed:"; tail -20 "$H/update.log"; FAILS=$((FAILS+1)); }
+[ -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is really on disk" "$(tail -3 "$H/update.log")"
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
+check $? "the engine reports the new tag"
+[ "$(cat "$H/.c-brain/state/previous-version" 2>/dev/null)" = "v9.9.0" ]
+check $? "the previous version was recorded" "rollback would have nowhere to go"
 
-echo "▸ brain update --rollback remet en place"
-brain update --rollback >"$H/rollback.log" 2>&1 || { echo "❌ retour arrière échoué :"; tail -20 "$H/rollback.log"; FAILS=$((FAILS+1)); }
-[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "la nouvelle version a disparu du disque"
-[ "$(git -C "$H/.c-brain/engine" describe --tags --exact-match 2>/dev/null)" = "v9.9.0" ]
-check $? "le moteur est revenu sur l'ancien tag"
+echo "▸ brain update --rollback puts it back"
+brain update --rollback >"$H/rollback.log" 2>&1 || { echo "❌ rollback failed:"; tail -20 "$H/rollback.log"; FAILS=$((FAILS+1)); }
+[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is gone from disk"
+[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.0" ]
+check $? "the engine is back on the old tag"
 
-echo "▸ et pendant tout ça, les fiches n'ont pas bougé"
-[ -f "$TRUNK/lessons/mine.md" ]; check $? "la fiche existe toujours"
+echo "▸ and through all of it, the notes never moved"
+[ -f "$TRUNK/lessons/mine.md" ]; check $? "the note still exists"
 [ "$(shasum -a 256 "$TRUNK/lessons/mine.md" | cut -d' ' -f1)" = "$NOTE_SUM" ]
-check $? "la fiche est identique à l'octet" "une mise à jour ou un retour a réécrit le travail de l'utilisateur"
+check $? "the note is byte-identical" "an update or a rollback rewrote the user's work"
 
 echo
 if [ "$FAILS" -eq 0 ]; then
-  echo "✅ mise à jour et retour arrière marchent, et aucun ne touche une fiche"
+  echo "✅ update and rollback both work, and neither touches a note"
   exit 0
 fi
-echo "❌ $FAILS échec(s) sur le chemin mise à jour / retour"
+echo "❌ $FAILS failure(s) in the update/rollback path"
 exit 1

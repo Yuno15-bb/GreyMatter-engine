@@ -1,35 +1,35 @@
-// ── L'ACTIVITÉ EN DIRECT, DANS LA BARRE DE MENUS ──────────────────────────
-// l'auteur, 24/09 soir : l'orbe dans l'encoche est « peut-être une mauvaise idée » ;
-// ce qu'il veut, c'est la mise en page des Activités en direct d'Apple sur Mac
-// (pastille à droite de l'encoche, panneau qui tombe au clic) — « c'est
-// précisément ce que je veux avec un format différent ». Puis : « sans passer
-// par l'iPhone on garde ça sur Mac et on fera le Swift à la construction de la
-// version Apple ».
+// ── LIVE ACTIVITY, IN THE MENU BAR ────────────────────────────────────────
+// the author, 24/09 evening: the orb in the notch is "maybe a bad idea";
+// what they want is the layout of Apple's Live Activities on Mac
+// (pill to the right of the notch, panel that drops on click) — "it is
+// precisely what I want with a different format". Then: "without going
+// through the iPhone we keep this on Mac and we'll do the Swift when building the
+// Apple version".
 //
-// Pourquoi une construction maison : une app Mac ne PEUT PAS créer d'Activité en
-// direct. macOS ne fait que refléter celles de l'iPhone (ActivityKit est iOS
-// seulement). Donc ici tout est dessiné par nous, avec deux fenêtres ordinaires :
-//   · la PASTILLE, posée sur une place réservée dans la barre de menus ;
-//   · le PANNEAU, qui tombe dessous au clic.
+// Why a home-made build: a Mac app CANNOT create a Live
+// Activity. macOS only mirrors the iPhone's (ActivityKit is iOS
+// only). So here everything is drawn by us, with two ordinary windows:
+//   · the PILL, set on a space reserved in the menu bar;
+//   · the PANEL, which drops below it on click.
 //
-// ⚠ LA PLACE DANS LA BARRE SE RÉSERVE AVEC UNE ICÔNE DE MENU VIDE. Une fenêtre
-//   posée « à droite de l'encoche » au jugé recouvrirait les icônes de l'auteur.
-//   Une icône de menu transparente de la largeur de la pastille oblige macOS à
-//   faire la place, à l'endroit où il range les icônes ; la pastille se pose
-//   ensuite exactement sur ses bornes.
+// ⚠ THE SPACE IN THE BAR IS RESERVED WITH AN EMPTY MENU ICON. A window
+//   set "to the right of the notch" by eye would cover the author's icons.
+//   A transparent menu icon the width of the pill forces macOS to
+//   make room, where it arranges the icons; the pill then sits
+//   exactly on its bounds.
 //
-// Lancer : electron ilot.js — c'est ce que lance hooks/auto_maintain.py depuis le 24/09
-// (L'utilisateur : « retire l'orbe de l'encoche, on garde la pastille »).
-// ⚠ l'auteur, 24/09 : « même si au repos la mini capsule reste ». La pastille est
-// PERMANENTE : au premier « busy » elle passe au travail, dit « terminé »
-// quelques secondes, puis revient au repos — elle ne disparaît plus.
+// Launch: electron ilot.js — this is what hooks/auto_maintain.py launches since 24/09
+// (the user: "remove the orb from the notch, we keep the pill").
+// ⚠ the author, 24/09: "even at rest the mini capsule stays". The pill is
+// PERMANENT: at the first "busy" it switches to work, says "done" for
+// a few seconds, then goes back to rest — it no longer disappears.
 const { app, BrowserWindow, Tray, nativeImage, screen, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-// Le VRAI verre liquide de macOS (NSGlassEffectView, macOS 26+) : Electron 33
-// n'en a pas, ce module natif le pose derrière la page. l'auteur, 24/09 : « rends
-// les plus transparentes, liquid glass ». Sans lui (autre macOS), repli CSS.
+// macOS's REAL liquid glass (NSGlassEffectView, macOS 26+): Electron 33
+// does not have it, this native module sets it behind the page. the author, 24/09: "make
+// them more transparent, liquid glass". Without it (other macOS), CSS fallback.
 let verre = null;
 if (!process.env.CAPSULE_SANS_VERRE) try { verre = require('electron-liquid-glass'); } catch (e) {}
 function poserVerre(w, rayon, teinte) {
@@ -41,29 +41,29 @@ function poserVerre(w, rayon, teinte) {
 }
 
 const STATUT = path.join(process.env.CAPSULE_STATUT_HOME || os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
-// Pastille : relevée sur la référence de l'auteur (captures inDrive, 24/09), 85 × 26 pt.
-// Panneau : les dimensions d'Apple, que macOS reprend de l'iPhone (HIG Live
-// Activities, « macOS dimensions — use the provided iOS dimensions ») : 408 de
-// large, 84 à 160 de haut. La HAUTEUR SUIT LE CONTENU (« only use the space
-// needed ») : la page la mesure et l'envoie, voir 'ilot-hauteur'.
+// Pill: measured on the author's reference (inDrive captures, 24/09), 85 × 26 pt.
+// Panel: Apple's dimensions, which macOS takes from the iPhone (HIG Live
+// Activities, "macOS dimensions — use the provided iOS dimensions"): 408
+// wide, 84 to 160 high. The HEIGHT FOLLOWS THE CONTENT ("only use the space
+// needed"): the page measures it and sends it, see 'ilot-hauteur'.
 const PILULE = { w: 86, h: 26 };
-// ⚠ l'auteur, 24/09 : « la capsule ouverte coupe environ 1/4 de sa taille ». Le
-//   panneau partait à 84 pt alors que son contenu (#panneau, min-height 124 px)
-//   n'en fait jamais moins : caché, la page ne se remesure pas (pas d'image
-//   dessinée), et la première ouverture rognait le bas de l'orbe.
-// ⚠ l'auteur, 24/09 : « elle est encore trop large » — il voulait le panneau
-//   réduit d'un quart, mêmes proportions. Tout le panneau (texte, orbe, piste)
-//   est rendu à 75 % par le zoom de la page : sa mise en page reste celle de
-//   408 px, rien n'y bouge. Les hauteurs mesurées dans la page sont en px de
-//   page, converties ici en points d'écran.
+// ⚠ the author, 24/09: "the open capsule cuts about 1/4 of its size". The
+//   panel started at 84 pt whereas its content (#panneau, min-height 124 px)
+//   is never less than that: hidden, the page does not re-measure (no frame
+//   drawn), and the first opening cropped the bottom of the orb.
+// ⚠ the author, 24/09: "it is still too wide" — they wanted the panel
+//   reduced by a quarter, same proportions. The whole panel (text, orb, track)
+//   is rendered at 75 % by the page zoom: its layout stays that of
+//   408 px, nothing moves in it. Heights measured in the page are in page
+//   px, converted here to screen points.
 const ECHELLE = 0.75;
 const PANNEAU = { w: Math.round(408 * ECHELLE), h: Math.round(138 * ECHELLE), hMin: 138, hMax: 160 };
-// Tournage de la pastille seule (l'auteur, 25/09 : « quand seule la petite pastille est visible ») : le panneau ne s'ouvre pas tout seul.
+// Filming the pill alone (the author, 25/09: "when only the little pill is visible"): the panel does not open by itself.
 const PANNEAU_REPLIE = process.env.CAPSULE_PASTILLE_SEULE === '1';
-const REPOS_AVANT_FIN = 4000;     // même attente que la rentrée de l'orbe : pas d'aller-retour entre deux outils
-const TERMINE_VISIBLE = 6000;     // « terminé » reste lisible, puis retour au repos
+const REPOS_AVANT_FIN = 4000;     // same wait as the orb tucking in: no back-and-forth between two tools
+const TERMINE_VISIBLE = 6000;     // "done" stays readable, then back to rest
 
-// Même table que orbe.html (VAISSEAUX) — la session est TORRENS.
+// Same table as orbe.html (VAISSEAUX) — the session is TORRENS.
 const VAISSEAUX = { auditing:'NOSTROMO',
   mapping:'NARCISSUS', filing:'NARCISSUS', gardening:'NARCISSUS', distilling:'NARCISSUS',
   challenging:'SULACO', architecting:'SULACO', archiving:'SULACO',
@@ -71,7 +71,7 @@ const VAISSEAUX = { auditing:'NOSTROMO',
   working:'TORRENS', committing:'TORRENS', correcting:'TORRENS' };
 
 let tray = null, pilule = null, panneau = null;
-let course = null;          // le travail en cours : { t0, fin, stations:[{vaisseau, etat, t}], detail }
+let course = null;          // the work in progress: { t0, fin, stations:[{vaisseau, etat, t}], detail }
 let attenteFin = null, attenteEfface = null;
 
 function barreDeMenus() {
@@ -79,11 +79,11 @@ function barreDeMenus() {
   return Math.max(24, d.workArea.y - d.bounds.y);
 }
 
-// ── LA PLACE RÉSERVÉE ─────────────────────────────────────────────────────
+// ── THE RESERVED SPACE ────────────────────────────────────────────────────
 function reserverPlace() {
   if (tray) return;
-  // Une image transparente de la largeur de la pastille, à 2× : macOS la mesure
-  // en points et décale les autres icônes d'autant.
+  // A transparent image the width of the pill, at 2×: macOS measures it
+  // in points and shifts the other icons by as much.
   tray = new Tray(imageVide());
   tray.on('click', basculerPanneau);
 }
@@ -93,13 +93,13 @@ function imageVide() {
 }
 function libererPlace() { if (tray) { tray.destroy(); tray = null; } }
 
-// ⚠ Glissement fait main, image par image. Le glissement natif de macOS
-//   (setBounds(…, true)) a été essayé le 24/09 : la pastille arrivait décalée
-//   de plusieurs dizaines de points et son bout droit restait carré pendant
-//   le trajet. Ici, 16 pas en 260 ms, au rythme où macOS fait glisser les icônes voisines avec une courbe douce ; le verre natif suit
-//   la fenêtre à chaque pas.
+// ⚠ Hand-made slide, frame by frame. macOS's native slide
+//   (setBounds(…, true)) was tried on 24/09: the pill arrived offset
+//   by several tens of points and its right end stayed square during
+//   the trip. Here, 16 steps in 260 ms, at the pace at which macOS slides the neighbouring icons, with a soft curve; the native glass follows
+//   the window at each step.
 const glissements = new Map();
-const cibles = new Map();   // la cible en cours : une hauteur neuve s'y inscrit au lieu d'être écrasée
+const cibles = new Map();   // the current target: a new height is written into it instead of being overwritten
 function glisser(w, cible, duree = 260) {
   clearInterval(glissements.get(w));
   cibles.set(w, cible);
@@ -114,9 +114,9 @@ function glisser(w, cible, duree = 260) {
   glissements.set(w, setInterval(pas, 16));
   pas();
 }
-// La place réservée bouge aussi quand une icône à SA DROITE change de largeur
-// (horloge, voyant d'enregistrement de macOS…) : sans ce guet, la pastille
-// restait en arrière et mordait l'icône voisine (vu le 24/09).
+// The reserved space also moves when an icon on ITS RIGHT changes width
+// (clock, macOS's recording indicator…): without this watch, the pill
+// lagged behind and bit into the neighbouring icon (seen on 24/09).
 let placeVue = '';
 setInterval(() => {
   if (!tray || !pilule) return;
@@ -129,7 +129,7 @@ setInterval(() => {
 function poserPilule(anime) {
   if (!tray || !pilule) return;
   const t = tray.getBounds();
-  if (!t.width) return setTimeout(() => poserPilule(anime), 100);   // l'icône n'est pas encore rangée
+  if (!t.width) return setTimeout(() => poserPilule(anime), 100);   // the icon is not placed yet
   const barre = barreDeMenus();
   const cible = { x: Math.round(t.x + (t.width - PILULE.w) / 2),
                   y: Math.round((barre - PILULE.h) / 2), width: PILULE.w, height: PILULE.h };
@@ -141,8 +141,8 @@ function fenetre(opts, requete) {
   const w = new BrowserWindow(Object.assign({
     frame: false, transparent: true, resizable: false, movable: false,
     alwaysOnTop: true, skipTaskbar: true, hasShadow: false, fullscreenable: false, show: false,
-    // ⚠ Sans ce drapeau, macOS repousse une fenêtre demandée à y < barre sous la
-    //   barre de menus (mesuré le 24/09 pour l'encoche : demandée à 0, posée à 33).
+    // ⚠ Without this flag, macOS pushes a window requested at y < bar below the
+    //   menu bar (measured on 24/09 for the notch: requested at 0, placed at 33).
     enableLargerThanScreen: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false, backgroundThrottling: false,
                       nodeIntegrationInSubFrames: true },
@@ -155,28 +155,28 @@ function fenetre(opts, requete) {
 }
 
 function creerPilule() {
-  // ⚠ roundedCorners:false — cause des « bouts pointus » (l'auteur, 3 fois),
-  //   mesurée le 24/09 sur une fenêtre témoin de 26 pt : macOS rogne toute
-  //   fenêtre avec son propre arrondi, qui mord dans le demi-cercle et le rend
-  //   pointu, que le dessin soit en CSS, en SVG ou en verre. Sans ce rognage,
-  //   le bord suit le cercle au pixel près.
+  // ⚠ roundedCorners:false — cause of the "pointy ends" (the author, 3 times),
+  //   measured on 24/09 on a 26 pt test window: macOS crops every
+  //   window with its own rounding, which bites into the half-circle and makes it
+  //   pointy, whether the drawing is CSS, SVG or glass. Without this cropping,
+  //   the edge follows the circle to the pixel.
   pilule = fenetre({ width: PILULE.w, height: PILULE.h, focusable: false, acceptFirstMouse: true,
                      roundedCorners: false }, 'pilule');
   pilule.webContents.on('did-finish-load', () => {
     if (poserVerre(pilule, PILULE.h / 2, '#00000026')) pilule.webContents.send('ilot-verre');
     envoyer(); poserPilule(); pilule.showInactive();
-    // ouvert d'office avant que la page ait fini de charger : elle a raté le message
+    // opened by default before the page finished loading: it missed the message
     pilule.webContents.send('ilot-ouvert', !!(panneau && panneau.isVisible())); });
 }
 
 function creerPanneau() {
-  // Le verre est celui de macOS (vibrancy), pas un flou CSS : `backdrop-filter`
-  // ne floute que le contenu de la page, jamais le bureau derrière la fenêtre.
-  // Verre liquide si le module est là ; sinon le matériau `hud` d'avant.
-  // ⚠ 25/09, mesuré : sur le verre, l'ombre de fenêtre coûtait ~11 % d'un cœur
-  //   à WindowServer tant que le panneau est ouvert (recalculée à chaque image
-  //   de ce qui passe dessous : vidéo, terminal). Elle ne se voyait qu'en un
-  //   liseré clair au bord ; la page le dessine elle-même (html[data-verre]).
+  // The glass is macOS's (vibrancy), not a CSS blur: `backdrop-filter`
+  // only blurs the page's content, never the desktop behind the window.
+  // Liquid glass if the module is there; otherwise the former `hud` material.
+  // ⚠ 25/09, measured: on the glass, the window shadow cost ~11 % of a core
+  //   to WindowServer while the panel is open (recomputed at every frame
+  //   of what passes beneath: video, terminal). It could only be seen as a
+  //   light rim at the edge; the page draws it itself (html[data-verre]).
   const avecVerre = !!verre;
   panneau = fenetre(Object.assign({ width: PANNEAU.w, height: PANNEAU.h, hasShadow: !avecVerre,
     webPreferences: { zoomFactor: ECHELLE },
@@ -186,9 +186,9 @@ function creerPanneau() {
     if (avecVerre && poserVerre(panneau, Math.round(24 * ECHELLE), '#0000001a')) panneau.webContents.send('ilot-verre');
     envoyer();
   });
-  // ⚠ l'auteur, 24/09 : « déplié et persistant, seulement si on clique dans la mini
-  //   pastille il se replie ». Un clic ailleurs ne le referme donc PLUS (le
-  //   panneau d'Apple, lui, se referme au blur) : seule la pastille le replie.
+  // ⚠ the author, 24/09: "expanded and persistent, only if you click in the mini
+  //   pill does it fold". A click elsewhere therefore NO LONGER closes it (Apple's
+  //   panel, for its part, closes on blur): only the pill folds it.
 }
 
 function basculerPanneau() {
@@ -196,18 +196,18 @@ function basculerPanneau() {
   if (panneau.isVisible()) return fermerPanneau();
   ouvrirPanneau(false);
 }
-// l'auteur, 24/09 : « la pastille doit toujours être dépliée au lancement des
-// agents ». Ouverture d'office à chaque nouveau vaisseau, SANS prendre le focus :
-// le terminal où il tape garde la main. Sans focus, pas de blur : le panneau
-// reste déplié jusqu'à un clic sur la pastille ou la fin du travail.
+// the author, 24/09: "the pill must always be expanded when the agents
+// launch". Opened by default at each new ship, WITHOUT taking focus:
+// the terminal they type in keeps control. Without focus, no blur: the panel
+// stays expanded until a click on the pill or the end of the work.
 function ouvrirPanneau(focus) {
   if (!panneau || !pilule) return;
   if (panneau.isVisible()) return;
   if (!pilule.isVisible()) return setTimeout(() => ouvrirPanneau(focus), 150);
-  // ⚠ l'auteur, 24/09 : « quand le nom change […] la grande capsule bouge avec le
-  //   mouvement de la petite alors qu'elle devrait rester statique ». Le panneau
-  //   s'aligne donc sur le bord DROIT de la place réservée, le seul qui ne bouge
-  //   pas quand la pastille change de largeur (mesuré, voir ilot-largeur).
+  // ⚠ the author, 24/09: "when the name changes […] the big capsule moves with the
+  //   movement of the small one whereas it should stay static". So the panel
+  //   aligns on the RIGHT edge of the reserved space, the only one that does not move
+  //   when the pill changes width (measured, see ilot-largeur).
   const p = tray ? tray.getBounds() : pilule.getBounds(), barre = barreDeMenus(), d = screen.getPrimaryDisplay().bounds;
   let x = Math.round(p.x + p.width - PANNEAU.w);
   x = Math.max(d.x + 8, Math.min(x, d.x + d.width - PANNEAU.w - 8));
@@ -224,31 +224,31 @@ function fermerPanneau() {
   if (pilule) pilule.webContents.send('ilot-ouvert', false);
 }
 ipcMain.on('ilot-clic', basculerPanneau);
-// La pastille porte le nom et l'action : sa largeur suit le texte. La place
-// réservée est refaite à la nouvelle largeur, puis la pastille s'y repose.
+// The pill carries the name and the action: its width follows the text. The reserved
+// space is redone at the new width, then the pill settles on it again.
 ipcMain.on('ilot-largeur', (_e, w) => {
   w = Math.max(60, Math.min(240, Math.ceil(w)));
   if (w === PILULE.w) return;
   if (!tray) { PILULE.w = w; return; }
-  // ⚠ Mesuré le 24/09 : le bord DROIT de la place réservée ne bouge pas quand
-  //   elle change de largeur (1277 pour 156, 208 et 180 pt), mais juste après
-  //   setImage, getBounds rend parfois l'ancien x avec la nouvelle largeur. La
-  //   pastille s'élargissait alors vers la droite, par-dessus l'icône voisine,
-  //   puis sautait à gauche 250 ms plus tard — l'à-coup vu par l'auteur (« à chaque
-  //   changement d'agent le tout prend des à-coups juste avant de changer »).
-  //   On calcule donc la place finale depuis le bord droit, avant setImage, et
-  //   on y glisse en même temps que macOS fait glisser les autres icônes.
+  // ⚠ Measured on 24/09: the RIGHT edge of the reserved space does not move when
+  //   it changes width (1277 for 156, 208 and 180 pt), but right after
+  //   setImage, getBounds sometimes returns the old x with the new width. The
+  //   pill then widened to the right, over the neighbouring icon,
+  //   then jumped left 250 ms later — the jolt seen by the author ("at each
+  //   change of agent the whole thing jolts just before changing").
+  //   So we compute the final place from the right edge, before setImage, and
+  //   slide there at the same time as macOS slides the other icons.
   const t = tray.getBounds(), droite = t.x + t.width, marge = Math.max(0, t.width - PILULE.w);
   PILULE.w = w;
   const place = { x: droite - (w + marge), width: w + marge };
-  placeVue = place.x + ',' + place.width;              // le guet ne doit pas corriger une seconde fois
+  placeVue = place.x + ',' + place.width;              // the watch must not correct a second time
   tray.setImage(imageVide());
   glisser(pilule, { x: Math.round(place.x + marge / 2), y: pilule.getBounds().y, width: w, height: PILULE.h }, 260);
-  // Le texte ne revient qu'une fois la pastille arrivée.
+  // The text only comes back once the pill has arrived.
   setTimeout(() => { if (pilule && PILULE.w === w) pilule.webContents.send('ilot-pose'); }, 280);
 });
-// Si macOS déplace la place réservée (une icône voisine apparaît), le panneau
-// suit, toujours calé sur le bord droit de la place.
+// If macOS moves the reserved space (a neighbouring icon appears), the panel
+// follows, always pinned to the right edge of the space.
 function suivrePanneau(t) {
   if (panneau && panneau.isVisible()) {
     const d = screen.getPrimaryDisplay().bounds, b = panneau.getBounds();
@@ -258,12 +258,12 @@ function suivrePanneau(t) {
 }
 ipcMain.on('ilot-hauteur', (_e, h) => {
   PANNEAU.h = Math.ceil(Math.max(PANNEAU.hMin, Math.min(PANNEAU.hMax, h)) * ECHELLE);
-  if (panneau && glissements.has(panneau)) cibles.get(panneau).height = PANNEAU.h;   // en plein glissé
+  if (panneau && glissements.has(panneau)) cibles.get(panneau).height = PANNEAU.h;   // mid-slide
   else if (panneau && panneau.isVisible()) { const b = panneau.getBounds(); panneau.setBounds({ x: b.x, y: b.y, width: PANNEAU.w, height: PANNEAU.h }); }
   else if (panneau) panneau.setSize(PANNEAU.w, PANNEAU.h);
 });
 
-// ── LE TRAVAIL EN COURS ───────────────────────────────────────────────────
+// ── THE WORK IN PROGRESS ──────────────────────────────────────────────────
 function lireStatut() {
   let st = { state: 'idle' };
   try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
@@ -273,8 +273,8 @@ function lireStatut() {
 }
 
 function envoyer() {
-  // `ouvert` redit à chaque tour si le panneau est à l'écran : le premier
-  // 'ilot-ouvert' part avant que la page du panneau soit chargée, et se perd.
+  // `ouvert` says again on each turn whether the panel is on screen: the first
+  // 'ilot-ouvert' leaves before the panel's page has loaded, and gets lost.
   const ouvert = !!(panneau && !panneau.isDestroyed() && panneau.isVisible());
   const donnees = course ? Object.assign({}, course, { maintenant: Date.now(), vocabulaire: VAISSEAUX, ouvert }) : null;
   for (const w of [pilule, panneau]) if (w && !w.isDestroyed()) w.webContents.send('ilot', donnees);
@@ -287,8 +287,8 @@ function commencer() {
   if (!panneau) creerPanneau();
 }
 
-// Le repos : la pastille reste, le panneau se replie, et le dernier travail est
-// gardé en une ligne pour qui ouvre le panneau.
+// Rest: the pill stays, the panel folds, and the last work is
+// kept on one line for whoever opens the panel.
 function auRepos() {
   fermerPanneau();
   const d = course && course.stations.length
@@ -297,11 +297,11 @@ function auRepos() {
   envoyer();
 }
 
-// l'auteur, 24/09 : « on ne voit pas sur quoi travaille l'orbe, juste le topic
-// ou grand thème est suffisant ». Le code qui défile dans l'orbe reste (sa
-// texture), mais le panneau DIT le thème en clair : le projet du dernier fichier
-// écrit, pris dans le flux des diffs que l'orbe lit déjà. Seule la fin du flux
-// est lue, et seulement quand il a bougé.
+// the author, 24/09: "we can't see what the orb is working on, just the topic
+// or broad theme is enough". The code scrolling in the orb stays (its
+// texture), but the panel SAYS the theme plainly: the project of the last file
+// written, taken from the diff stream the orb already reads. Only the end of the stream
+// is read, and only when it has moved.
 const FLUX = path.join(os.homedir(), '.claude', 'companion', 'sessions');
 let themeVu = { f: '', t: 0, theme: '' };
 function themeEnCours() {
@@ -350,21 +350,21 @@ function tic() {
   envoyer();
 }
 
-// ── BATTEMENT DE VIE ─────────────────────────────────────────────────────
-// hooks/auto_maintain.py (ensure_capsule) cherche le process par son chemin
-// `capsule/node_modules/electron` : la pastille y répond comme l'orbe. Sans
-// battement, passé 90 s, il la prendrait pour une capsule ZOMBIE et la tuerait
-// pour relancer. Ici il n'y a pas de fenêtre permanente à prouver — entre deux
-// travaux, ne rien montrer est le comportement voulu — donc le battement prouve
-// que la boucle de lecture tourne.
-// Dérivé de $HOME, pas de __dirname : le hook lit le state du TRONC, la pastille vit dans le moteur.
+// ── HEARTBEAT ────────────────────────────────────────────────────────────
+// hooks/auto_maintain.py (ensure_capsule) looks for the process by its path
+// `capsule/node_modules/electron`: the pill answers there like the orb. Without a
+// heartbeat, after 90 s, it would take it for a ZOMBIE capsule and kill it
+// to relaunch. Here there is no permanent window to prove — between two
+// jobs, showing nothing is the intended behaviour — so the heartbeat proves
+// that the reading loop is running.
+// Derived from $HOME, not __dirname: the hook reads the TRUNK's state, the pill lives in the engine.
 const ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');
 function battement() { try { fs.writeFileSync(ALIVE, String(Date.now())); } catch (e) {} }
 
-// ⚠ UNE SEULE PASTILLE. l'auteur, 24/09 : « il y a 2 capsules ouvertes » — une
-//   relance à la main et celle du hook (ensure_capsule) sont parties à 7 s
-//   d'écart, chacune a réservé sa place et posé sa pastille. Le verrou d'app
-//   fait que la seconde s'arrête aussitôt, quel que soit celui qui l'a lancée.
+// ⚠ A SINGLE PILL. the author, 24/09: "there are 2 capsules open" — a
+//   manual relaunch and the hook's (ensure_capsule) started 7 s
+//   apart, each reserved its space and set its pill. The app lock
+//   makes the second stop at once, whoever launched it.
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
 app.whenReady().then(() => {
@@ -373,6 +373,6 @@ app.whenReady().then(() => {
   commencer(); auRepos();
   ['display-metrics-changed', 'display-added', 'display-removed'].forEach((e) => screen.on(e, poserPilule));
   tic(); setInterval(tic, 700);
-  if (process.env.CAPSULE_ILOT_OUVRIR === '1') setTimeout(basculerPanneau, 2500);   // banc : panneau ouvert d'office
+  if (process.env.CAPSULE_ILOT_OUVRIR === '1') setTimeout(basculerPanneau, 2500);   // bench: panel opened by default
 });
-app.on('window-all-closed', (e) => e.preventDefault());   // la place se libère, l'app reste à l'écoute
+app.on('window-all-closed', (e) => e.preventDefault());   // the space is freed, the app keeps listening

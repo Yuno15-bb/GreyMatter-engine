@@ -1,15 +1,15 @@
 {
   "name": "c-brain",
-  "description": "C Brain — un tronc de connaissance persistant et vivant pour les agents en ligne de commande.",
+  "description": "GreyMatter — a persistent, growing knowledge trunk for command-line agents.",
   "owner": {
-    "name": "Dylan Peellaert",
+    "name": "GreyMatter",
     "url": "https://github.com/Yuno15-bb"
   },
   "plugins": [
     {
       "name": "c-brain",
       "source": "./",
-      "description": "Une mémoire qui pousse. Ce que tu résous une fois est distillé en fiche, rangé, relié, et resurgit tout seul la fois suivante — depuis n'importe quel projet. Tes fiches restent sur ta machine et rien n'est envoyé nulle part."
+      "description": "A memory that grows. What you work out once is distilled into a note, filed, linked, and handed back when you ask for it — from any project. Your notes stay on your machine and nothing is sent anywhere."
     }
   ]
 }

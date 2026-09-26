@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Recharge l'onglet navigateur de l'app après une rafale de modifications.
+"""Reloads the app's browser tab after a burst of modifications.
 
-Lancé DÉTACHÉ par post_diff.py. Le « réel modifié » se regarde là où il vit
+Launched DETACHED by post_diff.py. The "changed reality" is watched where it lives
 vraiment : dans un navigateur, pas dans un panneau maison.
 
 Trois garde-fous :
-  - DÉBOUNCE : une rafale de 8 fichiers = UN rechargement, pas huit.
-  - VERROU : un seul recharcheur en attente à la fois (par session).
+  - DEBOUNCE: a burst of eight files = ONE reload, not eight.
+  - LOCK: only one reloader waiting at a time (per session).
   - JAMAIS de vol de focus : `reload` sur l'onglet, sans `activate`.
 """
 
@@ -49,7 +49,7 @@ def feed_mtime(sid):
 
 
 # Chrome puis Safari : on recharge l'onglet existant ; on n'en ouvre un que si
-# aucun n'affiche l'app (une seule fois, marqué dans reload.json).
+# none of them shows the app (once only, recorded in reload.json).
 AS_CHROME_RELOAD = """
 tell application "System Events"
   if not (exists process "Google Chrome") then return "absent"
@@ -104,7 +104,7 @@ def reload_tabs(port):
         if res.isdigit():
             total += int(res)
     if total == 0:
-        # Repli : même app servie sur 127.0.0.1 au lieu de localhost
+        # Fallback: the same app served on 127.0.0.1 instead of localhost
         for tpl in (AS_CHROME_RELOAD, AS_SAFARI_RELOAD):
             res = osa(tpl.format(host="127.0.0.1:%d" % port))
             if res.isdigit():
@@ -150,8 +150,8 @@ def main():
     except FileExistsError:
         age = time.time() - os.path.getmtime(LOCKDIR)
         if age < MAX_WAIT + 10:
-            return                  # un recharcheur attend déjà : rien à faire
-        os.utime(LOCKDIR, None)     # verrou périmé (process tué) : on le reprend
+            return                  # a reloader is already waiting: nothing to do
+        os.utime(LOCKDIR, None)     # stale lock (process killed): we take it over
 
     try:
         deadline = time.time() + MAX_WAIT
@@ -162,7 +162,7 @@ def main():
 
         port = dev_port()
         if not port:
-            return                  # aucune app servie : rien à montrer
+            return                  # no app served: nothing to show
         n = reload_tabs(port)
         if n == 0:
             open_once(port)

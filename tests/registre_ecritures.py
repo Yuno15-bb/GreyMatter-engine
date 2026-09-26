@@ -1,13 +1,5 @@
-#!/usr/bin/env python3
-"""BANC — le registre d'écritures voit-il réellement une fiche bouger, et peut-il ROUGIR ?
 
-Le registre remplacé ici est resté vert-silencieux dix jours : il n'écrivait plus rien, et
-rien ne le disait. Un banc qui se contenterait de vérifier « une ligne a été écrite » aurait
-le même défaut. On exige donc, à chaque fois, qu'un SABOTAGE du mécanisme rende le contrôle
-ROUGE — sinon le contrôle ne regarde pas ce qu'il prétend regarder.
-
-Aucune écriture ne touche le tronc réel : tout se joue dans un BRAIN_HOME jetable.
-"""
+"""Verify that file writes are recorded accurately."""
 import importlib.util
 import json
 import os
@@ -21,7 +13,7 @@ HOOK = os.path.join(os.path.dirname(ICI), "hooks", "registre_ecritures.py")
 
 
 def charger(brain):
-    """Charge le hook avec BRAIN_HOME pointé sur le tronc jetable."""
+    """Verify that file writes are recorded accurately."""
     os.environ["BRAIN_HOME"] = brain
     spec = importlib.util.spec_from_file_location("registre_ecritures_%d" % time.time_ns(), HOOK)
     mod = importlib.util.module_from_spec(spec)
@@ -37,14 +29,14 @@ def tronc():
 
 
 def lignes(brain):
-    p = os.path.join(brain, "state", "ecritures-fiches.jsonl")
+    p = os.path.join(brain, "state", "note-writes.jsonl")
     if not os.path.exists(p):
         return []
     return [json.loads(x) for x in open(p, encoding="utf-8") if x.strip()]
 
 
 def ecrire(brain, rel, texte):
-    """Écrit une fiche SANS passer par un outil tracé — exactement le cas qui échappait."""
+    """Verify that file writes are recorded accurately."""
     p = os.path.join(brain, rel)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
@@ -52,74 +44,71 @@ def ecrire(brain, rel, texte):
 
 
 def scenario(mod, brain):
-    """Rend (n_traces_1, n_traces_2, entrees) pour deux écritures indépendantes."""
-    mod.main({"session_id": "SID-A", "tool_name": "Bash"})          # arme le jalon
+    """Verify that file writes are recorded accurately."""
+    mod.main({"session_id": "SID-A", "tool_name": "Bash"})          
     time.sleep(1.05)
-    ecrire(brain, "lessons/fixture-une.md", "# une\ntexte\n")
+    ecrire(brain, "lessons/fixture-one.md", "# one\ntext\n")
     n1 = mod.main({"session_id": "SID-A", "tool_name": "Bash"})
     time.sleep(1.05)
-    ecrire(brain, "projects/fixture-deux.md", "# deux\ntexte\n")
+    ecrire(brain, "projects/fixture-two.md", "# two\ntext\n")
     n2 = mod.main({"session_id": "SID-B", "tool_name": "Write"})
     return n1, n2, lignes(brain)
 
 
 def conforme(n1, n2, entrees):
-    """L'assertion COMPLÈTE — utilisée telle quelle par la preuve positive ET par chaque
-    sabotage. Les avoir séparées est ce qui a laissé passer le sabotage « mtime inventée » :
-    la contre-épreuve ne comparait que des COMPTES, et deux lignes fausses comptent comme
-    deux lignes justes. Un agrégat ne voit pas une permutation."""
+    """Verify that file writes are recorded accurately."""
     return (n1 == 1 and n2 == 1 and len(entrees) == 2
-            and entrees[0]["path"] == "lessons/fixture-une.md"
-            and entrees[0]["sid"] == "SID-A" and entrees[0]["outil"] == "Bash"
-            and entrees[1]["path"] == "projects/fixture-deux.md"
-            and entrees[1]["sid"] == "SID-B" and entrees[1]["outil"] == "Write"
+            and entrees[0]["path"] == "lessons/fixture-one.md"
+            and entrees[0]["sid"] == "SID-A" and entrees[0]["tool"] == "Bash"
+            and entrees[1]["path"] == "projects/fixture-two.md"
+            and entrees[1]["sid"] == "SID-B" and entrees[1]["tool"] == "Write"
             and all(e["attribution"] == "coincidence" for e in entrees)
-            # ecart_s doit être petit quand l'écriture vient d'avoir lieu : c'est lui qui
-            # permet de distinguer « cette session a écrit » de « elle a seulement vu ».
-            and all(0 <= e["ecart_s"] <= 5 for e in entrees))
+            
+            
+            and all(0 <= e["gap_s"] <= 5 for e in entrees))
 
 
 def main():
     echecs = []
 
-    # ── 1. PREUVE POSITIVE ────────────────────────────────────────────────────────
+    
     brain = tronc()
     try:
         mod = charger(brain)
         n1, n2, entrees = scenario(mod, brain)
-        print("Preuve positive — deux écritures indépendantes, hors outil tracé")
+        print("Positive proof — two independent writes outside a tracked tool")
         for e in entrees:
-            print("   %s  sid=%-6s outil=%-5s %s" % (e["ts"], e["sid"], e["outil"], e["path"]))
+            print("   %s  sid=%-6s tool=%-5s %s" % (e["ts"], e["sid"], e["tool"], e["path"]))
         ok = conforme(n1, n2, entrees)
-        print("   %s chemin, session, outil et écart temporel justes, une trace par écriture"
+        print("   %s path, session, tool, and elapsed time match; one entry per write"
               % ("✅" if ok else "❌"))
         if not ok:
             echecs.append("preuve positive")
-        # le premier passage ne doit RIEN journaliser (sinon 500 lignes de bruit au démarrage)
+        
         b2 = tronc()
         m2 = charger(b2)
-        ecrire(b2, "lessons/avant.md", "# avant\n")
+        ecrire(b2, "lessons/before.md", "# before\n")
         m2.main({"session_id": "S", "tool_name": "Bash"})
         vide = lignes(b2) == []
-        print("   %s premier passage : arme le jalon, ne journalise rien" % ("✅" if vide else "❌"))
+        print("   %s first pass arms the checkpoint and writes no entry" % ("✅" if vide else "❌"))
         if not vide:
             echecs.append("premier passage bruyant")
         shutil.rmtree(b2, ignore_errors=True)
     finally:
         shutil.rmtree(brain, ignore_errors=True)
 
-    # ── 2. SABOTAGES — chacun doit rendre la preuve positive ROUGE ────────────────
-    print("\nCONTRE-ÉPREUVE — le banc rougit-il quand le mécanisme est cassé ?")
+    
+    print("\nCOUNTERTEST — does the check fail when its mechanism is broken?")
     sabotages = [
-        ("le balayage ne voit plus rien",
+        ("the scan no longer sees writes",
          lambda m: setattr(m, "fiches_modifiees", lambda depuis: [])),
-        ("aucune zone n'est couverte",
+        ("no zone is covered",
          lambda m: setattr(m, "ZONES", ())),
-        ("le jalon n'avance jamais",
+        ("the checkpoint never advances",
          lambda m: setattr(m, "_jalon_ecrit", lambda t: None)),
-        ("le balayage rend une mtime inventée (ecart_s faux)",
+        ("the scan reports a fabricated mtime (wrong elapsed time)",
          lambda m: setattr(m, "fiches_modifiees",
-                           lambda depuis: [("lessons/fixture-une.md", 0.0)])),
+                           lambda depuis: [("lessons/fixture-one.md", 0.0)])),
     ]
     for nom, casser in sabotages:
         b = tronc()
@@ -131,34 +120,34 @@ def main():
                 rouge = not conforme(n1, n2, entrees)
             except Exception:
                 rouge = True
-            print("   %s %s" % ("✅" if rouge else "❌ RESTE VERT —", nom))
+            print("   %s %s" % ("✅" if rouge else "❌ STILL PASSES —", nom))
             if not rouge:
-                echecs.append("sabotage muet : " + nom)
+                echecs.append("silent sabotage: " + nom)
         finally:
             shutil.rmtree(b, ignore_errors=True)
 
-    # ── 3. PÉRIMÈTRE DÉCLARÉ — ce que le registre ne voit PAS, par conception ─────
-    print("\nPérimètre déclaré (ces absences sont voulues, pas des défauts)")
+    
+    print("\nDeclared scope (these omissions are intentional)")
     b = tronc()
     try:
         m = charger(b)
         m.main({"session_id": "S", "tool_name": "Bash"})
         time.sleep(1.05)
-        ecrire(b, "tools/hors-zone.md", "# hors zone\n")
+        ecrire(b, "tools/outside-scope.md", "# outside scope\n")
         n = m.main({"session_id": "S", "tool_name": "Bash"})
-        print("   %s une écriture hors des cinq zones du savoir n'est pas journalisée"
+        print("   %s a write outside the five knowledge zones is not logged"
               % ("✅" if n == 0 else "❌"))
         if n != 0:
-            echecs.append("périmètre débordé")
+            echecs.append("scope exceeded")
     finally:
         shutil.rmtree(b, ignore_errors=True)
 
     print()
     if echecs:
-        print("❌ BANC ROUGE : " + " · ".join(echecs))
+        print("❌ TEST FAILED: " + " · ".join(echecs))
         return 1
-    print("✅ BANC VERT — le registre voit une écriture hors outil tracé, "
-          "et les quatre sabotages le font rougir.")
+    print("✅ TEST PASSED — the ledger sees writes outside tracked tools, "
+          "and all four sabotages make it fail.")
     return 0
 
 

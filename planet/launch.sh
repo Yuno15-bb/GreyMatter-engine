@@ -1,18 +1,18 @@
 #!/bin/bash
-# Lance la 3D/2D Knowledge Map (ex-« planète de connaissance ») : régénère le graphe, sert planet/ en local, ouvre le navigateur.
-# (Un serveur est requis car le globe charge graph.json par fetch() — impossible en file://.)
+# Launches the Knowledge Planet: regenerates the graph, serves planet/ locally, opens the browser.
+# (A server is required because the globe loads graph.json through fetch() — impossible over file://.)
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 BRAIN="$(cd "$DIR/.." && pwd)"
 PORT="${1:-8765}"
 
-python3 "$BRAIN/hooks/coactivation.py"            # chaleur + session courante à jour (Étage 2)
-python3 "$BRAIN/hooks/graph_export.py"            # graphe à jour avant d'ouvrir
+python3 "$BRAIN/hooks/coactivation.py"            # heat + current session, up to date
+python3 "$BRAIN/hooks/graph_export.py"            # graph up to date before opening
 
-# tue un serveur déjà sur ce port (relance propre)
+# kill any server already on this port (clean restart)
 lsof -ti tcp:"$PORT" 2>/dev/null | xargs kill 2>/dev/null || true
 
-echo "📟  Planète du tronc — signature MOTHER — http://localhost:$PORT  (Ctrl+C pour arrêter)"
+echo "📟  Trunk planet — MOTHER signature — http://localhost:$PORT  (Ctrl+C to stop)"
 ( sleep 1; open "http://localhost:$PORT" ) &
 cd "$DIR"
 exec python3 -m http.server "$PORT"

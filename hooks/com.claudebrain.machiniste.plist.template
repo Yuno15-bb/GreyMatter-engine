@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Machiniste — ronde machine du Claude Brain (RAM / CPU / chaleur).
-     Toutes les 10 minutes, sans LLM : mesure, tue les serveurs de dev orphelins,
-     signale le reste. Coût quota : zéro.
+<!-- Machinist — the C Brain's machine round (RAM / CPU / heat).
+     Every 10 minutes, no LLM: measures, kills orphaned dev servers,
+     reports the rest. Quota cost: zero.
 
-     TEMPLATE — __HOME__ doit être substitué par le vrai $HOME à l'installation
-     (même piège que com.claudebrain.resume : un /Users/<ancien-nom> en dur avait cassé
-     silencieusement la reprise sur machine neuve le 2026-07-22). -->
+     TEMPLATE — __HOME__ must be substituted with the real $HOME at install time
+     (the same trap as com.claudebrain.resume: a hardcoded home path silently broke
+     resume on a fresh machine on 2026-07-22). -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -18,17 +18,9 @@
     </array>
     <key>EnvironmentVariables</key>
     <dict>
-        <!-- I-3 (2026-08-20) : l'identité du Brain se TRANSMET, elle ne se devine pas.
-             Sans cette variable, l'enfant retombe sur ~/claude-brain — le tronc de
-             l'utilisateur courant — quel que soit le Brain que ce service est censé
-             servir. Un chemin absolu dans ProgramArguments désigne le CODE à exécuter,
-             jamais le Brain à mesurer : mesuré le 2026-08-20 sur 18 hooks de session,
-             tous invoqués par chemin absolu, aucun n'ancrait quoi que ce soit.
-             `__BRAIN__` est rendu par la racine CANONIQUE (realpath) à l'installation,
-             et non par `__HOME__/.c-brain/trunk` : le symlink ~/.claude/projects/…/memory
-             donne deux chemins pour un seul arbre. -->
-        <key>BRAIN_HOME</key>
-        <string>__BRAIN__</string>
+        <!-- No BRAIN_HOME here: install.sh and adopt-launchd.sh render only
+             `__HOME__`, and the child resolves the default trunk itself
+             (hooks/brain_racine.py: BRAIN_HOME, else ~/.c-brain/trunk). -->
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
@@ -36,7 +28,7 @@
     <integer>600</integer>
     <key>RunAtLoad</key>
     <true/>
-    <!-- Nice bas : la ronde ne doit jamais disputer le CPU au travail de l'utilisateur. -->
+    <!-- Low nice: the round must never compete for CPU with the user's work. -->
     <key>Nice</key>
     <integer>10</integer>
     <key>ProcessType</key>

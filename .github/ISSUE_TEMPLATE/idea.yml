@@ -1,0 +1,15 @@
+name: Idea or question
+description: Something missing, something unclear, or a use you had in mind.
+labels: [question]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you are trying to do
+      description: The goal, not only the feature. Knowing what you were after often changes the answer.
+    validations: { required: true }
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: Optional, but the workaround usually shows where the real gap is.

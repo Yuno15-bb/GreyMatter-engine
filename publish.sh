@@ -59,6 +59,27 @@ else
   echo "  ⤳ skipped on \`$BRANCH\` (only \`fr\` syncs from the Brain)"
 fi
 
+# Prose has no test, so it never fails — it just quietly describes a program that
+# stopped behaving that way. `docs_aligned.py` does not read the prose; it asks
+# one mechanical question: has the code a document claims to describe moved since
+# that document was last edited? A version that ships with unreviewed docs ships a
+# manual for a different program, and the reader has no way to tell.
+# IT REFUSES. It only warned for a few hours, while four documents were behind:
+# a gate nobody can satisfy teaches people to skip the script, which is worse than
+# no gate. The backlog reached zero the same day, so the gate closed — a promise
+# to tighten "later" is a promise nobody keeps.
+# The cost of being wrong here is one doc edit. The cost of being wrong the other
+# way is a published version whose manual describes a different program.
+echo "▸ Do the docs still describe this code?"
+if ! python3 tests/docs_aligned.py; then
+  echo
+  echo "⛔ A document has not been reviewed since the code it describes moved."
+  echo "   Open it, check the claim, edit it — that commit is the new baseline."
+  echo "   Nothing is published."
+  exit 1
+fi
+echo "  ✅ every document reviewed since the code it describes last moved"
+
 echo "▸ Is the working tree clean?"
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "❌ Uncommitted changes. Commit first."

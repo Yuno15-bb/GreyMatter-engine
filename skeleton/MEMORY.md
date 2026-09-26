@@ -1,46 +1,46 @@
-# 🌳 Mon tronc de connaissance
+# 🌳 My knowledge trunk
 
-> **Index chargé au démarrage de chaque session.** Ce fichier est la carte de
-> l'arbre — une ligne par fiche, jamais le contenu des fiches. Une fiche écrite
-> en session atterrit ici, puis le jardinier la range et tisse ses liens.
+> **Index loaded at the start of every session.** This file is the map of the
+> tree — one line per note, never the content of the notes. A note written during
+> a session lands here, then the gardener files it and weaves its links.
 
-Ce tronc est **vide** : c'est le tien. Il grandit avec le travail, pas avant.
+This trunk is **empty**: it is yours. It grows with the work, not before.
 
-## Organisation
+## Layout
 
-- **`lessons/`** — leçons transverses. Le vrai or : ce qu'un projet t'a appris et
-  qui servira aux autres. Une leçon = un piège compris une fois, jamais deux.
-- **`projects/<projet>/`** — un dossier par projet : contexte distillé, décisions,
-  points de reprise.
-- **`meta/`** — ta façon de travailler : conventions, standards, méthode.
-- **`life/`** — hors-code : objectifs, contraintes, situation personnelle.
-- **`sessions/`** — archive brute des sessions. Couche froide, sans perte.
-- **`state/`** — état interne des hooks et des agents. Pas de la connaissance.
+- **`lessons/`** — cross-project lessons. The real gold: what one project taught
+  you that will serve the others. One lesson = one trap understood once, never
+  twice.
+- **`projects/<project>/`** — one folder per project: distilled context,
+  decisions, resume points.
+- **`meta/`** — how you work: conventions, standards, method.
+- **`life/`** — outside the code: goals, constraints, personal situation.
+- **`sessions/`** — raw session archive. The cold layer, lossless.
+- **`state/`** — internal state of hooks and agents. Not knowledge.
 
-## Format d'une fiche
+## Note format
 
 ```markdown
 ---
-name: mon-piege-appris
-description: <une ligne — c'est elle qui décide si la fiche remonte au rappel>
+name: a-trap-i-learned
+description: <one line — this is what decides whether the note surfaces in recall>
 metadata:
   type: lesson
 ---
 
-Le fait, court et vérifiable.
+The fact, short and verifiable.
 
-**Pourquoi :** ce qui le rend non évident.
-**Comment l'appliquer :** la règle exécutable qui en découle.
+**Why:** what makes it non-obvious.
+**How to apply:** the executable rule that follows from it.
 
-Relié à [[une-autre-fiche]].
+Related to [[another-note]].
 ```
 
-- Les liens `[[nom-de-fiche]]` construisent le graphe. Lie généreusement : un lien
-  vers une fiche qui n'existe pas encore n'est pas une erreur, c'est une note
-  de ce qu'il reste à écrire.
-- La `description` est ce que le rappel lit pour juger la pertinence. Soigne-la
-  plus que le titre.
+- `[[note-name]]` links build the graph. Link generously: a link to a note that
+  does not exist yet is not an error, it is a marker of what remains to write.
+- The `description` is what recall reads to judge relevance. Care about it more
+  than the title.
 
 ## Index
 
-*(vide — tes premières fiches apparaîtront ici)*
+*(empty — your first notes will appear here)*

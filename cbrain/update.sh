@@ -1,36 +1,52 @@
 #!/usr/bin/env bash
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
-# update.sh — met à jour le MOTEUR. Ne touche jamais au TRONC.
+# update.sh — updates the ENGINE. Never touches the TRUNK.
 #
-# Ce que ça fait :
-#   1. récupère les tags publiés,
-#   2. bascule sur le plus récent (jamais sur `main` : une branche de travail
-#      n'a pas à s'installer chez quelqu'un),
-#   3. joue les migrations non encore appliquées,
-#   4. rejoue install.sh (idempotent) pour propager les nouveautés,
-#   5. vérifie, et propose le retour arrière si ça casse.
+# What it does:
+#   1. fetches the published tags INTO ITS OWN MIRROR (~/.c-brain/source.git),
+#   2. BUILDS the newest one as a new immutable version under versions/,
+#   3. runs migrations that have not been applied yet,
+#   4. selftests THAT VERSION while it is still inactive,
+#   5. and only if it is green, switches the `engine` symlink atomically.
 #
-# Ce que ça NE fait PAS : lire, modifier ou envoyer une seule de tes fiches.
+# A version may only become the active engine after passing its own controls, so
+# there is no window in which the live engine is one nobody has checked. A red
+# candidate is deleted; the active version was never involved, which is why the
+# rollback path is now a safety net rather than a load-bearing step.
 #
-# Usage : brain update [--check] [--rollback] [--force] [--auto]
+# What it does NOT do: read, modify or send a single one of your notes.
+#
+# Usage: brain update [--check] [--rollback] [--force] [--auto]
 set -euo pipefail
 
+# Canonical — see the same note in install.sh. The ownership check compares the
+# engine's resolved path against the recorded one, and the two must be resolved
+# the same way or a legitimate install is refused on a symlinked $HOME.
 CB="$HOME/.c-brain"
-ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P)" || { echo "❌ Moteur introuvable ($CB/engine)."; exit 1; }
+CB="$(cd "$CB" 2>/dev/null && pwd -P || echo "$HOME/.c-brain")"
+ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P)" || { echo "❌ Engine not found ($CB/engine)."; exit 1; }
 STATE="$CB/state"
-APPLIED="$STATE/migrations-appliquees.txt"
-PREVIOUS="$STATE/version-precedente"
+VERSIONS="$CB/versions"
+RUNTIME="$CB/runtime"
+MIRROR="$CB/source.git"
+APPLIED="$STATE/applied-migrations.txt"
+PREVIOUS="$STATE/previous-version"
+MANAGED="$STATE/engine-managed"
+DEVMARK="$STATE/engine-dev"
 mkdir -p "$STATE"
 
-# ─── Mise à jour automatique ──────────────────────────────────────────────
-# Fichiers d'état partagés avec `cbrain/check_update.py`, qui déclenche le mode
-# `--auto` au démarrage de session.
+# Building and verifying a version — the same definitions the installer uses.
+. "$ENGINE/cbrain/engine-lib.sh"
+
+# ─── Automatic updates ────────────────────────────────────────────────────
+# State files shared with `cbrain/check_update.py`, which triggers `--auto` at
+# session start.
 AUTO=0
-VERROU="$STATE/auto-update.lock"          # un dossier : `mkdir` est atomique
+LOCK="$STATE/auto-update.lock"            # a directory: `mkdir` is atomic
 JOURNAL="$STATE/auto-update.log"
-RESULTAT="$STATE/last-auto-update"        # lu, affiché puis effacé par le hook
-ARRET_AUTO="$STATE/auto-update-off"
+RESULT="$STATE/last-auto-update"          # read, shown, then deleted by the hook
+AUTO_OFF="$STATE/auto-update-off"
 
 MODE="update"
 for a in "$@"; do
@@ -41,331 +57,488 @@ for a in "$@"; do
     --auto) AUTO=1; MODE="update" ;;
     --auto-off) MODE="auto-off" ;;
     --auto-on)  MODE="auto-on" ;;
-    --passer-en-anglais|--switch-en) MODE="switch" ;;
-    *) echo "Usage : brain update [--check] [--rollback] [--force] [--auto|--auto-off|--auto-on] [--passer-en-anglais]"; exit 1 ;;
+    *) echo "Usage: brain update [--check] [--rollback] [--force] [--auto|--auto-off|--auto-on]"; exit 1 ;;
   esac
 done
 
-# ─── L'interrupteur ───────────────────────────────────────────────────────
-# Il vient AVANT tout le reste, exprès : couper l'automatique ne doit dépendre
-# ni du réseau, ni de l'état du dépôt, ni de rien qui puisse échouer. C'est la
-# seule commande de ce fichier qui doit marcher même quand tout va mal.
+# ─── The switch ───────────────────────────────────────────────────────────
+# It comes BEFORE everything else, on purpose: turning automatic updates off
+# must not depend on the network, on the state of the repo, or on anything that
+# can fail. It is the one command in this file that has to work when nothing
+# else does.
 if [ "$MODE" = "auto-off" ]; then
-  mkdir -p "$STATE"; : > "$ARRET_AUTO"
-  echo "✅ Mise à jour automatique COUPÉE."
-  echo "   Le démarrage de session signalera les nouvelles versions sans les installer."
-  echo "   Pour la remettre :  brain update --auto-on"
+  mkdir -p "$STATE"; : > "$AUTO_OFF"
+  echo "✅ Automatic updates are OFF."
+  echo "   Session start will report new versions without installing them."
+  echo "   To turn them back on:  brain update --auto-on"
   exit 0
 fi
 if [ "$MODE" = "auto-on" ]; then
-  rm -f "$ARRET_AUTO"
-  echo "✅ Mise à jour automatique REMISE."
-  echo "   Chaque démarrage de session installera la dernière version publiée."
+  rm -f "$AUTO_OFF"
+  echo "✅ Automatic updates are back ON."
+  echo "   Every session start will install the latest published version."
   exit 0
 fi
 
-# ─── Préambule du mode automatique ────────────────────────────────────────
-# POURQUOI CE MODE EXISTE. Jusqu'ici la mise à jour était un geste : le hook
-# signalait, l'utilisateur tapait `brain update`. Personne ne tapait. Le moteur
-# publié restait des semaines derrière celui de l'auteur, et le seul signe était
-# une ligne au démarrage qu'on apprend à ne plus lire.
+# ─── Automatic mode preamble ──────────────────────────────────────────────
+# WHY THIS MODE EXISTS. Updating used to be a gesture: the hook reported, the
+# user typed `brain update`. Nobody typed it. The published engine stayed weeks
+# behind the author's, and the only sign was a line at session start that people
+# learn to stop reading.
 #
-# Ce que ça change côté sûreté, dit franchement : du code venu du dépôt distant
-# s'installe désormais SANS qu'on le demande. C'est un canal d'exécution. Trois
-# contreparties, non négociables :
-#   · `$ARRET_AUTO` (ou CBRAIN_NO_AUTO_UPDATE=1) rend le comportement d'avant —
-#     on signale, on n'applique pas. La porte de sortie existe AVANT la porte
-#     d'entrée.
-#   · le selftest décide. En automatique personne ne regarde l'écran : une mise
-#     à jour qui casse l'outil et le LAISSE cassé serait pire que pas de mise à
-#     jour du tout. Donc rouge = retour arrière immédiat, par le script.
-#   · rien ne bloque jamais une session — c'est le hook qui détache, ici on ne
-#     fait que travailler en silence dans un journal.
+# What it costs, said plainly: code from the remote repo now installs itself
+# WITHOUT being asked. That is an execution channel. Three counterweights, none
+# of them optional:
+#   · `$AUTO_OFF` (or CBRAIN_NO_AUTO_UPDATE=1) restores the previous behaviour —
+#     report, do not apply. The way out exists before the way in.
+#   · the selftest decides. In automatic mode nobody is watching the screen: an
+#     update that breaks the tool and LEAVES it broken would be worse than no
+#     update at all. So red means roll back, immediately, by the script itself.
+#   · nothing ever blocks a session — the hook is what detaches; here we only
+#     work quietly into a log.
 if [ "$AUTO" = "1" ]; then
-  if [ -e "$ARRET_AUTO" ] || [ -n "${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi
+  if [ -e "$AUTO_OFF" ] || [ -n "${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi
 
-  # Un verrou, parce que plusieurs sessions démarrent en même temps. `mkdir`
-  # échoue si le dossier existe : c'est le test-et-pose atomique du shell, là où
-  # `[ -f ] && touch` laisse une fenêtre entre les deux.
-  # Verrou périmé : une machine qui s'endort ou une session tuée en plein milieu
-  # laisserait le dossier pour toujours, et l'auto-update mourrait en silence —
-  # exactement le genre de panne muette qu'on cherche à éviter.
-  if ! mkdir "$VERROU" 2>/dev/null; then
-    if [ -n "$(find "$VERROU" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
-      rm -rf "$VERROU"; mkdir "$VERROU" 2>/dev/null || exit 0
+  # A lock, because several sessions start at the same time. `mkdir` fails when
+  # the directory exists: that is the shell's atomic test-and-set, where
+  # `[ -f ] && touch` leaves a window between the two.
+  # Stale lock: a machine that goes to sleep or a session killed mid-run would
+  # leave the directory behind forever, and automatic updates would die in
+  # silence — exactly the mute failure this is meant to avoid.
+  if ! mkdir "$LOCK" 2>/dev/null; then
+    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+      rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
     else
-      exit 0                      # une autre session s'en occupe déjà
+      exit 0                      # another session is already on it
     fi
   fi
-  trap 'rm -rf "$VERROU"' EXIT INT TERM
+  trap 'rm -rf "$LOCK"' EXIT INT TERM
 
-  # Tout ce que le script raconte part au journal : en automatique il n'y a pas
-  # d'écran. Le journal est écrasé à chaque passage — on veut la dernière panne
-  # lisible, pas un fichier qui grossit sans que personne n'y revienne.
+  # Everything this script says goes to the log: in automatic mode there is no
+  # screen. The log is overwritten on each pass — we want the last failure
+  # readable, not a file that grows while nobody ever goes back to it.
   exec >"$JOURNAL" 2>&1
   echo "=== auto-update $(date '+%Y-%m-%d %H:%M:%S') ==="
 fi
 
-# Écrit le compte rendu que le hook affichera à la session SUIVANTE. Une seule
-# ligne, deux champs : l'état, puis la version concernée.
-resultat() { [ "$AUTO" = "1" ] && printf '%s\t%s\n' "$1" "$2" > "$RESULTAT"; return 0; }
+# Writes the report the hook will show at the NEXT session. One line, two
+# fields: the outcome, then the version it concerns.
+result() { [ "$AUTO" = "1" ] && printf '%s\t%s\n' "$1" "$2" > "$RESULT"; return 0; }
 
 say()  { echo "  $*"; }
 warn() { echo "  ⚠️  $*"; }
 
-command -v git >/dev/null || { echo "❌ git est requis pour les mises à jour."; exit 1; }
-git -C "$ENGINE" rev-parse --git-dir >/dev/null 2>&1 || {
-  echo "❌ Le moteur n'est pas un dépôt git — il a été copié, pas cloné."
-  echo "   Reclone-le pour bénéficier des mises à jour."
-  exit 1; }
-
-current() { git -C "$ENGINE" describe --tags --exact-match 2>/dev/null || git -C "$ENGINE" rev-parse --short HEAD; }
-
-# Le tag le plus récent au sens des versions, pas au sens alphabétique :
-# sans `-V`, v10 passerait avant v9.
-# À quelle FAMILLE de tags appartient cette installation — anglaise (`v1.2.3`)
-# ou française (`v1.2.3-fr`).
-#
-# ⚠ Ce n'est pas de la décoration, c'est un bug de bascule de langue.
-# Les tags ne sont pas rangés par branche, donc `git tag -l 'v*'` rend les deux
-# familles d'un coup — et `sort -V` place `v1.18.0-fr` APRÈS `v1.18.0`. Prendre
-# le maximum global faisait donc basculer une installation ANGLAISE sur l'arbre
-# FRANÇAIS dès que la branche fr rattrapait son retard, sans la moindre erreur :
-# le tag existe, le checkout réussit, et l'utilisateur trouve simplement son
-# outil en train de parler une autre langue. Ça n'est resté caché que tant que
-# `fr` traînait derrière.
-#
-# Donc : lire la famille sur ce qui est installé, et ne jamais en sortir.
-#
-# Le seul cas que ça ne peut pas trancher, c'est un tag nu et un tag `-fr` sur
-# le MÊME commit, où `--exact-match` en choisit un arbitrairement. Ça ne peut
-# pas arriver ici : les deux branches divergent par construction, `main` étant
-# la traduction de `fr`. Si elles convergeaient un jour, il faudrait une famille
-# ENREGISTRÉE au lieu d'une famille déduite.
-# ⚠ FAMILLE ENREGISTRÉE — posée le 2026-08-13 avec la fin de la famille `-fr`.
-# La déduction ci-dessous lit la famille sur le tag INSTALLÉ. Elle est donc
-# incapable d'enregistrer un choix : une installation française qui bascule en
-# anglais retomberait sur `-fr` au moindre doute. Le fichier tranche, et il
-# n'existe que si quelqu'un l'a écrit — personne ne bascule tout seul.
-FAMILLE_FICHIER="$STATE/tag-family"
-
-family() {
-  local tag branch
-  if [ -f "$FAMILLE_FICHIER" ]; then cat "$FAMILLE_FICHIER"; return; fi
-  tag="$(git -C "$ENGINE" describe --tags --exact-match 2>/dev/null || true)"
-  case "$tag" in
-    *-fr) echo "-fr"; return ;;
-    v*)   echo "";    return ;;
-  esac
-  # Pas posé sur un tag (clone frais, ou checkout détaché) : on retombe sur la
-  # branche que suit le clone.
-  branch="$(git -C "$ENGINE" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-  [ "$branch" = "fr" ] && echo "-fr" || echo ""
+# ─── The switch itself ───────────────────────────────────────────────────────
+# ATOMIC, and it has to be. `~/.c-brain/engine` is what the trunk's mounts, the
+# `brain` CLI, the Claude Code hooks and the launchd jobs all resolve through, so
+# for the instant it does not exist, every one of them is broken — and sessions
+# start at moments we do not choose. `ln -s` onto an existing path fails, and
+# `rm` then `ln` leaves exactly that hole. Creating the link under a temporary
+# name and `mv`-ing it over is a single rename(2): readers see the old target or
+# the new one, never nothing.
+# ⚠ `-h` IS NOT OPTIONAL, and leaving it out does not fail — it does something
+# else entirely. `~/.c-brain/engine` is a symlink to a DIRECTORY, and `mv -f`
+# stats its destination, follows it, and moves the new link INSIDE the old
+# version. The engine never switches, and an immutable version quietly gains a
+# stray file that breaks its own manifest. Measured on 2026-08-17: with `-f` the
+# link still pointed at v1.0.0 and `versions/v1.0.0/.engine.switching.12345` had
+# appeared. The update still seemed to work, because the `install.sh` replay
+# further down relinks the engine with `rm` + `ln -s` — so the real switch was
+# happening non-atomically, in a different file, by accident.
+# `-h` renames the LINK itself: one rename(2), no window, nothing followed.
+switch_to() {   # switch_to <version-name>
+  local name="$1" tmp="$CB/.engine.switching.$$"
+  [ -d "$VERSIONS/$name" ] || return 1
+  ln -sfn "$VERSIONS/$name" "$tmp" || return 1
+  mv -hf "$tmp" "$CB/engine" || { rm -f "$tmp"; return 1; }
+  # And CHECK. A switch that silently did not happen is what this comment is
+  # about; asserting the result costs one readlink.
+  [ "$(readlink "$CB/engine")" = "$VERSIONS/$name" ]
 }
 
-# Le tag le plus récent de la famille de CETTE installation, par ordre de
-# version et non alphabétique : sans `-V`, v10 passerait avant v9.
+# Keep the active version, the one to roll back to, and one spare. Anything older
+# is code nobody can reach: `--rollback` only ever names `previous-version`.
+# Pruning runs AFTER a successful switch, never before — a version we might still
+# need must not be removed on the strength of an update that has not landed.
+prune_versions() {
+  local keep_active keep_prev n
+  keep_active="$(basename "$(cd "$CB/engine" && pwd -P)")"
+  keep_prev="$(cat "$PREVIOUS" 2>/dev/null || true)"
+  n=0
+  # Newest first, so the survivors are the recent ones.
+  for d in $(ls -1t "$VERSIONS" 2>/dev/null); do
+    [ "$d" = "$keep_active" ] && continue
+    [ "$d" = "$keep_prev" ] && continue
+    n=$((n + 1))
+    [ "$n" -le 1 ] && continue          # one spare beyond active + previous
+    rm -rf "${VERSIONS:?}/$d" && say "pruned old version $d"
+  done
+}
+
+command -v git >/dev/null || { echo "❌ git is required for updates."; exit 1; }
+
+# The version this installation is running, by name. It is the directory name
+# under `versions/`, which is also what `$CB/VERSION` records — no git call, and
+# nothing to derive: an engine has no history to ask.
+# ⚠ MULTI-LINE ON PURPOSE. tests/update_tag_family.sh lifts these functions out of
+# this file with `sed '/^current() {/,/^}/p'` rather than re-implementing them, so
+# that a change here cannot leave a passing copy behind in the test. A one-line
+# definition has no `^}` to stop at, and the extraction swallows the rest of the
+# file — the eval then fails and every case reports "command not found".
+current() {
+  basename "$ENGINE"
+}
+
+# Which FAMILY of tags this installation belongs to — English (`v1.2.3`) or
+# French (`v1.2.3-fr`).
+#
+# ⚠ This is not decoration, it is a language-switch bug waiting to happen.
+# Tags are not scoped to a branch, so `git tag -l 'v*'` hands back both
+# families at once — and `sort -V` places `v1.18.0-fr` AFTER `v1.18.0`.
+# Taking the global maximum therefore moved an ENGLISH installation onto the
+# FRENCH tree the moment the French branch caught up, with no error at all:
+# the tag exists, the checkout succeeds, and the user simply finds their tool
+# speaking another language. It stayed hidden only while `fr` lagged behind.
+#
+# So: read the family off what is installed, and never leave it.
+#
+# The one case this cannot resolve is a bare tag and an `-fr` tag on the SAME
+# commit, where `--exact-match` picks one arbitrarily. That cannot happen here:
+# the two branches diverge by construction, `main` being a translation of `fr`.
+# If they ever converge, this needs a recorded family instead of a derived one.
+# ⚠ RECORDED FAMILY — added on 2026-08-13 together with the end of the `-fr`
+# family. The derivation below reads the family off the INSTALLED tag, so it
+# cannot remember a choice: a French installation that switched to English
+# would fall back to `-fr` at the first doubt. The file settles it, and it only
+# exists if somebody wrote it — nobody switches on their own. This is the
+# "recorded family instead of a derived one" the note above already called for.
+FAMILY_FILE="$STATE/tag-family"
+
+# ⚠ READ OFF THE INSTALLED VERSION NAME, not off a repository. An engine has no
+# git history to interrogate any more; what it has is the name the installer gave
+# it, which is `git describe` output taken at build time — `v1.29.0`,
+# `v1.28.1-24-g6f28312`, `v1.29.0-fr`. That name carries the family just as the
+# tag did, and it is the only thing left that can.
+family() {
+  if [ -f "$FAMILY_FILE" ]; then cat "$FAMILY_FILE"; return; fi
+  case "$(current)" in
+    *-fr|*-fr-*) echo "-fr" ;;
+    *)           echo ""    ;;
+  esac
+}
+
+# The newest tag of THIS installation's family, by version order rather than
+# alphabetical order: without `-V`, v10 would sort before v9.
 latest_tag() {
   local suffix rx
   suffix="$(family)"
   if [ -n "$suffix" ]; then rx='^v[0-9]+\.[0-9]+\.[0-9]+-fr$'
   else                      rx='^v[0-9]+\.[0-9]+\.[0-9]+$'; fi
-  # `|| true` : sans tag correspondant, `grep` sort 1, et sous `set -e` +
-  # `pipefail` ça tuerait le script une ligne avant le contrôle de résultat
-  # vide qui, lui, gère déjà le cas proprement.
-  git -C "$ENGINE" tag -l 'v*' | grep -E "$rx" | sort -V | tail -1 || true
+  # `|| true`: with no matching tag `grep` exits 1, and under `set -e` +
+  # `pipefail` that would kill the script one line before the empty-result
+  # check that already handles it properly.
+  git -C "$MIRROR" tag -l 'v*' | grep -E "$rx" | sort -V | tail -1 || true
 }
 
-# ─── Fin de la famille française ──────────────────────────────────────────
+# ─── THE OWNERSHIP GATE ──────────────────────────────────────────────────────
 #
-# POURQUOI CE BLOC EXISTE. `fr` a cessé d'être un produit le 2026-08-13 :
-# `publish.sh` y refuse tout tag. Or `latest_tag()` filtre PAR FAMILLE — une
-# installation `-fr` ne verra donc jamais un tag nu, et `brain update` lui
-# répondra « déjà à jour (v1.27.0-fr) » jusqu'à la fin des temps. Pas « la
-# famille s'arrête », pas « voici la suite » : un vert qui ment, et invisible
-# depuis chez l'auteur.
+# AN UPDATER MAY ONLY REPLACE WHAT IT BUILT.
 #
-# Or le `update.sh` d'une install figée est figé lui aussi : AUCUN correctif
-# futur ne peut l'atteindre. Le seul canal qui reste est une dernière release
-# `-fr` — celle-ci — dont le CONTENU porte la bascule. Une install à
-# v1.27.0-fr voit v1.28.0-fr par sa propre logique de famille, l'installe
-# normalement, et se retrouve avec ce bloc en place.
+# This used to be a set of guesses about the engine's git state — clean, detached,
+# sitting exactly on a release tag — because the engine WAS the user's own clone
+# and there was nothing else to go on. Guessing could not work, and did not: a
+# `git clone` lands on a branch, so the documented install produced an engine
+# that was refused for ever, while a developer's clean checkout parked on a tag
+# was adopted as though the installer had put it there.
 #
-# La bascule n'est jamais automatique : elle CHANGE LA LANGUE de l'outil, et
-# c'est exactement le bug que `tests/update_tag_family.sh` existe pour tenir.
-# On informe, l'utilisateur décide.
-version_nue() {   # la version la plus récente de la famille NUE, ou vide
-  git -C "$ENGINE" tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true
-}
+# There is nothing left to guess. A managed engine is a directory THIS INSTALLER
+# CREATED, under `versions/`, and provenance is a fact rather than an inference.
+# A development engine says so in a file it was given by name. Neither can be
+# mistaken for the other, and the update path contains no git command that names
+# a directory the user made.
+gate_ownership() {   # every replacing path goes through here, rollback included
+  refus() {
+    echo "❌ $1"
+    echo "   Nothing was changed: no version was built, replaced or switched."
+    echo "   $2"
+    result "blocked" "${NEW:-}"
+    exit 1
+  }
 
-fin_de_famille() {   # affiche l'avis si la famille -fr est close pour cette install
-  [ "$(family)" = "-fr" ] || return 0
-  # ⚠ LA BONNE QUESTION est « ma famille a-t-elle encore quelque chose pour moi ? »,
-  #   pas « la famille anglaise est-elle plus récente ? ». Une install à
-  #   v1.27.0-fr qui a encore v1.28.0-fr devant elle n'est PAS en fin de famille :
-  #   lui parler de bascule la ferait sortir d'un arbre encore vivant.
-  [ "$(latest_tag)" = "$CUR" ] || return 0
-  local nue cur_nu
-  nue="$(version_nue)"
-  [ -n "$nue" ] || return 0                     # aucune famille nue → rien à proposer
-  cur_nu="${CUR%-fr}"
-  echo
-  echo "  ℹ️  $CUR est la DERNIÈRE version française — la famille s'arrête ici."
-  if [ "$cur_nu" != "$nue" ] && \
-     [ "$(printf '%s\n%s\n' "$cur_nu" "$nue" | sort -V | tail -1)" = "$nue" ]; then
-    echo "      Une version plus récente existe déjà en anglais : $nue"
-  else
-    echo "      La suite est publiée en anglais seulement (dernière en date : $nue)."
+  # 1. A DEVELOPMENT ENGINE IS NEVER UPDATED. Asked for by name with
+  #    `install.sh --dev`, so there is no doubt about intent, and no inspection
+  #    of the repository is needed — or possible — to reach the right answer.
+  if [ -f "$DEVMARK" ]; then
+    echo "Development engine detected."
+    echo "Automatic engine updates are disabled for --dev installations."
+    echo "   engine: $ENGINE"
+    echo "   Update it with git, as the working repository it is."
+    result "dev" "${NEW:-}"
+    # A configuration, not a failure: in automatic mode this is the expected
+    # outcome on a developer's machine and must not be reported as an error.
+    [ "$AUTO" = "1" ] && exit 0
+    exit 1
   fi
-  echo "      Tes fiches ne bougent pas : seule la langue du MOTEUR change."
-  echo "      → brain update --passer-en-anglais"
+
+  # 2. NOT OWNED. No marker, no update — and no adoption path any more. Adoption
+  #    was the hole: it inferred ownership from a tag, which is exactly what a
+  #    developer's checkout can look like.
+  if [ ! -f "$MANAGED" ]; then
+    refus "This engine carries no managed-install marker." \
+          "Run ./install.sh from the source to build a managed engine."
+  fi
+
+  # 3. The marker names the versions root this installation owns. The engine must
+  #    live INSIDE it: `~/.c-brain/engine` may have been repointed at somebody's
+  #    repository since, and a stale marker must not vouch for it.
+  OWNED_ROOT="$(cat "$MANAGED" 2>/dev/null)"
+  case "$ENGINE/" in
+    "$OWNED_ROOT"/*) : ;;
+    *) refus "The active engine is not one this installation built." \
+             "It owns $OWNED_ROOT, the engine is $ENGINE." ;;
+  esac
+
+  # 4. IMMUTABILITY. A version that has changed since it was built is an anomaly,
+  #    and it is REPORTED rather than repaired: silently overwriting it would
+  #    destroy whatever wrote to it, which is the whole family of faults this
+  #    file exists to end.
+  if ! verify_manifest "$ENGINE"; then
+    refus "The active version has been modified since it was installed." \
+          "Run \`brain doctor\` to see what changed. It is not repaired on its own."
+  fi
 }
 
-if [ "$MODE" = "switch" ]; then
-  mkdir -p "$STATE"
-  : > "$FAMILLE_FICHIER"            # famille nue = suffixe vide, choix ENREGISTRÉ
-  echo "✅ Famille anglaise enregistrée. Mise à jour en cours…"
-  MODE="update"
+# ─── A development engine answers here, and goes no further ──────────────────
+# BEFORE the mirror, the fetch and the version arithmetic. Reached later, this
+# install would first be told it has no source mirror — which is true, and
+# completely beside the point: it is not that the update cannot proceed, it is
+# that it must not. Saying the right thing means saying it before the machinery
+# has a chance to complain about something else.
+if [ -f "$DEVMARK" ] && [ "$MODE" != "auto-off" ] && [ "$MODE" != "auto-on" ]; then
+  echo "Development engine detected."
+  echo "Automatic engine updates are disabled for --dev installations."
+  echo "   engine: $ENGINE"
+  echo "   Update it with git, as the working repository it is."
+  result "dev" ""
+  [ "$AUTO" = "1" ] && exit 0     # expected on a developer's machine, not a failure
+  exit 1
 fi
 
-# ─── Retour arrière ───────────────────────────────────────────────────────
+# ─── Rollback ───────────────────────────────────────────────────────
 if [ "$MODE" = "rollback" ]; then
-  [ -f "$PREVIOUS" ] || { echo "❌ Aucune version précédente enregistrée."; exit 1; }
+  [ -f "$PREVIOUS" ] || { echo "❌ No previous version on record."; exit 1; }
   target="$(cat "$PREVIOUS")"
-  echo "⏪ Retour à $target"
-  git -C "$ENGINE" checkout -q "$target"
-  bash "$ENGINE/install.sh" >/dev/null 2>&1 || warn "install.sh a signalé un problème"
-  echo "✅ Revenu à $target. Tes fiches n'ont pas bougé."
+  # A rollback replaces the active engine, so it goes through the same gate: the
+  # same incident through a different flag is still the same incident.
+  gate_ownership
+  # ⚠ THE TARGET MUST EXIST. Rolling back used to mean `git checkout <ref>` in a
+  # repository that held every version at once, so there was nothing to check.
+  # Now a version is a directory, and pruning removes old ones. Landing somewhere
+  # else — or on a half-deleted tree — because the recorded version is gone is
+  # worse than refusing: the user would be told they had gone back, and they
+  # would not have.
+  if [ ! -d "$VERSIONS/$target" ]; then
+    echo "❌ The previous version ($target) is no longer installed."
+    echo "   Nothing was changed. Versions still on disk:"
+    ls -1 "$VERSIONS" 2>/dev/null | sed 's/^/     /'
+    exit 1
+  fi
+  echo "⏪ Rolling back to $target"
+  switch_to "$target" || { echo "❌ could not switch the engine link."; exit 1; }
+  bash "$VERSIONS/$target/install.sh" >/dev/null 2>&1 || warn "install.sh reported a problem"
+  echo "✅ Back on $target. Your notes did not move."
   exit 0
 fi
 
-# ─── État distant ─────────────────────────────────────────────────────────
+# ─── Remote state ─────────────────────────────────────────────────────────
 CUR="$(current)"
-echo "🔄 C Brain — version installée : $CUR"
+echo "🔄 C Brain — installed version: $CUR"
 
-# --force : le dépôt distant fait autorité sur les tags. L'utilisateur n'en crée
-# jamais — sans ça, un seul tag republié côté auteur fait échouer le fetch
-# (« would clobber existing tag ») et BLOQUE toutes les mises à jour suivantes,
-# en affichant « pas de réseau ». Panne silencieuse et définitive.
-if ! FETCH_ERR="$(git -C "$ENGINE" fetch --tags --force 2>&1)"; then
-  # Hors ligne, dépôt inaccessible, tag distant déplacé… Ce n'est pas bloquant,
-  # mais on ne raconte pas « pas de réseau » quand la cause est autre : un
-  # diagnostic faux coûte plus cher qu'un message un peu long.
-  say "impossible de récupérer les versions distantes — on réessaiera plus tard."
+# --force: the remote is authoritative on tags. The user never creates any —
+# without this, a single tag republished by the author makes the fetch fail
+# ("would clobber existing tag") and BLOCKS every subsequent update, while
+# reporting "no network". A silent, permanent failure.
+# ⚠ INTO THE MIRROR, never into a repository the user made. This is the line
+# that makes "the updater does not touch your clone" a structural fact rather
+# than a promise somebody has to keep remembering.
+if [ ! -d "$MIRROR" ]; then
+  say "no source mirror ($MIRROR) — re-run ./install.sh from the source to create it."
+  exit 0
+fi
+if ! FETCH_ERR="$(git -C "$MIRROR" fetch --tags --force origin 2>&1)"; then
+  # Offline, unreachable repo, moved remote tag… none of it is blocking, but
+  # we do not claim "no network" when the cause is something else: a wrong
+  # diagnosis costs more than a slightly longer message.
+  say "could not reach the remote versions — will retry later."
   [ -n "$FETCH_ERR" ] && printf '%s\n' "$FETCH_ERR" | head -3 | sed 's/^/     /'
   exit 0
 fi
 
 NEW="$(latest_tag)"
-[ -n "$NEW" ] || { say "aucune version publiée pour l'instant."; exit 0; }
+[ -n "$NEW" ] || { say "no version published yet."; exit 0; }
 
 if [ "$CUR" = "$NEW" ] && [ "$MODE" != "force" ]; then
-  say "déjà à jour ($NEW)."
-  fin_de_famille                    # « à jour » dans une famille close doit le DIRE
+  say "already up to date ($NEW)."
   exit 0
 fi
 
-echo "  nouvelle version disponible : $NEW"
+echo "  new version available: $NEW"
 
-# D'OÙ VIENT LE CODE. Une mise à jour remplace le moteur — elle fera tourner du
-# code sur cette machine à la session suivante. Nommer une version, ce n'est pas
-# nommer une source : un remote peut être changé par quiconque peut écrire dans
-# la config git du moteur, et un tag peut être déplacé. Donc l'URL d'origine et
-# le commit exact sont affichés AVANT d'appliquer quoi que ce soit, parce que
-# c'est ce qu'une personne aurait besoin de vérifier.
+# WHERE THE CODE COMES FROM. An update replaces the engine — it runs code on
+# this machine at the next session. Naming a version is not naming a source: a
+# remote can be changed by anyone who can write to the engine's git config, and
+# a tag can be moved. So the origin URL and the exact commit are shown BEFORE
+# anything is applied, because that is what a person would need to check.
 #
-# C'est de la divulgation, pas de la vérification. Les tags ne sont pas signés
-# (voir SECURITY.md) ; ce qui suit te permet de regarder, pas à la machine de
-# refuser.
-REMOTE_URL="$(git -C "$ENGINE" remote get-url origin 2>/dev/null || echo "inconnu")"
-TARGET_SHA="$(git -C "$ENGINE" rev-parse --short "$NEW" 2>/dev/null || echo "inconnu")"
-echo "  depuis : $REMOTE_URL"
-echo "  commit : $TARGET_SHA"
+# This is disclosure, not verification. Tags are unsigned (see SECURITY.md);
+# what follows lets you look, not the machine refuse.
+REMOTE_URL="$(git -C "$MIRROR" remote get-url origin 2>/dev/null || echo "unknown")"
+TARGET_SHA="$(git -C "$MIRROR" rev-parse --short "$NEW" 2>/dev/null || echo "unknown")"
+echo "  from:   $REMOTE_URL"
+echo "  commit: $TARGET_SHA"
+
 if [ "$MODE" = "check" ]; then
-  echo "  → \`brain update\` pour l'installer."
-  exit 10   # 10 = « une mise à jour existe », lisible par un script
+  echo "  → \`brain update\` to install it."
+  exit 10   # 10 = "an update exists", readable by a script
 fi
 
-# ─── Application ──────────────────────────────────────────────────────────
-# Un moteur modifié à la main = travail de quelqu'un. On ne l'écrase pas.
-if ! git -C "$ENGINE" diff --quiet || ! git -C "$ENGINE" diff --cached --quiet; then
-  echo "❌ Le moteur a des modifications locales non commitées."
-  echo "   Range-les (git stash / git commit) avant de mettre à jour."
-  # En automatique, ce n'est pas une panne : c'est un refus délibéré d'écraser le
-  # travail de quelqu'un. Mais il doit se VOIR, sinon l'installation décroche
-  # version après version pendant que le démarrage reste silencieux.
-  resultat "bloquee" "$NEW"
+# ─── Applying ──────────────────────────────────────────────────────────
+# A hand-edited engine is somebody's work. We do not overwrite it.
+#
+# EXCEPT when the "work" is the gardening agents editing their own briefs. Those
+# directories are mounted inside the trunk as symlinks, so an agent weaving
+# `[[...]]` links across the trunk reaches them and dirties the ENGINE repo. That
+# used to close a loop: every pass dirtied the engine, the next update refused,
+# and the user fell behind for ever, silently. Reported 2026-08-16 by a tester
+# on an install stranded exactly this way.
+#
+# Tolerating it costs nothing: the block further down already runs
+# `git checkout -- .` after a successful update, so these edits were always going
+# to be discarded. The only thing the refusal protected was the user's ability to
+# update — which is what it was destroying.
+#
+# ⚠️ The refusal STAYS for anything outside those paths: a genuinely hand-edited
+# engine is still somebody's work, and still blocks.
+# ⚠️ THE PER-PATH EXCEPTION IS GONE, on purpose. It sorted dirty files into
+# "engine-owned" and "yours", and quietly restored the first group. But the
+# engine-owned list IS the codebase (hooks, capsule, planet, tests), and no test
+# could tell an agent's edit from a human's — so the exception's real effect was
+# to discard unsaved work under the paths where work actually happens. The
+# stranded-install problem it was answering is solved instead by refusing without
+# touching anything, and saying which files block: the user unblocks in one
+# command, and nobody's edit is spent doing it.
+# ─── THE OWNERSHIP GATE ──────────────────────────────────────────────────
+#
+# AN UPDATER MAY ONLY DESTROY WHAT IT OWNS.
+#
+# Measured on 2026-08-17, on five real repositories, before this gate existed:
+#
+#   managed install, on its tag     HEAD moved, tree replaced   legitimate
+#   dev repo, clean branch          HEAD moved, BRANCH LOST
+#   dev repo, commits above the tag HEAD moved, BRANCH LOST     ← the incident
+#   uncommitted work in hooks/      `M hooks/thing.py` → clean  ← work DESTROYED
+#
+# The last line is the serious one. The block this replaces ran
+# `git checkout -- .` over every engine-owned path — hooks, capsule, planet,
+# tests, i.e. where ALL the code lives — so a developer's unsaved edits went to
+# nothing with a `say` line for a warning. The intent was good (an agent editing
+# its own brief must not strand the install), but the remedy was to throw the
+# work away, and it could not tell an agent's edit from a human's.
+#
+# The gate is EXPLICIT, not a guess about paths or symlinks. `state/engine-managed`
+# says "the installer put this engine here and owns it". Missing → not owned →
+# nothing is touched. It is adopted below for installs that predate the marker,
+# but ONLY from a state that could not hold anyone's work.
+gate_ownership
+
+# ─── BUILD, TEST, THEN SWITCH ────────────────────────────────────────────────
+#
+# THE ORDERING IS THE POINT. The old sequence was: check out the new version over
+# the live engine, run the migrations, reinstall, and only then find out whether
+# any of it worked — rolling back if not. That deliberately creates a window,
+# however short, in which the ACTIVE engine is one nobody has checked, and it
+# leans on the rollback working at the exact moment something has just proved not
+# to. Sessions start during that window; the capsule and the hooks run from it.
+#
+# Versions living side by side remove the need to accept any of that. The
+# candidate is built, verified and selftested while it is INACTIVE, and it
+# becomes `~/.c-brain/engine` only after passing. Red means the candidate is
+# deleted and the active version was never involved.
+CANDIDATE="$VERSIONS/$NEW"
+
+say "building ${NEW}…"
+if ! build_version "$MIRROR" "$CANDIDATE" "$NEW"; then
+  echo "❌ could not build $NEW from the mirror. Nothing was changed."
+  result "blocked" "$NEW"
+  exit 1
+fi
+link_runtime "$CANDIDATE" "$RUNTIME" || warn "shared Electron runtime not mounted on $NEW"
+
+if ! verify_manifest "$CANDIDATE"; then
+  echo "❌ $NEW does not match its own manifest — the build is not trustworthy."
+  rm -rf "$CANDIDATE"
+  result "blocked" "$NEW"
   exit 1
 fi
 
-echo "$CUR" > "$PREVIOUS"
-git -C "$ENGINE" checkout -q "$NEW"
-say "moteur passé en $NEW"
-
 # ─── Migrations ───────────────────────────────────────────────────────────
-# Numérotées, jouées une seule fois, jamais destructrices sur le contenu.
+# Numbered, run exactly once, never destructive to content. They come from the
+# CANDIDATE — they are what the new version needs done — and they run before the
+# switch so that a failing one leaves the active engine where it was.
 touch "$APPLIED"
-for m in "$ENGINE"/cbrain/migrations/*.sh; do
+for m in "$CANDIDATE"/cbrain/migrations/*.sh; do
   [ -e "$m" ] || continue
   name="$(basename "$m")"
   grep -qxF "$name" "$APPLIED" && continue
-  # ${name} avec accolades, obligatoire : collé à un caractère UTF-8, bash sur
-  # macOS l'avale dans le NOM de la variable (« name… : unbound variable ») et
-  # tue la mise à jour en plein milieu, juste après le checkout.
+  # ${name} with braces, mandatory: glued to a UTF-8 character, bash on macOS
+  # swallows it into the variable NAME ("name… : unbound variable") and kills
+  # the update mid-flight.
   say "migration ${name}…"
   if bash "$m"; then
     echo "$name" >> "$APPLIED"
   else
-    warn "migration $name en échec — arrêt. \`brain update --rollback\` pour revenir."
+    warn "migration $name failed — stopping. The engine was NOT switched."
+    rm -rf "$CANDIDATE"
+    result "blocked" "$NEW"
     exit 1
   fi
 done
 
-# ─── Réinstallation + vérification ────────────────────────────────────────
-say "réinstallation (idempotente)…"
-bash "$ENGINE/install.sh" >/tmp/c-brain-update.log 2>&1 || warn "install.sh a signalé un problème (/tmp/c-brain-update.log)"
-
-# ⚠ REMETTRE LE MOTEUR PROPRE — sans ça, `brain update` marche UNE FOIS.
-#
-# Mesuré le 2026-08-16 : `install.sh` lance `npm install` dans la capsule, et npm
-# RÉÉCRIT `capsule/package-lock.json`. Le moteur se retrouve avec une
-# modification non commitée… que le contrôle ci-dessus refuse. La deuxième mise
-# à jour répondait donc « ❌ modifications locales » et TOUTES les suivantes
-# aussi. Panne définitive, sur une machine où personne ne soupçonne d'avoir
-# touché quoi que ce soit. La cause de fond (lock incohérent avec package.json)
-# est corrigée dans rules.json ; cette ligne est le filet, pour le prochain
-# fichier généré qu'on n'a pas vu venir.
-#
-# Restaurer est SANS RISQUE ici, et c'est le contrôle plus haut qui le garantit :
-# il a exigé un arbre propre AVANT de commencer. Tout ce qui est sale à cet
-# instant a donc été produit par l'installeur lui-même, jamais par l'utilisateur.
-# `checkout -- .` ne touche que les fichiers SUIVIS : `node_modules/` et le reste
-# du non-suivi restent en place.
-if ! git -C "$ENGINE" diff --quiet; then
-  say "l'installeur a modifié des fichiers du moteur — remise à l'état de $NEW"
-  git -C "$ENGINE" checkout -- . 2>/dev/null || warn "restauration partielle du moteur"
-fi
-
-if bash "$HOME/.c-brain/trunk/hooks/selftest.sh" >/tmp/c-brain-update-selftest.log 2>&1; then
-  echo
-  echo "✅ Mis à jour en $NEW — selftest vert. Tes fiches n'ont pas été touchées."
-  resultat "ok" "$NEW"
+# ─── The control that decides, on the candidate itself ───────────────────────
+# The engine path is passed explicitly. Without it `selftest.sh` resolves its
+# scripts through the trunk's mounts — which point at the ACTIVE engine — and it
+# would go green having tested the version we are trying to replace.
+say "selftest on $NEW (still inactive)…"
+if bash "$CANDIDATE/hooks/selftest.sh" "$CANDIDATE" >/tmp/c-brain-update-selftest.log 2>&1; then
+  say "selftest green — switching"
 else
   echo
-  warn "selftest en ÉCHEC après mise à jour (/tmp/c-brain-update-selftest.log)"
-  if [ "$AUTO" = "1" ]; then
-    # ⚠ LA DIFFÉRENCE ENTRE LES DEUX MODES EST ICI, et c'est la seule qui compte.
-    # À la main, conseiller le retour arrière suffit : quelqu'un lit l'écran.
-    # En automatique, ce conseil ne serait lu par personne — l'outil resterait
-    # cassé jusqu'à ce que l'utilisateur s'en aperçoive tout seul, sans savoir
-    # que c'est une mise à jour qu'il n'a pas demandée qui l'a cassé. Donc on
-    # revient, tout de suite, et on le DIT à la session suivante.
-    warn "mode automatique : retour à $CUR"
-    git -C "$ENGINE" checkout -q "$CUR" || true
-    bash "$ENGINE/install.sh" >/dev/null 2>&1 || warn "install.sh a signalé un problème au retour"
-    resultat "retour-arriere" "$NEW"
-  else
-    warn "Retour arrière conseillé :  brain update --rollback"
-  fi
+  warn "selftest FAILED on $NEW (/tmp/c-brain-update-selftest.log)"
+  warn "the candidate was DELETED. The engine is still $CUR — it was never switched."
+  rm -rf "$CANDIDATE"
+  result "blocked" "$NEW"
   exit 1
 fi
+
+# ─── The switch ──────────────────────────────────────────────────────────────
+echo "$CUR" > "$PREVIOUS"
+switch_to "$NEW" || { echo "❌ could not switch the engine link. Still on $CUR."; exit 1; }
+say "engine now on $NEW"
+
+# Replaying the installer propagates what the symlink cannot: the statusline is a
+# COPY in ~/.claude, the launchd jobs and the settings hooks are generated files.
+# Everything else was switched by the link itself.
+say "reinstalling (idempotent)…"
+bash "$CANDIDATE/install.sh" >/tmp/c-brain-update.log 2>&1 || warn "install.sh reported a problem (/tmp/c-brain-update.log)"
+
+# The installer must not have dirtied the version it just mounted. npm used to do
+# exactly that (it rewrites package-lock.json where it runs), which is why it now
+# runs in the shared runtime instead. If anything else ever does, say so rather
+# than quietly restoring: a version that changes under us is a fact worth seeing.
+verify_manifest "$CANDIDATE" || warn "$NEW no longer matches its manifest after the reinstall — \`brain doctor\`"
+
+prune_versions
+
+echo
+echo "✅ Updated to $NEW — selftest was green BEFORE the switch. Your notes were not touched."
+result "ok" "$NEW"

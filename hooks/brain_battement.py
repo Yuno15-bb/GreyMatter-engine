@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""brain_battement — le pouls du compagnon de bureau.
+"""brain_battement — the desk companion's pulse.
 
-Hook PostToolUse sur TOUS les outils : un appel d'outil, c'est la définition
-même de « quelque chose travaille ».
+PostToolUse hook on ALL tools: a tool call is the very definition
+of "something is working".
 
-24/09/2026 — aussi sur UserPromptSubmit et PreToolUse, et `--fin` sur Stop.
-Avec l'orbe dans l'encoche, le seul PostToolUse ne suffisait plus : pendant que
-Claude réfléchit ou écrit sa réponse, aucun outil ne finit, le pouls se périme
-et l'orbe rentrait en plein travail. L'utilisateur : « je ne la vois plus travailler ».
+2026-09-24 — also on UserPromptSubmit and PreToolUse, and `--end` on Stop.
+With the orb in the notch, PostToolUse alone was no longer enough: while
+Claude thinks or writes its answer, no tool finishes, the pulse goes stale
+and the orb went back in the middle of the work. The user: "I can't see it working anymore".
 
-⚠ LE DÉFAUT QU'IL CORRIGE (2026-07-31). `on_fiche_write` écrivait `busy` dans
-state/status.json, et RIEN ne réécrivait jamais `idle` avant la fin de session.
-`touch_status()` existait dans brain_status.py mais n'était appelé par AUCUN
-hook. Résultat : le fichier restait sur `busy` avec un horodatage périmé —
-relevé à 1754 s — la capsule appliquait sa garde de fraîcheur de 30 s, retombait
-en repos, et le compagnon se figeait PENDANT que Claude travaillait.
-L'utilisateur : « il est figé sur le bureau immobile et ça fait souvent ça ».
+⚠ THE DEFECT IT FIXES (2026-07-31). `on_fiche_write` wrote `busy` into
+state/status.json, and NOTHING ever wrote `idle` back before the session ended.
+`touch_status()` existed in brain_status.py but was called by NO
+hook. Result: the file stayed on `busy` with a stale timestamp —
+measured at 1754 s — the capsule applied its 30 s freshness guard, fell back
+to rest, and the companion froze WHILE Claude was working.
+The user: "it's frozen still on the desktop and it often does that".
 
-Effet de bord heureux : la garde de fraîcheur devient le détecteur de FIN. Plus
-d'appel d'outil → plus de battement → au bout de 30 s le compagnon s'arrête tout
-seul. Aucun hook de fin de tour n'est nécessaire.
+A happy side effect: the freshness guard becomes the END detector. No more
+tool calls → no more heartbeat → after 30 s the companion stops
+by itself. No end-of-turn hook is needed.
 
-⚠ On ne vole pas la main à un agent : si un agent travaille et que son statut est
-frais, on se contente de rafraîchir son horodatage — sa teinte et son libellé
-restent les siens.
+⚠ We do not take over from an agent: if an agent is working and its status is
+fresh, we only refresh its timestamp — its tint and its label
+stay its own.
 
-Sort toujours 0 : un pouls ne doit jamais faire échouer un outil.
+Always exits 0: a pulse must never make a tool fail.
 """
 import sys, os, json, time
 
@@ -43,15 +43,15 @@ def main():
         except Exception:
             cur = {}
         frais = (time.time() - cur.get("ts", 0)) < 30
-        # --fin (hook Stop, 24/09) : la réponse est finie, l'orbe rentre dans
-        # l'encoche tout de suite au lieu d'attendre que le pouls se périme.
-        # Seulement si c'est NOTRE statut : un agent qui tourne garde le sien.
-        if "--fin" in sys.argv:
+        # --end (Stop hook, 2026-09-24): the answer is finished, the orb goes back into
+        # the notch at once instead of waiting for the pulse to go stale.
+        # Only if it is OUR status: a running agent keeps its own.
+        if "--end" in sys.argv:
             if cur.get("source", "you") == "you":
                 write_status("idle")
             return
         if cur.get("state") == "busy" and frais:
-            touch_status()                      # on prolonge ce qui tourne déjà
+            touch_status()                      # extend what is already running
         else:
             write_status("busy", "working", None, source="you")
     except Exception:

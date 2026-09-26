@@ -1,26 +1,24 @@
-/* Planche comparative de l'orbe : un état par colonne, sur un FAUX BUREAU.
+/* Compare orb states over a simulated desktop, one state per column.
 
-   ⚠ LE VERRE NE SE JUGE PAS SUR FOND NOIR. Sur du noir, un objet transparent
-     est indiscernable d'un objet opaque — la planche est jolie et ne prouve
-     rien. D'où le dégradé et le texte posés derrière : c'est ce qu'il y a
-     vraiment sous la capsule, un bureau qu'on est censé voir à travers.
+   Glass cannot be judged on black: transparency and opacity look alike there.
+   The gradient and text behind the orb reveal what a desktop would show.
 
-   Usage :  ./node_modules/.bin/electron banc/planche.cjs [dosages]
-   ex.   :  ... banc/planche.cjs 1 0.55 0     → trois rangées comparables      */
+   Usage: ./node_modules/.bin/electron banc/planche.cjs [opacity values]
+   Example: banc/planche.cjs 1 0.55 0 produces three comparable rows. */
 'use strict';
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs'), path = require('path'), cp = require('child_process');
 
 const PAGE = path.join(__dirname, '..', 'orbe.html');
 const STATUS = path.join(__dirname, '..', '..', 'hooks', 'brain_status.py');
-const SORTIE = process.env.BANC_SORTIE || '/tmp/orbe-banc';
+const SORTIE = process.env.BANC_SORTIE || '/tmp/orb-bench';
 const DOSAGES = process.argv.slice(2).filter(a => !isNaN(parseFloat(a)))
                   .map(Number);
 const VERRES = DOSAGES.length ? DOSAGES : [0.55];
 const ETATS = [['idle', 'idle'], ['challenging', 'busy'], ['correcting', 'busy'],
                ['synthesizing', 'busy'], ['committing', 'busy']];
 
-app.setPath('userData', '/private/tmp/claude-orbe-banc-planche');
+app.setPath('userData', '/private/tmp/orb-bench-sheet');
 
 app.whenReady().then(async () => {
   if (app.dock) app.dock.hide();
@@ -33,14 +31,12 @@ app.whenReady().then(async () => {
   await w.loadFile(PAGE);
   await new Promise(r => setTimeout(r, 2500));
 
-  /* ⚠ TROIS FONDS, PAS UN. Le cas qu'aucune planche ne prouvait était le bureau
-     presque BLANC : un objet de verre y perd son liseré, et un libellé clair y
-     disparaît. Un fond sombre flatte tout, un fond coloré ment sur les teintes
-     voisines, seul le fond clair dit la vérité sur la lisibilité. */
+  /* Use three backgrounds. A nearly white desktop can hide the glass rim and
+     light labels; dark and colourful backgrounds alone cannot reveal that. */
   const FONDS = {
-    bureau: ['linear-gradient(135deg,#1d4ed8,#7c3aed 45%,#f59e0b)', 'rgba(255,255,255,.9)'],
-    clair:  ['linear-gradient(135deg,#fdfdfd,#eef1f6 55%,#e7e2d8)', 'rgba(20,24,32,.75)'],
-    sombre: ['linear-gradient(135deg,#0b0d12,#141922)',             'rgba(255,255,255,.55)'],
+    desktop: ['linear-gradient(135deg,#1d4ed8,#7c3aed 45%,#f59e0b)', 'rgba(255,255,255,.9)'],
+    light:   ['linear-gradient(135deg,#fdfdfd,#eef1f6 55%,#e7e2d8)', 'rgba(20,24,32,.75)'],
+    dark:    ['linear-gradient(135deg,#0b0d12,#141922)',             'rgba(255,255,255,.55)'],
   };
   const poserFond = (nom) => w.webContents.executeJavaScript(`(() => {
     document.getElementById('fondBanc')?.remove();
@@ -49,40 +45,39 @@ app.whenReady().then(async () => {
     bg.style.cssText = 'position:fixed;inset:0;z-index:-1;padding:6px;overflow:hidden;'
       + 'white-space:pre;font:9px/13px monospace;'
       + 'color:${FONDS[nom][1]};background:${FONDS[nom][0]}';
-    bg.textContent = Array.from({length:12}, (_,i) => 'bureau ' + i + ' ~ texte').join('\\n');
+    bg.textContent = Array.from({length:12}, (_,i) => 'desktop ' + i + ' ~ text').join('\\n');
     document.body.prepend(bg);
-    /* ⚠ LE BANC CACHAIT CE QU'IL DEVAIT MONTRER (trouvé le 2026-08-04).
-       Cette ligne montait #scene en z-index:1 — le canvas passait alors DEVANT
-       le pavé de code et le libellé, qui n'ont pas de z-index. Toutes les
-       planches depuis le 03/08 montrent donc une orbe MUETTE, et j'ai failli
-       corriger le pavé sur la foi de cette image. Le fond suffit à lui seul
-       (z-index:-1) ; on remonte explicitement les surcouches.
-       ⚠ 2026-08-08 : #fiche manquait à l'appel — la ligne « sur quoi » était
-         donc ABSENTE de toutes les planches, alors même que le banc prend soin
-         de lui poser un vrai slug juste en dessous. Une planche qui ne montre
-         pas la ligne dont on juge la lisibilité ne prouve rien. */
+    /* ⚠ THE BENCH WAS HIDING WHAT IT WAS MEANT TO SHOW (found 2026-08-04).
+       This line raised #scene to z-index:1 — the canvas then sat IN FRONT of
+       the code pad and the label, neither of which has a z-index. So every
+       sheet made since 2026-08-03 shows a MUTE orb, and the pad was nearly
+       "fixed" on the strength of that image. The background alone is enough
+       (z-index:-1); the overlays are raised explicitly.
+       ⚠ 2026-08-08: #fiche was missing from the list — so the "what on" line was
+         ABSENT from every sheet, even though the bench takes care to give it a
+         real slug right underneath. A sheet that does not show the very line
+         whose legibility is being judged proves nothing. */
     document.getElementById('scene').style.zIndex = '0';
     document.getElementById('pave').style.zIndex = '2';
     document.getElementById('dit').style.zIndex = '2';
     document.getElementById('fiche').style.zIndex = '2';
     return true; })()`);
 
-  const FONDS_DEMANDES = (process.env.BANC_FONDS || 'bureau,clair,sombre').split(',');
+  const FONDS_DEMANDES = (process.env.BANC_FONDS || 'desktop,light,dark').split(',');
   const faits = [];
   for (const fond of FONDS_DEMANDES) {
    await poserFond(fond);
    for (const verre of VERRES) {
     for (const [etat, st] of ETATS) {
-      /* ⚠ Le 3e argument de brain_status.py est le DÉTAIL, pas une source : le
-         banc y posait le mot « banc », et depuis que la ligne « sur quoi »
-         existe, la planche affichait ce mot comme repère de travail. Une
-         planche doit montrer ce que l'utilisateur verra — donc un vrai slug de
-         fiche, celui que `on_fiche_write` écrirait. */
+      /* ⚠ The 3rd argument of brain_status.py is the DETAIL, not a source: the
+         bench was putting the word "banc" there, and ever since the "what on"
+         line exists, the sheet displayed that word as the work landmark. A
+         sheet must show what the user will see — so a real note slug, the kind
+         `on_fiche_write` would write. */
       cp.execFileSync('python3', [STATUS, st, st === 'busy' ? etat : '',
                       st === 'busy' ? 'capsule-orbe-agents' : ''].filter(x => x !== ''));
       await w.webContents.executeJavaScript(`window.__orbe.setVerre(${verre})`);
-      // 2,6 s : le fondu de mécanique dure 1,4 s. Capturer avant fige une forme
-      // intermédiaire qui n'existe à aucun moment réel.
+      // Wait past the 1.4 s mechanic fade before capturing a stable state.
       await new Promise(r => setTimeout(r, 2600));
       const p = path.join(SORTIE, `${fond}-v${verre}-${etat}.png`);
       fs.writeFileSync(p, (await w.webContents.capturePage()).toPNG());
@@ -90,7 +85,7 @@ app.whenReady().then(async () => {
     }
    }
   }
-  console.log(`${faits.length} captures dans ${SORTIE}`);
+  console.log(`${faits.length} captures in ${SORTIE}`);
   app.quit();
 });
 app.on('window-all-closed', () => app.quit());

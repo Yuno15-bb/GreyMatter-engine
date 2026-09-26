@@ -1,33 +1,32 @@
 #!/usr/bin/env python3
-"""planet_semantic_honesty.py — la carte n'a pas le droit d'annoncer un sens qu'elle n'a pas.
+"""planet_semantic_honesty.py — the map may not claim a meaning it does not have.
 
-POURQUOI CE BANC EXISTE. La Planète S'OUVRE sur la vue sémantique : c'est le choix de l'auteur,
-et il est bon — le globe dit dans quel dossier une fiche est rangée, le nuage du sens dit ce qui
-se ressemble. Mais les embeddings qui placent ce nuage sont OPTIONNELS PAR DESSEIN
-(docs/design-doc.md : « ni le corpus froid ni le venv d'embeddings : optionnels, BM25 suffit par
-défaut »), et l'installeur ne pose ni venv ni pip. L'état ordinaire d'une installation neuve est
-donc : aucun vecteur.
+WHY IT EXISTS. The Planet OPENS on the semantic view: that is the author's choice, and a good
+one — the globe says which folder a note sits in, the semantic cloud says what resembles what.
+But the embeddings that place that cloud are OPTIONAL BY DESIGN (docs/design-doc.md: "Neither
+the cold corpus nor the embeddings venv: optional, BM25 is enough by default"), and the
+installer lays down neither venv nor pip. So the ordinary state of a fresh installation is: no
+vectors at all.
 
-Mesuré le 2026-08-19 et remesuré À L'ÉCRAN le 2026-09-19, sous Chrome headless, sur le paquet
-livré : 0 fiche sur 10 portait un vecteur, 0 sur 36 dans un tronc installé — et l'écran d'accueil
-affichait « ✦ SENS EN VOLUME — proximité = sens, toutes les fiches ». Chaque point était à sa
-place STRUCTURELLE, par un repli écrit pour « une fiche qui n'a pas encore de vecteur » et
-appliqué là à 100 % d'entre elles. Aucune erreur, aucune ligne de journal : le recalcul était
-appelé avec `|| true`.
+Measured 2026-08-19 and re-measured ON THE RENDERED SCREEN 2026-09-19, with Chrome headless
+over the shipped package: 0 notes of 10 carried a vector, 0 of 36 in an installed trunk — and
+the landing screen read "✦ MEANING IN VOLUME — proximity = meaning, every note". Every point
+sat at its STRUCTURAL position, through a fallback written for "a note that has no vector yet"
+and applied to 100% of them. No error, no log line: the recompute was invoked with `|| true`.
 
-CE QUI EST MESURÉ. Pas un code de sortie. Deux choses qu'un lecteur peut voir :
-  1. l'exporteur CONSIGNE ce qu'il a mesuré — `graph.json` porte `semantic.state` / `covered`
-     / `total`, comptés sur les FICHES et non sur la taille du cache (un cache de clés périmées
-     ne place personne et ne doit pas se lire comme une santé parfaite) ;
-  2. la phrase que l'afficheur va montrer, produite par `planet/semantic-label.js` et comparée
-     ici comme une CHAÎNE, sous node — les quatre états se vérifient donc partout, y compris là
-     où aucun navigateur n'est installé.
+WHAT IS MEASURED. Not an exit code. Two things a reader can see:
+  1. the exporter RECORDS what it measured — `graph.json` carries `semantic.state` / `covered`
+     / `total`, counted on the NOTES and not on the size of the cache (a cache of stale keys
+     places nobody and must not read as full health);
+  2. the sentence the viewer will display, produced by `planet/semantic-label.js` and compared
+     here as a STRING, under node — so the four states are checkable everywhere, including in
+     CI where no browser is installed.
 
-L'INVARIANT, au-dessus de tous les autres : les mots « SENS EN VOLUME » et « toutes les fiches »
-n'ont le droit d'apparaître que lorsque toutes les fiches sont réellement posées par le sens.
+THE ONE INVARIANT, above all the others: the words "MEANING IN VOLUME" and "every note" may
+appear only when every note really is placed by meaning.
 
-Lancer :  python3 tests/planet_semantic_honesty.py
-          python3 tests/planet_semantic_honesty.py --sabotage label-frozen-on-meaning
+Run:  python3 tests/planet_semantic_honesty.py
+      python3 tests/planet_semantic_honesty.py --sabotage label-frozen-on-meaning
 """
 import json
 import os
@@ -43,12 +42,12 @@ SABOTAGES = ("label-frozen-on-meaning", "coverage-counted-on-the-cache", "old-gr
 
 NOTE = """---
 name: {name}
-description: une fiche pour le banc d'honnêteté sémantique
+description: a note for the semantic honesty bench
 metadata:
   type: lesson
 ---
 
-Corps de {name}.
+Body of {name}.
 """
 
 ok = True
@@ -62,7 +61,7 @@ def verdict(cond, label, seen=""):
 
 
 def build_trunk(trunk, n_notes, cache):
-    """cache : None = pas de fichier · "corrupt" = présent et illisible · dict = rel_path -> [x,y,z]"""
+    """cache: None = no file · "corrupt" = present and unreadable · dict = rel_path -> [x,y,z]"""
     for d in ("lessons", "planet", "state", "meta"):
         os.makedirs(os.path.join(trunk, d), exist_ok=True)
     for i in range(n_notes):
@@ -80,13 +79,13 @@ def export(src, trunk):
                          capture_output=True, text=True,
                          env=dict(os.environ, BRAIN_HOME=trunk), timeout=180)
     if out.returncode != 0:
-        raise SystemExit(f"l'exporteur a échoué :\n{out.stderr}")
+        raise SystemExit(f"the exporter failed:\n{out.stderr}")
     with open(os.path.join(trunk, "planet", "graph.json"), encoding="utf-8") as f:
         return json.load(f)
 
 
 def label(src, payload):
-    """La phrase que l'afficheur va montrer, lue dans le VRAI module, sous node."""
+    """The sentence the viewer will show, read from the real module under node."""
     js = ("import { capaciteSemantique, etiquetteSens, etiquette3d } from %s;"
           "const d = %s; const c = capaciteSemantique(d);"
           "console.log(JSON.stringify({cap:c, ...etiquetteSens(c), trois_d: etiquette3d(c, null)}));"
@@ -94,39 +93,46 @@ def label(src, payload):
     out = subprocess.run(["node", "--input-type=module", "-e", js],
                          capture_output=True, text=True, timeout=60)
     if out.returncode != 0:
-        raise SystemExit(f"semantic-label.js n'a pas pu être lu par node :\n{out.stderr}")
+        raise SystemExit(f"semantic-label.js could not be read by node:\n{out.stderr}")
     return json.loads(out.stdout)
 
 
 def sabotage(src, name):
-    """Casse un mécanisme sur la COPIE, exprès. Une substitution qui ne trouve rien est un banc
-    qui certifie son propre rougissement : un motif absent arrête donc tout, ici et maintenant."""
+    """Break one mechanism on the COPY, on purpose. A patch that matches nothing is a bench
+    that certifies its own reddening, so a missing pattern stops everything right here."""
     def patch(rel, old, new):
         p = os.path.join(src, rel)
         s = open(p, encoding="utf-8").read()
         if s.count(old) != 1:
-            raise SystemExit(f"SABOTAGE {name} : motif trouvé {s.count(old)}× dans {rel}, attendu 1")
+            raise SystemExit(f"SABOTAGE {name}: pattern found {s.count(old)}× in {rel}, expected 1")
         open(p, "w", encoding="utf-8").write(s.replace(old, new, 1))
 
     if name == "label-frozen-on-meaning":
-        # Le défaut lui-même : la formulation nominale, quel que soit l'état.
+        # The defect itself: the nominal wording, whatever the state.
+        # ⚠ ANCHORED ON CODE, NEVER ON A COMMENT. This used to match the comment
+        # that trails `default:`, which is French in the trunk and is meant to be
+        # translated on the way out — so the English release carried a French
+        # string inside a test, tests/english_only.py went red on main, and the
+        # day someone DID translate that comment the sabotage would have matched
+        # nothing at all. `    default:` occurs exactly once and says the same
+        # thing in every language; the count check above still guards it.
         patch("planet/semantic-label.js",
-              "    default:   // 'absent' et tout état inconnu",
-              "    default:\n      return { titre: '[ CARTE DU TRONC — LE SENS ]',\n"
-              "               bandeau: '✦ SENS EN VOLUME — proximité = sens, toutes les fiches · S structure' };\n"
+              "    default:",
+              "    default:\n      return { titre: '[ TRUNK MAP — MEANING ]',\n"
+              "               bandeau: '✦ MEANING IN VOLUME — proximity = meaning, every note · S structure' };\n"
               "    case '_never':   // SABOTAGE")
     elif name == "coverage-counted-on-the-cache":
-        # Un cache périmé se lit comme une santé parfaite : compter ses clés, pas les fiches posées.
+        # A stale cache reads as full health: count its keys instead of the placed notes.
         patch("hooks/graph_export.py",
               'sem_covered = sum(1 for n in nodes.values() if n.get("embed2"))',
               'sem_covered = len(embed2)  # SABOTAGE')
     elif name == "old-graph-assumed-ready":
-        # Un graph.json d'avant la déclaration est pris pour sain.
+        # A graph.json from before the declaration is taken for healthy.
         patch("planet/semantic-label.js",
               "    state: couverts === 0 ? 'absent' : couverts === noeuds.length ? 'ready' : 'partial',",
               "    state: 'ready',  // SABOTAGE")
     else:
-        raise SystemExit(f"sabotage inconnu : {name}\nconnus : {', '.join(SABOTAGES)}")
+        raise SystemExit(f"unknown sabotage: {name}\nknown: {', '.join(SABOTAGES)}")
 
 
 def main():
@@ -137,7 +143,7 @@ def main():
     lab = tempfile.mkdtemp(prefix="planet-semantic.")
     src = os.path.join(lab, "src")
     try:
-        # Le banc travaille TOUJOURS sur une copie : un sabotage ne doit jamais pouvoir toucher le dépôt.
+        # The bench always works on a COPY: a sabotage must never be able to touch the repo.
         files = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT,
                                capture_output=True, timeout=60).stdout.split(b"\0")
         for rel in (f.decode() for f in files if f):
@@ -147,19 +153,19 @@ def main():
                 shutil.copy2(s, d)
         if saboteur:
             sabotage(src, saboteur)
-            print(f"⚠️  sabotage actif : {saboteur}\n")
+            print(f"⚠️  sabotage active: {saboteur}\n")
 
-        print("Planète — la carte n'annonce pas un sens qu'elle n'a pas\n")
+        print("Planet — the map may not claim a meaning it does not have\n")
 
-        # ── 1. les quatre états, mesurés par le VRAI exporteur ────────────────────────
+        # ── 1. the four states, measured by the REAL exporter ─────────────────────────
         vec = [0.1, 0.2, 0.3]
         cases = [
-            # nom           fiches cache                                     état       couvert
-            ("aucun module",  4,   None,                                     "absent",  0),
-            ("illisible",     4,   "corrupt",                                "broken",  0),
-            ("cache périmé",  4,   {"lessons/gone.md": vec},                 "broken",  0),
-            ("indexation",    4,   {f"lessons/note-{i}.md": vec for i in (0, 1)}, "partial", 2),
-            ("toutes",        4,   {f"lessons/note-{i}.md": vec for i in range(4)}, "ready", 4),
+            # name          notes  cache                                     state      covered
+            ("no module",     4,   None,                                     "absent",  0),
+            ("unreadable",    4,   "corrupt",                                "broken",  0),
+            ("stale cache",   4,   {"lessons/gone.md": vec},                 "broken",  0),
+            ("mid-indexing",  4,   {f"lessons/note-{i}.md": vec for i in (0, 1)}, "partial", 2),
+            ("every note",    4,   {f"lessons/note-{i}.md": vec for i in range(4)}, "ready", 4),
         ]
         recorded = {}
         for label_, n, cache, want_state, want_cov in cases:
@@ -169,59 +175,59 @@ def main():
             sem = g.get("semantic", {})
             recorded[want_state if want_state != "broken" else label_] = sem
             verdict(sem.get("state") == want_state,
-                    f"{label_:14} → état = {want_state}", f"état = {sem.get('state')!r}")
+                    f"{label_:14} → state = {want_state}", f"state = {sem.get('state')!r}")
             verdict(sem.get("covered") == want_cov and sem.get("total") == n,
-                    f"{label_:14} → {want_cov} fiche(s) sur {n} posée(s) par le sens",
+                    f"{label_:14} → {want_cov} of {n} notes placed by meaning",
                     f"covered={sem.get('covered')} total={sem.get('total')}")
             if want_state != "ready":
-                verdict(bool(sem.get("detail")), f"{label_:14} → dit POURQUOI, en une phrase")
+                verdict(bool(sem.get("detail")), f"{label_:14} → says WHY in one sentence")
 
         print()
-        # ── 2. la phrase que le lecteur verra, pour chacun de ces états ───────────────
-        CLAIM = ("SENS EN VOLUME", "toutes les fiches")
+        # ── 2. the sentence the reader will see, for each of those states ─────────────
+        CLAIM = ("MEANING IN VOLUME", "every note")
         for state, sem in recorded.items():
             r = label(src, {"semantic": sem, "nodes": []})
             claims = any(c in r["bandeau"] for c in CLAIM)
             shown = f"{r['titre']} / {r['bandeau']}"
             if sem.get("state") == "ready":
-                verdict(claims, "toutes         → le bandeau DIT bien que le sens est là", shown)
-                verdict("S pour le sens" in r["trois_d"],
-                        "toutes         → et le globe y invite", r["trois_d"])
+                verdict(claims, "ready          → the banner DOES say the meaning is there", shown)
+                verdict("S for meaning" in r["trois_d"],
+                        "ready          → and the globe invites to it", r["trois_d"])
             elif sem.get("state") == "partial":
-                # PARTIEL N'EST PAS « PAS DE SENS » : des fiches y sont vraiment posées. Le titre
-                # a le droit de dire le mot — jamais nu, toujours avec le compte qui le borne.
-                verdict(not claims, f"{state:14} → le bandeau ne prétend PAS toutes les fiches", shown)
-                verdict("— LE SENS ]" not in r["titre"] and "/" in r["titre"],
-                        f"{state:14} → le titre ne dit le sens QU'avec son compte", r["titre"])
-                verdict("S pour le sens" in r["trois_d"],
-                        f"{state:14} → le globe a encore le droit d'y inviter", r["trois_d"])
+                # PARTIAL IS NOT "NO MEANING": some notes really are placed by it. The title may
+                # say the word — but never bare, always carrying the count that bounds the claim.
+                verdict(not claims, f"{state:14} → the banner does NOT claim ALL notes", shown)
+                verdict("— MEANING ]" not in r["titre"] and "/" in r["titre"],
+                        f"{state:14} → the title says meaning ONLY with its count", r["titre"])
+                verdict("S for meaning" in r["trois_d"],
+                        f"{state:14} → the globe may still invite to it", r["trois_d"])
             else:
-                verdict(not claims, f"{state:14} → le bandeau n'annonce PAS le sens", shown)
-                # ⚠️ « le titre ne contient pas SENS » a rougi sur « PAS ENCORE DE SENS » —
+                verdict(not claims, f"{state:14} → the banner does NOT claim meaning", shown)
+                # ⚠️ « le titre ne contient pas MEANING » a rougi sur « NO MEANING YET » —
                 # une DÉNÉGATION contient le mot qu'elle nie. On vise l'AFFIRMATION nue.
-                verdict("— LE SENS ]" not in r["titre"],
-                        f"{state:14} → le titre non plus", r["titre"])
-                verdict("S pour le sens" not in r["trois_d"],
-                        f"{state:14} → et le globe ne le promet pas non plus", r["trois_d"])
-        # les chiffres doivent atteindre le lecteur, pas seulement le JSON
+                verdict("— MEANING ]" not in r["titre"],
+                        f"{state:14} → nor does the title", r["titre"])
+                verdict("S for meaning" not in r["trois_d"],
+                        f"{state:14} → the globe does not promise meaning either", r["trois_d"])
+        # the numbers must reach the reader, not only the JSON
         mid = label(src, {"semantic": recorded["partial"], "nodes": []})
-        verdict("2 fiches sur 4" in mid["bandeau"], "indexation     → le bandeau donne le compte",
+        verdict("2 of 4" in mid["bandeau"], "mid-indexing   → the banner gives the count",
                 mid["bandeau"])
 
         print()
-        # ── 3. un graph.json d'AVANT cette déclaration ────────────────────────────────
+        # ── 3. a graph.json from BEFORE this declaration ──────────────────────────────
         old = label(src, {"nodes": [{"id": "a"}, {"id": "b"}]})
         verdict(old["cap"]["state"] == "absent",
-                "vieux graph.json → déduit des fiches, pas supposé sain",
+                "old graph.json → inferred from the notes, not assumed healthy",
                 json.dumps(old["cap"]))
         verdict(not any(c in old["bandeau"] for c in CLAIM),
-                "vieux graph.json → le bandeau n'annonce pas le sens", old["bandeau"])
+                "old graph.json → the banner does not claim meaning", old["bandeau"])
         old_ok = label(src, {"nodes": [{"id": "a", "embed2": vec}, {"id": "b", "embed2": vec}]})
         verdict(old_ok["cap"]["state"] == "ready",
-                "vieux graph.json AVEC vecteurs → se lit toujours comme du sens", old_ok["bandeau"])
+                "old graph.json WITH vectors → still reads as meaning", old_ok["bandeau"])
 
-        print("\n" + ("✅ la carte dit ce qu'elle montre, dans les cinq états."
-                      if ok else "❌ la carte annonce ce qu'elle ne peut pas montrer."))
+        print("\n" + ("✅ the map says what it shows, in all five states."
+                      if ok else "❌ the map claims something it cannot show."))
         return 0 if ok else 1
     finally:
         shutil.rmtree(lab, ignore_errors=True)

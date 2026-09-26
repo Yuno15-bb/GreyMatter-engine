@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- État des projets — la ronde de 8 h et de 19 h.
+<!-- Project status — the 8 am and 7 pm round.
 
-     POURQUOI UN SERVICE ET PAS UN HOOK DE SESSION : l'état doit être ANNONCÉ matin et
-     soir, pas trouvé par qui pense à ouvrir une session. Un hook ne parle qu'à qui vient
-     lui parler.
+     WHY A SERVICE AND NOT A SESSION HOOK: the status must be ANNOUNCED morning and
+     evening, not found by whoever thinks of opening a session. A hook only talks to whoever
+     comes to talk to it.
 
-     AUCUN APPEL LLM ici — ronde mécanique, comme le machiniste. Elle ne peut donc ni
-     coûter, ni être gelée par le quota, ni échouer parce qu'un modèle est indisponible.
+     NO LLM CALL here — a mechanical round, like the machinist. So it can neither
+     cost anything, nor be frozen by the quota, nor fail because a model is unavailable.
 
-     TEMPLATE — __HOME__ doit être substitué par le vrai $HOME à l'installation.
-     Un chemin en dur d'une ancienne machine a déjà cassé silencieusement la reprise
-     du Brain le 2026-07-22. Le marqueur est `__HOME__`, comme dans le template du
-     machiniste : un vrai chemin écrit ici partirait tel quel dans le paquet public.
+     TEMPLATE — __HOME__ must be replaced by the real $HOME at install time.
+     A hard-coded path from an old machine already silently broke the Brain's
+     resume on 2026-07-22. The marker is `__HOME__`, as in the machinist's
+     template: a real path written here would ship as-is in the public package.
 
-     Installation :
-       sed "s|__HOME__|$HOME|g" hooks/com.claudebrain.etat.plist.template \
+     Install:
+       sed -e "s|__HOME__|$HOME|g" -e "s|__BRAIN__|$(python3 -c 'import os;print(os.path.realpath(os.path.expanduser("~/.c-brain/trunk")))')|g" \
+         hooks/com.claudebrain.etat.plist.template \
          > ~/Library/LaunchAgents/com.claudebrain.etat.plist
        launchctl load -w ~/Library/LaunchAgents/com.claudebrain.etat.plist
-     Vérification (l'observable, pas le code de retour) :
+     Check (the observable, not the return code):
        launchctl kickstart -k gui/$(id -u)/com.claudebrain.etat
-       tail -5 ~/claude-brain/sessions/etat.log     → l'annonce doit s'y trouver
-       head -8 ~/claude-brain/projects/ETAT-DES-PROJETS.md  → horodatage du passage
+       tail -5 ~/.c-brain/trunk/sessions/status.log          → the announcement must be there
+       head -8 ~/.c-brain/trunk/projects/project-status.md   → timestamp of the pass
 -->
 <plist version="1.0">
 <dict>
@@ -31,25 +32,25 @@
     <array>
         <string>/usr/bin/python3</string>
         <string>__HOME__/.c-brain/trunk/hooks/etat_projets.py</string>
-        <string>--notifier</string>
+        <string>--notify</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
-        <!-- I-3 (2026-08-20) : l'identité du Brain se TRANSMET, elle ne se devine pas.
-             Sans cette variable, l'enfant retombe sur ~/claude-brain — le tronc de
-             l'utilisateur courant — quel que soit le Brain que ce service est censé
-             servir. Un chemin absolu dans ProgramArguments désigne le CODE à exécuter,
-             jamais le Brain à mesurer : mesuré le 2026-08-20 sur 18 hooks de session,
-             tous invoqués par chemin absolu, aucun n'ancrait quoi que ce soit.
-             `__BRAIN__` est rendu par la racine CANONIQUE (realpath) à l'installation,
-             et non par `__HOME__/.c-brain/trunk` : le symlink ~/.claude/projects/…/memory
-             donne deux chemins pour un seul arbre. -->
+        <!-- I-3 (2026-08-20): the Brain's identity is PASSED ON, it is not guessed.
+             Without this variable, the child falls back on the default trunk — the
+             current user's — whatever Brain this service is meant to
+             serve. An absolute path in ProgramArguments designates the CODE to run,
+             never the Brain to measure: measured on 2026-08-20 on 18 session hooks,
+             all invoked by absolute path, none anchored anything.
+             `__BRAIN__` is rendered as the CANONICAL root (realpath) at install time,
+             not as `__HOME__/.c-brain/trunk`: the ~/.claude/projects/…/memory symlink
+             gives two paths for a single tree. -->
         <key>BRAIN_HOME</key>
         <string>__BRAIN__</string>
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
-    <!-- Deux passages : le point du matin, le bilan du soir. -->
+    <!-- Two passes: the morning check, the evening review. -->
     <key>StartCalendarInterval</key>
     <array>
         <dict>
@@ -61,15 +62,15 @@
             <key>Minute</key><integer>0</integer>
         </dict>
     </array>
-    <!-- Le Mac dort souvent à 8 h : sans ça, le passage manqué serait perdu.
-         launchd le rejoue au réveil. -->
+    <!-- The Mac is often asleep at 8 am: without this, the missed pass would be lost.
+         launchd replays it on wake. -->
     <key>RunAtLoad</key>
     <true/>
     <key>ProcessType</key>
     <string>Background</string>
     <key>StandardOutPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/etat.log</string>
+    <string>__HOME__/.c-brain/trunk/sessions/status.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/etat.log</string>
+    <string>__HOME__/.c-brain/trunk/sessions/status.log</string>
 </dict>
 </plist>

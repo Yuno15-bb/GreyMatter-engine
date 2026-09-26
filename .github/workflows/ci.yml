@@ -1,15 +1,14 @@
 # C Brain — CI
 #
-# PÉRIMÈTRE, ET POURQUOI IL S'ARRÊTE LÀ. Ceci ne lance PAS une install
-# complète : les tâches launchd et une capsule Electron sur un runner macOS
-# hébergé sont un marécage, et n'apporteraient presque rien — les drapeaux
-# `--no-launchd --no-capsule` sautent exactement les deux parties qu'un runner
-# ne peut pas juger. Reste ce qui casse vraiment : le contrôle de fuite, la
-# traduction, l'installeur, les invariants du tronc, et la capacité d'une
-# migration à survivre à un rejeu.
+# SCOPE, AND WHY IT STOPS THERE. This does NOT run a full install: launchd
+# jobs and an Electron capsule on a hosted macOS runner are a swamp, and they
+# would buy almost nothing — the flags `--no-launchd --no-capsule` skip exactly
+# the two parts a runner cannot judge. What is left is the part that actually
+# breaks: the leak check, the translation, the installer, the trunk invariants,
+# and whether a migration survives being replayed.
 #
-# Les trois gestes de la chaîne de publication (sync, traduire, tagger) sont
-# humains et non surveillés. Ici, la machine surveille le deuxième.
+# The three gestures of the release chain (sync, translate, tag) are human and
+# unwatched. This is the machine watching the second one.
 
 name: CI
 
@@ -25,22 +24,25 @@ permissions:
 
 jobs:
   leak:
-    name: contrôle de fuite
+    name: leak check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # --history scanne chaque commit, pas seulement la pointe
+          fetch-depth: 0     # --history scans every commit, not the tip
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 leakcheck.py --history
-      # Le contrôleur ne suffit pas : les règles qui ANONYMISENT en amont
-      # peuvent se désarmer sans qu'aucun marqueur ne sorte. Ce banc-là
-      # vérifie qu'aucune n'est devenue un no-op.
+      # Check the test-decoy exception: declared values pass while all other
+      # leaks still fail. Without this check, the exception could go unnoticed.
+      - run: python3 tests/leakcheck_fixtures.py
+      - run: python3 tests/leakcheck_history.py
+      # The leak check alone cannot detect a rule that stopped anonymizing
+      # before any private value reached the public repository.
       - run: python3 tests/regles_non_muettes.py
 
   english:
-    name: anglais seul (main)
+    name: English only (main)
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' || github.base_ref == 'main'
     steps:
@@ -50,71 +52,157 @@ jobs:
       - run: python3 tests/english_only.py
 
   plugin:
-    name: manifestes du plugin
+    name: plugin manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # le verrou de version se compare aux tags
+          fetch-depth: 0     # the version gate compares against the tags
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 tests/plugin_manifest.py
-      # Que les manifestes s'analysent n'est pas la même chose que le plugin
-      # qui MARCHE. Ceci lance l'amorçage comme le fait Claude Code — depuis
-      # une copie, sur un HOME neuf — parce que c'est le chemin que prend
-      # tout le monde depuis la marketplace, et c'est le seul que rien
-      # n'exécutait.
+      - run: python3 tests/referenced_files.py
+      - run: python3 tests/home_paths.py
+      # The manifests parsing is not the same thing as the plugin WORKING.
+      # This runs the bootstrap the way Claude Code does — from a copy, on a
+      # fresh HOME — because that is the path everyone from the marketplace
+      # takes, and it was the one path nothing executed.
       - run: bash tests/plugin_install.sh
 
   recall:
-    name: qualité du rappel · fraîcheur du cache
+    name: recall quality · cache freshness
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      # Un index périmé est pire qu'un index lent : le rappel continuerait de
-      # répondre, avec assurance, à côté. Celui-ci passe en premier.
+      # A stale index is worse than a slow one: recall would keep answering,
+      # confidently, out of date. This runs first.
       - run: python3 tests/recall_cache.py
-      # Et ce POUR QUOI le produit existe : la bonne fiche revient-elle ?
-      # Les seuils sont sous ce que le moteur obtient aujourd'hui, pour
-      # attraper une régression plutôt que figer un chiffre.
+      # Both engines must index the SAME corpus. They drifted by 5 documents
+      # under a comment claiming they did not — a comment never turns red.
+      - run: python3 tests/shared_corpus.py --check
+      # And the map must understand what the exporter writes. A field read and
+      # never written is `undefined`: one section silently missing from every
+      # panel. It happened to en_clair, at six read sites, for as long as it existed.
+      - run: python3 tests/planet_contract.py --check
+      # And the map must not ANNOUNCE a meaning it does not have. Embeddings are
+      # optional by design, so the ordinary state of a fresh install is: no vectors
+      # at all — and the viewer still opened on "MEANING IN VOLUME — every note"
+      # over a cloud where not one note had one. Measured on the rendered screen.
+      # `node` is pinned rather than borrowed from the runner image: the label is
+      # an ES module, and a bench that silently skips is the defect it tests for.
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: python3 tests/planet_semantic_honesty.py
+      # The three sabotages. Each MUST fail; a green here is the alarm.
+      - name: the semantic label cannot lie
+        run: |
+          set -euo pipefail
+          for s in label-frozen-on-meaning coverage-counted-on-the-cache old-graph-assumed-ready; do
+            if python3 tests/planet_semantic_honesty.py --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the bench green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+      # And what the write hook does to a note the moment it lands: masking,
+      # Inbox, unknown type, and the golden rule that it never blocks. Three of
+      # those effects are wrapped in try/except, so a broken one is silent.
+      - run: python3 tests/fiche_write_contract.py --check
+      # The type vocabulary is written in the hook AND in the agent briefs.
+      # Two copies of a contract always end up disagreeing.
+      - run: python3 tests/type_vocabulary.py --check
+      # And the doctor: silent on a healthy trunk, one anomaly per category, and
+      # it ANNOUNCES a check it could not run. Its two vocabulary checks import
+      # their reference from the hook that owns it — the test forbids falling
+      # back on a local copy, which would make the doctor a third source of truth.
+      - run: python3 tests/doctor_contract.py --check
+      # And the global audit's first sentence. Two programs can supply its count of
+      # notes and they do not count the same set — 726 woven notes against 946 markdown
+      # files on the author's trunk. It used to take one as a default for the other under
+      # one word, and printed None for the rest of the sentence. A report that cannot say
+      # "I did not look" says nothing at all.
+      - run: python3 tests/review_contract.py --check
+      # And the four lines injected into EVERY session. The question is not
+      # whether the regex finds things — it always does — but whether a line
+      # that reaches the model earns its slot. Tested in pairs: something that
+      # must be found, and something that must not, because an over-eager
+      # filter passes by finding nothing at all.
+      - run: python3 tests/anticipate_contract.py --check
+      # And the thing the product is FOR: does the right note come back?
+      # Gates are set below what the engine scores today, to catch a
+      # regression rather than freeze a number.
       - run: python3 tests/recall_benchmark.py --check
+      # And who owns a launchd identity. The first is static -- it reads the
+      # shell sources and never invokes launchctl, because the dynamic proof is
+      # the experiment that took the author's jobs over for 28 hours. The second
+      # drives the library against a launchd domain that is a text file.
+      - run: python3 tests/launchd_ownership.py
+      - run: python3 tests/launchd_refusal.py
+      - run: python3 tests/launchd_adoption.py
+      - run: python3 tests/launchd_template_migration.py
 
   update:
-    name: la mise à jour garde sa langue
+    name: the update path keeps its language
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: bash tests/update_tag_family.sh
 
   install:
-    name: install · selftest · désinstallation
+    name: install · selftest · uninstall
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
-      - name: le dry-run n'écrit rien
+      # The capsule functions, read out of install.sh itself rather than copied:
+      # the repair for an Electron that npm reports as installed and never
+      # extracted, and the guard that keeps the shell's own "Abort trap: 6" out
+      # of a successful install. This bench existed since 2026-08-17 and NOTHING
+      # ran it — which is how a guard that had never worked shipped for a month
+      # under a comment saying it did. It needs neither Electron nor the network:
+      # it drives the extracted functions against a 2 KB stub. It self-skips off
+      # macOS arm64, and this runner is macOS arm64 — so the skip is checked for
+      # rather than trusted: a bench that quietly opts out is a green that tests
+      # nothing, which is the exact shape of the defect above.
+      - name: the capsule functions, exercised
+        run: |
+          set -euo pipefail
+          # ⚠ THE REPORT IS PRINTED BEFORE IT IS JUDGED, and that is the whole
+          #   point of the shape below. Until 2026-09-20 this step read
+          #   `out="$(python3 …)"`: under `set -e` a red bench aborts the step AT
+          #   THE ASSIGNMENT, so the report the bench had just written died inside
+          #   the variable. The first time this step ever went red on a GitHub
+          #   runner it printed NOTHING — ten lines of measurement and a named
+          #   cause, none of them readable, and the only way to learn anything was
+          #   to change the workflow and push again. `tee` puts the lines in the
+          #   log as they are produced, and `pipefail` keeps the bench's own exit
+          #   code, so a red is still a red.
+          python3 tests/capsule_runtime.py | tee "$RUNNER_TEMP/capsule.out"
+          if grep -q skipped "$RUNNER_TEMP/capsule.out"; then
+            echo "❌ capsule_runtime opted out on a runner that must run it"; exit 1
+          fi
+
+      - name: dry run writes nothing
         run: |
           set -euo pipefail
           H="$(mktemp -d)"
           HOME="$H" ./install.sh --dry-run --no-launchd --no-capsule
-          # Tout l'intérêt de --dry-run est d'être inerte. Quoi que ce soit sur le disque = bug.
+          # The point of --dry-run is that it is inert. Anything on disk is a bug.
           if [ -e "$H/.c-brain" ] || [ -e "$H/.claude" ]; then
-            echo "❌ --dry-run a créé quelque chose :"; find "$H" | head -40; exit 1
+            echo "❌ --dry-run created something:"; find "$H" | head -40; exit 1
           fi
-          echo "✅ rien écrit"
+          echo "✅ nothing written"
 
-      - name: installer, puis vérifier
+      - name: install, then verify
         run: |
           set -euo pipefail
           H="$(mktemp -d)"; echo "H=$H" >> "$GITHUB_ENV"
-          # Un runner hébergé n'a pas Claude Code : install.sh sauterait donc
-          # entièrement la fusion des réglages, et tous les contrôles ci-dessous
-          # passeraient sur un fichier ABSENT — vert, et ne testant rien. On en
-          # plante donc un.
+          # A hosted runner has no Claude Code, so install.sh would skip the
+          # settings merge entirely and every check below would pass on an
+          # absent file — green, and testing nothing. We put one there.
           mkdir -p "$H/.claude"
           printf '{"model": "opus", "permissions": {"allow": ["Bash(ls:*)"]}}\n' > "$H/.claude/settings.json"
           cp "$H/.claude/settings.json" "$RUNNER_TEMP/settings.before.json"
@@ -122,23 +210,72 @@ jobs:
           export PATH="$H/.local/bin:$PATH"
           HOME="$H" brain selftest
           HOME="$H" brain doctor
-          # …et prouver que la fusion a bien eu lieu, sinon le reste est creux.
-          grep -q hooks "$H/.claude/settings.json" || { echo "❌ settings.json n'a jamais été fusionné"; exit 1; }
-          # La porte visible sur un dossier caché : si elle cesse d'être créée,
-          # l'utilisateur reçoit une mémoire qu'il ne peut pas trouver, et rien
-          # d'autre ne s'en apercevrait.
-          [ -L "$H/C Brain" ] || { echo "❌ le raccourci Finder n'a pas été créé"; exit 1; }
+          # …and prove the merge actually happened, so the rest is not vacuous.
+          grep -q hooks "$H/.claude/settings.json" || { echo "❌ settings.json was never merged"; exit 1; }
+          # The visible door on a hidden folder: if it stops being created, a
+          # user gets a memory they cannot find, and nothing else would notice.
+          [ -L "$H/C Brain" ] || { echo "❌ the Finder shortcut was not created"; exit 1; }
 
-      - name: l'install est idempotente
+      - name: install is idempotent
         run: |
           set -euo pipefail
           before="$(shasum -a 256 "$H/.claude/settings.json" | cut -d' ' -f1)"
           HOME="$H" ./install.sh --no-launchd --no-capsule >/dev/null
           after="$(shasum -a 256 "$H/.claude/settings.json" | cut -d' ' -f1)"
-          [ "$before" = "$after" ] || { echo "❌ une seconde install a modifié settings.json"; exit 1; }
-          echo "✅ la seconde install ne fait rien"
+          [ "$before" = "$after" ] || { echo "❌ a second install changed settings.json"; exit 1; }
+          echo "✅ second install is a no-op"
 
-      - name: la démo ne laisse aucune trace
+      - name: installing over somebody else's installation
+        run: |
+          set -euo pipefail
+          # Its own HOMEs, built and thrown away inside the test: it must NOT
+          # reuse $H, whose surfaces this job legitimately owns by now.
+          bash tests/e2e_occupied_surfaces.sh
+          # And the sabotages, because a contract that cannot redden proves
+          # nothing. Each one must FAIL; a green here is the alarm.
+          for s in silent-overwrite silent-statusline summary-swallowed; do
+            if bash tests/e2e_occupied_surfaces.sh --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+
+      # THE FIRST END-TO-END CONTRACT, and until 2026-09-20 nothing ran it. It
+      # was written on 2026-08-17 against "green component by component is not a
+      # correct product", and then sat in tests/ for a month while CI checked the
+      # components it exists to distrust — the same shape as the capsule bench
+      # above, whose comment says so in as many words. A guard nobody runs is a
+      # comment. It is wired here, on the one runner that can host it.
+      - name: install → update → rollback, end to end
+        run: |
+          set -euo pipefail
+          # ⚠ THE BENCH BUILDS ITS PATH FROM NOTHING — that is fault B1's guard,
+          # and it must stay that way. But it reaches for node at /opt/homebrew/bin
+          # only, which is where this author's Mac keeps it; a runner may not.
+          # The selftest inside the bench would then fail for a reason that has
+          # nothing to do with installing, and the log would read as a broken
+          # updater. So node's real directory is handed over explicitly, and
+          # NOTHING else: the host's ~/.local/bin stays out, and the bench's own
+          # leak assertion still proves the `brain` it exercises is its own.
+          NODE_BIN="$(command -v node || true)"
+          [ -n "$NODE_BIN" ] || { echo "❌ no node on this runner at all"; exit 1; }
+          export E2E_EXTRA_PATH="$(dirname "$NODE_BIN")"
+          echo "node for the bench: $NODE_BIN"
+          bash tests/e2e_install_update.sh
+          # And the sabotages, each of which must FAIL. A green is the alarm.
+          # `dirty-renames-engine` is the youngest: it puts back the `-dirty`
+          # suffix retired on 2026-09-20, which named an engine after its
+          # source's working tree while `git archive HEAD` had left that work out.
+          for s in no-ownership dev-updated switch-before-selftest \
+                   rollback-missing update-touches-trunk source-mutated \
+                   host-brain-leak dirty-renames-engine; do
+            if bash tests/e2e_install_update.sh --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+
+      - name: demo leaves no trace
         run: |
           set -euo pipefail
           export PATH="$H/.local/bin:$PATH"
@@ -148,66 +285,64 @@ jobs:
           HOME="$H" brain recall cache deploy | head -5
           HOME="$H" brain demo --remove
           after="$(shasum -a 256 "$T/MEMORY.md" | cut -d' ' -f1)"
-          [ "$before" = "$after" ] || { echo "❌ MEMORY.md diffère après un aller-retour de démo"; exit 1; }
-          echo "✅ MEMORY.md identique à l'octet près"
+          [ "$before" = "$after" ] || { echo "❌ MEMORY.md differs after a demo round trip"; exit 1; }
+          echo "✅ MEMORY.md byte-identical"
 
-      - name: mettre à jour, puis revenir, sans toucher une fiche
+      - name: update, then roll back, without touching a note
         run: |
           set -euo pipefail
-          # Son propre HOME : celui-ci installe une ANCIENNE version depuis un
-          # faux amont local, il ne doit pas partager d'état avec l'install
-          # ci-dessus.
+          # Its own HOME: this one installs an OLD version from a local fake
+          # upstream, so it must not share state with the install above.
           bash tests/update_rollback.sh
 
-      - name: la mise à jour AUTOMATIQUE s'applique, se coupe et se défait
+      - name: automatic updates apply, switch off, and undo themselves
         run: |
           set -euo pipefail
-          # Le chemin que prend désormais TOUTE installation au démarrage de
-          # session. Il fait tourner du code distant sans qu'on le demande :
-          # c'est celui qui mérite le moins d'être cru sur parole.
+          # The path every installation now takes at session start. It runs
+          # remote code without being asked: the one that least deserves to be
+          # taken on trust.
           bash tests/update_auto.sh
 
-      - name: la désinstallation rend les réglages et garde le tronc
+      - name: uninstall gives the settings back, and keeps the trunk
         run: |
           set -euo pipefail
           HOME="$H" ./uninstall.sh --yes
-          # PAS une comparaison d'octets : la désinstallation réécrit le fichier
-          # via le sérialiseur JSON de Python, donc l'indentation et l'espacement
-          # des clés reviennent dans SON style. Ce qui doit survivre, ce sont les
-          # RÉGLAGES de l'utilisateur — chacune de ses clés, intacte, et aucune
-          # des nôtres laissée derrière.
+          # NOT a byte comparison: uninstall rewrites the file through Python's
+          # JSON serializer, so indentation and key spacing come back in its own
+          # style. What must survive is the user's SETTINGS — every key they had,
+          # untouched, and none of ours left behind.
           python3 - "$RUNNER_TEMP/settings.before.json" "$H/.claude/settings.json" <<'PY'
           import json, sys
           before, after = (json.load(open(p)) for p in sys.argv[1:3])
           if before != after:
-              print("❌ settings.json n'est pas revenu :")
+              print("❌ settings.json did not come back:")
               print("  before:", json.dumps(before, sort_keys=True))
               print("  after :", json.dumps(after, sort_keys=True))
               sys.exit(1)
-          print("✅ settings.json restauré, clé pour clé")
+          print("✅ settings.json restored, key for key")
           PY
-          if [ -e "$H/C Brain" ]; then echo "❌ le raccourci Finder a survécu à la désinstallation"; exit 1; fi
-          echo "✅ raccourci retiré"
-          # Le tronc appartient à l'utilisateur ; la désinstallation ne doit jamais le prendre.
-          [ -d "$H/.c-brain/trunk" ] || { echo "❌ la désinstallation a supprimé le tronc"; exit 1; }
-          echo "✅ tronc toujours là"
+          if [ -e "$H/C Brain" ]; then echo "❌ the Finder shortcut survived uninstall"; exit 1; fi
+          echo "✅ shortcut removed"
+          # The trunk is the user's; uninstall must never take it.
+          [ -d "$H/.c-brain/trunk" ] || { echo "❌ uninstall removed the trunk"; exit 1; }
+          echo "✅ trunk still there"
 
   migrations:
-    name: les migrations se rejouent proprement
+    name: migrations replay clean
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: chaque migration, deux fois
+      - name: every migration, twice
         run: |
           set -euo pipefail
           for m in cbrain/migrations/*.sh; do
             H="$(mktemp -d)"
             mkdir -p "$H/claude-brain/lessons"
             echo "keep me" > "$H/claude-brain/lessons/a-note.md"
-            echo "▸ $m — 1er passage";  HOME="$H" bash "$m"
-            echo "▸ $m — 2e passage"; HOME="$H" bash "$m"
-            # Une migration rejouée doit être un non-événement, et ne jamais manger une fiche.
+            echo "▸ $m — first run";  HOME="$H" bash "$m"
+            echo "▸ $m — second run"; HOME="$H" bash "$m"
+            # A replayed migration must be a non-event, and must never eat a note.
             grep -q "keep me" "$H/.c-brain/trunk/lessons/a-note.md" \
-              || { echo "❌ $m a perdu une fiche au rejeu"; exit 1; }
+              || { echo "❌ $m lost a note on replay"; exit 1; }
           done
-          echo "✅ les migrations sont idempotentes et gardent leurs fiches"
+          echo "✅ migrations are idempotent and keep their notes"

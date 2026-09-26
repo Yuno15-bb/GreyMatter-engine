@@ -1,135 +1,134 @@
 #!/usr/bin/env python3
-"""fraicheur_fiches — ferme la boucle temps → fraîcheur.
+"""fraicheur_fiches — closes the time → freshness loop.
 
-LE PROBLÈME. Rien n'invalide une fiche périmée. Le `challenger` peut contester un fait,
-mais c'est un agent qu'on lance à la main : aucune fiche ne porte de trace de la dernière
-fois où quelqu'un a vérifié qu'elle est encore vraie. Une erreur écrite un jour peut donc
-rester vraie pour toujours aux yeux du système.
+THE PROBLEM. Nothing invalidates a stale note. The `challenger` can contest a fact, but
+it is an agent you launch by hand: no note carries any trace of the last time somebody
+checked it is still true. So an error written one day can stay true forever in the eyes
+of the system.
 
-CE QUE ÇA FAIT. Calcule, pour chaque fiche, la date de dernière VALIDATION :
-  • le champ `last_validated: AAAA-MM-JJ` du frontmatter s'il existe ;
-  • sinon la date du dernier COMMIT qui a touché le fichier ;
-  • en tout dernier recours seulement, le mtime du fichier.
+WHAT IT DOES. Computes, for each note, the date of its last VALIDATION:
+  • the frontmatter field `last_validated: YYYY-MM-DD` when it exists;
+  • otherwise the date of the last COMMIT that touched the file;
+  • only as a very last resort, the file's mtime.
 
-⚠️ POURQUOI PAS LE MTIME EN PREMIER. C'était le plan, et il est faux ici : la restauration
-machine du 2026-07-22 a réécrit tous les fichiers du tronc. Mesuré, le fichier le plus
-ancien du disque a **20 jours** alors que des fiches datent de mai — le mtime affirmait
-que tout était frais et la file de revue sortait vide. L'historique git, lui, survit à une
-restauration.
+⚠️ WHY NOT MTIME FIRST. That was the plan, and it is wrong here: the machine restore of
+2026-07-22 rewrote every file in the trunk. Measured, the oldest file on disk was **20
+days** old while notes date back to May — mtime claimed everything was fresh and the
+review queue came out empty. Git history, on the other hand, survives a restore.
 
-Au-delà de SEUIL_JOURS sans validation, la fiche entre dans une file de revue
-**basse priorité** : `state/a-revalider.json`. C'est une liste qu'on consulte, jamais une
-alerte qui bloque — l'objectif est de ne pas transformer la maintenance en corvée.
+Past THRESHOLD_DAYS without validation, the note enters a **low-priority** review queue:
+`state/to-revalidate.json`. It is a list you consult, never an alert that blocks — the
+goal is not to turn maintenance into a chore.
 
-POURQUOI LE CHAMP N'EST PAS ÉCRIT EN MASSE. La migration « mettre le mtime dans les 312
-fiches » ferait un diff énorme pour zéro information nouvelle : le mtime est déjà sur le
-disque. Le champ n'apparaît donc que le jour où quelqu'un valide vraiment la fiche.
+WHY THE FIELD IS NOT WRITTEN IN BULK. The "put the mtime into all 312 notes" migration
+would produce a huge diff for zero new information: the mtime is already on disk. So the
+field only appears the day somebody actually validates the note.
 
-QUI ÉCRIT LE CHAMP. Le **jardinier**, jamais le challenger : le challenger consigne ses
-verdicts dans `state/`, il ne touche à aucune fiche (séparation des pouvoirs, cf.
-[[separation-pouvoirs-agent-teams]]). Le jardinier lit `state/revues.json` et estampille.
+WHO WRITES THE FIELD. The **gardener**, never the challenger: the challenger records its
+verdicts in `state/`, it touches no note (separation of powers, cf.
+[[separation-pouvoirs-agent-teams]]). The gardener reads `state/reviews.json` and stamps.
 
-Usage :
-  fraicheur_fiches.py            recalcule state/a-revalider.json
-  fraicheur_fiches.py --rapport  recalcule et imprime la file
+Usage:
+  fraicheur_fiches.py           recompute state/to-revalidate.json
+  fraicheur_fiches.py --report  recompute and print the queue
 """
 import os, re, sys, json, time, glob, subprocess
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
-SORTIE = os.path.join(BRAIN, "state", "a-revalider.json")
-DOSSIERS = ("projects", "lessons", "meta", "life")
+OUTPUT = os.path.join(BRAIN, "state", "to-revalidate.json")
+FOLDERS = ("projects", "lessons", "meta", "life")
 
-# Réglable par l'environnement — sinon le seuil de 90 jours rend le mécanisme
-# INVÉRIFIABLE tant que le tronc est jeune : il sort 0 fiche, et un calcul qui ne
-# renvoie jamais rien ne prouve rien. `SEUIL_JOURS=30 fraicheur_fiches.py --rapport`
-# doit lister des fiches ; si ça reste vide, c'est le calcul qui est cassé.
-SEUIL_JOURS = int(os.environ.get("SEUIL_JOURS", "90"))   # ~3 mois, cf. jardinage-regles §5
+# Tunable from the environment — otherwise the 90-day threshold makes the mechanism
+# UNVERIFIABLE while the trunk is young: it returns 0 notes, and a computation that never
+# returns anything proves nothing. `THRESHOLD_DAYS=30 fraicheur_fiches.py --report` must
+# list notes; if it stays empty, it is the computation that is broken.
+THRESHOLD_DAYS = int(os.environ.get("THRESHOLD_DAYS", "90"))   # ~3 months, cf. gardening rules §5
 FM_VALID = re.compile(r"^\s*last_validated:\s*\"?(\d{4}-\d{2}-\d{2})\"?\s*$", re.M)
 FM_NAME = re.compile(r"^\s*name:\s*[\"']?([^\"'\n]+)[\"']?\s*$", re.M)
 
 
-def _frontmatter(texte):
-    if not texte.startswith("---"):
+def _frontmatter(text):
+    if not text.startswith("---"):
         return ""
-    fin = texte.find("\n---", 3)
-    return texte[3:fin] if fin != -1 else ""
+    end = text.find("\n---", 3)
+    return text[3:end] if end != -1 else ""
 
 
-def dates_git():
-    """{chemin relatif: horodatage du dernier commit}. Un seul parcours de l'historique —
-    314 appels `git log` séparés prendraient des secondes à chaque hook."""
+def git_dates():
+    """{relative path: timestamp of the last commit}. A single walk of the history —
+    314 separate `git log` calls would take seconds on every hook."""
     try:
-        sortie = subprocess.run(
+        output = subprocess.run(
             ["git", "-C", BRAIN, "log", "--name-only", "--format=@%at", "--no-renames"],
             capture_output=True, text=True, timeout=25).stdout
     except Exception:
         return {}
     dates, ts = {}, None
-    for ligne in sortie.splitlines():
-        if ligne.startswith("@"):
-            try: ts = int(ligne[1:])
+    for line in output.splitlines():
+        if line.startswith("@"):
+            try: ts = int(line[1:])
             except ValueError: ts = None
-        elif ligne and ts and ligne.endswith(".md"):
-            dates.setdefault(ligne, ts)      # 1er vu = le plus récent (log antéchronologique)
+        elif line and ts and line.endswith(".md"):
+            dates.setdefault(line, ts)       # first seen = most recent (log is reverse-chronological)
     return dates
 
 
-def analyser():
-    maintenant = time.time()
-    git = dates_git()
-    fiches = []
-    for dossier in DOSSIERS:
-        for chemin in glob.glob(os.path.join(BRAIN, dossier, "**", "*.md"), recursive=True):
-            rel = os.path.relpath(chemin, BRAIN)
+def analyse():
+    now = time.time()
+    git = git_dates()
+    notes = []
+    for folder in FOLDERS:
+        for path in glob.glob(os.path.join(BRAIN, folder, "**", "*.md"), recursive=True):
+            rel = os.path.relpath(path, BRAIN)
             try:
-                texte = open(chemin, encoding="utf-8").read()
-                mtime = os.path.getmtime(chemin)
+                text = open(path, encoding="utf-8").read()
+                mtime = os.path.getmtime(path)
             except Exception:
                 continue
-            fm = _frontmatter(texte)
-            nom = FM_NAME.search(fm)
+            fm = _frontmatter(text)
+            name = FM_NAME.search(fm)
             m = FM_VALID.search(fm)
             if m:
                 try:
                     ts = time.mktime(time.strptime(m.group(1), "%Y-%m-%d"))
-                    source = "validée"
+                    source = "validated"
                 except Exception:
-                    ts, source = git.get(rel, mtime), "commit"   # date illisible → repli git
+                    ts, source = git.get(rel, mtime), "commit"   # unreadable date → fall back on git
             elif rel in git:
                 ts, source = git[rel], "commit"
             else:
-                ts, source = mtime, "fichier"
-            fiches.append({
+                ts, source = mtime, "file"
+            notes.append({
                 "path": rel,
-                "name": nom.group(1).strip() if nom else os.path.basename(rel)[:-3],
-                "jours": int((maintenant - ts) / 86400),
+                "name": name.group(1).strip() if name else os.path.basename(rel)[:-3],
+                "days": int((now - ts) / 86400),
                 "source": source,
             })
-    return fiches
+    return notes
 
 
 def main():
-    fiches = analyser()
-    a_revalider = sorted((f for f in fiches if f["jours"] > SEUIL_JOURS),
-                         key=lambda f: -f["jours"])
-    os.makedirs(os.path.dirname(SORTIE), exist_ok=True)
-    tmp = f"{SORTIE}.{os.getpid()}.tmp"
+    notes = analyse()
+    to_revalidate = sorted((n for n in notes if n["days"] > THRESHOLD_DAYS),
+                           key=lambda n: -n["days"])
+    os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
+    tmp = f"{OUTPUT}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"seuil_jours": SEUIL_JOURS, "calcule_le": time.strftime("%Y-%m-%d"),
-                   "total_fiches": len(fiches), "fiches": a_revalider},
+        json.dump({"threshold_days": THRESHOLD_DAYS, "computed_on": time.strftime("%Y-%m-%d"),
+                   "total_notes": len(notes), "notes": to_revalidate},
                   f, ensure_ascii=False)
-    os.replace(tmp, SORTIE)
+    os.replace(tmp, OUTPUT)
 
-    if "--rapport" not in sys.argv:
+    if "--report" not in sys.argv:
         return 0
-    jamais = sum(1 for f in fiches if f["source"] != "validée")
-    print(f"{len(fiches)} fiches · {jamais} n'ont jamais été validées explicitement")
-    print(f"au-delà de {SEUIL_JOURS} jours : {len(a_revalider)} fiches en file de revue "
-          f"(basse priorité, aucune alerte)")
-    for f in a_revalider[:12]:
-        print(f"  {f['jours']:4d} j  ({f['source']})  {f['path']}")
-    if len(a_revalider) > 12:
-        print(f"  … et {len(a_revalider) - 12} autres — voir {os.path.relpath(SORTIE, BRAIN)}")
+    never = sum(1 for n in notes if n["source"] != "validated")
+    print(f"{len(notes)} notes · {never} have never been explicitly validated")
+    print(f"past {THRESHOLD_DAYS} days: {len(to_revalidate)} notes in the review queue "
+          f"(low priority, no alert)")
+    for n in to_revalidate[:12]:
+        print(f"  {n['days']:4d} d  ({n['source']})  {n['path']}")
+    if len(to_revalidate) > 12:
+        print(f"  … and {len(to_revalidate) - 12} more — see {os.path.relpath(OUTPUT, BRAIN)}")
     return 0
 
 

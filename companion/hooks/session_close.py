@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""SessionEnd — marque la fin dans le flux et nettoie les pré-images + totaux.
+"""SessionEnd — marks the end in the stream and cleans up before-images and totals.
 
-Le flux `sessions/<sid>.jsonl` reste sur disque (purgé à 7 jours) : c'est l'archive
-relisable de ce qui a été touché pendant la session.
+The `sessions/<sid>.jsonl` stream stays on disk (purged after 7 days): it is the
+re-readable archive of what was touched during the session.
 """
 
 import os
@@ -16,8 +16,8 @@ FEED_TTL_DAYS = 7
 
 
 def prune_old_feeds():
-    """Les flux de session sont l'archive relisable ; au-delà d'une semaine ils ne
-    servent plus qu'à remplir le disque."""
+    """Session streams are the re-readable archive; past a week they only
+    serve to fill up the disk."""
     import time
 
     from companion_lib import SESSIONS
@@ -37,9 +37,9 @@ def prune_old_feeds():
 
 
 def main():
-    # ANTI-RÉCURSION (Phase 0 du RFC Brain V3, 2026-08-03) : un agent de
-    # maintenance headless n'est pas une session de travail — il ne doit ni
-    # clore un flux, ni purger les pré-images de la vraie session en cours.
+    # ANTI-RECURSION (Phase 0 of the Brain V3 RFC, 2026-08-03): a headless
+    # maintenance agent is not a work session — it must neither close a feed nor
+    # prune the pre-images of the real session in progress.
     if os.environ.get("CLAUDE_BRAIN_GARDENING") == "1":
         return
 

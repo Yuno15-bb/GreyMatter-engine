@@ -1,41 +1,52 @@
 #!/usr/bin/env python3
 """
-Hook SessionEnd du C Brain.
-À chaque fin de session :
-  1. rafraîchit l'index lossless sessions/TIMELINE.md (cache incrémental, rapide)
-  2. capture le diff git du projet travaillé (cwd) dans sessions/archive/
+C Brain SessionEnd hook.
+At the end of every session:
+  1. refreshes the index sessions/TIMELINE.md (incremental cache, fast)
+  2. captures the git diff of the project worked on (cwd) into sessions/archive/
 
-⚠ Ce hook n'écrit PLUS dans git. Les étapes 3 (commit du tronc) et 4 (push vers
-le remote) ont été coupées le 2026-08-03 — voir `commit_brain()`, qui garde le
-détail et la condition de leur retour. Elles sont restées annoncées ici pendant
-dix jours après leur suppression : ce docstring est le premier écran que lit
-quiconque ouvre le fichier, et il promettait une sauvegarde qui n'existait plus.
-La sauvegarde distante est assurée par le coffre chiffré, pas par ce hook.
+⚠ This hook no longer writes to git. Steps 3 (commit the trunk) and 4 (push to
+the remote) were cut on 2026-08-03 — see `commit_brain()`, which keeps the detail
+and the condition for their return. They stayed announced here for ten days after
+being removed: this docstring is the first screen anyone opening the file reads,
+and it promised a backup that no longer existed. Remote backup is handled by the
+encrypted vault, not by this hook.
 
-Règle d'or : ne JAMAIS bloquer ni faire échouer la session. Sort toujours 0.
+Golden rule: NEVER block or fail the session. Always exits 0.
 """
 import sys, os, json, re, glob, subprocess
 from datetime import datetime
 
+def _transcripts_key() -> str:
+    """The folder name Claude Code uses for this HOME, under ~/.claude/projects.
+
+    It encodes the absolute home path by replacing BOTH "/" and "." with "-".
+    Replacing only "/" works for a plain account name and breaks silently for a
+    home like /Users/john.smith: the transcripts folder is never found, so
+    distillation runs and finds nothing to do. No error, no signal.
+    """
+    return os.path.expanduser("~").replace("/", "-").replace(".", "-")
+
+
 BRAIN = (os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
-# Nom du dossier transcripts = $HOME avec "/" -> "-" (convention Claude Code).
-# NE JAMAIS coder le nom d'utilisateur en dur ici (a cassé silencieusement la
-# distillation lors de la migration d'un compte utilisateur vers un autre, cf. [[restauration-machine-2026-07-22]]).
+# Transcripts folder name = $HOME with "/" and "." -> "-" (Claude Code convention).
+# NEVER hardcode the user name here (it silently broke distillation during a
+# migration from one user account to another; see a machine restore in July 2026).
 PROJECTS_ROOT = os.path.expanduser("~/.claude/projects")
-PROJECTS_DIR = os.path.join(PROJECTS_ROOT, os.path.expanduser("~").replace(os.sep, "-"))
+PROJECTS_DIR = os.path.join(PROJECTS_ROOT, _transcripts_key())
 
 
 def transcripts_hors_index():
-    """Ce que cet index NE LIT PAS, compté dossier par dossier.
+    """What this index DOES NOT READ, counted folder by folder.
 
-    ⚠ LE NOM DU DOSSIER VIENT DU DOSSIER D'OÙ LA SESSION A ÉTÉ OUVERTE, pas de $HOME :
-      `rebuild_timeline` n'en balaie qu'UN, et l'en-tête annonçait pourtant « index sans
-      perte de l'intégralité de nos sessions ». Mesuré le 2026-09-20 : 155 transcrits lus
-      sur 733, sept dossiers jamais ouverts. **Les élargir serait une régression**, pas une
-      réparation : 371 des 376 transcrits du plus gros dossier sont des sessions de
-      maintenance automatique, et les mêler aux vraies est exactement le défaut réparé le
-      2026-08-03 (voir la garde ANTI-RÉCURSION dans `main`). Ce qui n'est pas acceptable,
-      c'est que l'index se taise. Il dit donc ce qu'il laisse dehors, avec le compte."""
+    ⚠ THE FOLDER NAME COMES FROM THE FOLDER THE SESSION WAS OPENED FROM, not from $HOME:
+      `rebuild_timeline` sweeps only ONE of them, yet the header announced a "lossless
+      index of all our sessions". Measured on 2026-09-20: 155 transcripts read out of
+      733, seven folders never opened. **Widening it would be a regression**, not a
+      fix: 371 of the 376 transcripts in the biggest folder are automatic maintenance
+      sessions, and mixing them with the real ones is exactly the defect fixed on
+      2026-08-03 (see the ANTI-RECURSION guard in `main`). What is not acceptable is
+      the index keeping quiet. So it says what it leaves out, with the count."""
     hors = []
     try:
         for d in sorted(os.listdir(PROJECTS_ROOT)):
@@ -56,11 +67,11 @@ SECRET = re.compile(
     r'(ntn_[A-Za-z0-9]+|sk-ant-[A-Za-z0-9_-]+|AIza[A-Za-z0-9_-]+|secret_[A-Za-z0-9]+'
     r'|eyJ[A-Za-z0-9_.-]{20,}|[A-Za-z0-9_-]{32,}\.apps\.googleusercontent|gh[pousr]_[A-Za-z0-9]{20,})'
 )
-def redact(s): return SECRET.sub("«SECRET-MASQUÉ»", s or "")
+def redact(s): return SECRET.sub("«SECRET-MASKED»", s or "")
 
-# Table de classement des sessions : mot-clé (minuscules) → nom de projet.
-# À REMPLIR avec TES projets — c'est elle qui range tes sessions archivées.
-# Vide, tout tombe dans « À TRIER », ce qui reste correct mais peu utile.
+# Session filing table: keyword (lowercase) → project name.
+# FILL IT IN with YOUR projects — this is what files your archived sessions.
+# Left empty, everything lands in "UNSORTED" — still correct, but not very useful.
 # Exemple :
 #   PROJ = {
 #       'facture': 'Compta', 'devis': 'Compta',
@@ -70,10 +81,10 @@ PROJ = {
 }
 def classify(topic):
     low = (topic or "").lower()
-    return next((v for k, v in PROJ.items() if k in low), "À TRIER")
+    return next((v for k, v in PROJ.items() if k in low), "UNSORTED")
 
 def parse_transcript(path):
-    """date de début, sujet (1er message texte), nb de messages."""
+    """start date, subject (first text message), message count."""
     ts = topic = None; nmsg = 0
     try:
         with open(path, encoding='utf-8', errors='ignore') as f:
@@ -104,7 +115,7 @@ def load_cache():
         return {}
 
 def rebuild_timeline():
-    """Incrémental : ne re-parse que les .jsonl dont le mtime a changé."""
+    """Incremental: only re-parses the .jsonl files whose mtime changed."""
     cache = load_cache()
     changed = False
     for path in glob.glob(os.path.join(PROJECTS_DIR, "*.jsonl")):
@@ -115,7 +126,7 @@ def rebuild_timeline():
             continue
         ts, topic, n = parse_transcript(path)
         if not topic:
-            topic = "(reprise via fichier brief — pas de message texte initial)"
+            topic = "(resumed through a brief file — no initial text message)"
         cache[pid] = {"mtime": mt, "ts": ts or "z", "date": (ts[:10] if ts else "?"),
                       "proj": classify(topic), "n": n, "topic": topic}
         changed = True
@@ -127,20 +138,20 @@ def rebuild_timeline():
 def write_timeline(cache):
     rows = sorted(cache.values(), key=lambda e: e["ts"])
     hors = transcripts_hors_index()
-    out = ["# 🕰️ Timeline — les sessions ouvertes depuis le dossier personnel\n",
-           f"Index **sans perte de ce qu'il lit** : les {len(rows)} sessions dont le "
-           f"transcript vit dans `{PROJECTS_DIR}/`. Tenu à jour automatiquement par le "
-           "hook SessionEnd. Secrets masqués automatiquement.\n"]
+    out = ["# 🕰️ Timeline — the sessions opened from the home folder\n",
+           f"Index **lossless for what it reads**: the {len(rows)} sessions whose "
+           f"transcript lives in `{PROJECTS_DIR}/`. Kept up to date automatically by the "
+           "SessionEnd hook. Secrets masked automatically.\n"]
     if hors:
         total = sum(n for _, n in hors)
         detail = ", ".join(f"`{d}` ({n})" for d, n in sorted(hors, key=lambda x: -x[1]))
         out.append(
-            f"⚠️ **Et {total} transcripts qu'il ne lit PAS**, dans {len(hors)} autres "
-            f"dossiers : {detail}. Le nom du dossier vient de l'endroit d'où la session a "
-            "été ouverte, pas de `$HOME` — l'essentiel de ce qui est ici sont les sessions "
-            "de maintenance automatique, tenues dehors depuis le 2026-08-03 pour ne pas "
-            "les mêler aux vraies. Ce compte est là pour que le jour où une VRAIE session "
-            "est ouverte depuis un autre dossier, elle se voie au lieu de disparaître.\n")
+            f"⚠️ **And {total} transcripts it does NOT read**, in {len(hors)} other "
+            f"folders: {detail}. The folder name comes from where the session was "
+            "opened, not from `$HOME` — most of what is here are automatic maintenance "
+            "sessions, kept out since 2026-08-03 so they do not mix with the real ones. "
+            "This count is here so that the day a REAL session is opened from another "
+            "folder, it shows up instead of disappearing.\n")
     cur = None
     for e in rows:
         mois = e["date"][:7]
@@ -149,13 +160,13 @@ def write_timeline(cache):
         out.append(f"- **{e['date']}** · `{e['proj']}` · {e['n']} msg — {e['topic']}")
     from collections import Counter
     c = Counter(e["proj"] for e in rows)
-    out.append("\n\n---\n\n## Récap par domaine\n")
+    out.append("\n\n---\n\n## Summary by area\n")
     for k, v in c.most_common(): out.append(f"- **{k}** — {v} sessions")
-    out.append(f"\n\n*Total : {len(rows)} sessions. Dernière mise à jour : {datetime.now():%Y-%m-%d %H:%M}.*\n")
+    out.append(f"\n\n*Total: {len(rows)} sessions. Last updated: {datetime.now():%Y-%m-%d %H:%M}.*\n")
     open(os.path.join(SESSIONS, "TIMELINE.md"), "w", encoding='utf-8').write("\n".join(out))
 
 def capture_git_diff(cwd):
-    """Si cwd est un repo git (et pas le tronc lui-même), capture un résumé du diff."""
+    """If cwd is a git repo (and not the trunk itself), capture a summary of the diff."""
     if not cwd or os.path.realpath(cwd) == os.path.realpath(BRAIN):
         return None
     try:
@@ -181,7 +192,7 @@ def write_archive_note(data, cache):
     ent = cache.get(pid, {})
     cwd = data.get("cwd", "")
     reason = data.get("reason", "?")
-    # C7 : le chemin fourni par Claude Code fait autorité sur toute reconstruction.
+    # C7: the path given by Claude Code is authoritative over any reconstruction.
     _tp = data.get("transcript_path")
     _tp_path = _tp or f"{PROJECTS_DIR}/{sid}.jsonl"
     _tp_topic = _tp_n = None
@@ -204,58 +215,58 @@ def write_archive_note(data, cache):
         "metadata:\n  type: reference",
         "---\n",
         f"# Session {date} — {proj}\n",
-        f"- **Sujet** : {ent.get('topic') or _tp_topic or '(non capté)'}",
-        f"- **Messages** : {ent['n'] if ent.get('n') is not None else (_tp_n if _tp_n is not None else '?')}",
-        f"- **Fin** : `{reason}`",
-        f"- **Dossier** : `{cwd}`",
-        f"- **Transcript brut** : `{_tp_path}`",
+        f"- **Subject**: {ent.get('topic') or _tp_topic or '(not captured)'}",
+        f"- **Messages**: {ent['n'] if ent.get('n') is not None else (_tp_n if _tp_n is not None else '?')}",
+        f"- **End**: `{reason}`",
+        f"- **Folder**: `{cwd}`",
+        f"- **Raw transcript**: `{_tp_path}`",
     ]
     if git:
-        lines.append(f"\n## Diff git (`{git['branch']}`)\n")
+        lines.append(f"\n## Git diff (`{git['branch']}`)\n")
         if git["stat"]:
             lines.append("```\n" + redact(git["stat"])[:3000] + "\n```")
         if git["status"]:
-            lines.append("\n**Fichiers touchés (status) :**\n```\n" + redact(git["status"])[:2000] + "\n```")
+            lines.append("\n**Files touched (status):**\n```\n" + redact(git["status"])[:2000] + "\n```")
     else:
-        lines.append("\n*(Pas de diff git capté — cwd hors repo ou aucun changement.)*")
+        lines.append("\n*(No git diff captured — cwd outside a repo, or nothing changed.)*")
     open(fn, "w", encoding='utf-8').write("\n".join(lines))
     return fn
 
 def commit_brain():
-    """DÉSACTIVÉ le 2026-08-03 — Phase 0 du RFC Brain V3.
+    """DISABLED on 2026-08-03 — Phase 0 of the Brain V3 RFC.
 
-    Ce qui était fait ici : `git add -A`, commit, puis push. Donc TOUT ce qui
-    avait changé dans le tronc partait, pas seulement l'archive de session.
+    What used to happen here: `git add -A`, commit, then push. So EVERYTHING that
+    had changed in the trunk went out, not only the session archive.
 
-    Ce que ça a produit : le commit e61fd01 « auto: archivage session » a avalé
-    et poussé 19 fichiers d'un chantier de refonte en cours — MEMORY.md, 12
-    hooks, la suite de tests. 612 commits de ce type existent dans l'historique.
-    Un fichier partiel, un brouillon ou un secret en attente de nettoyage suivait
-    le même chemin, sans que rien ne le signale.
+    What it produced: commit e61fd01 "auto: archivage session" swallowed and pushed
+    19 files from a redesign in progress — MEMORY.md, 12 hooks, the test suite.
+    612 commits of that kind exist in the history. A partial file, a draft or a
+    secret still waiting to be cleaned followed the same path, with nothing ever
+    reporting it.
 
-    Pourquoi une simple liste blanche ne suffirait pas : des fichiers déjà
-    présents dans l'index git seraient embarqués quand même. Le commit sûr
-    demande un index isolé (GIT_INDEX_FILE) ou un worktree dédié, un manifeste
-    exact, une comparaison du diff final au manifeste, puis UN commit. Ça se
-    construit dans le lab, pas ici.
+    Why a simple allowlist would not be enough: files already present in the git
+    index would be carried along anyway. A safe commit needs an isolated index
+    (GIT_INDEX_FILE) or a dedicated worktree, an exact manifest, a comparison of
+    the final diff against that manifest, then ONE commit. That gets built in the
+    lab, not here.
 
-    Le push automatique ne revient qu'après ce dispositif. En attendant, la
-    sauvegarde distante est assurée par le coffre chiffré (restic →
-    Yuno15-bb/brain-backup), pas par un commit opportuniste.
+    Automatic push only comes back once that machinery exists. Until then, remote
+    backup is handled by the encrypted vault (restic, to a private repository),
+    not by an opportunistic commit.
 
-    Archiver n'écrit plus dans git : l'archive est posée sur le disque, et c'est
-    un humain qui décide ce qui entre dans l'historique.
+    Archiving no longer writes to git: the archive is laid down on disk, and a
+    human decides what enters the history.
     """
     return
 
 def main():
-    # ANTI-RÉCURSION (Phase 0 du RFC Brain V3, 2026-08-03).
-    # Les agents de maintenance sont lancés en headless au SessionEnd ; leur
-    # propre fin de session redéclenchait CE hook. Résultat : des archives
-    # d'agents mêlées aux vraies sessions, et — tant que commit_brain écrivait
-    # dans git — des commits intermédiaires posés avant même que la distillation
-    # soit validée. auto_maintain et desktop_sync avaient déjà cette garde ;
-    # archive_session ne l'avait pas.
+    # ANTI-RECURSION (Phase 0 of the Brain V3 RFC, 2026-08-03).
+    # Maintenance agents are launched headless at SessionEnd; their own session
+    # end re-triggered THIS hook. Result: agent archives mixed in with real
+    # sessions, and — while commit_brain still wrote to git — intermediate
+    # commits laid down before the distillation had even been validated.
+    # auto_maintain and desktop_sync already had this guard; archive_session
+    # did not.
     if os.environ.get("CLAUDE_BRAIN_GARDENING") == "1":
         sys.exit(0)
 

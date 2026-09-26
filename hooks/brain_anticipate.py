@@ -1,106 +1,112 @@
 #!/usr/bin/env python3
-"""brain_anticipate — proactif (Volet 2 · Horizon 4) : le cerveau devance le besoin.
+"""brain_anticipate — proactive (Part 2 · Horizon 4): the brain gets ahead of the need.
 
-Au lieu d'attendre qu'on l'interroge, il scanne les fiches pour les POINTS DE REPRISE
-(« REPRENDRE ICI », « PROCHAIN », « point de reprise »…) et surface, par récence, là où
-tu en étais et quelle était la prochaine étape — au démarrage de session (hook SessionStart)
-ou via `brain next`.
+Instead of waiting to be asked, it scans the notes for RESUME POINTS
+("RESUME HERE", "NEXT", "resume point"…) and surfaces, by recency, where you
+left off and what the next step was — at session start (SessionStart hook)
+or through `brain next`.
 
-Le cerveau qui tend la fiche AVANT qu'on la cherche. Sort toujours 0.
+The brain that hands you the note BEFORE you look for it. Always exits 0.
 """
 import os, re, sys, glob, subprocess
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
-# Fiches JAMAIS candidates, quelle que soit la casse du système de fichiers.
-# ETAT-DES-PROJETS.md est un TABLEAU DE BORD généré, pas une fiche de travail : il
-# contient « ce qu'il faut reprendre », donc il se détecte lui-même et squatte la
-# première place (2026-08-13). Même statut que MEMORY.md.
-EXCLUS_TOUJOURS = frozenset(("memory.md", os.path.join("projects", "etat-des-projets.md").lower()))
 SKIP_PARTS = (".git", "node_modules", "capsule", "sessions/archive", "corpus", "audits")
-# marqueurs forts (vrais points de reprise) puis faibles (todo génériques)
-STRONG = re.compile(r"(REPRENDRE ICI|POINT DE REPRISE|À REPRENDRE|REPRENDRE"
+# Notes NEVER candidates, whatever the file system's case sensitivity.
+# PROJECT-STATUS.md is a generated DASHBOARD, not a working note: it contains
+# "what to pick up", so it detects itself and squats first place (2026-08-13).
+# Same status as MEMORY.md.
+EXCLUS_TOUJOURS = frozenset(("memory.md", os.path.join("projects", "project-status.md").lower()))
+# Strong markers (real resume points) then weak ones (generic todos).
+# BILINGUAL on purpose: these patterns match what YOU wrote in your own notes,
+# not the language of this codebase. Dropping the French forms would silently
+# stop surfacing resume points for anyone writing in French.
+# Add your own language here — it is a plain list of alternatives.
+STRONG = re.compile(r"(RESUME HERE|RESUME POINT|PICK UP HERE|NEXT STEP|LEFT TO DO"
+                    r"|REPRENDRE ICI|POINT DE REPRISE|À REPRENDRE|REPRENDRE"
                     r"|PROCHAINE ÉTAPE|RESTE À FAIRE)", re.I)
-# ⚠️ « À FAIRE » NU ATTRAPE DU FRANÇAIS ORDINAIRE. Le motif était `À FAIRE\b` : il matchait
-# « un simple repomix suffit-il À FAIRE auditer un produit », et `audit-pack-outillage` — une
-# fiche qui dit « TRANCHÉ, plus rien à faire » — portait le badge ↻ pour cette phrase-là.
-# En français « à faire » est un verbe courant ; il ne vaut comme marqueur de tâche que s'il
-# est PRÉSENTÉ comme tel : en tête de ligne, en titre, en puce, ou suivi de deux-points.
-# (« RESTE À FAIRE » reste attrapé par STRONG, qui passe en premier.)
-# ⚠️ « PROCHAIN(E) » NU EST LE MÊME PIÈGE QUE « À FAIRE » NU, et il pesait plus lourd.
-# Mesuré le 2026-08-15 sur `projects/**` : 41 déclenchements sur du français ordinaire
-# (« la prochaine fiche écrite », « la prochaine fois », « le prochain palier ») contre
-# 24 marqueurs réellement présentés comme une tâche. Le détecteur était donc majoritairement
-# du bruit — et comme `graph_export.py` l'importe, ce bruit allumait aussi les badges ↻ de
-# la planète, dont la fiche `planete-saturation` constatait qu'ils saturaient à 31.
-# Même remède que pour « À FAIRE » : le mot ne compte que s'il est PRÉSENTÉ comme un
-# marqueur — en tête de ligne, en titre, en puce, ou suivi de deux-points.
-# (« PROCHAINE ÉTAPE » reste attrapé par STRONG, qui passe en premier.)
+# ⚠️ A BARE "À FAIRE" CATCHES ORDINARY FRENCH. The pattern was `À FAIRE\b`: it matched an
+# ordinary sentence using "à faire" as a verb, and a note saying "SETTLED, nothing left to
+# do" carried the resume badge ↻ for it. A weak marker counts only when it is PRESENTED as
+# one: at the start of a line, in a heading, in a bullet, or followed by a colon.
+# ⚠️ A BARE "PROCHAIN(E)" IS THE SAME TRAP, and it weighed more. Measured on 2026-08-15 on
+# `projects/**`: 41 hits on ordinary French ("the next note", "next time") against 24 markers
+# really presented as a task. The detector was mostly noise — and since `graph_export.py`
+# imports it, that noise also lit the planet's ↻ badges, which saturated at 31.
+# ("RESTE À FAIRE" and "PROCHAINE ÉTAPE" are still caught by STRONG, which runs first.)
+# BILINGUAL on purpose, like STRONG above.
 WEAK = re.compile(r"(TODO\b|NEXT\b"
                   r"|PROCHAIN[E]?\s*[:：]"
                   r"|^[ \t]*(?:[#>\-*•]+[ \t]*)*PROCHAIN[E]?\b"
                   r"|À FAIRE\s*[:：]"
                   r"|^[ \t]*(?:[#>\-*•]+[ \t]*)*À FAIRE\b)", re.I | re.M)
-# Combien de reprises on met en avant. UN SEUL chiffre pour tout le système : le message de
-# démarrage de session le lit, et le badge ↻ de la planète aussi (`graph_export.py`) — sinon la
-# carte allume des points que le Brain ne propose pas, et l'inverse.
+# How many resume points are put forward. ONE number for the whole system: the session
+# start message reads it, and so does the planet's ↻ badge (`graph_export.py`) —
+# otherwise the map lights points the Brain does not offer, and the reverse.
 TOP_REPRISES = 4
 
 
-def _ligne_de(text, m):
-    """La ligne entière qui porte le marqueur."""
+def _line_of(text, m):
+    """The whole line carrying the marker."""
     start = text.rfind("\n", 0, m.start()) + 1
     end = text.find("\n", m.end())
     return text[start: end if end != -1 else len(text)]
 
 
-NIE = re.compile(r"(n'est plus|n’est plus|ne sont plus|plus un\b|plus de\b|aucun\b|"
-                 # « plus rien à faire » : le marqueur trouvé est « à faire », donc le « à » est
-                 # DANS le match et la fenêtre d'avant se termine par « rien » tout court —
-                 # `rien à` ne pouvait jamais y correspondre. Trouvé le 2026-08-14 sur
-                 # `audit-pack-outillage`, qui portait le badge ↻ en disant « TRANCHÉ — plus
-                 # rien à faire ». Un motif de négation doit être écrit contre le marqueur
-                 # qu'il annule, pas contre la phrase telle qu'on l'imagine.
-                 r"rien à\b|rien\b|pas de\b|jamais de\b)", re.I)
+# BILINGUAL on purpose: the markers above are, so their negations must be. The notes are
+# the user's, in the user's language.
+NEGATED = re.compile(
+    r"(n'est plus|n’est plus|ne sont plus|plus un\b|plus de\b|aucun\b|"
+    # "plus rien à faire": the marker matched is "à faire", so the "à" is INSIDE the match
+    # and the preceding window ends at "rien" alone — "rien à" could never match it. A
+    # negation pattern has to be written against the marker it cancels, not against the
+    # sentence as one imagines it.
+    r"rien à\b|rien\b|pas de\b|jamais de\b"
+    r"|no longer\b|nothing left\b|nothing\b|none\b|not a\b|never\b)", re.I)
 
 
-def _annule(text, m):
-    """Deux façons dont un marqueur n'en est pas un — les deux constatées le 2026-08-13,
-    le jour même où deux décisions ont été consignées proprement :
+def _cancelled(text, m):
+    """Two ways a marker is not one — both observed on real notes.
 
-    1. BARRÉ (`~~À reprendre~~`) : c'est une pierre tombale, pas une tâche. La fiche
-       motion/GSAP, marquée abandonnée le matin, ressortait en tête des reprises le soir.
-    2. NIÉ (« ce n'est plus un reste à faire ») : écrire qu'une chose est close la faisait
-       détecter comme ouverte. La fiche des pins, fermée par décision de l'auteur, se
-       proposait comme prochaine tâche — en citant la phrase qui disait le contraire.
+    1. STRUCK THROUGH (`~~pick up here~~`): a headstone, not a task. A note marked
+       abandoned in the morning came back at the top of the resume list that evening.
+    2. NEGATED ("this is no longer something left to do"): writing that a thing is closed
+       made it be detected as open. A note closed by an explicit decision offered itself
+       as the next task, quoting the very sentence that said the opposite.
 
-    Une fiche BIEN rédigée est celle qui souffrait le plus : c'est ce qui rend ce filtre
-    non négociable.
+    The BEST-WRITTEN note is the one that suffered most, which is what makes this filter
+    non-negotiable rather than a nicety.
     """
-    ligne = _ligne_de(text, m)
-    if "~~" in ligne:
+    line = _line_of(text, m)
+    if "~~" in line:
         return True
-    avant = ligne[: m.start() - (text.rfind("\n", 0, m.start()) + 1)]
-    # Les 4 derniers MOTS, pas les 40 derniers caractères : une négation porte sur ce qui
-    # la suit immédiatement. Fenêtre trop large, « Réglé le lot A ; RESTE À FAIRE : le lot B »
-    # serait annulé à tort ; trop étroite, le marqueur faible « à faire » de la même phrase
-    # que le marqueur fort déjà annulé repasse dessous — c'est ce qui a fait échouer la
-    # première écriture de ce filtre.
-    return bool(NIE.search(" ".join(avant.split()[-4:])))
+    # A MARKDOWN TABLE CELL is data, never a task. Measured on a 492-note trunk: table
+    # cells are 6% of all detections but were HALF of the four lines actually injected,
+    # because the list is ordered by recency and recent notes are the ones with tables.
+    # The clearest case was a note documenting the "resume badge lit on everything"
+    # problem, whose own comparison table made it light the badge again.
+    if line.lstrip().startswith("|"):
+        return True
+    before = line[: m.start() - (text.rfind("\n", 0, m.start()) + 1)]
+    # The last 4 WORDS, not the last 40 characters: a negation bears on what immediately
+    # follows it. Too wide a window and "Fixed lot A; LEFT TO DO: lot B" is cancelled by
+    # mistake; too narrow and the weak marker of a sentence whose strong marker was already
+    # cancelled slips back underneath.
+    return bool(NEGATED.search(" ".join(before.split()[-4:])))
 
 
 def best_marker(text):
-    """Privilégie un marqueur FORT ; à défaut un faible. Prend la DERNIÈRE occurrence
-    (les points de reprise sont en général en fin de fiche), en sautant les marqueurs
-    barrés."""
-    for motif in (STRONG, WEAK):
-        hits = [m for m in motif.finditer(text) if not _annule(text, m)]
+    """Prefer a STRONG marker; fall back to a weak one. Takes the LAST occurrence
+    (resume points usually sit at the end of a note), skipping cancelled ones."""
+    for pattern in (STRONG, WEAK):
+        hits = [m for m in pattern.finditer(text) if not _cancelled(text, m)]
         if hits:
             return hits[-1]
     return None
 
 
 def snippet(text, m):
-    """~160 caractères autour du marqueur, sur une ligne."""
+    """~160 characters around the marker, on a single line."""
     start = text.rfind("\n", 0, m.start()) + 1
     end = text.find("\n", m.end())
     if end == -1:
@@ -110,33 +116,40 @@ def snippet(text, m):
 
 
 class CapabiliteIndisponible(Exception):
-    """git absent, ou tronc hors dépôt : le classement des reprises est IMPOSSIBLE.
+    """git missing, or trunk outside a repository: ranking resume points is IMPOSSIBLE.
 
-    Jamais un repli silencieux sur `mtime`. Un repli muet rendrait une liste
-    plausible et fausse — exactement le faux nominal que le Brain s'interdit.
-    L'appelant doit DIRE que la capacité manque, pas proposer autre chose.
+    Never a silent fallback on `mtime`. A mute fallback would return a plausible,
+    false list — exactly the false nominal the Brain forbids itself. The caller must
+    SAY that the capability is missing, not offer something else.
     """
 
 
-def _dates_git(racine):
-    """{chemin relatif -> horodatage du dernier commit qui l'a touché}.
+class TrunkNotVersioned(CapabiliteIndisponible):
+    """The trunk is not under git. On this engine that is a legitimate CHOICE, not a
+    breakdown: brain_doctor reports it, with the command that turns git on. As a hook,
+    it is therefore not repeated in every session — a permanent line nobody can act on
+    from inside the conversation is noise. `brain next` still says it."""
 
-    UN SEUL relevé pour tout le dépôt (mesuré le 20/08 : 66 ms, 2147 chemins),
-    et non un `git log` par fiche. `git log` étant antéchronologique, la
-    PREMIÈRE date vue pour un chemin est la plus récente.
+
+def _dates_git(racine):
+    """{relative path -> timestamp of the last commit that touched it}.
+
+    ONE sweep for the whole repository (measured on 20/08: 66 ms, 2147 paths), not
+    one `git log` per note. `git log` being newest-first, the FIRST date seen for a
+    path is the most recent one.
     """
     try:
         r = subprocess.run(["git", "-C", racine, "rev-parse", "--is-inside-work-tree"],
                            capture_output=True, text=True, timeout=20)
     except (FileNotFoundError, subprocess.SubprocessError) as e:
-        raise CapabiliteIndisponible("git introuvable : %s" % e)
+        raise CapabiliteIndisponible("git not found: %s" % e)
     if r.returncode != 0 or r.stdout.strip() != "true":
-        raise CapabiliteIndisponible("%s n'est pas un dépôt git" % racine)
+        raise TrunkNotVersioned("%s is not a git repository" % racine)
     r = subprocess.run(["git", "-C", racine, "log", "--format=@%ct", "--name-only",
                         "--no-renames", "-z", "HEAD"],
                        capture_output=True, text=True, timeout=180)
     if r.returncode != 0:
-        raise CapabiliteIndisponible("git log a échoué : %s" % r.stderr.strip()[:120])
+        raise CapabiliteIndisponible("git log failed: %s" % r.stderr.strip()[:120])
     out, ts = {}, None
     for champ in r.stdout.split("\0"):
         for ligne in champ.split("\n"):
@@ -154,21 +167,20 @@ def collect():
     out = []
     for p in glob.glob(os.path.join(BRAIN, "**", "*.md"), recursive=True):
         rel = os.path.relpath(p, BRAIN)
-        # skip par SEGMENT de dossier (pas substring : sinon une fiche projet « capsule-… »
-        # serait sautée à tort, ratant son point de reprise). cf. [[scan-skip-par-segment-pas-substring]]
-        # ETAT-DES-PROJETS.md est un TABLEAU DE BORD généré, pas une fiche de travail :
-        # il contient « ce qu'il faut reprendre », donc il se détectait lui-même et
-        # squattait la première place des reprises (2026-08-13). Même statut que MEMORY.md.
-        # ⚠️ COMPARAISON INSENSIBLE À LA CASSE (2026-08-20). Elle était littérale, et
-        # `planet/graph.json` portait `projects/etat-des-projets.md` quand le disque
-        # porte `ETAT-DES-PROJETS.md` : sur un système de fichiers insensible à la
-        # casse, la même fiche a deux orthographes et l'exclusion en rate une.
-        # Le tableau de bord se rallumait alors dans les reprises qu'il résume.
+        # Skip by folder SEGMENT, not substring: otherwise a project note named
+        # "capsule-…" would be wrongly skipped, missing its resume point.
+        # PROJECT-STATUS.md is a generated DASHBOARD, not a working note: it contains
+        # "what to pick up", so it detected itself and squatted first place (2026-08-13).
+        # ⚠️ CASE-INSENSITIVE COMPARISON (2026-08-20). It was literal, and
+        # `planet/graph.json` carried `projects/project-status.md` while the disk carried
+        # `PROJECT-STATUS.md`: on a case-insensitive file system, the same note has two
+        # spellings and the exclusion misses one. The dashboard then lit up again among
+        # the resume points it summarises.
         if rel.lower() in EXCLUS_TOUJOURS \
                 or any(part in rel.split(os.sep) for part in SKIP_PARTS):
             continue
         zone = rel.split(os.sep)[0]
-        if zone not in ("projects",):     # les reprises vivent dans les fiches projet
+        if zone not in ("projects",):     # resume points live in project notes
             continue
         try:
             txt = open(p, encoding="utf-8").read()
@@ -180,20 +192,19 @@ def collect():
             out.append({"path": rel, "mtime": os.path.getmtime(p),
                         "name": name.group(1).strip() if name else os.path.basename(rel)[:-3],
                         "reprise": snippet(txt, m)})
-    # ── LE CLASSEMENT (2026-08-20) ───────────────────────────────────────────
-    # `mtime` a été la clé jusqu'ici. C'est une propriété du SYSTÈME DE FICHIERS,
-    # pas de la connaissance : un `git clone`, un `checkout`, un `stash pop` ou un
-    # `rsync` la réécrivent en bloc. MESURÉ le 20/08 : sur un clone frais, les 60
-    # candidats partagent un seul mtime — le top-4 devenait un départage arbitraire,
-    # et le badge ↻ de la planète (un INSTANTANÉ) ne pouvait plus concorder avec ce
-    # que le démarrage de session propose (un RECALCUL).
+    # ── THE RANKING (2026-08-20) ──────────────────────────────────────────────
+    # `mtime` was the key until then. It is a property of the FILE SYSTEM, not of the
+    # knowledge: a `git clone`, a `checkout`, a `stash pop` or an `rsync` rewrite it
+    # wholesale. MEASURED on 20/08: on a fresh clone, the 60 candidates share a single
+    # mtime — the top 4 became an arbitrary tie-break, and the planet's ↻ badge (a
+    # SNAPSHOT) could no longer agree with what the session start offers (a RECOMPUTE).
     #
-    # La clé est donc la date du dernier commit qui a touché la fiche : elle décrit
-    # l'état VERSIONNÉ, elle voyage avec le dépôt, et une maintenance qui ne change
-    # rien ne la bouge pas. Départage déclaré AVANT la mesure : chemin croissant.
-    # Un candidat non suivi par git n'a pas de date : il passe après tous les autres,
-    # jamais départagé en douce par son mtime. `mtime` reste dans chaque entrée —
-    # `etat_projets.py` s'en sert pour afficher un âge en jours.
+    # So the key is the date of the last commit that touched the note: it describes the
+    # VERSIONED state, it travels with the repository, and maintenance that changes
+    # nothing does not move it. Tie-break declared BEFORE measuring: ascending path.
+    # A candidate git does not track has no date: it comes after all the others, never
+    # quietly tie-broken by its mtime. `mtime` stays in each entry — `etat_projets.py`
+    # uses it to show an age in days.
     dates = _dates_git(BRAIN)
     out.sort(key=lambda x: (0 if dates.get(x["path"]) is not None else 1,
                             -(dates.get(x["path"]) or 0),
@@ -206,35 +217,36 @@ def main():
     try:
         items = collect()[:TOP_REPRISES]
     except CapabiliteIndisponible as e:
-        # Une capacité absente se DIT. Se taire ici reviendrait à annoncer « aucune
-        # reprise en attente », qui est une réponse plausible et fausse.
-        sortie = ("<brain-reprises> Reprises indisponibles : %s </brain-reprises>"
-                  if mode_hook else "🧭 Reprises indisponibles : %s")
+        if mode_hook and isinstance(e, TrunkNotVersioned):
+            return
+        # A missing capability is SAID. Keeping quiet here would amount to announcing
+        # "no pending resume point", which is a plausible and false answer.
+        sortie = ("<brain-resume> Resume points unavailable: %s </brain-resume>"
+                  if mode_hook else "🧭 Resume points unavailable: %s")
         print(sortie % e)
         return
     if not items:
-        # En HOOK, ne rien dire : un tronc vide ne doit pas ajouter une ligne à
-        # chaque prompt. En COMMANDE, le dire — `brain next` est une commande
-        # d'affichage, et une commande d'affichage qui n'imprime rien ne se
-        # distingue pas d'une commande cassée. C'est exactement ce silence que
-        # le §8 du selftest sort en rouge sur un tronc neuf, où n'avoir aucun
-        # point de reprise est l'état NORMAL.
+        # As a HOOK, say nothing: an empty trunk must not add a line to every
+        # prompt. As a COMMAND, say so — `brain next` is a display command, and
+        # a display command that prints nothing cannot be told apart from a
+        # broken one. That silence is exactly what selftest §8 goes red on, on
+        # a brand-new trunk where having no resume point is the normal state.
         if not mode_hook:
-            print("🧭 Aucun point de reprise en attente.")
+            print("🧭 No pending resume point.")
         return
     if mode_hook:
-        print("<brain-reprises> Points de reprise en attente (tes fiches projet, "
-              "du plus récent au plus ancien) — propose de continuer si pertinent :")
+        print("<brain-resume> Pending resume points (from your project notes, "
+              "newest first) — offer to continue if relevant:")
     else:
-        print("🧭 Reprises en attente :\n")
+        print("🧭 Pending resume points:\n")
     for it in items:
         if mode_hook:
-            print(f"- {it['name']} ({it['path']}) : {it['reprise']}")
+            print(f"- {it['name']} ({it['path']}): {it['reprise']}")
         else:
             print(f"  • {it['name']}  ({it['path']})")
             print(f"      ↳ {it['reprise']}")
     if mode_hook:
-        print("</brain-reprises>")
+        print("</brain-resume>")
 
 
 if __name__ == "__main__":

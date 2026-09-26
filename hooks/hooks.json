@@ -26,6 +26,13 @@
     ],
     "PostToolUse": [
       {
+        "_why": "SESSION LIVENESS. Every other PostToolUse entry matches a SLICE of the tools — Read for one, Write|Edit for the others — so a session spent in Bash, Grep or Task emitted no sign of life at all and the capsule hid the orb mid-work (measured: a status 654 s stale while the session never stopped). This one matches everything on purpose: the question is 'is Claude still working', and any tool running is the answer. It refreshes LIVENESS only, never the activity label.",
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/brain_status.py\" heartbeat", "timeout": 5 }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/on_fiche_write.py\"", "timeout": 15 }

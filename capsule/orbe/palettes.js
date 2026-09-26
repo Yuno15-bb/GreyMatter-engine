@@ -1,74 +1,60 @@
-// LE SENS — quelles familles de travail, quelle couleur, quelle matière.
+// MEANING — work families, their colors, and their materials.
 //
-// C'est le SEUL fichier à réécrire pour brancher l'orbe sur un autre projet.
-// Le moteur (`orbe.js`) ne connaît ni agent ni famille : il reçoit une
-// mécanique et des réglages, rien d'autre.
+// This is the only file to change when connecting the orb to another project.
+// The engine (`orbe.js`) knows no agents or families; it receives only a
+// motion pattern and its settings.
 //
-// ── LE MODÈLE ─────────────────────────────────────────────────────────────
-// Trois canaux, volontairement séparés :
-//   · la TEINTE dit la FAMILLE de travail — quatre, pas treize. Personne ne
-//     retient treize couleurs ; quatre familles s'apprennent en un jour.
-//   · la MÉCANIQUE du fluide dit la NATURE de l'activité, et se lit SANS la
-//     couleur (une silhouette suffit).
-//   · l'INTENSITÉ de l'étape module la VITESSE, l'amplitude et la CLARTÉ —
-//     jamais la teinte. On reste dans la famille.
+// ── MODEL ─────────────────────────────────────────────────────────────────
+// Three deliberately separate channels:
+//   · HUE identifies the work family: four are easier to learn than thirteen.
+//   · FLUID MOTION identifies the kind of activity, even without color.
+//   · STEP INTENSITY changes speed, amplitude, and lightness, never hue.
 import { hex, chromaMax } from './couleur.js';
-// ⚠ DEPUIS `mecaniques.js`, PAS `orbe.js` : importer les constantes du moteur
-//   ferait charger Three.js (1,27 Mo) à quiconque veut seulement les couleurs.
+// Import from `mecaniques.js`: importing the engine would load Three.js (1.27 MB)
+// even when only the colors are needed.
 import { MECANIQUES } from './mecaniques.js';
 
-// ⚠ TEINTES CHOISIES EN OKLCh, PAS EN RVB. 215° y est franchement TURQUOISE :
-// une famille censée être bleue virait au vert dès que la vivacité montait, et
-// se confondait avec la famille verte. Toute teinte se vérifie À L'ŒIL, rendue,
-// pas sur son numéro.
+// Hues are chosen in OKLCh and checked visually after rendering. At 215°, a
+// supposed blue becomes turquoise as chroma rises, merging with the green family.
 export const FAMILLES = {
   repos: {
-    // ⚠ chroma 0.16 donnait un BALLON GRIS : à cette fraction, le violet 268°
-    // n'existe tout simplement pas à l'écran. Or le repos est l'état le plus
-    // souvent affiché — c'est lui qui doit dire « Claude Brain », pas « sphère ».
-    // Discret ne veut pas dire incolore : on baisse la VITESSE, pas la teinte.
-    // ⚠ MÉCANIQUE CHANGÉE : `interference` → `respiration`. Avec l'interférence,
-    //   le repos était une bulle quasi lisse et quasi immobile — de loin, il se
-    //   confondait avec une Inspection de faible intensité, qui est lisse elle
-    //   aussi. `respiration` est la seule mécanique SANS bruit : une pulsation
-    //   pure. Elle donne au repos une signature de MOUVEMENT, pas de texture —
-    //   et aucun état de travail ne pulse, donc la confusion disparaît même
-    //   sans couleur ni libellé.
+    // Chroma 0.16 made a gray ball: violet at 268° was outside the displayable
+    // gamut at that level. Idle is the most common state and needs visible color.
+    // Lower speed for subtlety, while keeping hue.
+    // `respiration` replaces `interference`. The latter looked almost static
+    // and could be confused with a low intensity Inspection. Breathing alone
+    // has a pure, noiseless pulse, distinct even without color or a label.
     nom: 'Repos', meca: MECANIQUES.respiration, teinte: 288, chroma: 0.50,
-    // ⚠ `speed` pilote la CADENCE de la phase, et `respiration` l'utilise comme
-    //   fréquence de battement : à 0.10 le cycle durait ~39 s, soit une orbe
-    //   qu'on croit figée. 0.50 donne une respiration de ~8 s — visiblement
-    //   vivante, jamais pressée. Sans bruit à animer, ça ne fait pas « agité ».
-    // La respiration bat dans le shader, à 12 i/s (cf. CADENCE dans orbe.html) :
-    // ~83 ms entre deux images, soit un déplacement bien sous le pixel par
-    // image à cette amplitude. Le passer en CSS coûtait 17 % de CPU au repos.
+    // `speed` sets the phase cadence and therefore breathing frequency. At
+    // 0.10, a ~39 s cycle looked frozen; 0.50 makes a visible ~8 s breath.
+    // The shader runs at 12 fps (see CADENCE in orbe.html), so each ~83 ms
+    // displacement remains below one pixel. CSS breathing cost 17% idle CPU.
     lent: { disp: 0.085, freq: 0.55, speed: 0.42 },
     vif:  { disp: 0.100, freq: 0.65, speed: 0.52 },
   },
-  inspection: {          // il regarde, il juge, il ne change rien
+  inspection: {          // observes and judges without changing anything
     nom: 'Inspection', meca: MECANIQUES.houle, teinte: 252, chroma: 0.85,
     lent: { disp: 0.090, freq: 0.85, speed: 0.22 },
     vif:  { disp: 0.150, freq: 1.35, speed: 0.62 },
   },
-  organisation: {        // il range, il classe, il déplace
+  organisation: {        // sorts, classifies, and moves
     nom: 'Organisation', meca: MECANIQUES.balayage, teinte: 150, chroma: 0.85,
     lent: { disp: 0.120, freq: 0.90, speed: 0.28 },
     vif:  { disp: 0.230, freq: 1.60, speed: 0.80 },
   },
-  transformation: {      // il distille, il produit
+  transformation: {      // distills and produces
     nom: 'Transformation', meca: MECANIQUES.vortex, teinte: 300, chroma: 0.85,
     lent: { disp: 0.150, freq: 1.05, speed: 0.45 },
     vif:  { disp: 0.280, freq: 1.80, speed: 1.25 },
   },
-  validation: {          // il grave, il scelle
+  validation: {          // records and seals
     nom: 'Validation', meca: MECANIQUES.eclats, teinte: 50, chroma: 0.90,
     lent: { disp: 0.130, freq: 1.10, speed: 0.65 },
     vif:  { disp: 0.165, freq: 1.35, speed: 0.95 },
   },
 };
 
-// état → [famille, intensité 0→1]. C'est ici qu'on branche le vocabulaire du
-// projet hôte.
+// State → [family, intensity 0→1]. Map the host project's vocabulary here.
 export const ETATS = {
   idle:         ['repos', 0.0],
   mapping:      ['inspection', 0.10],   auditing:    ['inspection', 0.40],
@@ -82,35 +68,29 @@ export const ETATS = {
 
 const entre = (a, b, k) => a + (b - a) * k;
 
-// ⚠ LE CONTRASTE DANS UNE FAMILLE PASSE PAR LA CLARTÉ, PAS PAR LA VIVACITÉ.
-// Faire varier le seul chroma ne se voyait pas : quatre bleus identiques. La
-// clarté, elle, se lit tout de suite — une étape profonde est plus sombre et
-// plus dense, une étape légère plus claire.
-// `part` ∈ [0,1] : quelle FRACTION de la vivacité maximale tenable on prend.
-// Un chroma absolu ne marcherait pas : le maximum dépend de la clarté ET de la
-// teinte, donc la même valeur saturerait ici et paraîtrait terne là.
+// Within a family, vary lightness for visible contrast; chroma alone made four
+// nearly identical blues. Deeper steps look darker and denser.
+// `part` ∈ [0,1] is a fraction of the displayable maximum chroma. An absolute
+// chroma would look saturated at one lightness and dull at another.
 function nuancier(teinte, part, niv) {
   const L = 0.74 - 0.20 * niv;
   const vivacite = chromaMax(L, teinte) * part;
   return {
-    c1:  hex(Math.min(0.97, L + 0.30), vivacite * 0.45, teinte),  // crête
-    c2:  hex(L,                        vivacite,        teinte),  // corps
-    c3:  hex(0.10 + 0.06 * (1 - niv),  vivacite * 0.55, teinte),  // creux
-    rim: hex(0.97,                     vivacite * 0.35, teinte),  // liseré
+    c1:  hex(Math.min(0.97, L + 0.30), vivacite * 0.45, teinte),  // crest
+    c2:  hex(L,                        vivacite,        teinte),  // body
+    c3:  hex(0.10 + 0.06 * (1 - niv),  vivacite * 0.55, teinte),  // trough
+    rim: hex(0.97,                     vivacite * 0.35, teinte),  // rim
     rimI: 1.05 + 0.35 * niv,
   };
 }
 
-/** Réglage complet d'un état : couleurs + matière + mécanique. */
+/** Full state settings: colors, material, and motion. */
 export function reglage(etat) {
   const [nomFam, niv] = ETATS[etat] || ETATS.idle;
   const f = FAMILLES[nomFam];
-  // ⚠ DEUX ÉCHELLES, PAS UNE. La clarté vaut `0.74 - 0.20 × niv` : aux basses
-  // intensités elle plafonne à ~0.74, et TOUT y devient un pastel délavé —
-  // `working` (0.15) ressemblait à un lavande passé, sa mécanique invisible.
-  // La MATIÈRE doit rester lente à basse intensité, la COULEUR non : elle a
-  // besoin d'un plancher pour rester une couleur. D'où un niveau distinct,
-  // utilisé pour le nuancier uniquement — disp/freq/speed gardent le vrai `niv`.
+  // Keep separate scales for color and motion. At low intensity, the lightness
+  // formula approaches 0.74 and made `working` look like washed-out lavender.
+  // Color needs a floor to remain legible; motion still uses the true `niv`.
   const nivCouleur = Math.max(niv, 0.50);
   return {
     ...nuancier(f.teinte, f.chroma * (0.72 + 0.28 * nivCouleur), nivCouleur),

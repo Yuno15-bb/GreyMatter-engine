@@ -1,105 +1,101 @@
-# `skills/` — trois qui pilotent l'outil, aucun qui porte du savoir
+# `skills/` — three that drive the tool, none that carry knowledge
 
-Il y a ici deux sortes de skills, et c'est pour empêcher de les confondre que
-ce fichier existe.
+There are two kinds of skill here, and conflating them is what this file exists
+to prevent.
 
-**Les skills qui pilotent C Brain** — `recall`, `distill`, `doctor` — sont
-livrés avec lui. Ils sont la surface du produit, exactement la même catégorie
-que la commande `brain` : ils manœuvrent l'outil et ne savent rien de toi. Sans
-eux, installer le plugin donne à l'utilisateur des hooks qu'il ne voit pas et
-aucune commande qu'il puisse taper.
+**Skills that drive C Brain** — `recall`, `distill`, `doctor` — ship with it.
+They are the product's surface, the same category as the `brain` command: they
+operate the tool and know nothing about you. Without them, installing the plugin
+gives a user hooks they cannot see and no command they can type.
 
-**Les skills qui portent une méthode de travail** ne sont livrés avec rien, par
-décision explicite. C'est de ça que parle la suite de ce fichier.
+**Skills that carry a way of working** ship with nothing, by explicit decision.
+That is what the rest of this file is about.
 
-Un skill encode une méthode de travail : il cite tes clients, tes projets, ton
-cadre, tes exemples de dosage. C'est ce qui le rend bon chez son auteur, et
-inutilisable — voire indiscret — chez quelqu'un d'autre. Vérification faite sur
-le jeu de skills d'origine : **20 sur 20** contenaient des marqueurs personnels.
-Aucun n'était transférable tel quel.
+A skill encodes a way of working: it names your clients, your projects, your
+context, your calibration examples. That is exactly what makes it good for its
+author and useless — or indiscreet — for anyone else. Measured on the original
+skill set: **20 out of 20** contained personal markers. Not one was transferable
+as-is.
 
-Ce qui se transmet, ce n'est pas le skill. C'est **le standard qui le fabrique**.
+What travels is not the skill. It is **the standard that produces it**.
 
-**Forge tes skills dans `~/.claude/skills/`** — c'est le dossier que Claude
-Code lit, et il t'appartient plutôt qu'à un outil.
+**Forge your skills in `~/.claude/skills/`** — that is the directory Claude Code
+reads, and it belongs to you rather than to any tool.
 
-> ⚠ Une version précédente de ce fichier disait « l'installeur y branche ce
-> dossier ». C'est faux, et ça l'a toujours été : `install.sh` ne contient
-> aucune référence à `skills/`. Qui suivait cette phrase forgeait ses skills
-> dans le moteur, où rien ne les lit — ni erreur, ni avertissement, juste un
-> skill qui ne se déclenche jamais. L'instruction est corrigée plus haut plutôt
-> qu'effacée, parce que ce no-op silencieux est le mode de panne que ce projet
-> doit sans cesse renommer.
+> ⚠ An earlier version of this file said "the installer wires this folder in".
+> It does not, and never did: `install.sh` contains no reference to `skills/` at
+> all. Anyone who followed that sentence wrote skills into the engine, where
+> nothing reads them — no error, no warning, just a skill that never triggers.
+> The instruction is corrected above rather than deleted, because a silent
+> no-op is the failure mode this project keeps having to name.
 
 ---
 
-## Le standard maison
+## The house standard
 
-Tout skill doit atteindre ces neuf points. En dessous, c'est un mémo générique,
-pas un skill — et un mémo générique se déclenche mal et ne produit rien de bon.
+Every skill must hit these nine points. Below that, it is a generic memo, not a
+skill — and a generic memo triggers badly and produces nothing good.
 
-| # | Exigence | Pourquoi |
+| # | Requirement | Why |
 |---|---|---|
-| 1 | **Recherche best-in-class**, année courante | Un skill écrit de mémoire fige l'état de l'art d'il y a deux ans. |
-| 2 | **Leçons transformées en règles exécutables** | « Attention aux caches » ne sert à rien ; « purge le SW avant de conclure » si. |
-| 3 | **Direction artistique nommée** (si sortie visuelle) | Sans direction choisie, la sortie tombe dans le générique par défaut. |
-| 4 | **Méthode ordonnée**, étapes non sautables | L'ordre *est* la compétence : anonymiser avant de contrôler, pas l'inverse. |
-| 5 | **Standards chiffrés** | « plus rapide » est invérifiable ; « < 200 ms p95 » se prouve. |
-| 6 | **Definition of Done auto-vérifiable** | Une case à cocher qu'on ne peut pas cocher de bonne foi sans avoir exécuté. |
-| 7 | **Anti-patterns** explicites | Nommer ce qu'on refuse évite d'y revenir à chaque fois. |
-| 8 | **Références sourcées** | Le lecteur doit pouvoir remonter à la source et te contredire. |
-| 9 | **Description riche en déclencheurs ET exclusions** | C'est elle qui décide de l'auto-invocation. Sans exclusions, deux skills se marchent dessus. |
+| 1 | **Best-in-class research**, current year | A skill written from memory freezes the state of the art from two years ago. |
+| 2 | **Lessons turned into executable rules** | "Watch out for caches" helps nobody; "purge the service worker before concluding" does. |
+| 3 | **A named art direction** (if visual output) | With no direction chosen, output falls back to generic by default. |
+| 4 | **An ordered method**, no skippable steps | The order *is* the skill: anonymize before checking, never the reverse. |
+| 5 | **Numeric standards** | "Faster" cannot be verified; "< 200 ms p95" can. |
+| 6 | **A self-verifiable Definition of Done** | A checkbox you cannot honestly tick without having executed. |
+| 7 | **Explicit anti-patterns** | Naming what you refuse stops you relitigating it every time. |
+| 8 | **Sourced references** | The reader must be able to reach the source and contradict you. |
+| 9 | **A description rich in triggers AND exclusions** | It is what drives auto-invocation. Without exclusions, two skills fight over the same request. |
 
-### Deux règles permanentes
+### Two standing rules
 
-1. **Tout nouveau skill passe par la forge** — la recette ci-dessus, appliquée
-   intégralement. Pas de skill improvisé.
-2. **Forge-sur-blocage** — une tâche qui réclame une compétence que ni tes skills
-   ni tes ressources locales ne couvrent ne se bricole pas : on forge le meilleur
-   skill possible pour ce besoin. Combler le trou une fois sert tous les projets
-   suivants.
+1. **Every new skill goes through the forge** — the recipe above, applied in
+   full. No improvised skills.
+2. **Forge-on-block** — a task demanding a skill that neither your skills nor
+   your local resources cover is not something to hack around: forge the best
+   possible skill for that need. Filling the gap once serves every project after.
 
-### La frontière skill / agent
+### The skill / agent boundary
 
-C'est la distinction qui évite de tout empiler au même endroit :
+This is the distinction that stops everything piling into one place:
 
-- **Système autonome, trait permanent → agent.** Il tourne en tâche de fond, sans
-  déclenchement, et il a des pouvoirs séparés. Les agents de C Brain vivent dans
-  `agents/`.
-- **Action ponctuelle, à la demande → skill.** Il s'invoque, il produit, il rend
-  la main.
+- **Autonomous system, standing trait → agent.** It runs in the background,
+  untriggered, with separated powers. C Brain's agents live in `agents/`.
+- **One-off action, on demand → skill.** You invoke it, it produces, it hands
+  back control.
 
-Repackager un agent en skill lui fait perdre son autonomie et la séparation des
-pouvoirs. C'est une régression, pas une simplification.
+Repackaging an agent as a skill costs it its autonomy and its separation of
+powers. That is a regression, not a simplification.
 
-### Déclenchement
+### Triggering
 
-Auto par description en défaut. Réserve les hooks déterministes aux skills
-**critiques** — ceux dont l'oubli coûte cher (garde-fou d'écriture en production,
-checklist de déploiement). Partout ailleurs, la description suffit.
+Auto-by-description as the default. Reserve deterministic hooks for the
+**critical** skills — the ones whose omission is expensive (a production write
+guard, a deployment checklist). Everywhere else, the description is enough.
 
 ---
 
-## Écrire ton premier skill
+## Writing your first skill
 
 ```
-~/.claude/skills/<nom>/SKILL.md
+~/.claude/skills/<name>/SKILL.md
 ```
 
-En-tête minimal, puis la méthode :
+Minimal front matter, then the method:
 
 ```markdown
 ---
-name: <nom>
-description: <ce que ça fait · QUAND le déclencher · quand NE PAS le déclencher>
+name: <name>
+description: <what it does · WHEN to trigger it · when NOT to>
 ---
 
-# /<nom> — <la promesse en une ligne>
+# /<name> — <the promise, in one line>
 
-## Méthode (ordonnée, sans étape sautable)
+## Method (ordered, no skippable steps)
 1. …
 
-## Standards encodés
+## Encoded standards
 - …
 
 ## Definition of Done
@@ -108,11 +104,10 @@ description: <ce que ça fait · QUAND le déclencher · quand NE PAS le déclen
 ## Anti-patterns
 - …
 
-## Références
+## References
 - …
 ```
 
-La `description` est la partie qui demande le plus de soin : c'est le seul
-élément que Claude lit pour décider d'invoquer le skill ou non. Écris-y les mots
-que *tu* emploieras réellement, et dis explicitement ce qui relève d'un autre
-skill.
+The `description` is the part deserving the most care: it is the only thing
+Claude reads to decide whether to invoke the skill at all. Put the words *you*
+will actually use in it, and say explicitly what belongs to another skill.

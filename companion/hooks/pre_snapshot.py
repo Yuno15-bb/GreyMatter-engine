@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""PreToolUse (Write|Edit|MultiEdit|NotebookEdit) — pose la pré-image du fichier.
+"""PreToolUse (Write|Edit|MultiEdit|NotebookEdit) — stores the file's before-image.
 
-Sans cette pré-image, un `Write` qui écrase un fichier existant apparaîtrait comme
-« tout ajouté » : on perdrait l'AVANT, donc le seul truc qui rend le diff vérifiable.
+Without that before-image, a `Write` overwriting an existing file would look like
+"everything added": we would lose the BEFORE, the only thing that makes the diff verifiable.
 """
 
 import os
@@ -27,7 +27,7 @@ def main():
     os.makedirs(os.path.dirname(dest), exist_ok=True)
 
     if not os.path.exists(fpath):
-        open(dest + ".new", "w").close()      # marqueur : fichier créé de zéro
+        open(dest + ".new", "w").close()      # marker: the file was created from scratch
         open(dest, "w").close()
         return
     try:
@@ -46,5 +46,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        pass          # un companion cassé ne doit JAMAIS gêner une session Claude
+        pass          # a broken companion must NEVER get in the way of a session
     sys.exit(0)

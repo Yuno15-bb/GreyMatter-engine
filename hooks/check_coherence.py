@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""check_coherence — détection mécanique de fiches qui se recouvrent (Horizon 2).
+"""check_coherence — mechanical detection of overlapping notes.
 
-Quand une fiche est écrite, on cherche ses plus proches voisines (via brain_recall).
+When a note is written, we look for its nearest neighbours (through brain_recall).
 Si une voisine la recouvre FORTEMENT, on flague la PAIRE dans state/coherence.json
-comme « à vérifier : contradiction ? » — sans juger nous-mêmes.
+as "to check: contradiction?" — without judging ourselves.
 
-Séparation des rôles (comme le reste du Brain) :
-  - ICI (mécanique, cheap) : trouver les paires à fort recouvrement.
-  - JARDINIER (LLM) : juger s'il y a vraiment contradiction et résoudre (corriger/archiver).
+Separation of roles (as everywhere else here):
+  - HERE (mechanical, cheap): find the heavily overlapping pairs.
+  - GARDENER (LLM): judge whether there really is a contradiction, and resolve it.
 
 Le cerveau cesse de laisser deux fiches se contredire en silence.
-Usage : check_coherence.py <chemin-fiche.md>   (lancé détaché par on_fiche_write)
+Usage: check_coherence.py <path-to-note.md>   (launched detached by on_fiche_write)
 Sort toujours 0.
 """
 import os, sys, json, time, re, math
@@ -24,18 +24,18 @@ except Exception:
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
 FLAGS = os.path.join(BRAIN, "state", "coherence.json")
-SIM_MIN = 0.45   # cosinus TF-IDF (0–1) : au-delà = fort recouvrement réel → vérif doublon/contradiction
+SIM_MIN = 0.45   # TF-IDF cosine (0–1): above this = real heavy overlap → check duplicate/contradiction
 
 
 def is_pair(f):
-    """Une entrée ACTIONNABLE = une paire (a,b) à arbitrer. Le fichier peut aussi porter
-    des notes d'arbitrage laissées par un agent : elles ne sont pas du travail."""
+    """An ACTIONABLE entry = an (a,b) pair to arbitrate. The file may also carry
+    arbitration notes left by an agent: those are not work."""
     return isinstance(f, dict) and isinstance(f.get("a"), str) and isinstance(f.get("b"), str)
 
 
 def existing_pairs(flags):
-    """Paires déjà connues, tolérant aux entrées legacy/annotées (jamais de KeyError :
-    ce module est lancé DÉTACHÉ, une exception ici est invisible et gèle la détection)."""
+    """Pairs already known, tolerant of legacy/annotated entries (never a KeyError:
+    this module runs DETACHED, so an exception here is invisible and freezes detection)."""
     return {tuple(sorted((f["a"], f["b"]))) for f in flags if is_pair(f)}
 
 
@@ -62,7 +62,7 @@ def main():
     if zone not in ("projects", "lessons", "life", "meta"):
         return
 
-    # corpus + idf partagé
+    # shared corpus + idf
     docs = recall.load_corpus()
     if len(docs) < 2:
         return
@@ -79,7 +79,7 @@ def main():
     name = me["name"]
     my_vec = tfidf_vec(me["tokens"], idf)
 
-    # similarité cosinus normalisée contre toutes les autres fiches
+    # normalized cosine similarity against every other note
     neighbours = []
     for d in docs:
         if d["path"] == rel:
@@ -103,7 +103,7 @@ def main():
             continue
         flags.append({"a": name, "b": d["name"], "sim": round(s, 2),
                       "ts": int(time.time()),
-                      "status": "fort recouvrement → vérifier doublon OU contradiction"})
+                      "status": "heavy overlap → check for a duplicate OR a contradiction"})
         existing.add(key)
         changed = True
     if changed:

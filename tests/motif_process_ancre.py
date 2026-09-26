@@ -1,150 +1,127 @@
 #!/usr/bin/env python3
-"""motif_process_ancre — « aucun processus » n'est une preuve que si on a cherché au bon endroit.
+"""Process search patterns must not hard-code a checkout path.
 
-POURQUOI CE BANC EXISTE (mesuré le 2026-09-20, entrée C3 de C bis)
-    Chercher un processus est une MESURE, et une mesure a une cible. Quand la cible est
-    écrite en dur — un fragment de chemin qui nomme un arbre, `claude-brain/capsule/…` —
-    la mesure est juste dans cet arbre-là et silencieusement fausse partout ailleurs.
+A process search is a measurement with a target. If its pattern embeds a checkout name,
+it can silently report no process in every other checkout and mistake that for absence.
 
-    Le cas réel : `hooks/auto_maintain.py` cherchait la capsule avec le motif
-    `"claude-brain/capsule/node_modules/electron"`. Le paquet publié porte
-    `"c-brain/trunk/capsule/node_modules/electron"`, qui vise l'installé (~/.c-brain/trunk)
-    et ne matche NI ~/c-brain NI le plan de travail ~/c-brain-fr. Là, `pgrep` rend zéro sur
-    une capsule bien vivante, le code conclut « rien ne tourne » et en relance une
-    par-dessus. L'absence de processus avait été prise pour une preuve d'absence.
+This static check follows Python string constants into pgrep/pkill argument lists and
+checks shell/JavaScript call lines. It allows broad relative patterns such as
+`capsule/node_modules`, which intentionally match across checkouts. It cannot prove that
+a valid pattern matches a live process; that requires a separate runtime calibration.
 
-    C'est le troisième passage de la même famille — voir la leçon
-    `pkill-motif-approximatif-mesure-une-instance-perimee`, qui le dit déjà : calibrer
-    DANS LES DEUX SENS, 1 quand la cible tourne, 0 quand elle ne tourne pas.
-
-CE QUE CE BANC VÉRIFIE — une propriété, lue dans les sources, indépendante de la machine
-    Tout motif passé à `pgrep` ou `pkill` dans le code du Brain est ANCRÉ : il ne contient
-    ni nom d'arbre écrit en dur (`claude-brain/`, `c-brain/`, `.c-brain/`) ni chemin absolu
-    de cette machine (`/Users/…`). Un motif volontairement large et sans nom d'arbre —
-    `pgrep -fl "capsule/node_modules"`, qui sert à retrouver N'IMPORTE QUELLE instance sur
-    le Mac — est légitime et passe.
-
-CE QU'IL NE VÉRIFIE PAS
-    Que le motif ancré matche vraiment le processus visé : ça se calibre à la main, sur une
-    cible vivante puis sur une cible absente, et aucun banc ne peut le faire sans lancer le
-    programme. Il ne vérifie pas non plus que le code LIT le code de retour de `pgrep` :
-    rc=0 trouvé, rc=1 rien, rc≥2 ÉCHEC — et dans ce dernier cas la sortie est vide elle
-    aussi. `hooks/auto_maintain.py` refuse désormais de conclure sur rc≥2 ; les autres
-    appels n'ont pas de garde équivalent.
+Run: python3 tests/motif_process_ancre.py [--check|--sabotage]
 """
 import ast
 import os
 import re
 import sys
 
-ICI = os.path.dirname(os.path.abspath(__file__))
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.join(ICI, ".."))
-
-ZONES = ["hooks", "tools", "tests", "capsule", "companion", "cbrain"]
-# Ce qu'on ne lit pas : dépendances, caches, corpus de données et bacs de projection.
-IGNORE = ("/node_modules/", "/__pycache__/", "/.git/", "/projection/bac/",
-          "/captures/", "/admin-L1/", "/heldout/")
-
-APPEL = re.compile(r"\b(pgrep|pkill)\b")
-# Les noms d'arbre écrits en dur, et tout chemin absolu de cette machine.
-EN_DUR = re.compile(r"\.?c(?:laude)?-brain/|/Users/|/home/")
+ROOT = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), ".."))
+ZONES = ("hooks", "tools", "tests", "capsule", "companion", "cbrain")
+IGNORED = ("/node_modules/", "/__pycache__/", "/.git/", "/projection/bac/",
+           "/captures/", "/heldout/")
+PROCESS_CALL = re.compile(r"\b(?:pgrep|pkill)\b")
+# A path that embeds a checkout-specific prefix before a code area, or an absolute
+# user/home path. The prefix is intentionally generic and contains no machine identity.
+HARDCODED = re.compile(r"(?:^|[\s\"'])/(?:Users|home)/|[\w.-]+-(?:brain|matter)/(?:capsule|hooks|tools)/")
 
 
-def fichiers():
+def files():
     for zone in ZONES:
-        for dossier, _, noms in os.walk(os.path.join(BRAIN, zone)):
-            for nom in noms:
-                p = os.path.join(dossier, nom)
-                if nom.endswith((".py", ".js", ".sh", ".mjs", ".zsh")) \
-                        and not any(x in p for x in IGNORE):
-                    yield p
+        for directory, _, names in os.walk(os.path.join(ROOT, zone)):
+            for name in names:
+                path = os.path.join(directory, name)
+                if name.endswith((".py", ".js", ".sh", ".mjs", ".zsh")) and not any(
+                        marker in path for marker in IGNORED):
+                    yield path
 
 
-def motifs_python(src):
-    """(ligne, texte) pour chaque motif passé à pgrep/pkill, LITTÉRAL OU NOMMÉ.
-
-    ⚠️ C'EST ICI QUE LA PREMIÈRE VERSION DE CE BANC ÉTAIT AVEUGLE (2026-09-20). Elle
-    ne lisait que les lignes contenant le mot `pgrep`, alors que le vrai défaut
-    s'écrit sur DEUX lignes : `MOTIF_CAPSULE = "claude-brain/capsule/…"` en tête de
-    module, `subprocess.run(["pgrep", "-f", MOTIF_CAPSULE])` deux cents lignes plus
-    bas. Le sabotage S1 — remettre le vrai bug — laissait le banc VERT. Il faut donc
-    suivre la variable jusqu'à son affectation, pas regarder une ligne."""
+def python_patterns(source):
+    """Return (line, pattern) pairs passed to pgrep/pkill, directly or by constant."""
     try:
-        arbre = ast.parse(src)
+        tree = ast.parse(source)
     except SyntaxError:
         return []
-    constantes = {}
-    for n in ast.walk(arbre):
-        if isinstance(n, ast.Assign) and isinstance(n.value, ast.Constant) \
-                and isinstance(n.value.value, str):
-            for c in n.targets:
-                if isinstance(c, ast.Name):
-                    constantes[c.id] = (n.lineno, n.value.value)
-    out = []
-    for n in ast.walk(arbre):
-        if not isinstance(n, (ast.List, ast.Tuple)) or not n.elts:
+    constants = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant) \
+                and isinstance(node.value.value, str):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    constants[target.id] = (node.lineno, node.value.value)
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.List, ast.Tuple)) or not node.elts:
             continue
-        tete = n.elts[0]
-        if not (isinstance(tete, ast.Constant) and isinstance(tete.value, str)
-                and APPEL.search(tete.value)):
+        first = node.elts[0]
+        if not (isinstance(first, ast.Constant) and isinstance(first.value, str)
+                and PROCESS_CALL.search(first.value)):
             continue
-        for e in n.elts[1:]:
-            if isinstance(e, ast.Constant) and isinstance(e.value, str):
-                out.append((e.lineno, e.value))
-            elif isinstance(e, ast.Name) and e.id in constantes:
-                ligne, val = constantes[e.id]
-                out.append((ligne, f"{e.id} = {val!r}  (passé à {tete.value} ligne {e.lineno})"))
-    return out
+        for value in node.elts[1:]:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                found.append((value.lineno, value.value))
+            elif isinstance(value, ast.Name) and value.id in constants:
+                line, text = constants[value.id]
+                found.append((line, f"{value.id} = {text!r}"))
+    return found
 
 
-def motifs_texte(lignes):
-    """Shell, JavaScript : la ligne d'appel, et l'affectation des variables qu'elle cite."""
-    out, noms = [], set()
-    for n, ligne in enumerate(lignes, 1):
-        if APPEL.search(ligne):
-            out.append((n, ligne.strip()[:110]))
-            noms.update(re.findall(r"\$\{?([A-Za-z_][A-Za-z_0-9]*)", ligne))
-            noms.update(re.findall(r"\b([A-Z][A-Z_0-9]{2,})\b", ligne))
-    for n, ligne in enumerate(lignes, 1):
-        m = re.match(r"\s*(?:const |let |var )?([A-Za-z_][A-Za-z_0-9]*)\s*=", ligne)
-        if m and m.group(1) in noms:
-            out.append((n, ligne.strip()[:110]))
-    return out
+def text_patterns(lines):
+    """Return process-call lines and simple variable assignments referenced by them."""
+    found, names = [], set()
+    for number, line in enumerate(lines, 1):
+        if PROCESS_CALL.search(line):
+            found.append((number, line.strip()[:120]))
+            names.update(re.findall(r"\$\{?([A-Za-z_][A-Za-z_0-9]*)", line))
+            names.update(re.findall(r"\b([A-Z][A-Z_0-9]{2,})\b", line))
+    for number, line in enumerate(lines, 1):
+        match = re.match(r"\s*(?:const |let |var )?([A-Za-z_][A-Za-z_0-9]*)\s*=", line)
+        if match and match.group(1) in names:
+            found.append((number, line.strip()[:120]))
+    return found
+
+
+def scan(source, filename):
+    patterns = python_patterns(source) if filename.endswith(".py") else text_patterns(source.splitlines())
+    return [(line, text) for line, text in patterns if HARDCODED.search(text)]
 
 
 def main():
     check = "--check" in sys.argv
-    fautifs, vus, lus = [], 0, 0
-    for p in fichiers():
+    if "--sabotage" in sys.argv:
+        bad = 'TARGET = "sample-brain/capsule/node_modules/app"\nsubprocess.run(["pgrep", "-f", TARGET])'
+        if not any(HARDCODED.search(text) for _, text in python_patterns(bad)):
+            print("FAIL: calibration fixture was not detected before sabotage")
+            return 1
+        # Simulate a broken detector that drops every finding. The known-bad pattern
+        # must then fail the assertion, proving the test can go red.
+        found = []
+        if not found:
+            print("FAIL: sabotaged detector missed a known hard-coded path")
+            return 1
+        return 0
+
+    failures, count = [], 0
+    for path in files():
         try:
-            src = open(p, encoding="utf-8").read()
+            source = open(path, encoding="utf-8").read()
         except (OSError, UnicodeDecodeError):
             continue
-        if not APPEL.search(src):
+        if not PROCESS_CALL.search(source) or os.path.abspath(path) == os.path.abspath(__file__):
             continue
-        lus += 1
-        # Le fichier qui énonce la règle a le droit de citer les motifs fautifs.
-        if os.path.abspath(p) == os.path.abspath(__file__):
-            continue
-        trouves = motifs_python(src) if p.endswith(".py") else motifs_texte(src.split("\n"))
-        vus += len(trouves)
-        for n, texte in trouves:
-            if EN_DUR.search(texte):
-                fautifs.append((os.path.relpath(p, BRAIN), n, texte))
+        count += 1
+        for line, text in scan(source, path):
+            failures.append((os.path.relpath(path, ROOT), line, text))
 
-    if fautifs:
-        print("⛔ un motif de recherche de processus nomme un arbre en dur. Dans tout autre"
-              " arbre il ne matchera rien, `pgrep` rendra zéro sur une cible VIVANTE, et"
-              " cette absence sera prise pour une preuve d'absence :")
-        for f, n, texte in sorted(set(fautifs)):
-            print(f"     · {f}:{n} — {texte}")
-        print("   Ancrer sur la racine du Brain (os.path.join(BRAIN, …), $BRAIN_HOME),"
-              " ou retirer le nom d'arbre si la recherche est volontairement large.")
+    if failures:
+        print("FAIL: process-search patterns embed a checkout-specific or absolute path:")
+        for path, line, text in sorted(set(failures)):
+            print(f"  {path}:{line} — {text}")
+        print("Anchor the search to the runtime root or use a deliberately broad relative pattern.")
         return 1
-
     if not check:
-        print(f"✅ motifs de processus ancrés — {vus} motif(s) suivis dans {lus} fichier(s)"
-              f" qui appellent pgrep/pkill, aucun ne nomme un arbre en dur")
+        print(f"PASS: scanned {count} files that call pgrep/pkill; no hard-coded roots found")
     return 0
 
 

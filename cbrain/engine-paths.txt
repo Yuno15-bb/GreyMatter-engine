@@ -1,0 +1,25 @@
+# Engine-owned paths, mounted INSIDE the trunk as symlinks by install.sh.
+#
+# WHY THIS FILE EXISTS (2026-08-16, reported by a tester).
+# These directories live in the trunk but belong to the ENGINE's git repository.
+# Nothing told the gardening agents that this corner of the trunk is not note
+# content, so the architect wove `[[...]]` links into `agents/*.md` — correct work,
+# done to the wrong repository. The consequence was a closed loop:
+#
+#     gardening pass dirties the engine
+#         → update.sh refuses to update a dirty engine
+#         → the user silently falls behind, version after version
+#
+# The list lived inline in install.sh only. It is now read from here by
+# install.sh, cbrain/update.sh and hooks/brain_doctor.py — one definition, three
+# consumers. A list copied into three files diverges; this repo learned that the
+# hard way the same day, with two recall engines that disagreed on 65 documents.
+#
+# Plain text on purpose: bash reads it without an interpreter, python without a
+# parser. One directory per line, `#` comments and blank lines ignored.
+hooks
+agents
+capsule
+planet
+companion
+tests

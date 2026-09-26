@@ -1,7 +1,7 @@
 {
   "name": "c-brain-capsule",
   "version": "1.0.0",
-  "description": "Petite capsule Tamagotchi qui anime le travail des agents du C Brain",
+  "description": "Small Tamagotchi-style capsule animating the work of the C Brain agents",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
