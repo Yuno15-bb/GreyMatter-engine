@@ -39,8 +39,19 @@ for f in "$SRC"/hooks/*.py; do
   python3 -m py_compile "$f" 2>/dev/null && ok "compile $f" || ko "compile $f"
 done
 
-# 2. capsule main.js
-node --check "$SRC/capsule/main.js" 2>/dev/null && ok "node --check main.js" || ko "node --check main.js"
+# 2. capsule main.js — only where Node exists.
+# ⚠ A MAC WITHOUT NODE IS A SUPPORTED MAC. The installer says so ("only the
+# capsule is skipped") and installs everything else. This line used to call
+# `node` unconditionally, so on such a Mac the selftest ended red — and the
+# updater, which switches only on a green selftest, then refused every release
+# for good. The CI never saw it: its runners ship Node. With no Node, the
+# capsule cannot run here at all, so its syntax is not this machine's question;
+# the CI, which has Node, keeps asking it. tests/fresh_mac_path.sh holds this.
+if command -v node >/dev/null 2>&1; then
+  node --check "$SRC/capsule/main.js" 2>/dev/null && ok "node --check main.js" || ko "node --check main.js"
+else
+  echo "  ⏭  capsule syntax not checked — Node.js is not installed, and only the capsule needs it"
+fi
 
 # 3. SessionEnd: auto_maintain must exit 0 even on empty input / a trivial session.
 # CLAUDE_BRAIN_GARDENING=1 = ZERO SIDE EFFECTS: without it, if the Inbox has work and the quota
@@ -116,6 +127,13 @@ fi
 if [ -z "$BRAIN_CLI" ]; then
   ko "brain CLI not found (looked in ${ENGINE:+$SRC}${ENGINE:-$BRAIN/brain and on PATH}) — the front door is not being tested"
 else
+# ⚠ ANOTHER WRITER MAY BE LEGITIMATELY AT WORK. While the maintenance holds its lock,
+# its heartbeat rewrites status.json every few seconds — so comparing the file before
+# and after says nothing about `brain status`, and a false red here is not harmless:
+# this selftest is the update gate, and it refused a release on a blank Mac whose
+# maintenance had just started (2026-09-26). The lock is read at both ends; when it
+# is held the comparison is named as skipped, never silently passed.
+busy=0; [ -e state/maintenance.lock ] && busy=1
 before=$(cat state/status.json 2>/dev/null)
 for c in "" next; do
   # stdout ALONE: an error message on stderr must NEVER count as output.
@@ -125,14 +143,25 @@ for c in "" next; do
     || ko "brain ${c:-status}: exit $rc, $([ -n "$out" ] && echo 'non-empty output' || echo 'NOTHING on stdout') — a silent display command is broken, even at exit 0"
 done
 # a READ command must never mutate the state the capsule reads
+[ -e state/maintenance.lock ] && busy=1
+if [ "$busy" = 1 ]; then
+  echo "  ⏭  status.json not compared — the maintenance is running and writes it"
+else
 [ "$(cat state/status.json 2>/dev/null)" = "$before" ] \
   && ok "brain status did not modify state/status.json (pure read)" \
   || ko "brain status MUTATED status.json — this is exactly the 2026-06-22 bug"
+fi
 # an unknown state must be REFUSED, not recorded (otherwise a typo poisons the capsule)
-python3 "$SRC/hooks/brain_status.py" bogus-state >/dev/null 2>&1
-[ $? -eq 2 ] && [ "$(cat state/status.json 2>/dev/null)" = "$before" ] \
+python3 "$SRC/hooks/brain_status.py" bogus-state >/dev/null 2>&1; bogus_rc=$?
+[ -e state/maintenance.lock ] && busy=1
+if [ "$busy" = 1 ]; then
+  [ $bogus_rc -eq 2 ] && ok "brain_status refuses an unknown state (exit 2; file not compared, see above)" \
+    || ko "brain_status accepted an unknown state — any typo breaks the capsule"
+else
+[ $bogus_rc -eq 2 ] && [ "$(cat state/status.json 2>/dev/null)" = "$before" ] \
   && ok "brain_status refuses an unknown state (exit 2, file intact)" \
   || ko "brain_status accepted an unknown state — any typo breaks the capsule"
+fi
 # do all the subcommands announced in the usage really exist in the case?
 if BRAIN_CLI="$BRAIN_CLI" python3 - <<'PYEOF'
 import re, subprocess, sys, os

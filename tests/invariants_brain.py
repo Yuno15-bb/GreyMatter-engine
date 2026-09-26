@@ -451,24 +451,33 @@ class UnePierreTombaleNestPasUneTache(unittest.TestCase):
         chemin = os.path.join(BRAIN, "planet", "graph.json")
         if not os.path.exists(chemin):
             self.skipTest("graph.json has not been generated yet")
-        graphe = json.load(open(chemin, encoding="utf-8"))
-
-
-
-
-
+        with open(chemin, encoding="utf-8") as f:
+            graphe = json.load(f)
         if graphe.get("reprises_indisponibles"):
             self.skipTest("badge ↻ non calculable : %s" % graphe["reprises_indisponibles"])
+        # ⚠ THIS INVARIANT RUNS IN THE SELFTEST, AND THE SELFTEST IS THE UPDATE GATE. It reads a
+        # FILE ON DISK that an OLDER engine may have written. Two readings are therefore not a
+        # verdict on the code under test, and failing on them locks the Mac out of every release
+        # — including the one that repairs the exporter (found on a blank Mac, 2026-09-26):
+        #   · no `head`: the graph predates the single detector. Its badges came from a regex
+        #     that lit any note merely mentioning a resume point. Comparing them proves nothing
+        #     about this engine.
+        #   · another `head`: the snapshot is stale. The shipped engine regenerates the graph
+        #     BEFORE the session-end commit and installs no post-commit trigger, so after any
+        #     commit the graph describes the previous HEAD. That is the normal state, not a fault.
+        # Both are named as skips. The real inconsistency — two detectors disagreeing at the
+        # SAME head — still fails below.
+        if "head" not in graphe:
+            self.skipTest("planet/graph.json predates the `head` field: written by an older "
+                          "exporter, regenerated at the next session end")
         import subprocess
         r = subprocess.run(["git", "-C", BRAIN, "rev-parse", "HEAD"],
                            capture_output=True, text=True)
         head_courant = r.stdout.strip() if r.returncode == 0 else None
-        head_graphe = graphe.get("head")
-        if head_courant and head_graphe and head_courant != head_graphe:
-            self.fail("planet/graph.json describes HEAD %s, while the trunk is at %s: "
-                      "the snapshot is stale, not inconsistent. `commit_par_zone` "
-                      "regenerates the graph after each commit; this means regeneration failed."
-                      % (head_graphe[:12], head_courant[:12]))
+        head_graphe = graphe["head"]                 # None when the trunk is not a repository
+        if head_courant != head_graphe:
+            self.skipTest("planet/graph.json describes HEAD %s, the trunk is at %s: a stale "
+                          "snapshot, not an inconsistency" % ((head_graphe or "none")[:12], (head_courant or "none")[:12]))
         allumes = {n["file"] for n in graphe["nodes"] if n.get("resume")}
         attendus = {it["path"] for it in ba.collect()[:ba.TOP_REPRISES]}
         self.assertEqual(allumes, attendus,

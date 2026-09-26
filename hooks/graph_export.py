@@ -123,9 +123,41 @@ FM_DESC = re.compile(r'^\s*description:\s*["\']?(.+?)["\']?\s*$', re.M)
 FM_BORN = re.compile(r'^\s*born_from:\s*(.+?)\s*$', re.M)   # born_from: <projet>[, autre]
 FM_SCALE = re.compile(r'^\s*scale:\s*([0-9](?:\.[0-9])?)\s*$', re.M)  # scale: 1..4 (city centre → outskirts)
 LINK = re.compile(r'\[\[([^\]]+)\]\]')          # [[nom-de-fiche]]
-# BILINGUAL on purpose: it scans the USER's notes, in whatever language they write.
-RESUME_RE = re.compile(r'RESUME HERE|resume point|pick up here'
-                       r'|REPRENDRE ICI|point de reprise|à reprendre', re.I)   # ↻ badge
+# ⚠ THE ↻ BADGE HAS NO DETECTOR OF ITS OWN. It used to: a regex that lit any note merely
+# CONTAINING "resume point" — notes that talk about the marker, notes that deny it ("nothing to
+# resume"), struck-through ones, lessons where a resume point means nothing. Two detectors for
+# one question, and only one of them repaired. The author's engine dropped it on 2026-08-14; this
+# port kept it, and a fresh install proved it: agents/narcissus.md only DESCRIBES "resume points",
+# the first auto-commit regenerated the graph with its badge lit, and the selftest went red for
+# good (tests/invariants_brain.py, the badge invariant). The badge now reads `brain_anticipate`:
+# the SAME detector and the SAME ranking as the resume points offered at session start.
+def _current_head():
+    """The trunk's HEAD, or None when the trunk is not a repository."""
+    try:
+        r = __import__("subprocess").run(["git", "-C", BRAIN, "rev-parse", "HEAD"],
+                                         capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def load_resume_points():
+    """The notes at the top of the offered resume points (↻ badge), and why, if it failed.
+
+    Called by scan(), never at import: collect() walks the whole tree, and every importer of
+    this module (the doctor, the benches, the write hook) would otherwise pay for it.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import brain_anticipate
+        return {it["path"] for it in brain_anticipate.collect()[:brain_anticipate.TOP_REPRISES]}, None
+    except Exception as e:
+        # Never block the export for a badge — but "off because the capacity is missing" and
+        # "off because nothing is waiting" are DIFFERENT states. The graph carries the reason,
+        # and the invariant reads it instead of comparing two empty sets and calling it green.
+        unavailable = "%s: %s" % (type(e).__name__, e)
+        print("⚠️  ↻ badge not computed — %s" % unavailable, file=sys.stderr)
+        return set(), unavailable
 DASH = re.compile(r'\s+[—–]\s+')                # em/en dash surrounded by spaces
 
 # membership weights (continent / city / frontier model)
@@ -241,6 +273,7 @@ def scan():
     challenges = load_challenges()             # the challenger's verdict per note
     beliefs = load_beliefs()                   # the author's dated convictions (the taste layer)
     media = load_media()                       # replayable captures per note
+    resume_points, resume_unavailable = load_resume_points()   # notes at the top of the resume points (↻ badge)
 
     for domain in DOMAINS:
         root = os.path.join(BRAIN, domain)
@@ -305,7 +338,7 @@ def scan():
                               "challenge": challenges.get(rel_file),   # the challenger's verdict, or None
                               "conviction": beliefs.get(rel_file),     # a dated conviction, or None
                               "media": media.get(rel_file),            # a replayable capture, or None
-                              "resume": bool(RESUME_RE.search(text)),  # carries a resume point (↻ badge)
+                              "resume": rel_file in resume_points,    # among the top resume points (↻ badge)
                               "topic": topic,
                               "file": rel_file}
                 # outgoing links (deduplicated below)
@@ -406,6 +439,11 @@ def scan():
     sem_covered = sum(1 for n in nodes.values() if n.get("embed2"))
     return {
         "generated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%S"),
+        # THE HEAD THIS GRAPH DESCRIBES. The ↻ badge is a SNAPSHOT; the resume points offered
+        # at startup are a RECOMPUTATION. They agree while they speak of the same HEAD — without
+        # this field, "stale" and "inconsistent" cannot be told apart.
+        "head": _current_head(),
+        "reprises_indisponibles": resume_unavailable,
         "counts": {"nodes": len(nodes), "links": len(links),
                    "projects": len(projects),
                    "frontier": sum(1 for n in nodes.values() if n.get("frontier")),

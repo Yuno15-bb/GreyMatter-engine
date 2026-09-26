@@ -30,6 +30,13 @@ cd ~/dev/c-brain
 ./install.sh
 ```
 
+**On a brand-new Mac**, `git` and `python3` are not there yet: they come with
+Apple's Command Line Tools. The first `git clone` opens Apple's dialog to install
+them — accept, let it finish (a few minutes), then run the three lines again. You
+can also start with `xcode-select --install`. Nothing else is needed: no
+Homebrew, no Node. Only the capsule uses Node, and the installer skips it and
+says so.
+
 Options: `--dry-run` (writes nothing, shows what would happen) ·
 `--dev` (for working ON GreyMatter: links the engine to your checkout and turns
 automatic engine updates off for it) ·
@@ -79,6 +86,9 @@ to your model provider. See [SECURITY.md](SECURITY.md) for the full data flow.
 | `python3` | every hook and the CLI |
 | `git` | updates |
 | `npm` *(optional)* | the Electron capsule — everything else works without it |
+
+`python3` and `git` both come with Apple's Command Line Tools
+(`xcode-select --install`); their Python 3.9 is enough.
 
 ## If you don't use Claude Code
 

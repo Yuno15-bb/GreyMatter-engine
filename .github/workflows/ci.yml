@@ -240,6 +240,20 @@ jobs:
             echo "✅ sabotage $s reddens"
           done
 
+      # This runner has Node and Homebrew; a new Mac has neither. Every other
+      # step here therefore runs a machine no new user owns — which is how a
+      # selftest that required Node shipped green. This step takes them away.
+      - name: a Mac with only Apple's tools (no Node, no Homebrew)
+        run: |
+          set -euo pipefail
+          bash tests/fresh_mac_path.sh
+          for sab in node-required badge-regex lock-ignored; do
+            if bash tests/fresh_mac_path.sh --sabotage "$sab" >/dev/null 2>&1; then
+              echo "❌ sabotage $sab left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $sab reddens"
+          done
+
       # THE FIRST END-TO-END CONTRACT, and until 2026-09-20 nothing ran it. It
       # was written on 2026-08-17 against "green component by component is not a
       # correct product", and then sat in tests/ for a month while CI checked the
@@ -252,9 +266,9 @@ jobs:
           # ⚠ THE BENCH BUILDS ITS PATH FROM NOTHING — that is fault B1's guard,
           # and it must stay that way. But it reaches for node at /opt/homebrew/bin
           # only, which is where this author's Mac keeps it; a runner may not.
-          # The selftest inside the bench would then fail for a reason that has
-          # nothing to do with installing, and the log would read as a broken
-          # updater. So node's real directory is handed over explicitly, and
+          # The selftest inside the bench would then skip the capsule's check
+          # (until v2.0.2 it failed outright — the fault fresh_mac_path.sh now
+          # holds). So node's real directory is handed over explicitly, and
           # NOTHING else: the host's ~/.local/bin stays out, and the bench's own
           # leak assertion still proves the `brain` it exercises is its own.
           NODE_BIN="$(command -v node || true)"
