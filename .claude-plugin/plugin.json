@@ -1,7 +1,7 @@
 {
   "name": "c-brain",
   "description": "A memory that grows. Your agent is brilliant within a session and amnesic between two — this gives it a persistent knowledge trunk on your machine: what you work out once is distilled into a note, filed, linked, and handed back when you ask for it, from any project. It makes no request of its own — no telemetry, no account.",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "author": { "name": "Dylan Peellaert" },
   "homepage": "https://github.com/Yuno15-bb/GreyMatter-engine",
   "repository": "https://github.com/Yuno15-bb/GreyMatter-engine",
