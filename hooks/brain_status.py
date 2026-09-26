@@ -195,7 +195,13 @@ def show_status():
         with open(STATUS, "r", encoding="utf-8") as f:
             s = json.load(f)
     except FileNotFoundError:
-        print("(no status: state/status.json is missing)")
+        # THE FIRST THING A NEW USER RUNS. The install's last screen offers
+        # `brain status`, and before any session this said the file "is missing" —
+        # true, and read as a broken install (blank-Mac test, 2026-09-26). Nothing
+        # is missing: the hooks write this file while Claude Code works.
+        print("state    : not started yet")
+        print("           Nothing is wrong. Claude Code's hooks write this status while")
+        print("           they work, so it appears during your first session.")
         return 0
     except Exception as e:
         print(f"(unreadable status: {e})")
