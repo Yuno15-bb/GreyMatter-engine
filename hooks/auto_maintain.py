@@ -74,6 +74,25 @@ def transcript_for(sid):
         return direct
     elsewhere = sorted(glob.glob(os.path.join(PROJECTS_ROOT, "*", f"{sid}.jsonl")))
     return elsewhere[0] if elsewhere else None
+
+
+def wrote_nothing(sid, transcript_path):
+    """True when Claude Code named this session's transcript and nothing was ever
+    written there, nor anywhere else under that id: a command, not a conversation.
+
+    `claude plugin install` runs the SessionEnd hooks when it exits, with a fresh
+    session id and a transcript_path that does not exist (reason "other"). Observed on
+    2026-09-26 with Claude Code 2.1.283, in a throwaway HOME: that one command put a
+    session in pending-distill.json, and the next maintenance would have spent a
+    headless run distilling nothing. It is NOT the "unreadable" case below, which
+    stays queued: here the path comes from Claude Code itself and the file is absent,
+    so "0 messages" is measured, not assumed. Any other shape — no path given, a file
+    that exists but cannot be opened, an index entry — is left to the caller."""
+    if not (sid and transcript_path) or os.path.exists(transcript_path):
+        return False
+    if transcript_for(sid):
+        return False
+    return sid not in load_json(INDEX, {})
 MANUAL_SAVES = os.path.join(BRAIN, "state", "manual-saves.jsonl")  # ledger written by on_fiche_write
 MIN_MSG = 20  # below this: a trivial session, no distillation
 
@@ -526,6 +545,21 @@ def main():
     if os.environ.get("CLAUDE_BRAIN_GARDENING") == "1":
         return  # we ARE the maintenance headless run
 
+    try:
+        data = json.loads(sys.stdin.read() or "{}")
+    except Exception:
+        data = {}
+    sid = data.get("session_id")
+    tp = data.get("transcript_path")
+
+    # A COMMAND IS NOT A SESSION. Decided before anything is queued — the freeze
+    # below included — because a queued id is a headless run spent later.
+    if wrote_nothing(sid, tp):
+        print(f"[auto_maintain] {sid} wrote no transcript (a command such as "
+              f"`claude plugin install`, not a conversation) — nothing to distill, not queued",
+              file=sys.stderr)
+        return
+
     # FREEZE ON AUTONOMOUS WRITERS (Phase 0 of the Brain V3 RFC, 2026-08-03).
     # While Brain V3 is being built outside production, the distiller, the
     # gardener and brain_upkeep would keep modifying the trunk — and since
@@ -540,22 +574,13 @@ def main():
     freeze = os.path.join(BRAIN, "state", "FREEZE")
     if os.path.exists(freeze):
         try:
-            data = json.loads(sys.stdin.read() or "{}")
-            sid = data.get("session_id")
             if sid:
                 guard.enqueue(sid)  # capture-only: we note it, we do not process it
         except Exception:
             pass
         return
 
-    try:
-        data = json.loads(sys.stdin.read() or "{}")
-    except Exception:
-        data = {}
-    sid = data.get("session_id")
-
     distilled = set(load_json(DISTILLED, []))
-    tp = data.get("transcript_path")
     n = session_msg_count(sid, tp) if sid else None
     if sid and n is None:
         # ESSENTIAL: being unable to measure must not pass itself off as a trivial session.

@@ -275,6 +275,14 @@ def main():
         data = json.loads(raw) if raw.strip() else {}
     except Exception:
         data = {}
+    # A COMMAND IS NOT A SESSION. `claude plugin install` runs this hook when it
+    # exits, naming a transcript it never writes: the archive got a note for it —
+    # "Messages: ?", subject "(not captured)" — dated like real work. Same rule as
+    # auto_maintain.wrote_nothing(), which keeps it out of the distillation queue.
+    sid, tp = data.get("session_id"), data.get("transcript_path")
+    if sid and tp and not os.path.exists(tp) \
+            and not glob.glob(os.path.join(PROJECTS_ROOT, "*", f"{sid}.jsonl")):
+        sys.exit(0)
     try:
         cache, _ = rebuild_timeline()
         if data.get("session_id"):
