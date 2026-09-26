@@ -1,68 +1,132 @@
 ---
 name: readme
-description: Guide to the 8 agents (distiller, gardener, architect, challenger, synthesizer, archivist, mechanic, machinist) — roles, how to run them, autonomous thresholds
+description: Guide to the four ships (NOSTROMO, NARCISSUS, SULACO, ANESIDORA) and their eight missions — roles, boundaries, launch and autonomous thresholds
 metadata:
   type: reference
 ---
 
-# Agents
+# 🤖 Trunk agents
 
-Native Claude Code sub-agents that maintain and feed the trunk. The canonical
-files are **versioned here** and symlinked into `~/.claude/agents/` so Claude
-Code can discover them.
+## In plain terms
 
-## The agents
+This guide explains the agents that maintain the trunk and the boundaries between them.
+Since 2026-09-20, the eight roles have been grouped into **four ships**. A ship is what
+gets launched; a **mission** is the work assigned when it wakes. The task names the
+mission, and each mission keeps its own tools and write permissions. `hooks/robots_permissions.py`
+enforces rights by mission: the challenger can still write only `state/challenges.json`
+even though it shares SULACO with the architect.
 
-- **[distiller](distiller.md)** — creates knowledge: turns raw sessions (`sessions/archive/`, transcripts) into clean notes and lessons, or updates what exists. *Does not tidy the tree globally* (that is the gardener).
-- **[gardener](gardener.md)** — tidies the tree: deduplicates, guarantees every note is on the map (`MEMORY.md` + `lessons/INDEX.md`), weaves and repairs the **obvious** `[[...]]` links, masks secrets, handles coherence and usefulness. *Creates no knowledge.*
-- **[architect](architect.md)** — **global** cohesion: reads the whole graph topology (`hooks/brain_topology.py`) to weave the **missing** links, connect isolated notes, reattach detached islands, favour cross-domain bridges. *The wide view, where the gardener files note by note.*
-- **[challenger](challenger.md)** — puts the knowledge to the test: hunts the stale, the false, the contradicted, the oversold; produces substantiated doubts (`state/challenges.json`). *Fixes nothing — it doubts.*
-- **[synthesizer](synthesizer.md)** — second-order knowledge: connects a cross-cutting theme across several projects into a dense essay (`lessons/`). *Creates the wide view no single note states.*
-- **[archivist](archivist.md)** — manages the cold layer: freshness, staleness, archiving dead weight (via `state/utility.json`). *Proposes, never deletes.*
-- **[mechanic](mechanic.md)** — repairs the machine infrastructure: hooks, wiring, symlinks, capsule. *Never note content.*
-- **[machinist](machinist.md)** — the physical machine: RAM, CPU, heat, orphaned processes. *Never the knowledge, never the software infrastructure.*
+The mission that creates knowledge does not file the whole tree. The one that files it
+does not create new facts. The one that doubts exposes evidence without correcting notes.
+The one that connects notes does not judge their truth. The archivist never deletes alone.
+These narrow boundaries keep each kind of error visible and separately testable.
 
-> **Eight roles, one team (separation of powers).** The distiller *writes*, the gardener *files* (local), the architect *connects* (global), the challenger *doubts*, the synthesizer *synthesizes*, the archivist *prunes*, the mechanic *repairs the infrastructure*, the machinist *keeps the machine cool*. None does another's job — that is what keeps the system safe and auditable.
+The ships' names come from the *Alien* films and remain proper nouns. Mission names are
+English identifiers throughout this package. The canonical files are versioned here;
+`~/.claude/agents/` points to them for Claude Code discovery.
 
-## How to run them
+## The four ships
 
-In any Claude Code session, in plain language:
-- "**run the distiller** on my last session" → capture what deserves to stay.
-- "**run the gardener**" → clean and tidy the tree.
+### 🛠 [NOSTROMO](nostromo.md) — the machine
 
-Or by naming them explicitly as sub-agents. A typical flow after a heavy session:
-1. `distiller` extracts the notes from the session,
-2. `gardener` checks they are filed, linked, and on the map.
+The industrial tug maintains the engine room, reactor and wiring. In Italian,
+*nostromo* means boatswain: the person who runs the ship without deciding its cargo.
 
-## Reinstalling the symlinks (new machine / after a git clone)
+- **`mechanic`** repairs hooks, wiring, symlinks and the capsule; never note content.
+- **`machinist`** watches RAM, CPU, heat, battery, abandoned processes and permanent
+  animations; never the trunk's knowledge or software infrastructure.
 
-`install.sh` does this for you. By hand:
+### ⚗️ [NARCISSUS](narcissus.md) — end of session
+
+The shuttle records what deserves to survive a session and then files it.
+
+- **`distiller`** turns session archives and transcripts into durable notes and lessons,
+  or updates an existing note with new facts. It does not reorganise the whole tree.
+- **`gardener`** files and deduplicates notes, maintains the `MEMORY.md` and
+  `lessons/INDEX.md` map, repairs obvious `[[...]]` links, masks secrets and checks
+  coherence and utility. It does not create knowledge.
+
+### 🔭 [SULACO](sulaco.md) — knowledge watch
+
+The watch carries specialists to examine the tree; at most one mission wakes per pass.
+
+- **`challenger`** tests stale, false, contradicted, unsupported and oversold claims;
+  records evidenced doubts in `state/challenges.json` and corrects no note.
+- **`architect`** reads the whole graph topology to connect isolated notes, detached
+  components and meaningful cross-domain bridges. The gardener works note by note;
+  the architect works across the entire tree.
+- **`archivist`** checks freshness and dead weight, then proposes archiving. It never
+  deletes or archives without human approval.
+
+### 🕸 [ANESIDORA](anesidora.md) — synthesis on demand
+
+The recovery ship reads what earlier missions learned. It has no schedule.
+
+- **`synthesizer`** writes a dense cross-project essay in `lessons/` containing
+  second-order knowledge that no individual note states alone.
+
+> **Eight missions, one team.** The distiller writes; the gardener files locally;
+> the architect connects globally; the challenger tests; the synthesizer draws
+> a wider conclusion; the archivist proposes cold storage; the mechanic repairs
+> infrastructure; the machinist cares for the physical machine.
+
+## How to launch them
+
+In a Claude Code session, ask for a ship and name its mission. For example,
+"launch NARCISSUS on my last session, first as distiller and then as gardener".
+Alternatively, use `--agent narcissus` with a task beginning with the desired
+mission. The automatic launchers send only the matching `## MISSION — <name>`
+section, avoiding the cost and confusion of the other missions.
+
+After a substantial session:
+
+1. `narcissus` as `distiller` extracts durable notes.
+2. `narcissus` as `gardener` checks their placement, links and map coverage.
+
+## Reinstalling the agent surface
 
 ```bash
 mkdir -p ~/.claude/agents
-# symlink EVERY agent — anything left out stays silent after a clone
+# Link all four ships; README.md is a guide, not an agent.
 for a in ~/.c-brain/trunk/agents/*.md; do
   [ "$(basename "$a")" = "README.md" ] && continue
   ln -sf "$a" ~/.claude/agents/"$(basename "$a")"
 done
 ```
 
+`model:` is the manual-launch default. An automatic pass chooses its model **per
+mission**, rather than using the ship's front matter. A dedicated inter-project
+linking agent and an autonomous architect watch have already been implemented
+as SULACO's architect mission and `hooks/brain_upkeep.py`.
+
 ## The second autonomous layer — cohesion watch
 
-Beyond the SessionEnd pair `distiller → gardener`, a **second layer** maintains
-the trunk on its own through `hooks/brain_upkeep.py`, called at the end of every
-maintenance pass:
+After the NARCISSUS SessionEnd sequence (`distiller` → `gardener`),
+`hooks/brain_upkeep.py` runs a separate watch:
 
-1. it **regenerates the mechanical sensors** (free, zero LLM): `brain_topology.py`, `brain_utility.py` (plus the accumulated `coherence.json`);
-2. each watch agent is **eligible** only if **its sensor crosses a threshold** (real work exists) **and** its **cooldown** (12 h) has elapsed;
-3. **at most ONE agent is woken per pass** (a cost guarantee: about one extra LLM run, and only when there is something to do), in priority order **challenger → architect → archivist → mechanic** (`brain_upkeep.ORDER`).
+1. Mechanical sensors refresh topology, utility and accumulated coherence data.
+2. A mission is eligible only when its sensor passes a work threshold and its
+   12-hour cooldown has elapsed.
+3. At most **one** mission wakes per pass, in this order: challenger → architect →
+   archivist → mechanic (`brain_upkeep.ORDER`). This bounds model cost.
 
-Thresholds: architect (≥1 isolated note OR ≥3 doubtful placements OR ≥2 components OR ≥8 missing links) · challenger (≥1 **`(a,b)` pair** to arbitrate in `coherence.json` — arbitration notes do not count) · archivist (≥3 notes of dead weight) · **mechanic (≥1 defect in `doctor.json`)**. Over time every dimension gets its turn. Best effort: if a watch agent fails (quota, login), the pass is skipped — no data is lost (unlike distillation). Dry-run debug: `python3 hooks/brain_upkeep.py decide`.
+Thresholds: architect (at least one isolated note, three questionable placements,
+two components or eight missing links); challenger (at least one actionable `(a,b)`
+pair in `coherence.json`); archivist (three dead-weight notes); mechanic (one
+infrastructure defect in `doctor.json`). Arbitration notes alone do not wake the
+challenger. The watch is best effort: a quota or login failure skips a pass without
+losing source data. Inspect the choice with `python3 hooks/brain_upkeep.py decide`.
 
-> ⚠️ **The mechanic IS wired into the autonomous loop.** It runs on `sonnet` with `--dangerously-skip-permissions` and the `Edit/Write/Bash` tools: it can therefore **modify the infrastructure on its own** when `brain_doctor` reports a defect. Its mission (`brain_upkeep.TASKS`) bounds it to the defects the doctor listed and forbids touching hooks, settings or symlinks unless explicitly pointed at them. It is the only watch agent whose failed pass cannot be replayed identically — watch it through `sessions/gardening.log`.
+The **mechanic does run automatically** when the doctor reports a defect. Its task is
+bounded to defects the doctor lists, and its automatic permissions restrict writes.
+Review its runs in `sessions/gardening.log` because an attempted infrastructure
+repair is not always replayable.
 
-Still optional: wiring in the **synthesizer** (no sensor — it is triggered by thematic density, not by a defect).
+Every wake writes a per-mission line to `state/agents.jsonl` with the mission, ship,
+layer and duration. Layer one is recorded there too. After gardening,
+`auto_maintain` reruns `brain_doctor --json` and logs any remaining defects, so the
+gardener is not the sole judge of its own work. ANESIDORA remains manual until a
+meaningful thematic-density sensor exists.
 
-**Mechanical guard after gardening** (zero LLM): `auto_maintain` re-runs `brain_doctor --json` right after the gardener and logs `[doctor] … post-gardening: N defect(s)` into `sessions/gardening.log` when `N != 0`. The gardener can no longer be the sole judge of its own pass.
-
-**Invariants**: `python3 tests/invariants_brain.py` — sensors that come back down, tolerance for legacy entries, doc↔code agreement, per-agent model. Run by `hooks/selftest.sh`.
+`python3 tests/invariants_brain.py` checks sensors, legacy-entry tolerance,
+mission models and tasks, and agent discovery. `hooks/selftest.sh` runs it too.

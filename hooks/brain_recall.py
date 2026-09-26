@@ -209,6 +209,23 @@ def load_corpus():
         os.makedirs(os.path.dirname(cache), exist_ok=True)
         # Atomic: a hook killed mid-write must not leave a half-file that the
         # next run reads as authoritative.
+        # ... but the atomic write has a blind spot: if the hook is killed BETWEEN the
+        # open and the `replace`, the `.tmp` stays, and nobody ever collects it. Two
+        # orphans found on 2026-09-22, 4.4 MB, written on 09/09 and 09/21 by PIDs long
+        # dead. So we sweep them before writing. The test is the PROCESS'S DEATH, not the
+        # file's age: a long indexing run must not have its own draft erased by a neighbour.
+        for orphan in glob.glob(f"{cache}.*.tmp"):
+            try:
+                os.kill(int(orphan.rsplit(".", 2)[-2]), 0)
+            except (ValueError, IndexError):
+                continue                    # unexpected name: left alone
+            except ProcessLookupError:
+                try:
+                    os.remove(orphan)       # its writer is dead, the draft is useless
+                except OSError:
+                    pass
+            except PermissionError:
+                continue                    # alive, but another user's
         tmp = f"{cache}.{os.getpid()}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"version": _CACHE_VERSION, "fingerprint": fp, "docs": docs}, f)
@@ -248,7 +265,7 @@ _DEFAULTS = {
     # backed by a measurement, not a default.
     "index": {"name_weight": 3, "description_weight": 3, "family_bridge_weight": 0},
     "bm25": {"k1": 1.5, "b": 0.75},
-    "utility": {"alpha": 0.2},
+    "utility": {"alpha": 0.0},   # M5: out of the ranking (ADR-0018)
     "exploration": {"denominator": 3, "rarely_suggested_threshold": 3},
 }
 _CONFIG_CACHE = None
@@ -355,15 +372,16 @@ def _read_corpus(files):
 # What has ALREADY served climbs. The recall log had existed for months and nobody read it
 # back: `inject_recall.py` opened it in "a" mode and nothing ever read it — 2.3% of the
 # suggested notes were actually opened, and nothing corrected that rate.
-# The multiplier is logarithmic: 1 hit weighs a lot, the 10th almost nothing. A note used
-# 3 times must not crush lexical relevance, only break its ties.
-# α IS MEASURED, NOT PICKED AT RANDOM. There is no ground truth to optimise it against, so
-# we measure its SENSITIVITY instead. Over 10 queries, the share of the top-3 held by notes
-# with a history: α=0 → 3/30 · 0.2 → 8/30 · 0.5 → 12/30 · 1.0 → 15/30 (and only one query
-# in ten keeps its original top-3). Past ~0.3 the history dictates the ranking and the
-# lexical score is no longer the judge. 0.2 = usage breaks ties without dominating.
-# Both values now live in config/ranking.json, with their justification. The defaults are
-# these exact numbers, so a trunk without that file ranks exactly as it did before.
+# ⚠️ α IS NO LONGER A RANKING PARAMETER since 2026-09-19 (ADR-0018, M5).
+# It was one from 2026-08 to 2026-09-19: the score was bm25 × (1 + α·ln(1+hits)), and α
+# had been MEASURED, not picked — share of the top-3 held by notes with a history, over
+# 10 queries: α=0 → 3/30 · 0.2 → 8/30 · 0.5 → 12/30 · 1.0 → 15/30.
+# What closed the case was not the value but the instrument's RESOLUTION: under a 1 %
+# lexical gap — the only band where a tie-break would have the right to act — the order
+# flips one time in two when the corpus moves. In that band nothing tells service from
+# noise, so the bonus is unjustifiable there, not merely small.
+# The constant is still read here so as not to break what imports it (frozen tests,
+# probes), and defaults to 0: even reintroduced by mistake, it would be inert.
 ALPHA = config()["utility"]["alpha"]
 RARELY_SUGGESTED = config()["exploration"]["rarely_suggested_threshold"]
 _UTILITY_CACHE = None
@@ -455,7 +473,11 @@ class BM25:
         """The ranking WITH its decomposition — the single source of search() and --explain.
 
         Returns an ordered list of dicts, one per kept result:
-          doc · bm25 · bm25_detail · hits · utility_factor · score · exploration · rank
+          doc · bm25 · bm25_detail · hits · last · utility_factor · score ·
+          exploration · rank
+
+        Since M5 (ADR-0018) `score` IS `bm25`: `hits` and `last` are usage annotations,
+        served next to the result and never inside it.
 
         `search()` keeps only (score, doc) so its callers see no change.
         """
@@ -474,13 +496,17 @@ class BM25:
             alive = [t for t in scored if t[1]["name"] not in dead]
             scored = alive or scored          # never an empty result because of the filter
         util = _utility() if feedback else {}
-        alpha = config()["utility"]["alpha"]
         adjusted = []
         for s, d, i in scored:
-            hits = util.get(d["path"], {}).get("hit", 0)
-            factor = 1 + alpha * math.log(1 + hits)
-            adjusted.append({"doc": d, "idx": i, "bm25": s, "hits": hits,
-                             "utility_factor": factor, "score": s * factor,
+            # ADR-0018, mechanism M5 — INSTALLED on 2026-09-19, decided on 2026-08-30.
+            # Usage no longer multiplies, breaks ties or selects: the rank is the lexical
+            # score, and nothing else. `utility_factor` stays published, frozen at 1.0,
+            # because frozen instruments read the key; it can no longer vary, so it can no
+            # longer move a note.
+            u = util.get(d["path"], {})
+            adjusted.append({"doc": d, "idx": i, "bm25": s,
+                             "hits": u.get("hit", 0), "last": u.get("last"),
+                             "utility_factor": 1.0, "score": s,
                              "exploration": False})
         adjusted.sort(key=lambda r: r["score"], reverse=True)
 
@@ -531,9 +557,10 @@ def _print_explanation(records, query, as_json):
     """"Why this note, and why in this position?"
 
     HONESTY OF THE SCHEMA. We do not invent components that do not exist in the
-    calculation. The score is MULTIPLICATIVE today (bm25 × utility factor), not a sum of
-    bonuses — so `utility` is published as the DELTA it actually adds, and its nature is
-    named. Likewise:
+    calculation. Since M5 (ADR-0018, 2026-09-19) the score has only ONE component, `bm25`.
+    Usage has therefore left `components` for `usage`: leaving it among the components at
+    +0.00 would have suggested a term worth zero today, when it no longer exists.
+    Likewise:
       • the family bridge is NOT a term of the score: it is folded into the indexed text,
         therefore into `bm25`. We publish which of the query's words came from it, which
         answers the real question ("does this note owe its place to its own words or to
@@ -555,11 +582,14 @@ def _print_explanation(records, query, as_json):
             "final_score": round(r["score"], 4),
             "components": {
                 "bm25": round(r["bm25"], 4),
-                "utility": round(r["score"] - r["bm25"], 4),
+            },
+            "usage": {
+                "opens_after_suggestion": r["hits"],
+                "last": r.get("last"),
             },
             "nature": {
-                "utility": f"MULTIPLICATIVE x{r['utility_factor']:.4f} "
-                           f"(alpha={cfg['utility']['alpha']}, hits={r['hits']})",
+                "utility": "OUT OF THE RANKING (ADR-0018, M5) — usage annotation: "
+                           "it describes the result, it never moves it",
                 "family_bridge": "folded into bm25, never a separate term",
                 "exploration": "reserved slot, never a score bonus",
             },
@@ -576,9 +606,11 @@ def _print_explanation(records, query, as_json):
     for e in out:
         flag = "  <- exploration slot" if e["exploration_slot"] else ""
         print(f"  #{e['rank']}  [{e['final_score']:6.2f}] {e['note']}{flag}")
-        c = e["components"]
-        print(f"        bm25 {c['bm25']:6.2f}   utility {c['utility']:+6.2f}"
-              f"   ({e['nature']['utility']})")
+        c, u = e["components"], e["usage"]
+        when = f", last {u['last']}" if u["last"] else ""
+        print(f"        bm25 {c['bm25']:6.2f}   <- the rank, in full")
+        print(f"        usage: {u['opens_after_suggestion']} open(s) after "
+              f"suggestion{when} — out of the ranking")
         if e["bm25_detail"]:
             terms = "  ".join(f"{t} {v:.2f}" for t, v in list(e["bm25_detail"].items())[:6])
             print(f"        terms: {terms}")
@@ -601,7 +633,7 @@ def main():
         if os.path.exists(venv_py) and os.path.exists(embed):
             import subprocess
             os.execv(venv_py, [venv_py, embed, "query"] + args)
-        # sinon : repli silencieux sur BM25
+        # otherwise: silent fallback on BM25
 
     as_json = "--json" in args
     if as_json:
@@ -609,6 +641,9 @@ def main():
     explain = "--explain" in args
     if explain:
         args.remove("--explain")
+    lines = "--lines" in args            # passages instead of descriptions (hooks/brain_lignes.py)
+    if lines:
+        args.remove("--lines")
     k = 5
     if "-k" in args:
         i = args.index("-k")
@@ -618,26 +653,43 @@ def main():
             pass
     query = " ".join(args).strip()
     if not query:
-        print('Usage: brain_recall.py [-k N] [--json] [--explain] "your query"'); sys.exit(1)
+        print('Usage: brain_recall.py [-k N] [--json] [--explain] [--lines] "your query"'); sys.exit(1)
 
     engine = BM25(load_corpus())
+    if lines:
+        import brain_lignes
+        res = engine.rank(query, max(k, brain_lignes.REGLAGES["k"]))
+        if not res:
+            print(f"No relevant note for: {query}"); return
+        print(brain_lignes.rendre(engine, tokenize, query, res), end="")
+        return
     if explain:
         records = engine.rank(query, k)
         if not records:
             print(f"No relevant note for: {query}"); return
         _print_explanation(records, query, as_json)
         return
-    results = engine.search(query, k)
+    # `rank` and not `search`: since M5 (ADR-0018) usage is an ANNOTATION served next to
+    # the result, and `search` returns only (score, doc) — it would lose it. It is shown
+    # ONLY if the note has already been opened: a "0 opens" line on every result would be
+    # text re-read on every exchange to say nothing (byte sobriety). The compact injected
+    # format (`--lines`) does not carry it, for the same reason.
+    results = engine.rank(query, k)
     if as_json:
-        print(json.dumps([{"path": d["path"], "name": d["name"],
-                           "desc": d["desc"], "score": round(s, 3)}
-                          for s, d in results], ensure_ascii=False, indent=2))
+        print(json.dumps([{"path": r["doc"]["path"], "name": r["doc"]["name"],
+                           "desc": r["doc"]["desc"], "score": round(r["score"], 3),
+                           "usage": {"opens_after_suggestion": r["hits"],
+                                     "last": r.get("last")}}
+                          for r in results], ensure_ascii=False, indent=2))
         return
     if not results:
         print(f"No relevant note for: {query}"); return
     print(f"🔎 Top {len(results)} for '{query}':\n")
-    for s, d in results:
-        print(f"  [{s:5.2f}] {d['name']}  ({d['path']})")
+    for r in results:
+        d = r["doc"]
+        when = f", last {r['last']}" if r.get("last") else ""
+        usage = f"   · already opened {r['hits']}x{when}" if r["hits"] else ""
+        print(f"  [{r['score']:5.2f}] {d['name']}  ({d['path']}){usage}")
         if d["desc"]:
             print(f"          {d['desc'][:110]}")
 

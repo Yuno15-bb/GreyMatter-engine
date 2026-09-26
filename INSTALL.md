@@ -67,7 +67,9 @@ The installer:
 - drops a planet launcher on your Desktop;
 - **checks its own work** (`selftest` + `doctor`) and shows you the result.
 
-It deletes nothing, sends nothing over the network, and reads none of your data.
+Installation does not send telemetry. Updates fetch published tags; recall reads
+your local notes and may add note titles, summaries and paths to a prompt sent
+to your model provider. See [SECURITY.md](SECURITY.md) for the full data flow.
 
 ## Prerequisites
 

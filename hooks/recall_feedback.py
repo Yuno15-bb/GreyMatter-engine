@@ -28,14 +28,14 @@ WHAT IT DELIBERATELY DOES NOT DO.
   • No deletion. This file touches no note.
 
 Outputs:
-  state/recall-utility.json               {path: {sugg, hit}} — read by brain_recall
+  state/recall-utility.json                  {path: {sugg, hit, last}} — read by brain_recall
   state/often-suggested-never-opened.json  raw observation, NOT a verdict (see above)
 
 Usage:
   recall_feedback.py           recompute both files
   recall_feedback.py --report  recompute and print a readable summary
 """
-import os, sys, json, collections
+import os, sys, json, collections, datetime
 
 BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
 STATE = os.path.join(BRAIN, "state")
@@ -76,14 +76,22 @@ def compute():
     for d in _read("read_log.jsonl"):
         reads[(d["path"], d["sid"])].append(d["ts"])
 
+    # ADR-0018 / M5 (2026-09-19): usage no longer ranks, it ANNOTATES. An annotation that
+    # does not say WHEN is worthless — "opened 5 times" may date from three months ago. The date
+    # is computed here, in the loop that already holds the timestamps: recall itself reads
+    # a number already written and pays nothing more on each prompt.
     utility = {}
     for path, sids in suggestions.items():
-        hits = sum(
-            1 for sid in sids
-            if any(ts >= first[(path, sid)] - TOLERANCE_S
-                   for ts in reads.get((path, sid), ()))
-        )
-        utility[path] = {"sugg": len(sids), "hit": hits}
+        derniers = []
+        for sid in sids:
+            vues = [ts for ts in reads.get((path, sid), ())
+                    if ts >= first[(path, sid)] - TOLERANCE_S]
+            if vues:                          # same rule as before: at least one read
+                derniers.append(max(vues))    # following the suggestion, within tolerance
+        utility[path] = {"sugg": len(sids), "hit": len(derniers)}
+        if derniers:
+            utility[path]["last"] = datetime.datetime.fromtimestamp(
+                max(derniers)).strftime("%Y-%m-%d")
 
     to_review = sorted(
         ({"path": p, "sugg": v["sugg"]} for p, v in utility.items()

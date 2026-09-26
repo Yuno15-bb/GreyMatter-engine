@@ -2,7 +2,7 @@
 """
 C Brain SessionEnd hook.
 At the end of every session:
-  1. refreshes the lossless index sessions/TIMELINE.md (incremental cache, fast)
+  1. refreshes the index sessions/TIMELINE.md (incremental cache, fast)
   2. captures the git diff of the project worked on (cwd) into sessions/archive/
 
 ⚠ This hook no longer writes to git. Steps 3 (commit the trunk) and 4 (push to
@@ -29,10 +29,36 @@ def _transcripts_key() -> str:
 
 
 BRAIN = (os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
-# Nom du dossier transcripts = $HOME avec "/" -> "-" (convention Claude Code).
+# Transcripts folder name = $HOME with "/" and "." -> "-" (Claude Code convention).
 # NEVER hardcode the user name here (it silently broke distillation during a
-# distillation lors de la migration d'un compte utilisateur vers un autre, cf. [[restauration-machine-2026-07-22]]).
-PROJECTS_DIR = os.path.join(os.path.expanduser("~/.claude/projects"), _transcripts_key())
+# migration from one user account to another; see a machine restore in July 2026).
+PROJECTS_ROOT = os.path.expanduser("~/.claude/projects")
+PROJECTS_DIR = os.path.join(PROJECTS_ROOT, _transcripts_key())
+
+
+def transcripts_hors_index():
+    """What this index DOES NOT READ, counted folder by folder.
+
+    ⚠ THE FOLDER NAME COMES FROM THE FOLDER THE SESSION WAS OPENED FROM, not from $HOME:
+      `rebuild_timeline` sweeps only ONE of them, yet the header announced a "lossless
+      index of all our sessions". Measured on 2026-09-20: 155 transcripts read out of
+      733, seven folders never opened. **Widening it would be a regression**, not a
+      fix: 371 of the 376 transcripts in the biggest folder are automatic maintenance
+      sessions, and mixing them with the real ones is exactly the defect fixed on
+      2026-08-03 (see the ANTI-RECURSION guard in `main`). What is not acceptable is
+      the index keeping quiet. So it says what it leaves out, with the count."""
+    hors = []
+    try:
+        for d in sorted(os.listdir(PROJECTS_ROOT)):
+            chemin = os.path.join(PROJECTS_ROOT, d)
+            if chemin == PROJECTS_DIR or not os.path.isdir(chemin):
+                continue
+            n = len(glob.glob(os.path.join(chemin, "*.jsonl")))
+            if n:
+                hors.append((d, n))
+    except OSError:
+        pass
+    return hors
 SESSIONS = os.path.join(BRAIN, "sessions")
 ARCHIVE = os.path.join(SESSIONS, "archive")
 CACHE = os.path.join(SESSIONS, ".index.json")
@@ -111,10 +137,21 @@ def rebuild_timeline():
 
 def write_timeline(cache):
     rows = sorted(cache.values(), key=lambda e: e["ts"])
-    out = ["# 🕰️ Timeline — every Claude Code session\n",
-           "A **lossless** index of every session. Raw transcripts: "
-           f"`{PROJECTS_DIR}/<id>.jsonl`. Kept up to date automatically by the SessionEnd hook. "
-           "Secrets are masked automatically.\n"]
+    hors = transcripts_hors_index()
+    out = ["# 🕰️ Timeline — the sessions opened from the home folder\n",
+           f"Index **lossless for what it reads**: the {len(rows)} sessions whose "
+           f"transcript lives in `{PROJECTS_DIR}/`. Kept up to date automatically by the "
+           "SessionEnd hook. Secrets masked automatically.\n"]
+    if hors:
+        total = sum(n for _, n in hors)
+        detail = ", ".join(f"`{d}` ({n})" for d, n in sorted(hors, key=lambda x: -x[1]))
+        out.append(
+            f"⚠️ **And {total} transcripts it does NOT read**, in {len(hors)} other "
+            f"folders: {detail}. The folder name comes from where the session was "
+            "opened, not from `$HOME` — most of what is here are automatic maintenance "
+            "sessions, kept out since 2026-08-03 so they do not mix with the real ones. "
+            "This count is here so that the day a REAL session is opened from another "
+            "folder, it shows up instead of disappearing.\n")
     cur = None
     for e in rows:
         mois = e["date"][:7]
@@ -155,6 +192,16 @@ def write_archive_note(data, cache):
     ent = cache.get(pid, {})
     cwd = data.get("cwd", "")
     reason = data.get("reason", "?")
+    # C7: the path given by Claude Code is authoritative over any reconstruction.
+    _tp = data.get("transcript_path")
+    _tp_path = _tp or f"{PROJECTS_DIR}/{sid}.jsonl"
+    _tp_topic = _tp_n = None
+    if _tp and os.path.exists(_tp):
+        try:
+            _r = parse_transcript(_tp)
+            _tp_topic, _tp_n = _r[1], _r[2]
+        except Exception:
+            pass
     git = capture_git_diff(cwd)
     date = ent.get("date") or f"{datetime.now():%Y-%m-%d}"
     proj = ent.get("proj", classify(cwd))
@@ -168,14 +215,14 @@ def write_archive_note(data, cache):
         "metadata:\n  type: reference",
         "---\n",
         f"# Session {date} — {proj}\n",
-        f"- **Subject**: {ent.get('topic','(not captured)')}",
-        f"- **Messages** : {ent.get('n','?')}",
-        f"- **Fin** : `{reason}`",
-        f"- **Dossier** : `{cwd}`",
-        f"- **Transcript brut** : `{PROJECTS_DIR}/{sid}.jsonl`",
+        f"- **Subject**: {ent.get('topic') or _tp_topic or '(not captured)'}",
+        f"- **Messages**: {ent['n'] if ent.get('n') is not None else (_tp_n if _tp_n is not None else '?')}",
+        f"- **End**: `{reason}`",
+        f"- **Folder**: `{cwd}`",
+        f"- **Raw transcript**: `{_tp_path}`",
     ]
     if git:
-        lines.append(f"\n## Diff git (`{git['branch']}`)\n")
+        lines.append(f"\n## Git diff (`{git['branch']}`)\n")
         if git["stat"]:
             lines.append("```\n" + redact(git["stat"])[:3000] + "\n```")
         if git["status"]:
@@ -204,7 +251,7 @@ def commit_brain():
     lab, not here.
 
     Automatic push only comes back once that machinery exists. Until then, remote
-    backup is handled by the encrypted vault (restic → Yuno15-bb/brain-backup),
+    backup is handled by the encrypted vault (restic, to a private repository),
     not by an opportunistic commit.
 
     Archiving no longer writes to git: the archive is laid down on disk, and a

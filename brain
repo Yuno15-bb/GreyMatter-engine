@@ -155,7 +155,7 @@ if b and time.time() < b:
     echo "Usage: brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|capsule|version>"
     echo "        (credit: can the agents spend? — --unblock lifts a block that has become false)"
     echo '      (capsule: opens the floating orb — stop closes it, status locates it)'
-    echo "       (recall accepts --semantic for the embeddings backend)"
+    echo "       (recall accepts --semantic for embeddings, --lines for passages instead of descriptions)"
     echo "        (update is AUTOMATIC every session — --auto-off to turn it off)"
     exit 1
     ;;

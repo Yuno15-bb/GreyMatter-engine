@@ -20,13 +20,13 @@
   },
 
   "utility": {
-    "_why": "Usage multiplier: score x (1 + alpha x log(1 + hits)), where hits = a note that was suggested AND actually opened in the same session. Logarithmic — the first hit weighs a lot, the tenth almost nothing.",
-    "alpha": 0.2,
-    "_why_0_2": "MEASURED, not picked. Share of the top-3 held by notes with a history, over 10 queries: alpha=0 -> 3/30 · 0.2 -> 8/30 · 0.5 -> 12/30 · 1.0 -> 15/30. Past ~0.3 the history dictates the ranking and the lexical score is no longer the judge. 0.2 = usage breaks ties without dominating."
+    "_why": "Usage has been outside ranking since ADR-0018. It is shown as an annotation beside a result, never multiplied into its score.",
+    "alpha": 0.0,
+    "_why_0_2": "Kept at zero for older readers: even if the multiplier returns by mistake, it remains inert. Earlier measurements over 10 queries gave historical notes 3/30 top-three slots at alpha=0, 8/30 at 0.2, 12/30 at 0.5, and 15/30 at 1.0. The final decision was about resolution: below a 1% lexical difference, corpus changes reverse the order roughly half the time, so the tie-break signal cannot be distinguished from noise."
   },
 
   "exploration": {
-    "_why": "Slots reserved for seldom-seen notes, to break the self-reinforcing loop the utility multiplier mechanically creates. ⚠️ INSEPARABLE from utility.alpha: setting alpha > 0 without exploration IS the defect, not the feature.",
+    "_why": "Slots reserved for seldom-seen notes to cover new notes and prevent a fixed subset from monopolizing recall. The utility multiplier was removed by ADR-0018, so exploration no longer counters its feedback loop. This coverage rule remains provisional because it has no dedicated benchmark yet; results declare exploration explicitly.",
     "denominator": 3,
     "_denominator": "1 slot in N. At 3 with k=3, one slot in three. The 5-10% quota of recommender systems would be ZERO here: on k=3, 5% rounds down to nothing and the rule would be decorative.",
     "rarely_suggested_threshold": 3,

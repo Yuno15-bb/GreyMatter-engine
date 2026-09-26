@@ -1,0 +1,103 @@
+{
+  "_about": "Provenance propagation cases for ADR-0009 I7. After several transformations, external origin must remain traceable. JSON keeps test material outside the indexed Markdown corpus.",
+  "_rule": "This tests the deterministic propagation rule, not model judgment. Transformations must preserve origins without promoting authority.",
+  "chains": [
+    {
+      "id": "P1-three-web-transformations",
+      "description": "After three transformations, the final note still leads to the external origin.",
+      "root": {
+        "id": "external-source",
+        "kind": "web",
+        "ref": "https://example.test/hostile-article",
+        "captured_at": "2026-08-10"
+      },
+      "steps": [
+        "distillation",
+        "synthesis",
+        "distillation"
+      ],
+      "expected": {
+        "kind_final": "web",
+        "validated_final": false,
+        "external_origin": "https://example.test/hostile-article",
+        "depth": 3
+      }
+    },
+    {
+      "id": "P2-inference-does-not-become-experience",
+      "description": "Rephrasing a model conclusion does not turn it into an observation.",
+      "root": {
+        "id": "session-conclusion",
+        "kind": "agent_inference",
+        "ref": "session reasoning, no observable",
+        "captured_at": "2026-08-16"
+      },
+      "steps": [
+        "distillation",
+        "rewrite"
+      ],
+      "expected": {
+        "kind_final": "agent_inference",
+        "validated_final": false,
+        "external_origin": "session reasoning, no observable",
+        "depth": 2
+      }
+    },
+    {
+      "id": "P3-web-illustration-does-not-change-basis",
+      "description": "A web illustration neither contaminates the internal basis nor disappears from provenance.",
+      "root": {
+        "id": "mixed-note",
+        "sources": [
+          {
+            "kind": "internal_experience",
+            "role": "basis",
+            "ref": "tests/golden_recall.py"
+          },
+          {
+            "kind": "official_documentation",
+            "role": "evidence",
+            "ref": "https://docs.example.test/bm25"
+          },
+          {
+            "kind": "web",
+            "role": "illustration",
+            "ref": "https://example.test/article"
+          }
+        ],
+        "captured_at": "2026-08-16",
+        "validated": true
+      },
+      "steps": [
+        "distillation"
+      ],
+      "expected": {
+        "kind_final": "internal_experience",
+        "validated_final": false,
+        "preserved_sources": 3,
+        "web_still_present": true,
+        "depth": 1
+      }
+    },
+    {
+      "id": "P4-user-decision-is-not-revalidated",
+      "description": "A derived user decision keeps its kind but requires fresh proof before validation.",
+      "root": {
+        "id": "owner-decision",
+        "kind": "user_decision",
+        "ref": "the owner, 2026-08-15: keep both applications",
+        "captured_at": "2026-08-15",
+        "validated": true
+      },
+      "steps": [
+        "synthesis"
+      ],
+      "expected": {
+        "kind_final": "user_decision",
+        "validated_final": false,
+        "external_origin": "the owner, 2026-08-15: keep both applications",
+        "depth": 1
+      }
+    }
+  ]
+}

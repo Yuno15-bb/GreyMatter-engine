@@ -1,0 +1,39 @@
+[
+{"c":"C1 quasi litterale","t":"orphan-persiste-si-seul-lien-markdown-pas-wikilink","q":"orphan persiste si seul lien markdown pas wikilink"},
+{"c":"C1 quasi litterale","t":"home-isole-n-est-pas-un-environnement-isole","q":"home isole n est pas un environnement isole"},
+{"c":"C1 quasi litterale","t":"glob-et-os-walk-ne-parcourent-pas-le-meme-arbre","q":"glob et os.walk ne parcourent pas le meme arbre"},
+{"c":"C1 quasi litterale","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"pkill motif approximatif mesure une instance perimee"},
+
+{"c":"C2 flexion/derivation","t":"orphan-persiste-si-seul-lien-markdown-pas-wikilink","q":"ma fiche reste orpheline apres l avoir ajoutee a la carte"},
+{"c":"C2 flexion/derivation","t":"home-isole-n-est-pas-un-environnement-isole","q":"j ai isole le HOME mais l environnement n est pas isole"},
+{"c":"C2 flexion/derivation","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"j ai tue le processus mais je mesure encore une instance perimee"},
+{"c":"C2 flexion/derivation","t":"glob-et-os-walk-ne-parcourent-pas-le-meme-arbre","q":"mes deux parcours de dossiers ne comptent pas la meme chose"},
+
+{"c":"C3 synonyme","t":"un-message-de-succes-explicite-peut-couvrir-un-mecanisme-en-echec","q":"ma commande affiche une erreur mais rend quand meme un code de retour nul"},
+{"c":"C3 synonyme","t":"orphan-persiste-si-seul-lien-markdown-pas-wikilink","q":"une note que je viens de referencer est encore comptee comme isolee"},
+{"c":"C3 synonyme","t":"home-isole-n-est-pas-un-environnement-isole","q":"mon bac a sable utilise encore les binaires de la machine hote"},
+{"c":"C3 synonyme","t":"backtick-dans-commentaire-html-ferme-un-template-literal-js","q":"un accent grave dans du html casse ma chaine javascript"},
+
+{"c":"C4 paraphrase sans vocabulaire commun","t":"un-message-de-succes-explicite-peut-couvrir-un-mecanisme-en-echec","q":"pourquoi mon script dit que tout va bien alors que rien ne s est passe ?"},
+{"c":"C4 paraphrase sans vocabulaire commun","t":"orphan-persiste-si-seul-lien-markdown-pas-wikilink","q":"le controle de sante trouve encore une fiche non rattachee alors que je l ai rangee"},
+{"c":"C4 paraphrase sans vocabulaire commun","t":"glob-et-os-walk-ne-parcourent-pas-le-meme-arbre","q":"deux facons de lister des fichiers me donnent des totaux differents"},
+{"c":"C4 paraphrase sans vocabulaire commun","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"je relance mon programme mais c est l ancienne version qui repond"},
+
+{"c":"C5 ambiguite lexicale","t":"home-isole-n-est-pas-un-environnement-isole","q":"variable d environnement qui ne suit pas le repertoire personnel"},
+{"c":"C5 ambiguite lexicale","t":"backtick-dans-commentaire-html-ferme-un-template-literal-js","q":"mon commentaire ferme la chaine trop tot"},
+{"c":"C5 ambiguite lexicale","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"mon motif ne matche pas ce que je crois"},
+
+{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"j aimerais visiter la planete Saturne un jour"},
+{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"ma capsule Nespresso fuit comment la reparer"},
+{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"quel est le meilleur jardinier pres de chez moi"},
+{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"combien pese un tronc de chene abattu"},
+{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"recette de pain au levain maison"},
+
+{"c":"C7 deux fiches legitimes","t":["un-message-de-succes-explicite-peut-couvrir-un-mecanisme-en-echec","deux-gardes-redondants-ne-prouvent-que-leur-message"],"q":"un controle qui reste vert alors que le mecanisme a echoue"},
+{"c":"C7 deux fiches legitimes","t":["home-isole-n-est-pas-un-environnement-isole","verrou-macos-session-electron-ignore-home"],"q":"changer HOME ne suffit pas a isoler ce que je teste"},
+{"c":"C7 deux fiches legitimes","t":["glob-et-os-walk-ne-parcourent-pas-le-meme-arbre","exclusion-par-nom-frappe-tous-les-dossiers"],"q":"mon parcours de fichiers rate des dossiers sans le dire"},
+
+{"c":"C8 generique vs precise","t":"orphan-persiste-si-seul-lien-markdown-pas-wikilink","q":"pourquoi doctor signale une fiche orpheline"},
+{"c":"C8 generique vs precise","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"comment verifier qu un processus est vraiment mort"},
+{"c":"C8 generique vs precise","t":"backtick-dans-commentaire-html-ferme-un-template-literal-js","q":"mon fichier html casse mon javascript"}
+]

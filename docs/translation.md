@@ -33,6 +33,10 @@ would catch it: no test reads prose. Only a reader would notice, much later.
 Some files live **only in the package** and are excluded from the sync, because
 `rsync --delete` would wipe them on the first pass:
 
+Private corpus witnesses and the optional embedding sample removed during the
+cleanup are excluded in the other direction: they must not re-enter the package
+from the living Brain. The public test suite does not consume those files.
+
 | File | Why it is not in the living Brain |
 |---|---|
 | `hooks/hooks.json` | the Claude Code plugin's hook manifest |
@@ -147,21 +151,27 @@ throwaway repository with both branches and holds it down in CI.
 
 ## What is not translated, on purpose
 
-Three files are **byte-identical on both branches** and stay French:
+Three files need special handling when the English branch is updated:
 
 | File | Why |
 |---|---|
-| `sync.sh` | it reads the author's living, French Brain |
-| `rules.json` | the French patterns are what it matches, and its prose documents them |
-| `.sync-manifest` | a fingerprint of the SOURCE, not of the package |
+| `sync.sh` | its interface and comments are English on `main`; the source matching rules and package-only exclusions must be preserved |
+| `rules.json` | match patterns and replacement data remain French where they must match the French source; explanations are English |
+| `.sync-manifest` | a fingerprint of the source, with English package exclusions retained |
 
-`rules.json` is inert on `main`; it is kept there so the repo stays complete and
-auditable, and identical so that porting it is a plain `git checkout fr --`.
-
-⚠ This section used to claim the `why` fields were in English. They are not, and
-never were: 23 of the 29 carry French accents. `tests/english_only.py` skips the
-whole file, so nothing contradicted the claim — a documented fact that no check
-reads is a fact that rots.
+`rules.json` is inert on `main` but remains auditable. It is merged, not copied
+blindly: `main` has package rules absent from `fr`. `generalize.py` checks Python
+syntax after substitutions, and `sync.sh` excludes private benches and local
+results from the source fingerprint. Translate explanatory text while keeping
+the French match data exact. Exact private source strings are stored only as
+salted digests in `digest_replacements`, matched on windows of one to three
+words; a rule that needs a pattern describes the shape of the text, never the
+names it replaces. No rule holds a private name in any reversible form. Until
+2026-09-26 some patterns were stored as base64 (`pattern_b64`,
+`replace_map_b64`): that hid the names from a text search and from nobody else,
+since base64 decodes in one line. They were rewritten, and `leakcheck.py` now
+decodes any `*_b64` value in `rules.json` before scanning it, so an encoded name
+is refused like a name in clear.
 
 ## The glossary — what the translation renames
 
@@ -182,20 +192,78 @@ writes. These are the pairs; extend the table rather than deciding again.
 **What is NOT renamed**: hook FILE names (`fraicheur_fiches.py`, `on_fiche_write.py`
 — `sync.sh` copies them by name and `hooks/hooks.json` lists them), and the front
 matter keys that were already English (`name`, `description`, `born_from`,
-`redirectsTo`, `last_validated`). Agent files ARE renamed
-(`jardinier.md` → `gardener.md`).
+`redirectsTo`, `last_validated`). Agent files keep their names on both sides:
+the four ships (`nostromo.md`, `narcissus.md`, `sulaco.md`, `anesidora.md`) are
+proper nouns and are never translated. The missions inside them are
+(`## MISSION — jardinier` → `## MISSION — gardener`), and so is the guide's
+file name (`readme.md` → `README.md`).
 
 ## Two tools, one guarantee — and the gap between them
 
 `generalize.py` REWRITES what should not ship; `leakcheck.py` REFUSES what still
 should not. They are not redundant, and neither covers the other:
 
-- A rewrite rule can damage what it touches. The owner-name safety net, a bare
-  `Dylan`, turned two Apache copyright headers into `(c) 2026 l'auteur Peellaert`.
-  leakcheck could not see it — it exempts copyright lines from that very marker.
-  The pattern is now `Dylan(?! Peellaert)`, and leakcheck covers what the
-  negative lets through anywhere else.
+- A rewrite rule can damage what it touches. An earlier owner-name rule also
+  rewrote Apache copyright headers. The rule now excludes the full legal
+  signature, and the leak check still catches accidental owner-name mentions
+  elsewhere. Copyright lines retain the legally required holder name.
 - **Removing a rule leaves no red trace.** `banc-chemins-shell` was dropped, and
   `capsule/banc/cycle.sh` immediately shipped with `$HOME/claude-brain/` again —
   the author's private path. No test reads a path inside a comment, no counter
   moves. When you delete a rule, check by hand what it was holding.
+
+## Porting glossary added after the first translation
+
+These are source identifiers and stored values from `fr`, followed by their `main` equivalents. The `<owner>` placeholder stands for the private owner token in source filenames and topic IDs. The French strings below are data to match, not copy for user-facing output.
+
+```text
+mecanicien	mechanic
+machiniste	machinist
+distillateur	distiller
+jardinier	gardener
+challenger	challenger
+architecte	architect
+archiviste	archivist
+synthetiseur	synthesizer
+debut	start
+fin	end
+couche=	layer=
+modele=	model=
+duree_s=	duration_s=
+recall-utility.json key: dernier→last
+agents.jsonl keys: vaisseau→ship, raison→reason, activite→activity, modele→model, debut→start, duree_s→duration_s, cout_usd→cost_usd, jetons_sortie→output_tokens, erreur→error; phase values debut/fin→start/end
+agents.jsonl verdicts: droits-indisponibles→permissions-unavailable, interrompu→interrupted, echec-code-N→failed-code-N, quota-ou-login→quota-or-login
+relation types (ADR-0019): precise→refines, lie_a→related_to (joins base_sur/contredit/remplace)
+state/vocabulaire-a-l-ecriture.jsonl→state/vocabulary-at-write.jsonl ; keys champ→field, ecart→gap, valeur→value, cible→target ; values sujet→topic, absent→missing, dedouble→duplicated, hors-vocabulaire→off-vocabulary, type-hors-vocabulaire→type-off-vocabulary, lie_a-sans-raison→related_to-without-reason
+NOT renamed: state/a-classer.md, state/a-valider.md (main's agents and lot 1's orbe.html already use them)
+generated dashboard: projects/ETAT-DES-PROJETS.md→projects/PROJECT-STATUS.md (compared lowercased)
+forme_requete (recall_log keys): n_uniques→n_unique, classe_longueur→length_class, ecart_abs→gap_abs, ecart_rel→gap_rel, exaequo→ties
+frontmatter key: topics_secondaires→secondary_topics
+registre_ecritures: state/ecritures-fiches.jsonl→state/note-writes.jsonl, .jalon→note-writes.mark; keys ecart_s→gap_s, outil→tool; inconnu→unknown
+i2_profil: state/i2-profils.jsonl→state/i2-profiles.jsonl; recall-utilite.json→recall-utility.json (main name)
+capteur_depots: tag <depots-non-sauvegardes>→<unsaved-repos>; env DEPOTS_RACINES/PROFONDEUR→REPOS_ROOTS/REPOS_DEPTH; --notifier→--notify; json keys depot/chemin/niveau/sale/age_j/quand/constats/rouges→repo/path/level/dirty/age_d/when/findings/reds; rouge/vert→red/green
+topics (meta/topics.json ids): preuve-et-verification→proof-and-verification, projets-clients→client-projects, le-brain→the-brain, interfaces-et-rendu→interfaces-and-rendering, machine-et-processus→machine-and-process, git-et-travail-a-plusieurs→git-and-teamwork, mise-en-ligne-et-services→deployment-and-services, travailler-avec-<owner>→working-with-the-owner, agents-et-sessions→agents-and-sessions, vie-et-carriere→life-and-career, documents-et-livrables→documents-and-deliverables, securite-et-confidentialite→security-and-privacy ; retired methodes-de-fabrication→making-methods
+git_guard: CLI etat→state, journal→log ; journal keys evenement→event, quand→when ; events refus_identite_absente→refused_missing_identity, acquis→acquired, recuperation_zombie→zombie_recovery, refuse→refused, libere→released ; lock acteur→actor, demarrage→started, perimetre→scope, head_avant→head_before ; diag etat→state (libre/tenu/recuperable→free/held/recoverable), raison→reason, proprietaire→owner, pid_vivant→pid_alive, ttl_depasse→ttl_exceeded ; proprietaire_retire→removed_owner, proprietaire_actuel→current_owner, age_du_verrou_s→lock_age_s ; head_apres→head_after, head_a_bouge→head_moved, fichiers_commites→committed_files, hors_perimetre→out_of_scope, resultat_annonce→announced_result, verrou_etait_le_notre→lock_was_ours ; extra origine→origin
+brain_battement: flag --fin→--end
+etat_projets: projects/etat-des-projets.md→projects/project-status.md ; projects/decisions-<owner>.json→projects/owner-decisions.json (keys depuis→since, projet→project, texte→text) ; state/etat-projets.json→state/project-status.json (keys mesure_le→measured_at, depots→repos, depots_max→repos_max ; repo keys nom→name, chemin→path, dernier→last, jours→days, sale→dirty, non_pousse→unpushed, sujet→subject) ; flags --annonce→--announce, --notifier→--notify ; "## En clair" heading KEPT (data format, i18n-ok)
+ronde_annonce: state/ronde-a-annoncer.json→state/round-to-announce.json (keys texte→text, ecrit_le→written_at, annonce_le→announced_at, raison→reason ; values périmée→expired, affichée→shown) ; tag <ronde-etat-projets>→<project-status-round>
+commit_par_zone: commit_par_zone()→commit_by_zone() (main's name), modifies→changed ; zone values moteur/savoir/archives/racine→engine/knowledge/archives/root (main's) — tests/commit_par_zone_gouverne.py, zones_de_commit.py and the pre-commit hook table must follow
+state/requete-forme.jsonl → state/query-shape.jsonl · injecte→injected · affiche→shown · seuil→threshold · demande→requested
+MARQUEUR→MARKER · DEMANDES→DEMANDS · MIN_SCORE_DEMANDE→MIN_SCORE_DEMAND · demande_explicite→explicit_request · auto_arme→auto_armed · nettoyer→clean_query · journaliser_forme→log_shape · capturer_heldout→capture_heldout · humain/autre→human/other
+--lignes→--lines · ouvertures_apres_suggestion→opens_after_suggestion · dernier(e)→last · classer→rank
+base_sur→based_on · precise→refines · contredit→contradicts · remplace→replaces · lie_a→related_to · relations_brutes→raw_relations · topics.json nom→name
+journal start/end · layer · model · duration_s · INBOX → file state/a-classer.md
+carte: exclue → map: excluded
+doctor keys: relations_type_inconnu→unknown_relation · relations_cible_morte→relation_dead_target · lie_a_sans_raison→related_to_without_reason · sujet_invalide/absent→topic_invalid/missing · representations_concurrentes→competing_representations · memory_trop_de_lignes→memory_too_many_lines · carte_plafond_non_remesure→map_ceiling_not_remeasured · ronde_perimee→status_round_stale · INFORMATIFS→INFORMATIONAL · ZONES_FICHES→NOTE_ZONES
+state/etat-projets.json mesure_le → state/project-status.json measured_at
+fixtures_conflits.json → authority_conflicts.json; fixture keys cas/chaines → cases/chains, domaine → domain, attendu → expected, pourquoi/quoi → why/description
+fixture values factuelle → factual, valide/refuse → valid/rejected, synthese/reecriture → synthesis/rewrite
+propagation fixture keys racine/etapes/profondeur → root/steps/depth, origine_externe → external_origin, sources_conservees → preserved_sources, web_toujours_present → web_still_present
+```
+
+The English branch also checks JSON, JSONL, TXT, CJS, YAML, TOML, and CSS for
+French display text. The French retrieval queries in `tests/banc-retrieval/cas.json`
+remain benchmark input. Private corpus measurements and the dated sabotage
+register have been removed from the public package because no public test reads
+them. The three provenance and authority fixtures remain public test inputs;
+their schemas and readers use the English names above.

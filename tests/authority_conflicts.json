@@ -1,0 +1,371 @@
+{
+  "_about": "Authority conflict cases for ADR-0008. Independent of the retrieval golden set: resolution and retrieval measure different things. JSON keeps evaluation data out of the indexed Markdown corpus.",
+  "_no_easy_duels": "The outcome depends on scope, role, freshness, or question type. Several cases deliberately have no winner.",
+  "_outcomes": "A_WINS, B_WINS, COMPATIBLE, and UNRESOLVED. Refusing to decide can be the correct result.",
+  "_boundary": "The case author supplies contradiction; this deterministic resolver decides authority only after a conflict has been identified.",
+  "cases": [
+    {
+      "id": "C1-project-decision-vs-world-doc-normative",
+      "question": {
+        "domain": "c-brain",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "user_decision",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "B": {
+        "kind": "official_documentation",
+        "domain": "world",
+        "scope": "world",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "A_WINS",
+      "why": "A project decision governs its own conventions; newer world documentation does not instruct this project."
+    },
+    {
+      "id": "C2-same-pair-factual-question",
+      "question": {
+        "domain": "world",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "user_decision",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "B": {
+        "kind": "official_documentation",
+        "domain": "world",
+        "scope": "world",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "B_WINS",
+      "why": "The same pair as C1 gives the opposite result for a factual world question. A project decision has no world authority."
+    },
+    {
+      "id": "C3-project-decision-vs-web-advice",
+      "question": {
+        "domain": "c-brain",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "user_decision",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "B": {
+        "kind": "web",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "A_WINS",
+      "why": "A newer web recommendation remains evidence, not a project rule."
+    },
+    {
+      "id": "C4-current-vs-superseded-documentation",
+      "question": {
+        "domain": "world",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "official_documentation",
+        "domain": "world",
+        "scope": "world",
+        "validated": false,
+        "at": "2026-02-01",
+        "superseded": true
+      },
+      "B": {
+        "kind": "official_documentation",
+        "domain": "world",
+        "scope": "world",
+        "validated": false,
+        "at": "2026-08-10"
+      },
+      "expected": "B_WINS",
+      "why": "Equal source class and authority: supersession decides."
+    },
+    {
+      "id": "C5-validated-experience-vs-inference",
+      "question": {
+        "domain": "c-brain",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "internal_experience",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": true,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "kind": "agent_inference",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "A_WINS",
+      "why": "A replayable observation outranks a model inference within its own domain."
+    },
+    {
+      "id": "C6-web-basis-cites-decision",
+      "question": {
+        "domain": "c-brain",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "sources": [
+          {
+            "kind": "web",
+            "role": "basis"
+          },
+          {
+            "kind": "user_decision",
+            "role": "illustration"
+          }
+        ],
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "kind": "user_decision",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "expected": "B_WINS",
+      "why": "A web basis stays web even when a user decision is cited as illustration."
+    },
+    {
+      "id": "C7-decisions-from-different-projects",
+      "question": {
+        "domain": "global",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "user_decision",
+        "domain": "project-a",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "B": {
+        "kind": "user_decision",
+        "domain": "project-b",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-16"
+      },
+      "expected": "UNRESOLVED",
+      "why": "Two valid decisions from different projects do not produce a global rule."
+    },
+    {
+      "id": "C8-experience-from-other-repositories",
+      "question": {
+        "domain": "repo-z",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "internal_experience",
+        "domain": "repo-x",
+        "scope": "repository",
+        "validated": true,
+        "at": "2026-08-10"
+      },
+      "B": {
+        "kind": "internal_experience",
+        "domain": "repo-y",
+        "scope": "repository",
+        "validated": true,
+        "at": "2026-08-16"
+      },
+      "expected": "UNRESOLVED",
+      "why": "Observations from other repositories do not automatically generalize to a third."
+    },
+    {
+      "id": "C9-unknown-vs-inference",
+      "question": {
+        "domain": "c-brain",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "unknown",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": false
+      },
+      "B": {
+        "kind": "agent_inference",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "UNRESOLVED",
+      "why": "Neither unknown nor model inference has authority; choosing a winner would fabricate certainty."
+    },
+    {
+      "id": "C10-no-contradiction",
+      "question": {
+        "domain": "c-brain",
+        "nature": "normative"
+      },
+      "contradiction": false,
+      "A": {
+        "kind": "user_decision",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-15"
+      },
+      "B": {
+        "kind": "official_documentation",
+        "domain": "world",
+        "scope": "world",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "COMPATIBLE",
+      "why": "A project convention and an API description are compatible rather than contradictory."
+    },
+    {
+      "id": "C11-inference-only-in-domain",
+      "question": {
+        "domain": "c-brain",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "agent_inference",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "kind": "agent_inference",
+        "domain": "c-brain",
+        "scope": "repository",
+        "validated": false,
+        "at": "2026-08-10"
+      },
+      "expected": "UNRESOLVED",
+      "why": "Two conflicting inferences remain inferences; recency does not make one true."
+    },
+    {
+      "id": "C12-scope-only-decision-elsewhere",
+      "question": {
+        "domain": "project-b",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "user_decision",
+        "domain": "project-a",
+        "scope": "project",
+        "validated": true,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "kind": "internal_experience",
+        "domain": "project-b",
+        "scope": "repository",
+        "validated": true,
+        "at": "2026-08-10"
+      },
+      "expected": "B_WINS",
+      "why": "Scope discriminator: A has greater class weight but governs another project. Ignoring scope changes the winner."
+    },
+    {
+      "id": "C13-scope-only-experience-elsewhere",
+      "question": {
+        "domain": "c-brain",
+        "nature": "factual"
+      },
+      "contradiction": true,
+      "A": {
+        "kind": "internal_experience",
+        "domain": "other-repo",
+        "scope": "repository",
+        "validated": true,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "kind": "web",
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "B_WINS",
+      "why": "Second scope discriminator: validated experience elsewhere cannot overrule web evidence about this project."
+    },
+    {
+      "id": "C14-role-only-reversed-bases",
+      "question": {
+        "domain": "c-brain",
+        "nature": "normative"
+      },
+      "contradiction": true,
+      "A": {
+        "sources": [
+          {
+            "kind": "user_decision",
+            "role": "basis"
+          },
+          {
+            "kind": "web",
+            "role": "illustration"
+          }
+        ],
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "B": {
+        "sources": [
+          {
+            "kind": "web",
+            "role": "basis"
+          },
+          {
+            "kind": "user_decision",
+            "role": "illustration"
+          }
+        ],
+        "domain": "c-brain",
+        "scope": "project",
+        "validated": false,
+        "at": "2026-08-16"
+      },
+      "expected": "A_WINS",
+      "why": "Role discriminator: both sides have the same sources, scope, date, and validation. Only basis roles decide."
+    }
+  ]
+}

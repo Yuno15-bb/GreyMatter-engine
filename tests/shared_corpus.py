@@ -12,11 +12,15 @@ THE INCIDENT THAT PRODUCED IT (measured 2026-08-16, on a real trunk):
     brain_embed  (embeddings)  476 documents
     gap: 5 documents, all under tools/
 
+An earlier measurement on the same corpus version found 393 versus 458 documents:
+65 skill files had entered the trunk on 2026-08-15. The later measurement reflects
+subsequent corpus growth; both incidents show why the engines must share one source.
+
 `brain_embed.py` carried the comment "IMPORTANT: the SAME corpus as brain_recall".
 It had been wrong for as long as the two lists had drifted, and nothing could say so:
-**parity asserted in prose never turns red**. Every BM25 / embeddings comparison
-measured two corpora while believing it compared two retrieval methods — including
-the blind duel that settled BM25 as the recall engine, decided BEFORE the drift.
+**parity asserted in prose never turns red**. Comparisons of BM25 and embeddings
+measured two corpora while believing they compared two retrieval methods — including
+the blind duel that settled BM25 as the recall engine, before the drift was detected.
 
 WHY THE CHECK IS STATIC. Comparing the two lists by importing both would be
 TAUTOLOGICAL now that they come from the same module: the test would pass by

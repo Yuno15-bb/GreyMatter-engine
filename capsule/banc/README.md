@@ -39,3 +39,14 @@ cd ~/.c-brain/trunk/capsule
 - **Kill by full path AND check the count** before any measurement:
   `pgrep -f "c-brain/trunk/capsule" | xargs kill -9`, then count again. A loose
   pattern fails silently and you end up measuring a stale instance.
+
+## The 20/09 trap — the state is SHARED by every Claude session
+`film.cjs` and `cycle.sh` drive the orb through `state/status.json`. But every open
+Claude session (four in parallel that day) stamps `busy / working` into it on each of
+its tool calls, through the `brain_battement.py` hook. One shoot got polluted at 13.7 s:
+WORKING barged into the three seconds of rest. "Run nothing meanwhile" is therefore not
+enough — the other sessions are not ours to control. **Film in a mirror trunk**:
+`HOME=<mirror> BRAIN_HOME=<mirror>/claude-brain`, where the mirror symlinks the whole
+trunk except `state/`, which is ours. `orbe.html` resolves everything through
+`os.homedir()` and `brain_status.py` through `BRAIN_HOME`: both follow, and the author's
+desktop no longer even flickers.

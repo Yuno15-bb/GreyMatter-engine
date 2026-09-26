@@ -1,79 +1,97 @@
 {
   "_doc": [
-    "Règles de généralisation appliquées APRÈS la copie par sync.sh.",
-    "Pourquoi déclaratif et pas des corrections à la main : sync.sh recopie depuis le Brain",
-    "vivant à chaque passe. Une correction manuelle serait écrasée, et la fuite reviendrait",
-    "silencieusement au commit suivant. Une règle, elle, se rejoue.",
-    "",
-    "ORDRE SIGNIFICATIF : la forme longue passe avant la courte (Dylanp avant Dylan),",
-    "sinon la courte mange la longue et laisse un résidu.",
-    "",
-    "expect = nombre MINIMAL d'occurrences attendues. Un compteur tombé à 0 est un signal",
-    "d'alerte (la source a changé de formulation, la règle ne mord plus), pas une bonne",
-    "nouvelle : generalize.py échoue.",
-    "",
-    "_regles_gelees : règles qui ciblent un fichier GELÉ (exclu de sync.sh). Elles ne",
-    "sont lues par personne — generalize.py ne lit que `blocks` et `replacements`. Elles",
-    "restent ici pour que la correction se retrouve le jour où le fichier revient dans le",
-    "sync, au lieu de disparaître avec la ligne qu'on aurait supprimée."
+    "Generalization rules applied after sync.sh copies the living Brain.",
+    "These rules preserve public package paths and remove source-specific content.",
+    "Order matters: specific forms must run before shorter overlapping forms.",
+    "expect is the minimum number of matches; a falling counter means the source changed.",
+    "Patterns and replacement maps retain French source literals intentionally.",
+    "Frozen rules document fixes for files currently excluded from synchronization."
   ],
   "blocks": [
     {
       "id": "table-projets-perso",
       "file": "hooks/archive_session.py",
       "pattern": "PROJ = \\{.*?\\n\\}\\n",
-      "why": "Table mots-clés → projets de l'auteur. Purement personnelle : elle nomme ses clients et ses projets. Vidée, avec un exemple en commentaire pour que l'utilisateur la remplisse.",
+      "why": "Remove the owner-specific project classification table; leave a blank example for users.",
       "replace": "# Table de classement des sessions : mot-clé (minuscules) → nom de projet.\n# À REMPLIR avec TES projets — c'est elle qui range tes sessions archivées.\n# Vide, tout tombe dans « À TRIER », ce qui reste correct mais peu utile.\n# Exemple :\n#   PROJ = {\n#       'facture': 'Compta', 'devis': 'Compta',\n#       'shader': 'Graphismes', 'wallpaper': 'Graphismes',\n#   }\nPROJ = {\n}\n"
     },
     {
       "id": "racines-code-vs-donnees",
       "file": "tests/invariants_brain.py",
       "pattern": "# BRAIN_HOME rend la suite HERMÉTIQUE \\(Phase 1 du RFC Brain V3, 2026-08-03\\)\\.\\n# Sans elle, SensorNeverStuck écrit dans le VRAI state/coherence\\.json et le\\n# restaure ensuite depuis une copie mémoire : un crash entre les deux laisse\\n# l'état de production écrasé par une valeur de test\\. Le défaut par défaut reste\\n# la racine du dépôt, donc `python3 tests/invariants_brain\\.py` ne change pas\\.\\nBRAIN = os\\.path\\.realpath\\(\\n    os\\.environ\\.get\\(\"BRAIN_HOME\"\\)\\n    or os\\.path\\.join\\(os\\.path\\.dirname\\(os\\.path\\.abspath\\(__file__\\)\\), \"\\.\\.\"\\)\\n\\)\\nsys\\.path\\.insert\\(0, os\\.path\\.join\\(BRAIN, \"hooks\"\\)\\)\\n",
-      "why": "Une seule racine servait à la fois au CODE et aux DONNÉES. Avec la séparation moteur/tronc, elle pointait dans le moteur : le test écrivait state/coherence.json dans le dépôt installé (échec, et corruption à la mise à jour). Trouvé par le selftest en HOME isolé, pas par relecture. | 2026-08-13 : motif reecrit, la source a reformate BRAIN sur plusieurs lignes en ajoutant le support de BRAIN_HOME. | 2026-08-13 : le bloc avale aussi le commentaire BRAIN_HOME qui le precede. Il decrit une variable que CE remplacement supprime : dans le paquet, la suite n'a jamais lu BRAIN_HOME, et le commentaire promettait une hermeticite absente. Un commentaire sur du code qu'on remplace doit etre remplace avec lui.",
+      "why": "Keep imported code separate from the user data trunk in the invariant suite.",
       "replace": "# Deux racines DISTINCTES, et c'est volontaire :\n#  · CODE  — d'où viennent les hooks à importer. Suit le fichier, car le moteur\n#    peut vivre ailleurs que le tronc (installation par symlinks).\n#  · BRAIN — le tronc de l'utilisateur, d'où viennent les DONNÉES (state/).\n#    Toujours dérivé de $HOME : écrire dans le moteur casserait l'installation\n#    et serait écrasé à la première mise à jour.\nCODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), \"..\"))\nBRAIN = os.path.expanduser(\"~/claude-brain\")\nsys.path.insert(0, os.path.join(CODE, \"hooks\"))\n"
     },
     {
       "id": "capsule-test-anim-chemin",
       "file": "capsule/test_anim.py",
       "pattern": "STATUS = os\\.path\\.join\\(os\\.path\\.dirname\\(__file__\\), '\\.\\.', 'state', 'status\\.json'\\)",
-      "why": "Même piège : le script de test écrivait dans le state du moteur, donc la capsule n'aurait rien vu bouger.",
+      "why": "Point the animation test at the user trunk state instead of the engine directory.",
       "replace": "# Dérivé de $HOME, pas de __file__ : c'est le state du TRONC qu'on pilote.\nSTATUS = os.path.join(os.path.expanduser('~'), 'claude-brain', 'state', 'status.json')"
     },
     {
       "id": "capsule-dependance-morte",
       "file": "capsule/package.json",
-      "_note": "La virgule du bloc PRÉCÉDENT fait partie du motif : la retirer avec le bloc évite la virgule orpheline qui rend le JSON invalide (erreur commise une fois, attrapée par la validation JSON de generalize.py).",
-      "pattern": ",\\n  \"dependencies\": \\{\\n    \"three\": \"\\^0\\.160\\.0\"\\n  \\}",
-      "why": "`three` n'est référencé ni par main.js ni par index.html — le sprite de la créature est dessiné en pixels inline. Dépendance morte : ~1 Mo téléchargé pour rien à chaque installation. Même constat qu'en juin, revenue depuis.",
-      "replace": ""
+      "pattern": ",\\n    \"three\": \"\\^0\\.160\\.0\"\\n  \\}",
+      "why": "Remove an unused Three.js dependency from the package manifest.",
+      "replace": "\n  }"
     },
     {
       "id": "cli-commande-update",
       "file": "brain",
       "pattern": "  \\*\\)\\n    echo \"Usage : brain <status\\|doctor\\|audit\\|review\\|recall\\|next\\|coherence\\|utility\\|credit\\|embed\\|push\\|metrics\\|selftest\\|backup>\"",
-      "why": "`brain update`, `brain demo` et `brain version` n'existent que dans C Brain : sur la machine d'origine ils n'auraient aucun sens (elle EST la source). Injectés par règle et non écrits à la main, sinon le prochain sync.sh les effacerait. ⚠ Le motif épouse la ligne d'usage MOT POUR MOT, et c'est voulu : quand le CLI de la source gagne une commande (`credit`, le 2026-08-13), la règle ne mord plus et le sync ROUGIT. Un motif tolérant (`<[^\"]*>`) continuerait de mordre en publiant une ligne d'usage amputée de la commande neuve — une dérive muette au lieu d'un arrêt franc.",
+      "why": "Add package-only CLI commands without modifying the living source by hand.",
       "replace": "  update)\n    # Mise à jour du MOTEUR uniquement. Le tronc — tes fiches — n'est jamais touché.\n    bash \"$HOME/.c-brain/engine/cbrain/update.sh\" \"${@:2}\"\n    ;;\n  demo)\n    # Trois fiches d'exemple, posées puis retirées à la demande. Un tronc\n    # vide au premier lancement ne montre rien de ce que l'outil sait faire.\n    bash \"$HOME/.c-brain/engine/cbrain/demo.sh\" \"${@:2}\"\n    ;;\n  version)\n    cat \"$HOME/.c-brain/VERSION\" 2>/dev/null || echo \"(version inconnue)\"\n    ;;\n  *)\n    echo \"Usage : brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|version>\""
     },
     {
       "id": "detecteur-home-perime",
       "file": "hooks/brain_review.py",
       "pattern": "# Fiches d'INFRA seulement.*?\\n    return hits\\n",
-      "why": "Le détecteur de chemins périmés était câblé sur deux comptes précis (l'ancien et le nouveau home de l'auteur). Généralisé : il dérive le home courant et signale tout autre utilisateur.",
+      "why": "Find stale home paths without hardcoding the owner account.",
       "replace": "# Fiches d'INFRA seulement : y décrire un chemin périmé est un vrai bug. Ailleurs\n# (sessions/archive, journaux projet), un ancien home est un fait HISTORIQUE daté,\n# pas une incohérence — on ne le signale pas (bruit).\nINFRA_DIRS = (\"meta\", \"agents\")\n\n\ndef path_incoherences():\n    \"\"\"Chemins incohérents dans les fiches d'INFRA : référence à un home qui n'est\n    pas celui de la machine courante (migration de compte, copier-coller d'une\n    autre machine). Constat, pas correction.\n\n    Le nom d'utilisateur est DÉRIVÉ, jamais codé en dur : c'est exactement le\n    bug qui avait cassé la distillation lors d'une migration de compte.\"\"\"\n    me = os.path.basename(os.path.expanduser(\"~\"))\n    other = re.compile(r\"/Users/(?!\" + re.escape(me) + r\"\\b)([A-Za-z0-9._-]+)\")\n    hits = []\n    for rel, p in _fiches_in(INFRA_DIRS):\n        try:\n            lines = open(p, encoding=\"utf-8\", errors=\"ignore\").read().splitlines()\n        except OSError:\n            continue\n        for i, line in enumerate(lines, 1):\n            m = other.search(line)\n            if m:\n                hits.append({\"fiche\": rel, \"ligne\": i,\n                             \"type\": f\"chemin d'un autre utilisateur ({m.group(1)})\",\n                             \"extrait\": line.strip()[:160]})\n    return hits\n"
     },
     {
       "id": "statut-signal-depots-auteur",
       "file": "hooks/brain_status.py",
       "pattern": "\\n\\ndef show_depots\\(\\):.*?print\\(f\"  \\{l\\}\"\\)\\n",
-      "why": "`show_depots` lit `state/traduction-en-retard.json`, un signal qu'écrit `tools/sync_depots.py` — l'outil PRIVÉ qui tient les deux dépôts de l'auteur et ne fait pas partie du paquet. Chez un utilisateur, la fonction ne trouverait jamais son fichier et parlerait de `~/c-brain`, de la branche `fr` et d'une traduction qui ne le concerne pas. On la retire à la SOURCE de la copie plutôt que de publier du code mort qu'il faudrait traduire à chaque version.",
+      "why": "Remove status output for a private repository synchronization tool.",
       "replace": "\n"
     },
     {
       "id": "statut-appel-signal-depots",
       "file": "hooks/brain_status.py",
       "pattern": "\\n    show_depots\\(\\)",
-      "why": "L'appel doit partir avec la fonction : le laisser lèverait un NameError sur `brain status`, la commande la plus utilisée du CLI. Deux règles et non une, parce que le bloc et son appel ne se touchent pas dans le fichier.",
+      "why": "Remove the call to the private status output with its implementation.",
       "replace": ""
+    },
+    {
+      "id": "racine-import-hooks",
+      "file": "tests/invariants_brain.py",
+      "pattern": "sys\\.path\\.insert\\(0,\\ os\\.path\\.join\\(BRAIN,\\ \"hooks\"\\)\\)",
+      "replace": "sys.path.insert(0, os.path.join(CODE, \"hooks\"))",
+      "expect": 1,
+      "why": "Import test hooks from the engine code, not from the user data trunk."
+    },
+    {
+      "id": "ilot-battement-tronc",
+      "file": "capsule/ilot.js",
+      "pattern": "const ALIVE = path\\.join\\(__dirname, '\\.\\.', 'state', 'capsule-alive'\\);",
+      "replace": "// The capsule runs in the engine; the hook reads state from the user trunk.\nconst ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');",
+      "why": "The capsule lives in the engine but its heartbeat state lives in the user trunk."
+    },
+    {
+      "id": "capsule-dependance-morte-lock",
+      "file": "capsule/package-lock.json",
+      "pattern": ",\\n        \"three\": \"\\^0\\.160\\.0\"\\n      \\},\\n",
+      "replace": "\n      },\n",
+      "why": "Keep the package lock aligned when the unused Three.js package is removed."
+    },
+    {
+      "id": "capsule-dependance-morte-lock-entree",
+      "file": "capsule/package-lock.json",
+      "pattern": "    \"node_modules/three\": \\{\\n      \"version\": \"0\\.160\\.0\",\\n      \"resolved\": \"https://registry\\.npmjs\\.org/three/-/three-0\\.160\\.0\\.tgz\",\\n      \"integrity\": \"sha512-[^\"]+\",\\n      \"license\": \"MIT\"\\n    \\},\\n",
+      "replace": "",
+      "why": "Remove the unused Three.js lock entry with its package declaration."
     }
   ],
   "replacements": [
@@ -93,7 +111,7 @@
       "pattern": "Claude Brain",
       "replace": "C Brain",
       "expect": 35,
-      "why": "Le produit s'appelle C Brain. « Claude Brain » est le nom du tronc PRIVÉ de l'auteur, et porte en plus une marque Anthropic : il n'a rien à faire dans un paquet public. Les agents s'annonçaient tous comme « l'architecte du Claude Brain » — c'est le tout premier écran que lit un nouvel utilisateur. | 2026-08-13 : 36 -> 35, une mention perdue en amont. Verifie : aucun enjeu de fuite, c'est le nom du produit."
+      "why": "Use the public product name in copied material."
     },
     {
       "id": "tronc-chemin-plist",
@@ -103,7 +121,7 @@
       "pattern": "__HOME__/claude-brain",
       "replace": "__HOME__/.c-brain/trunk",
       "expect": 6,
-      "why": "Chemin du tronc dans les gabarits launchd. Sans `~`, il échappe à la règle de prose : il lui faut la sienne, sinon les deux agents planifiés pointent vers un dossier qui n'existe plus après la migration 001."
+      "why": "Make launchd templates point at the installed user trunk."
     },
     {
       "id": "tronc-chemin-python",
@@ -113,7 +131,7 @@
       "pattern": "expanduser\\(\"~/claude-brain",
       "replace": "expanduser(\"~/.c-brain/trunk",
       "expect": 25,
-      "why": "Racine du tronc, la forme la plus répandue (une par hook). Traitée avant la règle de prose parce qu'elle porte une parenthèse ouvrante à conserver."
+      "why": "Make Python files point at the installed user trunk."
     },
     {
       "id": "tronc-chemin-python-tuple",
@@ -123,7 +141,7 @@
       "pattern": "expanduser\\('~'\\), 'claude-brain'",
       "replace": "expanduser('~'), '.c-brain', 'trunk'",
       "expect": 1,
-      "why": "Même racine, écrite en segments joints plutôt qu'en chemin. Deux segments en remplacent un : un `replace` naïf aurait produit « .c-brain/trunk » comme composant unique — ce qui marche sous Unix mais ment sur la structure."
+      "why": "Preserve path components when translating a segmented Python trunk path."
     },
     {
       "id": "tronc-chemin-js",
@@ -134,7 +152,7 @@
       "pattern": "os\\.homedir\\(\\),\\s*'claude-brain'",
       "replace": "os.homedir(), '.c-brain', 'trunk'",
       "expect": 2,
-      "why": "Côté capsule, le tronc est dérivé de homedir() en segments. C'est ce chemin qui décide si la capsule surveille le state de l'UTILISATEUR ou celui du moteur. — expect passé de 3 à 2 le 2026-07-30 : la 3ᵉ occurrence vivait dans capsule/main.js, GELÉ hors sync tant que la refonte V2 est en chantier (voir sync.sh §4 et _regles_gelees). Le fichier du paquet porte déjà le bon chemin en dur. À remonter à 3 quand main.js repasse dans le sync."
+      "why": "Make capsule JavaScript point at the installed user trunk."
     },
     {
       "id": "banc-chemins-shell",
@@ -147,8 +165,7 @@
         "claude-brain/capsule": "c-brain/trunk/capsule"
       },
       "expect": 2,
-      "_note": "Ajoutee le 2026-08-04 avec banc/cycle.sh, le premier script SHELL du banc. `tronc-chemin-shell` ne vise que `hooks/*.sh` et `brain` — volontairement, pour ne pas reecrire sync.sh/publish.sh qui visent le Brain vivant de l'auteur. Le banc tombait donc dans le trou : le script est parti en public avec `$HOME/claude-brain/hooks/`, un chemin qui n'existe chez personne d'autre. Chez l'utilisateur le moteur est LIE dans le tronc (`install.sh`), donc la cible est bien `trunk`, pas `engine`. ⚠ SUPPRIMEE PAR ERREUR le 2026-08-13 (cd00bc3) : cycle.sh est aussitot reparti en public avec le chemin prive. Une regle de generalisation qu'on retire ne laisse aucune trace rouge — aucun test ne lit un chemin dans un commentaire. Rearmee le 2026-08-13.",
-      "why": "Un script du banc livre avec le chemin du tronc prive de l'auteur ne tourne chez personne."
+      "why": "Fix package shell bench paths that would otherwise point at the private source."
     },
     {
       "id": "tronc-chemin-shell",
@@ -159,8 +176,7 @@
       "pattern": "\\$HOME/claude-brain",
       "replace": "$HOME/.c-brain/trunk",
       "expect": 2,
-      "_note": "Volontairement PAS `**/*.sh` : sync.sh et publish.sh appartiennent au dépôt et visent le Brain VIVANT de l'auteur — la source, pas le tronc d'un utilisateur. Les réécrire casserait la chaîne de fabrication.",
-      "why": "Racine du tronc côté shell (CLI `brain`, selftest)."
+      "why": "Make shell scripts point at the installed user trunk."
     },
     {
       "id": "tronc-chemin-prose",
@@ -178,7 +194,7 @@
       "pattern": "~/claude-brain",
       "replace": "~/.c-brain/trunk",
       "expect": 36,
-      "why": "Le reliquat : commentaires, docstrings, lignes de commande données en exemple aux agents. Passe en DERNIER, une fois les formes de code traitées — ce qui reste est de la prose."
+      "why": "Update prose examples of the user trunk path."
     },
     {
       "id": "capsule-pgrep-chemin",
@@ -188,7 +204,7 @@
       "pattern": "claude-brain/capsule/node_modules/electron",
       "replace": "c-brain/trunk/capsule/node_modules/electron",
       "expect": 2,
-      "why": "Motif `pgrep` qui identifie le process de la capsule. Il ne commence par aucun `~` : oublié par la règle de prose, il aurait rendu la capsule INVISIBLE à auto_maintain et au machiniste — sans la moindre erreur, juste une capsule qu'on ne relance jamais et qu'on ne compte jamais."
+      "why": "Find the installed capsule process without the private source path."
     },
     {
       "id": "capsule-nom-paquet",
@@ -199,8 +215,7 @@
       "pattern": "claude-brain-capsule",
       "replace": "c-brain-capsule",
       "expect": 3,
-      "_note": "package-lock.json porte le nom DEUX fois (racine + paquet racine). Les deux doivent bouger ensemble, sinon npm réécrit le lock à la première installation.",
-      "why": "Nom npm du paquet de la capsule."
+      "why": "Use the public package name in capsule metadata."
     },
     {
       "id": "compte-agents-perime",
@@ -209,8 +224,7 @@
         "agents/*.md"
       ],
       "pattern": "(?:LES 7 AGENTS|Guide des 7 agents du système \\(distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien\\))",
-      "_note": "Vu sur une capture de la capsule en fonctionnement. Le machiniste a été ajouté sans que le compte affiché suive — le genre de détail qu'aucun test ne rattrape. Passé de 2 à 1 le 2026-08-03 : capsule/index.html est sorti du sync, seul agents/*.md porte encore le compte.",
-      "why": "La capsule affichait « LES 7 AGENTS » et le guide en listait 7, alors que le dossier en contient 8. Faux dès le premier écran vu par un nouvel utilisateur.",
+      "why": "Update a historical agent count in copied capsule material.",
       "replace_map": {
         "LES 7 AGENTS": "LES 8 AGENTS",
         "Guide des 7 agents du système (distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien)": "Guide des 8 agents du système (distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien, machiniste)"
@@ -223,12 +237,15 @@
         "**/*.py",
         "**/*.md",
         "**/*.template",
-        "**/*.sh"
+        "**/*.sh",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html"
       ],
-      "pattern": "-Users-Dylanp",
       "replace": "-Users-<nom>",
       "expect": 2,
-      "why": "Dossier transcripts de Claude Code, dérivé du home. Le nom réel n'a rien à faire dans un exemple."
+      "why": "Remove a former private account path from public files.",
+      "pattern": "-Users-[A-Z][a-z]+p"
     },
     {
       "id": "home-ancien-compte-chemin",
@@ -236,67 +253,78 @@
         "**/*.py",
         "**/*.md",
         "**/*.template",
-        "**/*.sh"
+        "**/*.sh",
+        "**/*.json",
+        "**/*.js",
+        "**/*.html"
       ],
-      "pattern": "/Users/Dylanp",
       "replace": "/Users/<ancien-nom>",
       "expect": 2,
-      "why": "Chemin absolu de l'ancien compte, cité en exemple de piège."
+      "why": "Remove a former private account path with a trailing separator.",
+      "pattern": "/Users/[A-Z][a-z]+p"
     },
     {
       "id": "migration-comptes",
       "files": [
         "**/*.py"
       ],
-      "pattern": "migration Dylanp -> mac",
       "replace": "migration d'un compte utilisateur vers un autre",
       "expect": 1,
-      "why": "Le fait est utile (le piège est réel), les deux noms de comptes ne le sont pas."
+      "why": "Describe account migration without identifying the owner.",
+      "pattern": "migration [A-Z][a-z]+p -> mac"
     },
     {
       "id": "conviction-possessif",
       "files": [
         "**/*.py"
       ],
-      "pattern": "[Cc]onvictions? datées? de Dylan",
-      "_note": "Singulier ET pluriel : « conviction datée de Dylan » existait aussi. Un `replace` unique aurait mis du pluriel dans une phrase au singulier — d'où la table.",
-      "replace_map": {
-        "convictions datées de Dylan": "convictions datées de l'auteur du tronc",
-        "Convictions datées de Dylan": "Convictions datées de l'auteur du tronc",
-        "conviction datée de Dylan": "conviction datée de l'auteur du tronc"
-      },
       "expect": 4,
-      "why": "Commentaires de graph_export : le rôle suffit, le nom est de trop."
+      "why": "Replace owner-specific wording around dated convictions.",
+      "pattern": "[Cc]onvictions? datées? de [A-Z][a-z]+",
+      "replace_map_patterns": [
+        [
+          "convictions\\ datées\\ de\\ [A-Z][a-z]+",
+          "convictions datées de l'auteur du tronc"
+        ],
+        [
+          "Convictions\\ datées\\ de\\ [A-Z][a-z]+",
+          "Convictions datées de l'auteur du tronc"
+        ],
+        [
+          "conviction\\ datée\\ de\\ [A-Z][a-z]+",
+          "conviction datée de l'auteur du tronc"
+        ]
+      ]
     },
     {
       "id": "conviction-libelle-ui",
       "files": [
         "planet/*.html"
       ],
-      "pattern": "conviction de Dylan",
       "replace": "conviction",
       "expect": 1,
-      "why": "Libellé VISIBLE dans la planète 3D. Chez un autre utilisateur, « conviction de <untel> » serait absurde. Passé de 2 à 1 le 2026-08-15 : la refonte MOTHER a réécrit la ligne de légende (« N convictions ») et supprimé le possessif d'elle-même ; il ne reste que le libellé du panneau de survol. Vérifié en comptant les occurrences dans la version du 13/08 (2, lignes 483 et 547) puis dans la version MOTHER (1) — c'est une disparition, pas un renommage qui fuirait ailleurs."
+      "why": "Keep the convictions label generic in the user interface.",
+      "pattern": "conviction de [A-Z][a-z]+"
     },
     {
       "id": "lecons-possessif",
       "files": [
         "planet/*.html"
       ],
-      "pattern": "les leçons transverses de Dylan",
       "replace": "les leçons transverses",
       "expect": 1,
-      "why": "Commentaire de la carte : la capitale au centre, ce sont les leçons, peu importe de qui."
+      "why": "Keep cross-cutting lesson wording generic.",
+      "pattern": "les leçons transverses de [A-Z][a-z]+"
     },
     {
       "id": "machine-cible",
       "files": [
         "companion/**/*.py"
       ],
-      "pattern": "Python 3\\.9 sur la machine de Dylan",
       "replace": "Python 3.9 sur la machine cible",
       "expect": 1,
-      "why": "La contrainte technique reste (stdlib seule), le propriétaire disparaît."
+      "why": "Describe the target machine without naming the owner.",
+      "pattern": "Python 3\\.9 sur la machine de [A-Z][a-z]+"
     },
     {
       "id": "arbitrage-utilisateur",
@@ -305,89 +333,55 @@
         "**/*.md",
         "**/*.template"
       ],
-      "pattern": "(?:éditables? par Dylan|revient à Dylan|au travail de Dylan|Ce que Dylan|que Dylan)",
-      "_note": "Alternation de littéraux COMPLETS, la forme longue d'abord (« Ce que Dylan » avant « que Dylan »). Une alternation de préfixes seuls laissait 4 des 6 occurrences intactes.",
-      "replace_map": {
-        "éditable par Dylan": "éditable par l'utilisateur",
-        "éditables par Dylan": "éditables par l'utilisateur",
-        "revient à Dylan": "revient à l'utilisateur",
-        "au travail de Dylan": "au travail de l'utilisateur",
-        "Ce que Dylan": "Ce que l'utilisateur",
-        "que Dylan": "que l'utilisateur"
-      },
       "expect": 6,
-      "why": "Le machiniste et les plists décrivent qui arbitre : c'est un RÔLE (l'utilisateur), pas une personne."
+      "why": "Attribute user decisions to the user rather than the owner.",
+      "pattern": "(?:éditables? par [A-Z][a-z]+|revient à [A-Z][a-z]+|au travail de [A-Z][a-z]+|Ce que [A-Z][a-z]+|que [A-Z][a-z]+)",
+      "replace_map_patterns": [
+        [
+          "éditable\\ par\\ [A-Z][a-z]+",
+          "éditable par l'utilisateur"
+        ],
+        [
+          "éditables\\ par\\ [A-Z][a-z]+",
+          "éditables par l'utilisateur"
+        ],
+        [
+          "revient\\ à\\ [A-Z][a-z]+",
+          "revient à l'utilisateur"
+        ],
+        [
+          "au\\ travail\\ de\\ [A-Z][a-z]+",
+          "au travail de l'utilisateur"
+        ],
+        [
+          "Ce\\ que\\ [A-Z][a-z]+",
+          "Ce que l'utilisateur"
+        ],
+        [
+          "que\\ [A-Z][a-z]+",
+          "que l'utilisateur"
+        ]
+      ]
     },
     {
       "id": "portfolio-possessif",
       "files": [
         "agents/*.md"
       ],
-      "pattern": "Pour Dylan, ces synthèses",
       "replace": "Ces synthèses",
       "expect": 1,
-      "why": "Consigne de l'agent synthétiseur, valable pour n'importe quel utilisateur."
-    },
-    {
-      "id": "exemples-projets-clients",
-      "files": [
-        "**/*.md",
-        "**/*.py"
-      ],
-      "pattern": "projects/big-gaby/",
-      "replace": "projects/<projet>/",
-      "expect": 1,
-      "why": "Exemple de ciblage du challenger : un nom de projet client."
-    },
-    {
-      "id": "banc-fiche-tronc-reel",
-      "files": [
-        "tests/archiver_journal.py"
-      ],
-      "pattern": "\"dgc-suivi\", \"dgc-suivi-bento-responsive-4vues.md\"",
-      "replace": "\"<projet>\", \"<une-fiche-a-plusieurs-points-de-reprise>.md\"",
-      "expect": 2,
-      "why": "Deux contrôles de l'étage TRONC visent une vraie fiche du tronc de l'auteur (ils sautent si elle a bougé). Le chemin est FONCTIONNEL : le neutraliser à la source casserait le banc chez l'auteur, alors qu'il ne sert à rien chez le lecteur — où il sautait déjà. On généralise donc à la copie, pas à la source."
-    },
-    {
-      "id": "banc-fiche-tronc-reel-projet",
-      "files": [
-        "tests/archiver_journal.py"
-      ],
-      "pattern": "\"big-gaby\", \"big-gaby-dgc-worktree.md\"",
-      "replace": "\"<projet>\", \"<une-fiche-a-sections-datees>.md\"",
-      "expect": 1,
-      "why": "Même motif que banc-fiche-tronc-reel, sur la seconde fiche visée par l'étage TRONC."
-    },
-    {
-      "id": "banc-fiche-tronc-reel-docstring",
-      "files": [
-        "tests/archiver_journal.py"
-      ],
-      "pattern": "de big-gaby-dgc-worktree reste",
-      "replace": "de la fiche visée reste",
-      "expect": 1,
-      "why": "Le nom du projet client apparaît AUSSI dans la docstring du contrôle, pas seulement dans le chemin. Une règle posée sur le seul chemin laisse le nom s'afficher dans la sortie du banc."
+      "why": "Remove ownership claims from shared summaries.",
+      "pattern": "Pour [A-Z][a-z]+, ces synthèses"
     },
     {
       "id": "exemples-projets-liste",
       "files": [
         "agents/*.md"
       ],
-      "pattern": "\\(big-gaby, dgc-suivi, paradoxalmind, voiceshell, handplanet, gestureos, macos-shader…\\)",
       "replace": "(un dossier par projet)",
       "expect": 1,
-      "why": "Liste des projets réels de l'auteur, dans la doc du jardinier."
-    },
-    {
-      "id": "cadre-personnel",
-      "files": [
-        "agents/*.md"
-      ],
-      "pattern": "\\(objectifs, Mission Locale\\)",
-      "replace": "(objectifs, situation personnelle)",
-      "expect": 1,
-      "why": "Le dossier life/ sert à ça ; l'exemple ne doit pas nommer un dispositif réel."
+      "why": "Describe project folders without the owner projects.",
+      "pattern": "\\([a-z][a-z0-9-]*(?:, [a-z][a-z0-9-]*)+…\\)"
     },
     {
       "id": "liens-vers-fiches-absentes",
@@ -395,8 +389,7 @@
         "agents/*.md"
       ],
       "pattern": "\\[\\[(?:brain-boucles-mortes-2026-08-12|cwc-workshops-integration|audit-exhaustif-invariants|claude-brain-volet-2|claude-brain|disque-plein-symptomes-caches|electron-hud-backgroundthrottling-saccade|electron-zombie-process-cleanup|jardinage-regles|nettoyage-disque-methode-reversible|pas-de-journee-sans-commit|verifier-le-code-jamais-supposer|webgl-shader-wallpaper-gpu-overheating)\\]\\]",
-      "_note": "SEULEMENT ces 13 slugs. Les liens entre agents ([[jardinier]], [[distillateur]]…) et les gabarits ([[slug]], [[lien]]) restent : leurs cibles existent, ou ce sont des exemples de format.",
-      "why": "Les agents citaient les fiches de l'auteur. Chez un nouvel utilisateur, ce sont 11 liens MORTS et `brain doctor` sort rouge dès l'installation. La consigne est conservée en clair — on perd le lien, pas le conseil. ⚠ Toute fiche de l'auteur citée dans un agent DOIT être ajoutée ici au moment où on l'écrit : un lien oublié ne casse rien à la source (la cible existe) et ne devient mort qu'une fois publié — personne ne le voit avant l'installation d'un tiers.",
+      "why": "Turn private internal note links into self-contained prose.",
       "replace_map": {
         "[[audit-exhaustif-invariants]]": "« un audit, ce sont des invariants EXÉCUTÉS »",
         "[[claude-brain]]": "la doc du tronc",
@@ -415,34 +408,14 @@
       "expect": 19
     },
     {
-      "id": "exemple-born-from",
-      "files": [
-        "hooks/*.py"
-      ],
-      "pattern": "born_from: big-gaby\\[, autre\\]",
-      "replace": "born_from: <projet>[, autre]",
-      "expect": 1,
-      "why": "Exemple de front-matter dans un commentaire."
-    },
-    {
       "id": "exemple-sous-dossier",
       "files": [
         "hooks/*.py"
       ],
-      "pattern": "sous-dossier de projet \\(ex\\. big-gaby\\)",
       "replace": "sous-dossier de projet (ex. mon-projet)",
       "expect": 1,
-      "why": "Exemple dans un commentaire de graph_export."
-    },
-    {
-      "id": "exemple-statut-capsule",
-      "files": [
-        "capsule/*.md"
-      ],
-      "pattern": "\"extraction big-gaby\"",
-      "replace": "\"extraction <projet>\"",
-      "expect": 1,
-      "why": "Exemple de ligne de commande dans le README de la capsule."
+      "why": "Generalize a project subdirectory example.",
+      "pattern": "sous-dossier de projet \\(ex\\. [a-z][a-z0-9-]*\\)"
     },
     {
       "id": "retour-utilisateur-nomme",
@@ -452,19 +425,39 @@
         "capsule/orbe/*.js",
         "hooks/*.py"
       ],
-      "pattern": "(?:Signalé par Dylan|signalé par Dylan|Décision de Dylan|que Dylan a rejetée|compte pour Dylan|et Dylan se retrouvait|Dylan : )",
-      "_note": "Alternation de littéraux COMPLETS. Les commentaires du tronc citent la personne qui a fait le retour — dans le paquet c'est un RÔLE. Forme longue d'abord (« que Dylan a rejetée » avant toute forme courte), sinon la courte mange la longue et laisse un résidu. ⚠ Pas d'ancre `^` : les motifs ne sont pas compilés en multiligne, une ancre ne mordrait qu'au tout premier caractère du fichier. Passé de 7 à 3 le 2026-08-03 : index.html, dock-geometry.js et son test sont sortis du sync ; restent orbe.js, orbe.html et brain_battement.py.",
-      "replace_map": {
-        "Signalé par Dylan": "Signalé par l'utilisateur",
-        "signalé par Dylan": "signalé par l'utilisateur",
-        "Décision de Dylan": "Décision de l'utilisateur",
-        "que Dylan a rejetée": "que l'utilisateur a rejetée",
-        "compte pour Dylan": "compte pour l'utilisateur",
-        "et Dylan se retrouvait": "et l'utilisateur se retrouvait",
-        "Dylan : ": "L'utilisateur : "
-      },
       "expect": 3,
-      "why": "Les commentaires de la capsule et de l'orbe créditent nommément l'auteur des retours (« Signalé par Dylan le … »). C'est juste dans le tronc privé, hors sujet dans un paquet public : ce qui compte est qu'un UTILISATEUR ait signalé le défaut, pas lequel. Règle ajoutée le 2026-08-03 avec l'arrivée de l'orbe, qui apporte quatre fichiers de plus portant ce genre de crédit."
+      "why": "Describe reported feedback without naming the reporter.",
+      "pattern": "(?:Signalé par [A-Z][a-z]+|signalé par [A-Z][a-z]+|Décision de [A-Z][a-z]+|que [A-Z][a-z]+ a rejetée|compte pour [A-Z][a-z]+|et [A-Z][a-z]+ se retrouvait|[A-Z][a-z]+ : )",
+      "replace_map_patterns": [
+        [
+          "Signalé\\ par\\ [A-Z][a-z]+",
+          "Signalé par l'utilisateur"
+        ],
+        [
+          "signalé\\ par\\ [A-Z][a-z]+",
+          "signalé par l'utilisateur"
+        ],
+        [
+          "Décision\\ de\\ [A-Z][a-z]+",
+          "Décision de l'utilisateur"
+        ],
+        [
+          "que\\ [A-Z][a-z]+\\ a\\ rejetée",
+          "que l'utilisateur a rejetée"
+        ],
+        [
+          "compte\\ pour\\ [A-Z][a-z]+",
+          "compte pour l'utilisateur"
+        ],
+        [
+          "et\\ [A-Z][a-z]+\\ se\\ retrouvait",
+          "et l'utilisateur se retrouvait"
+        ],
+        [
+          "[A-Z][a-z]+\\ :\\ ",
+          "L'utilisateur : "
+        ]
+      ]
     },
     {
       "id": "proprietaire-nomme-filet",
@@ -478,15 +471,39 @@
         "agents/**/*.md",
         "companion/**/*.py",
         "tests/**/*.py",
+        "tests/**/*.json",
         "skills/**/*.md",
         "skeleton/**/*.md",
-        "brain"
+        "skeleton/**/*.json",
+        "brain",
+        "capsule/**/*.cjs",
+        "capsule/**/*.sh",
+        "tests/**/*.sh"
       ],
-      "pattern": "Dylan(?! Peellaert)",
       "replace": "l'auteur",
       "expect": 1,
-      "why": "FILET DE SÉCURITÉ, en DERNIER. Les règles fines réécrivent des tournures précises ; ce filet attrape le nom nu là où il reste. Ajouté le 2026-08-13 : 9 mentions étaient apparues dans des commentaires écrits depuis le sync précédent (« demande de X », « retour de X », « constat de X »). Une règle par tournure est perdue d'avance : il s'en écrit une nouvelle à chaque session. `expect` étant un MINIMUM, ce filet ne fait jamais échouer la passe.",
-      "_note": "⚠ `(?! Peellaert)` : le filet a REECRIT la ligne de copyright de tests/recall_cache.py et tests/recall_benchmark.py en « Copyright (c) 2026 l'auteur Peellaert » — Apache 2.0 EXIGE le nom du titulaire, et un nom a moitie remplace n'est ni le vrai nom ni un anonymat. leakcheck ne l'a pas vu : il exempte justement les lignes de copyright de ce marqueur. Les deux outils se completent — ce que ce negatif laisse passer hors ligne de copyright, leakcheck le signale."
+      "why": "Catch remaining owner references in copied package files.",
+      "pattern": "[A-Z][a-z]+(?! [A-Z][a-z]+)"
+    },
+    {
+      "id": "attente-decision-litteral-quotes-simples",
+      "files": [
+        "hooks/*.py"
+      ],
+      "pattern": "décisions en attente de [A-Za-zÀ-ÿ-]+",
+      "replace": "pending decisions for the owner",
+      "expect": 1,
+      "why": "Use a replacement that cannot break a single-quoted Python literal."
+    },
+    {
+      "id": "banc-chemin-bureau-client",
+      "files": [
+        "tests/banc_panneau_huit.py"
+      ],
+      "pattern": "Desktop/[^/\\\"\\\\\\']+/[^/\\\"\\\\\\']+/node_modules/playwright",
+      "replace": "Desktop/example-project/node_modules/playwright",
+      "expect": 1,
+      "why": "Remove a private Desktop path from the synthetic panel bench."
     }
   ],
   "_regles_gelees": [
@@ -515,12 +532,92 @@
       "files": [
         "capsule/*.html"
       ],
-      "pattern": "(directive|demande) Dylan",
       "replace": "\\1 de l'auteur",
       "expect": 5,
       "why": "Historique des décisions de design de la créature : la traçabilité compte, le nom non.",
       "_gelee_le": "2026-08-03",
-      "_gelee_pourquoi": "capsule/index.html est sorti du sync : la capsule du paquet est désormais l'ORBE. La règle ne mord plus sur rien. Gelée plutôt que supprimée — si la créature revenait un jour dans le paquet, la correction serait à réécrire de zéro."
+      "_gelee_pourquoi": "capsule/index.html est sorti du sync : la capsule du paquet est désormais l'ORBE. La règle ne mord plus sur rien. Gelée plutôt que supprimée — si la créature revenait un jour dans le paquet, la correction serait à réécrire de zéro.",
+      "pattern": "(directive|demande) [A-Z][a-z]+"
+    }
+  ],
+  "digest_replacements": [
+    {
+      "id": "cadre-personnel",
+      "files": [
+        "agents/*.md"
+      ],
+      "digest_map": {
+        "b92b1866738ab6910485cbeea75dd6e79fa83a5e91e1395d0966b0649fb67642": "objectifs, situation personnelle"
+      },
+      "expect": 1,
+      "why": "Replace the owner-specific personal context example."
+    },
+    {
+      "id": "exemples-projets-clients",
+      "files": [
+        "**/*.md",
+        "**/*.py"
+      ],
+      "digest_map": {
+        "d827b0c7b39bfc7e57d7b2a634ef1be85dd99e12858739a606d7bc9dc62033cc": "projects/<projet>"
+      },
+      "expect": 1,
+      "why": "Replace client project examples with generic examples."
+    },
+    {
+      "id": "banc-fiche-tronc-reel",
+      "files": [
+        "tests/archiver_journal.py"
+      ],
+      "digest_map": {
+        "163e6aa2cb9515ba408e1dec79bd8ee038dcbb2b1ef38dc49b9a7c3b9a25ea5c": "<projet>\", \"<une-fiche-a-plusieurs-points-de-reprise>.md"
+      },
+      "expect": 2,
+      "why": "Replace a private note path in the test fixture."
+    },
+    {
+      "id": "banc-fiche-tronc-reel-projet",
+      "files": [
+        "tests/archiver_journal.py"
+      ],
+      "digest_map": {
+        "b41774aa0da6f382d5588b765b48cf502d0378c6b951f80872b605f59ffb6648": "<projet>\", \"<une-fiche-a-sections-datees>.md"
+      },
+      "expect": 1,
+      "why": "Replace a second private project note path in the test fixture."
+    },
+    {
+      "id": "banc-fiche-tronc-reel-docstring",
+      "files": [
+        "tests/archiver_journal.py"
+      ],
+      "digest_map": {
+        "77a2517deef5b9c555e510c73c090d574a807efe4967201ca8699b579d5333b0": "de la fiche visée reste"
+      },
+      "expect": 1,
+      "why": "Keep the fixture description consistent with its generic path."
+    },
+    {
+      "id": "exemple-born-from",
+      "files": [
+        "hooks/*.py"
+      ],
+      "digest_map": {
+        "48b473afeb435db7b1c031764be9e1e88f5830bfc1f7d56a6c9142fea8156800": "born_from: <projet>[, autre"
+      },
+      "expect": 1,
+      "why": "Generalize a project provenance example."
+    },
+    {
+      "id": "exemple-statut-capsule",
+      "files": [
+        "capsule/*.md"
+      ],
+      "digest_map": {
+        "97b2cf97acdadff70de900d0a7096fe63139376d25b8c2e51eb5829d653c1b4f": "extraction <projet>"
+      },
+      "expect": 1,
+      "why": "Generalize a capsule status example."
     }
   ]
 }

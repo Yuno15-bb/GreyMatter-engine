@@ -40,8 +40,8 @@ Worth stating plainly, because it is the honest basis for judging risk:
   ever travels: what it puts in a prompt travels with the prompt.
   `brain doctor` shows what the hook would inject; remove the
   `UserPromptSubmit` hook from `settings.json` to stop it entirely.
-- **Agents are the loud case.** When you run `distiller`, `gardener` or any
-  other agent, it reads whole notes and sends them to the provider — that is
+- **Agents are the loud case.** When you run a ship's distiller or gardener
+  mission, it reads whole notes and sends them to the provider — that is
   what you asked it to do. Nothing is automatic about it: you start them.
 
 ## Supported versions

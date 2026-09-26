@@ -7,5 +7,9 @@
   "com.claudebrain.resume.plist.template": {
     "normal_form_sha256": "0e3e8048db063afed2bef5624447d80406250d62e3b28c1d44e50cfef416a84e",
     "migration_decision": "none needed -- first baseline, 2026-08-20. No semantic change has been published since legacy adoption existed."
+  },
+  "com.claudebrain.etat.plist.template": {
+    "normal_form_sha256": "12c094cf5bc5db3e39358333b46ddc201a58a7b5032d20e01f548cc71a6f1703",
+    "migration_decision": "none needed -- first baseline, 2026-09-25. The installer does not render this template (install.sh and adopt-launchd.sh handle resume and machiniste only); it is installed by hand, with the two sed substitutions its header gives."
   }
 }

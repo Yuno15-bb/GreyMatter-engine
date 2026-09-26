@@ -6,8 +6,8 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
 
 **GreyMatter turns each session with your CLI agent into memory it can reuse —
-distilled into a note, filed, linked, and handed back automatically the next
-time it matters. From any project, and without leaving your machine.**
+distilled into a note, filed, linked, and handed back the moment you ask for
+it. From any project, and without leaving your machine.**
 
 <table width="100%">
 <tr>
@@ -38,11 +38,15 @@ conversation history, which only gets longer.
 **The memory itself** — this is the product, and it is all you need:
 
 - **A trunk.** Your lessons, projects and method, as markdown on your machine, versioned with git.
-- **Automatic recall.** On every prompt, the few notes that match are pasted into the context.
-- **It learns from use.** What served you climbs, and a slot stays reserved for notes never
-  seen, so it does not go round in circles.
+- **Recall on request.** Ask — `brain recall "…"`, `?brain` in a message, or a plain
+  "any notes on…" — and the two or three notes that match are handed to your agent.
+  `BRAIN_RECALL_AUTO=1` makes it fire on every prompt instead ([why it no longer does](#and-on-a-real-trunk-what-does-it-change)).
+- **It does not go round in circles.** Notes are ranked by relevance alone, and one slot
+  in three is kept for notes the search rarely surfaces, so the same few do not win forever.
 - **It knows its own age.** Notes never re-checked enter a review queue, dated from the git history.
-- **8 agents.** They distill, file, link, challenge, synthesize, prune, repair, and watch the machine.
+- **Four agents, eight missions.** Narcissus distills each session and files the result;
+  Sulaco challenges, links and archives; Anesidora writes syntheses across projects;
+  Nostromo repairs the wiring and watches the machine.
 - **A closed loop.** Session ends → archive → distill → file, without being asked.
 - **Updates.** The engine updates itself **every session**; **your notes are never touched**.
 
@@ -53,7 +57,7 @@ conversation history, which only gets longer.
 - **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
 
 <p align="center">
-  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. On every prompt, the few notes that match are pasted into the prompt — a lexical search, 5 ms at 100 notes and 47 ms at 1,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next prompt. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="880">
+  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 5 ms at 100 notes and 47 ms at 1,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="880">
 </p>
 
 ### How good is the recall?
@@ -62,7 +66,7 @@ Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
 where finding the answer means picking one note out of ~120 that share its
 subject and most of its vocabulary:
 
-| notes | P@1 | P@3 | MRR | off-topic in what it injects | per prompt |
+| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search |
 |---|---|---|---|---|---|
 | 100 | 0.94 | 0.98 | 0.96 | 35% | 5 ms |
 | 1000 | 0.79 | 0.93 | 0.86 | 24% | 47 ms |
@@ -81,18 +85,25 @@ points were fixed — that is a limit of the bench, not the absence of an effect
 ### And on a real trunk, what does it change?
 
 Measured on 2026-08-12 against the author's living Brain (312 notes), 10
-questions about real facts of his work, 50 runs isolated from one another:
+questions about real facts of the author's work, 50 runs isolated from one another:
 
 | what the assistant has | right answers | tokens per exchange |
 |---|---|---|
 | nothing | **0/10** | 178 k |
-| the trunk + the map, **without** automatic recall | **8/10** | 264 k |
-| **the full system** | **10/10** | **168 k** |
+| the trunk + the map, **without** recall | **8/10** | 264 k |
+| **the full system**, recall on every prompt | **10/10** | **168 k** |
 
-Automatic recall does not cost context, it **saves** it: with no suggestion the
-assistant has to search, and searching burns turns. The detail of the protocol —
-and the three campaigns that had to be thrown away before an honest measurement
-came out — lives in the author's trunk, not here.
+When the question is about the trunk, recall does not cost context, it **saves**
+it: with no suggestion the assistant has to search, and searching burns turns.
+The detail of the protocol — and the three campaigns that had to be thrown away
+before an honest measurement came out — lives in the author's trunk, not here.
+
+**Why recall now waits to be asked.** Most prompts are not questions about the
+trunk. Over the following month of daily use, 3,256 notes were offered on their
+own and 139 of them were opened afterwards — 4.27 %. The suggestion block cost
+its noise on every message for a service rendered about four times in a hundred,
+so since 2026-09-09 it fires only when you ask. The search itself did not
+change: the numbers above still hold whenever you do.
 
 ## Install
 
@@ -103,7 +114,7 @@ came out — lives in the author's trunk, not here.
 /plugin install c-brain@c-brain
 ```
 
-That gives you the whole memory: the trunk, automatic recall, the eight agents,
+That gives you the whole memory: the trunk, recall, the four agents,
 the `brain` command, and three commands you can type — `/c-brain:recall`,
 `/c-brain:distill`, `/c-brain:doctor`. It creates `~/.c-brain/trunk` on your first session and
 tells you so. It does **not** set up the capsule, the planet or the scheduled
@@ -122,7 +133,8 @@ Or by hand: `git clone … && cd c-brain && ./install.sh`
 
 > **Upgrading from v1.28.1 or earlier?** Read
 > [docs/UPGRADING.md](docs/UPGRADING.md) first — a one-time warning about
-> uncommitted changes in your engine checkout. Your notes are not affected.
+> uncommitted changes in your engine checkout, the renamed agents, and recall
+> on request. Your notes are not affected.
 
 **The memory and nothing else** — no Electron window, no 3D globe, no
 background job:
@@ -157,9 +169,9 @@ follows it.
 ## What it does not do
 
 - **It makes no request of its own.** No telemetry, no network call beyond
-  `git pull`. What travels is what your prompts already carry: the recall hook
-  adds the name, description and path of two or three notes to a prompt you
-  were sending anyway, and agents you start read whole notes. Both go to your
+  `git pull`. What travels is what your prompts already carry: when you ask
+  for recall, the hook adds the name, description and path of two or three
+  notes to that prompt, and agents you start read whole notes. Both go to your
   model provider, like the rest of your message. [`SECURITY.md`](SECURITY.md)
   spells out where the line is.
 - **It updates itself, and you should know that.** Every session start installs
@@ -292,13 +304,14 @@ have to change is more use than a promise.
 
 ## Language
 
-`main` is English. The French original lives on the **`fr` branch** — it is the
-source the engine is extracted from, and English is derived from it. See
-[`docs/translation.md`](docs/translation.md).
+`main` is the product, and it is English: the docs, the installer, the CLI,
+the agents, the hooks and the capsule and planet interfaces. The French
+original lives on the **`fr` branch**, the staging copy the engine is extracted
+from; see [`docs/translation.md`](docs/translation.md).
 
-> **In progress**: the docs, the installer, the CLI and the eight agents are
-> English. The hook comments and the capsule/planet interface strings are still
-> being translated.
+Recall understands requests in French as well as English. A single setting
+that switches every surface to French, without a second install, is planned
+and not built.
 
 ## For the curious
 

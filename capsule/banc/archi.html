@@ -1,11 +1,9 @@
 <style>
-  /* Diagramme d'architecture C Brain.
-     ⚠ GRILLE À COLONNES FIXES, pas du flex. Avec flex, les boîtes se
-       compriment et le texte déborde SANS que la boîte grossisse : la mesure
-       du bord droit dit alors « ça tient » pendant que le rendu est coupé.
-       Des colonnes explicites dont la somme est connue rendent la largeur
-       vérifiable par le calcul, pas par l'œil.
-     240 + 70 + 940 + 70 + 300 = 1620, + 2×40 de marge = 1700. */
+  /* C Brain architecture diagram.
+     Use fixed grid columns. Flex would compress boxes and clip their text
+     without enlarging the measured right edge. Explicit columns make the
+     full width checkable by arithmetic:
+     240 + 70 + 940 + 70 + 300 = 1620, plus 2×40 margin = 1700. */
   * { box-sizing:border-box; }
   body { margin:0; width:1700px; background:#0d1117; color:#e6edf3;
          font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -23,7 +21,7 @@
   .boite u { display:block; text-decoration:none; color:#6e7681; font-size:11.5px;
              margin-top:6px; line-height:1.45; }
 
-  /* Le tronc est un cylindre : c'est une base de données, en Markdown. */
+  /* The trunk is a cylinder: a database stored in Markdown. */
   .tronc { position:relative; border:1px solid #6e7681; border-radius:50%/24px;
            padding:28px 14px 24px; text-align:center; background:#010409; }
   .tronc::before { content:''; position:absolute; left:-1px; right:-1px; top:0;
@@ -67,9 +65,9 @@
     <div class="titre">Your session — hooks do the work, no orchestrator</div>
     <div class="dedans">
       <div class="boite">
-        <b>On every prompt</b>
+        <b>When you ask</b>
         <i>inject_recall</i>
-        <u>BM25 + embeddings pick the few<br>notes that match what you asked,<br>and paste them into the prompt</u>
+        <u>?brain, "any notes on…" or<br>brain recall: BM25 + embeddings<br>hand back the few notes that match</u>
       </div>
       <div class="fl">→</div>
       <div class="boite">

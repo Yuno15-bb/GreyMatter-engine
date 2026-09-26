@@ -417,7 +417,7 @@ self_check() {
   echo "▸ the positive controls — every judgement fed a state it must ACCEPT"
   # Without this half, a judgement that refuses everything would look rigorous
   # and would fail A1 for ever. A constant is not a measurement, in either
-  # direction. See lessons/calibrer-l-instrument-avant-de-lui-demander-un-verdict.
+  # direction. See a note on calibrating the test before trusting its result.
   local pos; pos="$(lib positives)"; local pos_rc=$?
   echo "$pos" | sed 's/^/  /'
   [ "$pos_rc" -eq 0 ] || fails=$((fails + 1))

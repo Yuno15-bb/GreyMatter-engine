@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # selftest — checks that the hooks do not crash and exit with code 0.
-# Un hook qui plante en silence est pire qu'absent : ce test l'attrape.
+# A hook that crashes silently is worse than absent: this test catches it.
 #
 # Usage: selftest.sh [engine]
 #
@@ -156,6 +156,13 @@ then ok "usage <-> case: no subcommand announced into the void"
 else ko "brain's usage announces a subcommand that does not exist (this is THE kind of gap that created the 2026-06-22 bug)"
 fi
 fi
+
+# 8. Recall speaks ONLY on request (the author's decision, 2026-09-09) — and search
+#    itself stays alive. The test carries its two sabotages: without them, turning the
+#    automatic chatter back on would turn nothing red.
+python3 "$SRC/tests/recall_on_request.py" >/dev/null 2>&1 \
+  && ok "recall on request (invariant + 2 sabotages)" \
+  || ko "recall on request — the hook speaks on its own, or search is broken (python3 $SRC/tests/recall_on_request.py)"
 
 echo
 [ $fail -eq 0 ] && echo "✅ selftest OK — every hook healthy" || echo "❌ selftest: some hooks are broken"

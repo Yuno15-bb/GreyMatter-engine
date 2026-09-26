@@ -1,33 +1,8 @@
-// ORB — living material that says what a system is currently doing.
-//
-// Derived from the VoiceShell engine (Three.js + 3D simplex noise + Fresnel),
-// then extended to carry TEN distinct FLUID MECHANICS and to CROSS-FADE from
-// one to another without a break.
-//
-// The idea: two separate channels.
-//   · the MECHANIC and the speed say the NATURE and the INTENSITY of the
-//     activity, and read WITHOUT colour;
-//   · the COLOUR says the family of work.
-//
-// This file knows about no project: it renders an orb and exposes its controls.
-// The meaning attached to states lives in `palettes.js`.
-//
-// USAGE
-//   import { creerOrbe } from './orbe.js';
-//   const orbe = creerOrbe(canvas, MECANIQUES.houle, snoiseSrc, initialSettings);
-//   orbe.setMecanique(MECANIQUES.vortex);   // 1.4 s cross-fade
-//   orbe.setCadence(8);                     // fps — see the note on cost
-//
-// ⚠ COST, MEASURED (140 px orb, macOS, transparent always-on-top window):
-//   60 fps → ~12 %   ·   20 fps → ~8.7 %   ·   12 fps → ~5.4 %   ·   2 fps → 0.6 %
-// Cost follows the FRAME RATE, almost not the triangle count (detail 12 and 96
-// give the same percentage). For a permanent companion: low rate at rest, high
-// during transitions and work.
+// The orb renders living material with ten mechanics. Mechanics and speed
+// convey the activity; colour conveys the family of work. State meaning lives
+// in palettes.js. Keep frame rate low at rest and high for visible motion.
 import * as THREE from './vendor/three.module.js';
 
-// The constants live in `mecaniques.js` — a module WITHOUT Three.js, so that
-// `palettes.js` (the colours) does not have to load the 3D engine for ten
-// numbers. Re-exported here: historical callers do not change.
 export { MECANIQUES } from './mecaniques.js';
 
 export const PHYSIQUES = [
@@ -45,45 +20,32 @@ export const PHYSIQUES = [
 
 const CHAMP = `
 float champUn(vec3 p, float uMode){
-  // ⚠ LA PHASE EST ACCUMULÉE CÔTÉ JS, pas calculée ici.
-  // Avant : t = uTime*uSpeed. Comme uTime grandit sans fin, la moindre
-  // variation de vitesse faisait SAUTER la phase (uTime=50, vitesse
-  // 0,45 -> 0,75 : la phase bondit de 22 à 37). D'où l'accélération frénétique
-  // en changeant d'agent dans une même famille. Maintenant la vitesse ne
-  // change que la CADENCE d'avancement, jamais la position dans le cycle.
   float t = uPhase;
   float F = uFreq;
 
-  // ⚠ TOUTES LES MÉCANIQUES PARTAGENT LE MÊME SENS : la matière descend du
-  // pôle nord vers le sud (terme -t sur p.y) et tourne dans le sens horaire
-  // autour de Y. Sans ça, chaque famille avait sa direction propre et le
-  // passage de l'une à l'autre ressemblait à un changement de sujet, pas à une
-  // même matière qui change d'humeur.
-  vec3 flux = vec3(0.0, -t*0.55, 0.0);        // le courant commun
-  if(uMode<0.5){                                   // 0 — HOULE
+  vec3 flux = vec3(0.0, -t*0.55, 0.0);
+  if(uMode<0.5){
     return snoise(p*F*0.55 + flux)*0.9;
   }
-  if(uMode<1.5){                                   // 1 — BALAYAGE
-    float onde = sin(p.y*F*5.0 + t*3.2);      // + t : le front DESCEND
+  if(uMode<1.5){
+    float onde = sin(p.y*F*5.0 + t*3.2);
     return onde*0.72 + snoise(p*F*1.1 + flux)*0.28;
   }
-  if(uMode<2.5){                                   // 2 — PLAQUES
+  if(uMode<2.5){
     float n = snoise(p*F*0.9 + flux);
     return mix(floor(n*4.0)/4.0, n, 0.25);
   }
-  if(uMode<3.5){                                   // 3 — ÉBULLITION
+  if(uMode<3.5){
     return abs(snoise(p*F     + flux))*0.55
          + abs(snoise(p*F*2.7 + flux*1.3))*0.30
          + abs(snoise(p*F*5.3 + flux*2.1))*0.15 - 0.45;
   }
-  if(uMode<4.5){                                   // 4 — ONDE DE CHOC
+  if(uMode<4.5){
     float d = acos(clamp(p.y,-1.0,1.0))/3.14159;
     float front = fract(t*0.30);
     return exp(-pow((d-front)*18.0, 2.0))*1.2 - 0.15;
   }
-  if(uMode<5.5){                                   // 5 — CELLULES
-    // Approche « worley » bon marché : on cherche la plus courte distance à
-    // quelques germes qui dérivent. Donne des bulles qui se poussent.
+  if(uMode<5.5){
     float mind = 1e9;
     for(int i=0;i<6;i++){
       float fi = float(i);
@@ -92,52 +54,27 @@ float champUn(vec3 p, float uMode){
     }
     return (0.9 - mind*0.9)*1.4;
   }
-  if(uMode<6.5){                                   // 6 — VORTEX
-    // On tord les coordonnées autour de l'axe Y avant d'échantillonner :
-    // la matière semble tourner sur elle-même, pas se déplacer.
-    // torsion RALENTIE (1,2 -> 0,55) : à pleine vitesse la spirale tournait si
-    // vite que le motif crénelait. On garde le geste, on enlève le vrombissement.
-    float a = p.y*1.9 + t*0.55;                // rotation horaire, comme le reste
+  if(uMode<6.5){
+    float a = p.y*1.9 + t*0.55;
     float c = cos(a), s = sin(a);
     vec3 q = vec3(p.x*c - p.z*s, p.y, p.x*s + p.z*c);
-    return snoise(q*F*0.95 + flux*0.7)*0.95;   // motifs plus larges
+    return snoise(q*F*0.95 + flux*0.7)*0.95;
   }
-  if(uMode<7.5){                                   // 7 — RESPIRATION
-    // Zéro bruit : une pulsation pure, plus deux lobes très lents.
+  if(uMode<7.5){
     return sin(t*1.6)*0.55 + sin(p.y*1.8 + t*0.9)*0.35;
   }
-  if(uMode<8.5){                                   // 8 — INTERFÉRENCE
-    // les trois trains descendent ensemble : même sens que les autres familles
+  if(uMode<8.5){
     float a = sin(p.x*F*4.5 + t*2.0);
     float b = sin(p.z*F*4.5 + t*1.6);
     float c = sin(p.y*F*3.0 + t*2.4);
     return (a*b + c*0.5)*0.7;
   }
-                                                   // 9 — ÉCLATS
-  // Bruit élevé à une puissance : les creux s'aplatissent, les crêtes
-  // survivent → la surface se DURCIT par endroits.
-  // ⚠ Exposant 6 et gain 3,2 au départ : le champ valait zéro partout sauf sur
-  // quelques aiguilles très hautes. À mi-fondu on voyait donc des pointes
-  // SURGIR d'une sphère lisse, au lieu d'une matière qui se cristallise — c'est
-  // la transition que l'utilisateur a rejetée. Exposant 3,2 et une base continue sous
-  // les pointes : il reste du relief partout, le fondu a de quoi s'accrocher.
-  // ⚠ Les pointes DOIVENT VOYAGER, pas clignoter sur place. Avec une fréquence
-  // élevée elles apparaissaient et disparaissaient au même endroit — un
-  // scintillement, pas un mouvement. Fréquence abaissée (1,6 -> 0,95) et
-  // courant renforcé : les éclats naissent en haut et descendent avec le reste.
   float n = snoise(p*F*0.95 + flux*1.8);
   float pic = pow(max(n,0.0), 3.0);
-  // une respiration lente sous les pointes : la matière vit entre deux éclats
   float fond = snoise(p*F*0.5 + flux)*0.30;
   return pic*1.5 + fond - 0.16;
 }
 
-// ── LA TRANSITION ENTRE DEUX PHYSIQUES ──────────────────────────────────
-// On ne BASCULE pas d'une mécanique à l'autre : on calcule les DEUX champs et
-// on les fond. Une bascule sèche se voit — la matière change de nature d'une
-// image à l'autre, et ça se lit comme un défaut d'affichage.
-// Le second champ n'est calculé que PENDANT le fondu : hors transition,
-// 'uMix' vaut 0 et le coût est celui d'une seule mécanique.
 float champ(vec3 p){
   float f = champUn(p, uModeA);
   if(uMix > 0.001) f = mix(f, champUn(p, uModeB), uMix);
@@ -158,19 +95,12 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
     uSpeed:{value:couleurs.speed}, uRimI:{value:couleurs.rimI},
     uModeA:{value:mode}, uModeB:{value:mode}, uMix:{value:0},
     uSweep:{value:1.0},
-    // Verre par défaut. `setVerre(0)` rend la matière pleine d'origine.
     uVerre:{value:couleurs.verre != null ? couleurs.verre : 1.0},
     uC1:{value:new THREE.Color(couleurs.c1)}, uC2:{value:new THREE.Color(couleurs.c2)},
     uC3:{value:new THREE.Color(couleurs.c3)}, uRim:{value:new THREE.Color(couleurs.rim)},
   };
 
   const core = new THREE.Mesh(
-    // ⚠ 40 -> 88. Ce n'est PAS une question de cadence : mesuré, la transition
-    // tient 60 i/s sans perdre une image. C'est du CRÉNELAGE — le relief est
-    // échantillonné aux SOMMETS, et un motif fin qui tourne vite saute d'un
-    // sommet à l'autre. L'œil lit ça comme une saccade alors que rien ne
-    // ralentit. Mesuré par ailleurs : le coût ne dépend quasiment pas du nombre
-    // de triangles (detail 12 et 96 donnaient le même %), il est ailleurs.
     new THREE.IcosahedronGeometry(1, 88),
     new THREE.ShaderMaterial({ uniforms:U, transparent:true,
       vertexShader:`uniform float uTime,uPhase,uDisp,uFreq,uSpeed,uModeA,uModeB,uMix;
@@ -186,22 +116,6 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
           vec4 mv=modelViewMatrix*vec4(p0,1.0);
           vNormal=normalize(normalMatrix*n); vView=normalize(-mv.xyz);
           gl_Position=projectionMatrix*mv; }`,
-      // ── LE VERRE ────────────────────────────────────────────────────────────
-      // `uVerre` = 0 rend exactement la matière pleine d'origine, 1 le verre.
-      // Un interrupteur plutôt qu'une réécriture : la forme et les couleurs sont
-      // le fruit de plusieurs passes de réglage, et un verre raté ne doit pas
-      // les emporter avec lui. Comparer les deux rendus reste possible.
-      //
-      // ⚠ IL N'Y A PAS DE FOND À RÉFRACTER. La fenêtre est transparente et
-      //   WebGL ne voit pas le bureau derrière : impossible de le déformer comme
-      //   le ferait un vrai verre. Ce qui fait lire « verre » ici, ce sont donc
-      //   les trois signaux qu'on peut produire sans fond :
-      //     · l'ÉPAISSEUR — le bord vu en biais traverse plus de matière, donc
-      //       il est dense ; le centre, vu de face, est presque vide ;
-      //     · la LUMIÈRE PIÉGÉE — une lueur interne, teintée de la couleur du
-      //       corps, qui se concentre là où la matière est épaisse ;
-      //     · le REFLET — il reste opaque. Un reflet translucide se lit comme
-      //       une tache de peinture, pas comme une surface.
       fragmentShader:`uniform vec3 uC1,uC2,uC3,uRim; uniform float uRimI,uTime,uSweep,uVerre;
         varying vec3 vNormal,vView; varying float vDisp;
         void main(){
@@ -214,97 +128,30 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
           float spec=pow(max(dot(reflect(-L,N),V),0.0),34.0)*uSweep;
           vec3 plein=base + uRim*f*0.85 + vec3(spec)*0.55;
 
-          // ── GLASS, SECOND MODEL (2026-08-04) ──────────────────────────────
-          // The first one put an opacity FLOOR of 0.42 on the whole body and
-          // kept 'base' — hence the dark cavity colour 'uC3' — in the centre.
-          // Seen on the test board: translucent paste stained with dark
-          // patches, and nothing visible through it. Two changes of principle:
-          //   · colour no longer COVERS, it ACCUMULATES with the thickness
-          //     travelled through (Beer-Lambert) — the core is nearly empty,
-          //     the edge carries the tint. That is what allows being properly
-          //     transparent WITHOUT losing the "who" channel: the family now
-          //     reads on the edge, not on a filled surface;
-          //   · relief is no longer told by dark patches but by the LIGHT
-          //     sliding over it.
-          // ── MATERIAL DOSAGES (2026-08-08) ────────────────────────────────
-          // The author's request, word for word: "the edges are transparent,
-          // I would like them less so and more organic, less shiny, fewer
-          // reflections, so the middle and the scrolling text read better".
-          // Four NAMED dials rather than a rewrite: the tuning is redone by
-          // changing four numbers, and the previous version's glass model
-          // stays readable underneath.
-          // ⚠ This PARTLY REVERSES the 2026-08-04 note that rejected "the
-          //   translucent paste stained with dark" and its 0.42 alpha floor.
-          //   The reason for that rejection held: an OPAQUE dark core hid the
-          //   background AND had nothing to show. That is no longer the case —
-          //   the code pad has lived in the centre since, and a nearly empty
-          //   core drops it straight onto the desktop, where it becomes
-          //   unreadable. So the core carries material again, but DARK and
-          //   moderate: it backs the green text, it does not cover it.
-          const float BRILLANCE = 0.26;   // 1.0 = the polished glass of before
-          const float REFLET    = 0.34;   // share of reflected environment
-          const float COEUR     = 0.78;   // alpha at the centre — carries the text
-          const float BORD      = 0.30;   // what the thickness adds on top
+          const float BRILLANCE = 0.26;
+          const float REFLET    = 0.34;
+          const float COEUR     = 0.78;
+          const float BORD      = 0.30;
 
           float ep=pow(1.0-d,1.55);
-          // Relief keeps its share of thickness — otherwise the mechanic, the
-          // only channel readable without colour, vanishes under transparency.
           ep=clamp(ep+smoothstep(0.10,-0.75,vDisp)*0.16,0.0,1.0);
-          // ⚠ ORGANIC = THE EDGE FOLLOWS THE RELIEF. The crisp rim of before drew
-          //   the same circle whatever the material underneath: that reads as a
-          //   UI outline laid over the object. By modulating the thickness with
-          //   the field, the edge density ripples along with the mechanic.
           ep=clamp(ep*(0.90+0.26*smoothstep(-0.9,0.9,vDisp)),0.0,1.0);
 
-          // TINT: the dark hollow comes back AT THE CENTRE (backing the text),
-          // the family colour stays carried by the thickness of the edge.
           vec3 teinte=mix(uC3*0.60,uC2*1.30,clamp(ep*1.30,0.0,1.0));
 
-          // ⚠ THERE IS NO BACKGROUND TO REFLECT (transparent window, WebGL
-          //   cannot see the desktop). So we MAKE one: bright sky above, dark
-          //   ground below, crisp horizon. That HORIZON LINE is what reads as
-          //   "polished surface" — it slides over the relief as the material
-          //   moves, where a plain specular dot stays glued in place.
           vec3 R=reflect(-V,N);
           float ciel=smoothstep(-0.10,0.30,R.y);
-          // MUTED sky (0.88→0.52): at full brightness the reflected horizon
-          // repainted the upper half of the object in milky white and ate the
-          // text through the transparency.
           vec3 env=mix(vec3(0.05,0.06,0.09),vec3(0.52,0.57,0.66),ciel);
-          // ⚠ THE SKYLIGHT IS REMOVED — it was the square of light at the zenith,
-          //   the strongest "glass marble under a spotlight" signal in the whole
-          //   render, and the first thing the author points at saying "too much
-          //   reflection".
-          // Fresnel: glass reflects almost nothing head-on, everything at a
-          // grazing angle.
           float fres=(0.04+0.62*pow(1.0-d,4.0))*REFLET;
 
-          // TWO SPECULARS, not one. The tight one gives the highlight that
-          // says "polished"; the broad one gives the sheen over the whole lit
-          // face. A single narrow lobe reads as plastic.
-          // ⚠ Exponents LOWERED at the same time as the gains: a very narrow
-          //   lobe (200) heavily attenuated is still a hard dot that catches the
-          //   eye. Widened and weakened, it becomes the lustre of a matte material.
           vec3 H=normalize(L+V);
           float dur  =pow(max(dot(N,H),0.0), 80.0)*uSweep*BRILLANCE;
           float large=pow(max(dot(N,H),0.0), 10.0)*uSweep*BRILLANCE;
 
-          // THE EDGE — a THIN rim over the very last degrees before the
-          // silhouette. Without it the border fades out softly and the object
-          // looks blurry; with it, it has an arris, like a polished glass edge.
-          // ⚠ It must stay within the last ~0.03 of 'd': any wider and it
-          //   reads as a UI outline rather than as thickness.
-          // ⚠ The rim is now TINTED (uRim dominates, white is only a touch): a
-          //   white rim over the full 360° of the outline is exactly what gave
-          //   the cut-glass arris.
           float tranche=smoothstep(0.90,0.999,1.0-d);
           vec3 verre=teinte + env*fres + uRim*f*0.42
                      + (uRim*0.55+vec3(0.10))*tranche*0.45
                      + vec3(large)*0.10 + vec3(dur)*0.45;
-          // ALPHA: the core is no longer empty (COEUR), and the edge thickness
-          // finishes making it frankly material (BORD). Reflections barely push
-          // the opacity any more — they must stop making the volume in place of
-          // the material.
           float a=clamp(COEUR + BORD*ep + dur*0.45 + large*0.06
                         + tranche*0.22,0.0,1.0);
 
@@ -316,65 +163,44 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
     if(s>0){ renderer.setSize(s,s,false); } };
   fit(); new ResizeObserver(fit).observe(canvas.parentElement);
 
-  let api;                       // rempli plus bas ; la boucle le teste
+  let api;
   let t=0;
-  // ── CADENCE ADAPTATIVE ────────────────────────────────────────────────────
-  // Le fondu de mécanique DOIT être à 60 i/s : à 24 il avance par crans, et on
-  // lit une saccade là où on voulait de la fluidité. Mais tenir 60 en
-  // permanence coûte cher (mesuré : ~12 % pour un orbe de 140 px).
-  // On monte donc à 60 pendant la transition et quand ça travaille, on
-  // redescend au repos. La fluidité est payée là où elle se voit.
   let fpsCourant = 60, dernierT = performance.now();
-  // ⚠ `setTimeout(1000/fps)` PUIS `rAF` ADDITIONNE LES DEUX ATTENTES.
-  //   Le minuteur attend l'intervalle voulu, puis rAF attend encore le prochain
-  //   rafraîchissement de l'écran (~16,7 ms). On demandait 60 i/s et on en
-  //   obtenait 32 ; 30 demandés donnaient 22. MESURÉ, pas supposé — et c'est
-  //   exactement ce qui faisait avancer les fondus « par crans » alors que le
-  //   code disait 60. Deux corrections :
-  //     · au-delà de ~55 i/s on ne veut RIEN attendre : rAF seul, cadence écran ;
-  //     · en dessous, on retire une image d'écran du délai, puisque rAF la
-  //       rajoutera de toute façon.
+  // Tempo changes the orb's simulated time independently of drawing cadence.
+  // One frame per second at normal tempo would jump visibly at rest.
+  let tempo = 1;
   const TRAME = 1000 / 60;
+  let dernierRendu = 0;
   const boucle=()=>{
-    if (fpsCourant >= 55) requestAnimationFrame(boucle);
-    else setTimeout(()=>requestAnimationFrame(boucle),
-                    Math.max(0, 1000/fpsCourant - TRAME));
     const now = performance.now();
-    // ⚠ CE PLAFOND ÉTAIT UN FREIN CACHÉ. Il existe pour qu'un long gel (onglet
-    //   masqué, machine en veille) ne fasse pas SAUTER l'animation au réveil.
-    //   Mais 0,05 s = 3 images à 60 i/s… et 1/5 d'image à 4 i/s. Au repos, où
-    //   l'orbe tourne justement à 4 i/s, CHAQUE image était donc tronquée : le
-    //   temps avançait cinq fois moins vite que la réalité, et l'orbe paraissait
-    //   presque immobile. Personne ne pouvait le voir — rien n'est en retard,
-    //   rien ne saute, tout est simplement au ralenti.
-    //   Le plafond doit se mesurer en IMAGES, pas en secondes absolues.
+    // Above 10 fps, follow rAF and draw on evenly spaced display frames.
+    // A timer followed by rAF alternates short and long intervals near 30 fps.
+    if (fpsCourant >= 10) {
+      requestAnimationFrame(boucle);
+      if (fpsCourant < 55 && now - dernierRendu < 1000/fpsCourant - TRAME/2) return;
+    } else setTimeout(()=>requestAnimationFrame(boucle),
+                      Math.max(0, 1000/fpsCourant - TRAME));
+    dernierRendu = now;
+    globalThis.__imagesOrbe = (globalThis.__imagesOrbe || 0) + 1;
     const plafond = Math.max(0.05, 3 / Math.max(1, fpsCourant));
-    const dt = Math.min(plafond, (now-dernierT)/1000); dernierT = now;
-    // ⚠ le temps avance en SECONDES RÉELLES, pas en «1/FPS» : sinon changer de
-    // cadence change aussi la vitesse apparente du fluide.
+    const dt = tempo * Math.min(plafond, (now-dernierT)/1000); dernierT = now;
     t += dt; U.uTime.value=t;
-    // la phase avance à la vitesse COURANTE : accélérer ne téléporte plus rien
     U.uPhase.value += dt * U.uSpeed.value;
     if(api&&api._maj) api._maj();
+    if(api&&api.surImage) api.surImage(dt);
     core.rotation.y+=dt*0.24; core.rotation.x+=dt*0.09;
     renderer.render(scene,camera); };
-  // Pilotage de la transition, côté JS. `uMix` avance à cadence fixe et, une
-  // fois arrivé, la cible devient la source : on n'accumule jamais de fondus.
-  const MIX_MS = 1400;                     // durée du morphing de mécanique
+  const MIX_MS = 1400;
   let mixT0 = 0, enTransition = false;
   const majMix = () => {
     if(!enTransition) return;
     const k = Math.min(1, (performance.now()-mixT0)/MIX_MS);
-    // adoucissement aux deux bouts : ni départ ni arrivée brusques
     U.uMix.value = k<0.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;
     if(k>=1){ U.uModeA.value=U.uModeB.value; U.uMix.value=0; enTransition=false; }
   };
   api = {
     setDisp:(v)=>{ U.uDisp.value=v; }, setSpeed:(v)=>{ U.uSpeed.value=v; },
-    /* On ne coupe JAMAIS un fondu en cours : si une transition est déjà en
-       route, on fige l'état courant comme nouvelle source avant de repartir.
-       Sans ça, deux changements rapprochés font sauter la matière — le défaut
-       qu'on cherchait justement à supprimer. */
+
     setMecanique:(m)=>{
       if(m===U.uModeB.value) return;
       if(enTransition){ U.uModeA.value = U.uModeB.value; }
@@ -382,7 +208,8 @@ export function creerOrbe(canvas, mode, snoiseSrc, couleurs) {
       mixT0 = performance.now(); enTransition = true;
     },
     setCadence:(f)=>{ fpsCourant = f; },
-    /* 1 = verre, 0 = matière pleine d'origine. Interrupteur, pas réécriture. */
+    setTempo:(k)=>{ tempo = k; },
+
     setVerre:(v)=>{ U.uVerre.value = Math.max(0, Math.min(1, v)); },
     enTransition:()=>enTransition,
     _maj: majMix, _u: U,

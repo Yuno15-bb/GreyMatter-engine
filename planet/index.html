@@ -26,7 +26,7 @@
   #modes button:hover{ background:rgba(255,255,255,.1); }
   #modes button.on{ color:#07070b; background:#5ad7e6; border-color:#5ad7e6; font-weight:bold; }
   #grow{ font-size:11px; color:#f2c94c; opacity:0; transition:opacity .4s; margin-top:2px; }
-  /* compteur d'ACTIVITÉ EN DIRECT : recalculé à l'image, il s'éteint tout seul quand la fenêtre passe */
+
   #livenow{ font-size:10.5px; color:#7fe9ff; opacity:.9; margin-top:6px; letter-spacing:.3px; }
   #livenow .off{ color:#7f8b93; }
   #session{ font-size:10.5px; color:#86c8b0; opacity:.85; margin-top:6px; letter-spacing:.3px; }
@@ -97,9 +97,7 @@
   #tip .lnk .c i{ width:6px; height:6px; border-radius:50%; background:var(--cc,#888); box-shadow:0 0 5px var(--cc,#888); flex:none; }
   #tip .lnk .c em{ font-style:normal; opacity:.5; font-size:7.5px; letter-spacing:.5px; }
   #tip .d{ opacity:.82; margin-top:11px; font-size:11.5px; line-height:1.55; }
-  /* DEUX BLOCS ADRESSÉS. Chacun annonce à qui il parle : « pour toi » (humain, sans jargon)
-     et « pour le modèle » (la fiche dense). Le premier est ouvert, le second replié — c'est
-     l'ordre de lecture voulu, pas une hiérarchie de valeur. */
+
   #tip .bl{ margin-top:13px; border-left:2px solid var(--accent); padding-left:11px; }
   #tip .bl > header, #tip .bl > summary{ display:flex; align-items:baseline; gap:8px;
     font-size:8.5px; letter-spacing:1.4px; text-transform:uppercase; padding:1px 0 6px; }
@@ -134,14 +132,7 @@
 
   #hint{ position:fixed; bottom:14px; right:16px; font-size:10px; opacity:.5; text-align:right; line-height:1.6; }
 
-  /* ── PETIT ÉCRAN (téléphone, via `distant/`) ───────────────────────────────
-     La planète est née sur un 27 pouces : ses panneaux sont posés dans les
-     quatre coins d'un écran large. À 390 px de large, la légende des dix-huit
-     régions et l'aide à la souris recouvrent le globe qu'elles commentent —
-     et l'aide parle de molette et de survol, deux gestes qui n'existent pas
-     sur un écran tactile.
-     On ne redessine rien : sous 520 px on RETIRE ce qui ne sert pas là-bas et
-     on resserre le reste. Aucune de ces règles ne peut atteindre le bureau. */
+
   @media (max-width: 520px) {
     #hint  { display:none; }
     #legend{ font-size:9px; line-height:1.5; max-height:32vh; opacity:.7;
@@ -150,12 +141,12 @@
     #title { font-size:11px; }
     #counts, #viewtag, #livenow, #session { font-size:9.5px; }
     #modes { flex-wrap:wrap; }
-    /* la fiche survolée devient une feuille en bas, pas une colonne de droite */
+
     #tip   { right:8px; left:8px; width:auto; max-width:none; top:auto; bottom:8px;
              transform:none; font-size:12px; }
   }
 
-  /* viewer 3D rejouable (Étage 4) */
+
   #viewer{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
     background:radial-gradient(ellipse at center, rgba(16,20,30,0.96), rgba(3,4,7,0.985)); }
   #viewer.show{ display:flex; }
@@ -170,11 +161,7 @@
 </style>
 
 <style id="mother">
-/* ═══════════════════════════════════════════════════════════════════════════
-   SIGNATURE MOTHER — surcouche, appliquée par-dessus le style d'origine.
-   Spec : ~/.claude/skills/_refs/ui-kit/mother.md
-   Rien n'est retiré au fichier source : tout est override, donc réversible.
-   ═══════════════════════════════════════════════════════════════════════════ */
+
 @font-face{font-family:"Departure Mono";
   src:url(data:font/woff2;base64,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) format("woff2");font-display:block;}
 :root{
@@ -185,31 +172,27 @@
   --glow:255,79,12;
 }
 body{ letter-spacing:.03em; }
-#title{ -webkit-text-stroke:.4px currentColor; }   /* le contour ne sert qu'aux gros titres */
-/* du texte de 10px sous un masque n'est pas lisible : on remonte à une taille d'instrument */
+#title{ -webkit-text-stroke:.4px currentColor; }
+
 #counts,#fil,#viewtag,#grow,#livenow,#session{ font-size:11px; line-height:1.5; }
 #legend{ font-size:11px; line-height:1.5; width:206px; }
 #legend .hd{ font-size:9.5px; }
 #modes button{ font-size:10px; padding:2px 7px; }
 #tip{ font-size:11px; } #tip .mem,#tip .ch,#tip .cv,#tip .rs,#tip .media{ font-size:10.5px; }
 
-/* ── panneaux resserrés ── */
 #hud{ padding:6px 9px; } #hud #title{ font-size:10.5px; letter-spacing:.07em; }
 #counts,#fil,#viewtag,#grow,#livenow,#session{ font-size:10px; line-height:1.45; }
 #modes{ margin-top:5px; gap:4px; } #modes button{ font-size:9px; padding:1px 6px; }
 #legend{ padding:6px 8px; max-height:54vh; font-size:10px; width:188px; }
 
-/* ── l'aide en bas à droite : supprimée (demande l'auteur) ── */
 #hint{ display:none !important; }
 
-/* ── la fiche de survol ne doit JAMAIS dépasser l'écran ── */
 #tip{ top:14px; transform:none; max-height:calc(100vh - 28px); overflow-y:auto;
   overscroll-behavior:contain; width:296px; }
 #tip.show{ transform:none; }
 #tip::-webkit-scrollbar{ width:6px; }
 #tip::-webkit-scrollbar-thumb{ background:var(--ph-700); border-radius:3px; }
 
-/* ── les connexions arrivent EN FIN de fiche, pas en plein milieu du survol ── */
 #tip .body{ display:flex; flex-direction:column; }
 #tip .src{order:0} #tip .n{order:1} #tip .mem{order:2}
 #tip .ch{order:3} #tip .cv{order:4} #tip .rs{order:5} #tip .media{order:6}
@@ -217,30 +200,18 @@ body{ letter-spacing:.03em; }
 #tip .lnk{ order:8; margin-top:12px; padding-top:9px; border-top:2px dashed var(--ph-700); }
 #tip .hint2{order:9} #tip .f{order:10}
 
-/* ── le masque du tube : grille sombre PAR-DESSUS tout, statique ── */
 #grille{ position:fixed; inset:0; pointer-events:none; z-index:2;
   background-image:
     repeating-linear-gradient(to right ,rgba(0,0,0,.34) 0 1px,transparent 1px 3px),
     repeating-linear-gradient(to bottom,rgba(0,0,0,.34) 0 1px,transparent 1px 3px); }
 @media (-webkit-min-device-pixel-ratio:2),(min-resolution:2dppx){
-  /* Retina : le masque doit valoir 1 pixel PHYSIQUE, sinon c'est un grillage sur le texte */
+
   #grille{ background-image:
     repeating-linear-gradient(to right ,rgba(0,0,0,.30) 0 .5px,transparent .5px 1.5px),
     repeating-linear-gradient(to bottom,rgba(0,0,0,.30) 0 .5px,transparent .5px 1.5px); } }
 #hud,#legend,#hint,#tip,#viewer{ z-index:10; }
 #tip{ z-index:12; } #viewer{ z-index:20; }
 
-/* ── panneaux au trait : 2px, jamais une surface ── */
-/* ── PANNEAUX : plus d'aplat noir, une GRILLE FINE sur fond transparent ──
-   Demande de l'auteur (2026-08-14) : « tous les panneaux à fond transparent » +
-   « les fonds sont tous noirs, je voudrais plutôt une grille fine ».
-   C'est aussi ce que fait la référence : l'intérieur des cadres de la console
-   Destiny n'est pas noir, c'est un maillage fin qu'on voit à travers. */
-/* ⚠️ PLUS DE CADRE AUTOUR DU TEXTE (l'auteur, 2026-08-14 : « ne doivent pas avoir de cadre »).
-   Le cadre + la grille avaient été posés pour tous les panneaux ; sur les deux blocs de TEXTE
-   ils enferment une lecture au lieu de la porter, et deux boîtes lumineuses tirent l'œil hors
-   de la carte. Le cadre reste là où il désigne un INSTRUMENT — la capsule du globe, qui est
-   une fenêtre et doit se lire comme telle. */
 #hud, #legend, #hint{
   background:none; border:0; box-shadow:none; padding:0;
   text-shadow:0 0 3px #000, 0 0 8px rgba(0,0,0,.9); }
@@ -248,17 +219,6 @@ body{ letter-spacing:.03em; }
 #legend{ bottom:16px; left:18px; width:238px; }
 #hint{ right:18px; bottom:16px; padding:7px 12px; }
 
-/* ── LA PLANÈTE EN PETIT — capsule fixe, haut à droite ──
-   Le SENS est passé au premier plan : c'est LUI qu'on lit en grand. Le globe de structure ne
-   disparaît pas pour autant, il change de statut — d'écran principal il devient INSTRUMENT :
-   il tourne, il répond au survol, mais il ne se manipule plus (ni glisser, ni molette).
-   On y vise une famille, elle s'allume dans le nuage du sens. */
-/* ⚠️ ELLE VIT DANS LA COLONNE DE GAUCHE, ENTRE LES DEUX PANNEAUX (l'auteur, 2026-08-14 :
-   « déplace le globe entre les deux »). Le coin haut-droit obligeait la fiche de survol à
-   descendre sous elle ; à gauche, la capsule occupe le seul vide que la page avait déjà, entre
-   le HUD et la légende. `top` et `width` sont posés par `placerPod()` : l'espace entre les deux
-   dépend de la hauteur de la fenêtre ET de la longueur de la légende, deux choses que le CSS ne
-   sait pas mesurer l'une par rapport à l'autre. */
 #pod{ position:fixed; top:0; left:18px; width:224px; z-index:4;
   background-color:transparent;
   background-image:
@@ -274,7 +234,6 @@ body{ letter-spacing:.03em; }
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #pod .cap b{ color:var(--ph-100); font-weight:400; }
 #pod .cap .off{ color:var(--ph-600); }
-/* la fiche de survol récupère tout le côté droit : la capsule n'y est plus */
 
 #title{ font-family:var(--disp); font-size:13px; letter-spacing:.09em; color:var(--ph-100);
   text-shadow:0 0 3px rgba(var(--glow),.6); }
@@ -287,7 +246,6 @@ body{ letter-spacing:.03em; }
 #livenow .off{ color:var(--ph-600); }
 #hint b{ color:var(--ph-100); font-weight:400; }
 
-/* ── boutons de mode : pilules MOTHER ── */
 #modes button{ font-family:var(--disp); color:var(--ph-300); background:transparent;
   border:2px solid var(--ph-600); border-radius:999px; letter-spacing:.07em; padding:2px 9px;
   text-shadow:0 0 2px rgba(var(--glow),.5); }
@@ -296,7 +254,6 @@ body{ letter-spacing:.03em; }
   font-weight:400; -webkit-text-stroke:0; text-shadow:none;
   box-shadow:0 0 7px rgba(var(--glow),.6); }
 
-/* ── légende : lignes de lecture « > libellé ....... valeur » ── */
 #legend{ font-family:var(--disp); font-size:10.5px; }
 #legend .hd{ color:var(--ph-400); opacity:1; letter-spacing:.1em; }
 #legend .row:hover{ background:rgba(var(--glow),.12); }
@@ -308,7 +265,6 @@ body{ letter-spacing:.03em; }
 #legend .mk{ color:var(--ph-300); opacity:1; }
 #legend .repli > summary{ color:var(--ph-400); opacity:1; }
 
-/* ── fiche au survol : panneau MOTHER, coins conservés ── */
 #tip{ background-color:rgba(0,0,0,.55);
   background-image:
     repeating-linear-gradient(to right ,rgba(var(--glow),.11) 0 1px,transparent 1px 4px),
@@ -317,7 +273,7 @@ body{ letter-spacing:.03em; }
   color:var(--ph-300); font-family:var(--disp);
   box-shadow:0 0 6px rgba(var(--glow),.45), 0 0 18px rgba(var(--glow),.16); }
 #tip::before,#tip::after,#tip .scan::before,#tip .scan::after{ border-color:var(--ph-400); }
-#tip .scan{ display:none; }                     /* la grille globale remplace ce faux scan */
+#tip .scan{ display:none; }
 #tip .src{ color:var(--ph-400); border-bottom:2px solid var(--ph-700); }
 #tip .src .swatch{ box-shadow:0 0 8px rgba(var(--glow),.8); }
 #tip .src .frontier{ color:var(--ph-200); opacity:1; }
@@ -332,7 +288,6 @@ body{ letter-spacing:.03em; }
 #tip .lnk .c{ background:transparent; border:1px solid var(--ph-700); color:var(--ph-300); }
 #tip .hint2{ color:var(--ph-600); }
 
-/* ── visionneuse 3D ── */
 #viewer{ background:rgba(0,0,0,.92); }
 #viewer .vcap, #viewer .vhint{ color:var(--ph-300); font-family:var(--disp); }
 #viewer .vx, #tip .x{ font-family:var(--disp); color:var(--ph-200);
@@ -340,18 +295,10 @@ body{ letter-spacing:.03em; }
 #viewer .vx:hover, #tip .x:hover{ color:#000; background:var(--ph-400); border-color:var(--ph-400);
   -webkit-text-stroke:0; }
 
-/* accessibilité : le focus clavier doit rester visible sur fond noir */
 button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
 
-/* ══ MISE EN PLACE PROGRESSIVE (2026-08-14, demande de l'auteur) ══════════════
-   Relevé image par image sur `video-1-31d62c.mp4` : rien n'apparaît pour faire
-   joli. Les panneaux arrivent UN PAR UN dans l'ordre de lecture, parce qu'ils
-   viennent d'être calculés ; le rapport s'écrit ligne à ligne ; une ligne de
-   balayage passe UNE fois pendant le scan puis disparaît.
-   Donc : coupe franche (pas de fondu souple — une machine n'a pas d'inertie),
-   et l'écran final est strictement identique avec ou sans mouvement. */
 @media (prefers-reduced-motion: no-preference){
-  /* `steps(1)` n'atteint jamais sa valeur finale : deux keyframes explicites. */
+
   @keyframes mArrive{ 0%,99%{opacity:0} 100%{opacity:1} }
   #c        { animation:mArrive 40ms linear .05s both; }
   #hud      { animation:mArrive 40ms linear .28s both; }
@@ -363,11 +310,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
   #hud #livenow, #hud #session, #hud #grow { animation:mArrive 40ms linear .92s both; }
   #legend   { animation:mArrive 40ms linear 1.06s both; }
 
-  /* ⛔ LA BANDE DE BALAYAGE EST SUPPRIMÉE (l'auteur, 2026-08-14 : « supprime la bande qui passe
-     de haut en bas au début de chaque rechargement »). Elle passait une fois au chargement —
-     sauf que la page se recharge toute seule dès que le graphe change : ce qui devait être un
-     effet de démarrage rare devenait un clignotement régulier. Les panneaux, eux, arrivent
-     toujours un par un. */
+
 }
 </style>
 </head>
@@ -377,8 +320,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
     <div id="title">[ TRUNK MAP — MEANING ]</div>
     <div id="counts">…</div>
     <div id="viewtag"></div>
-    <!-- fil d'Ariane : le SEUL endroit qui dit où on est et comment revenir. Sans lui, entrer
-         dans une région serait un cul-de-sac : on verrait 30 points sans savoir d'où ils sortent. -->
+
     <div id="fil"><span class="ici">overview — click a region to enter</span></div>
     <div id="modes">
       <button data-mode="sens">✦ meaning</button>
@@ -389,8 +331,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
     <div id="session"></div>
   </div>
   <div id="legend"></div>
-  <!-- la planète, devenue instrument de coin : elle tourne toute seule, elle répond au survol,
-       elle ne se manipule pas. Ce qu'on y vise s'allume dans la carte du sens. -->
+
   <div id="pod">
     <div class="hd">[ globe — the families ]</div>
     <canvas id="pc"></canvas>
@@ -431,56 +372,41 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { capaciteSemantique, etiquetteSens, etiquette3d } from './semantic-label.js';
-// post-process « data-poésie » (réf. Anadol/Lieberman) : bloom doux = luminance organique
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';   // Étage 4 : nœuds rejouables (.glb)
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const R = 10;                                   // rayon du globe
-const S2 = 13;                                  // rayon de l'anneau des régions en vue 2D
-const SEM = 16;                                 // rayon de la carte SÉMANTIQUE (Étage 1 : proximité = sens)
+const R = 10;
+const S2 = 13;
+const SEM = 16;
 const UP = new THREE.Vector3(0,1,0), RIGHT = new THREE.Vector3(1,0,0);
-// régions « hors-ville » = un domaine sans projet (chacune son continent propre)
 const DOM_REGION = { lessons:'principles', meta:'meta', life:'life', agents:'agents', projects:'projects' };
-const CENTER_REGION = 'principles';              // les leçons transverses = capitale au centre (2D)
-// palette désaturée/assourdie (data-poésie premium, pas néon)
+const CENTER_REGION = 'principles';
 const FIXED_COLOR = { 'principles':0xd9bd63, 'meta':0x57b6c4, 'life':0x5cbf92, 'agents':0xa183d4, 'projects':0x9298a2 };
 const HOT = new THREE.Color(0xFFBCA2);
-// sprite radial doux → points ronds et translucides (pas de carrés ni de glow additif criard)
-// (il s'appelait BEAM_TEX tant que des faisceaux couraient sur les liens ; ils ont disparu, le nom aussi)
 const POINT_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'), g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
-  // ⚠️ UN NOYAU NET, PUIS UN BORD (l'auteur, 2026-08-14 : « points trop flou »). L'ancien dégradé
-  // était déjà à 55 % d'opacité à mi-rayon : le point n'avait pas de corps, seulement un halo,
-  // et à la taille où les amas se lisent maintenant (0,66 au lieu de 0,40) le flou l'emportait.
-  // Le noyau reste plein jusqu'à 55 % du rayon, l'antialiasing tient dans les 20 % suivants.
   g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.55,'rgba(255,255,255,1)');
   g.addColorStop(.74,'rgba(255,255,255,.42)'); g.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=g; x.fillRect(0,0,s,s); return new THREE.CanvasTexture(cv); })();
 const LINK_GREY = new THREE.Color(0x8A3A02);
-// anneau d'alerte (Étage 3 : avis du challenger) — cercle fin, billboardé via Sprite
 const RING_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.strokeStyle='rgba(255,255,255,1)'; x.lineWidth=4;
   x.beginPath(); x.arc(s/2, s/2, s/2-4, 0, Math.PI*2); x.stroke(); return new THREE.CanvasTexture(cv); })();
-// glyphe ▷ (Étage 4 : marqueur d'un nœud REJOUABLE = porte une capture 3D)
 const PLAY_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.fillStyle='rgba(255,255,255,1)';
   x.beginPath(); x.moveTo(s*0.36,s*0.26); x.lineTo(s*0.36,s*0.74); x.lineTo(s*0.76,s*0.5); x.closePath(); x.fill();
   return new THREE.CanvasTexture(cv); })();
-// badges (petites icônes à côté du point) : ⚠ avis du challenger · ✦ conviction · ↻ à reprendre. Blanc → teinté par le Sprite.
 function glyphTex(ch, font){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.fillStyle='#fff'; x.font=(font||'bold 44px')+' sans-serif';
   x.textAlign='center'; x.textBaseline='middle'; x.fillText(ch, s/2, s/2+3); return new THREE.CanvasTexture(cv); }
 const WARN_TEX=glyphTex('!','bold 50px'), CONV_TEX=glyphTex('✦','42px'), RESUME_TEX=glyphTex('↻','bold 46px');
-const REGLE_TEX=glyphTex('§','bold 44px');   // règle transverse : ses arcs ne sont dessinés qu'au survol
+const REGLE_TEX=glyphTex('§','bold 44px');
 
-// ---------- scène ----------
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-// PERF (leçon GPU overheating) : on plafonne le pixelRatio — le bloom coûte ∝ pixels ; la pleine
-// Retina ×2 + post-process ferait chauffer. 1.5 garde la netteté, divise ~la charge fragment.
 const DPR = Math.min(devicePixelRatio, 1.5);
 renderer.setPixelRatio(DPR);
 const scene = new THREE.Scene();
@@ -490,21 +416,11 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.minDistance = 16; controls.maxDistance = 120; controls.autoRotate = true;
 controls.autoRotateSpeed = 0.35;
-// 52 laissait l'anneau des régions (rayon 13) occuper le tiers central : beaucoup de vide et
-// des amas minuscules. La carte à plat doit remplir le cadre — c'est une carte, pas une vignette.
-// 52 → 34 (la carte remplissait le tiers central) → 42 : à 34 les familles du bord touchaient
-// les panneaux et l'anneau débordait. l'auteur : « dézoom un peu ».
 const CAM2D = new THREE.Vector3(0, 0, 42), ORIGIN = new THREE.Vector3(0,0,0);
-// Cadrage du globe des familles : il se recadre en revenant du SENS, sinon il s'affiche à la
-// distance où le nuage sémantique avait été laissé — même défaut que le « on ne voit rien ».
 const CAM3D = new THREE.Vector3(0, 5, 34);
 
-// ---------- post-process : bloom cinématique (glow doux sur les points) ----------
-// strength modéré + threshold > 0 → seuls les corps lumineux (nœuds, filaments) rayonnent ;
-// le fond sombre, le cœur et les liens gris discrets restent nets (pas de voile laiteux).
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-// doux : strength bas + threshold HAUT → seuls les cœurs les plus lumineux scintillent (pas de blobs pâles)
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.12, 0.32, 0.72);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -514,7 +430,6 @@ function resize(){ const w=innerWidth,h=innerHeight;
   camera.aspect=w/h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
-// ---------- fond ----------
 (function starfield(){
   const N=1800, pos=new Float32Array(N*3);
   for(let i=0;i<N;i++){ const r=400+Math.random()*600, u=Math.random(), v=Math.random(), th=2*Math.PI*u, ph=Math.acos(2*v-1);
@@ -523,22 +438,11 @@ addEventListener('resize', resize); resize();
   scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color:0x5B1A00, size:1.1, sizeAttenuation:false, transparent:true, opacity:.7 })));
 })();
 const coreMat = new THREE.MeshBasicMaterial({ color:0x160600, transparent:true, opacity:0.14 });
-// LE GLOBE DEVIENT TRANSPARENT (l'auteur, 2026-08-14 : « posé autour d'un globe transparent »).
-// Le corps sombre et opaque faisait « planète » et écrasait tout ; l'enlever complètement a
-// donné des amas qui flottaient sans rien pour les tenir ensemble — on ne voyait plus qu'ils
-// étaient posés sur une même sphère. Il reste donc, mais en verre :
-//  · une coque vue de l'INTÉRIEUR (BackSide) : elle donne le volume sans jamais passer devant
-//    un amas de la face avant. Peinte à l'endroit, elle voilerait tout ce qu'on regarde.
-//  · un maillage de méridiens et parallèles, très faible : c'est lui qui fait lire la SPHÈRE.
-//    Sans lignes, une teinte uniforme ne dit pas si l'on voit une boule ou un disque.
 const core = new THREE.Mesh(new THREE.SphereGeometry(R*0.985, 48, 48), coreMat);
 const verre = new THREE.Mesh(new THREE.SphereGeometry(R*0.99, 48, 48),
   new THREE.MeshBasicMaterial({ color:0x350F00, transparent:true, opacity:0.13,
                                 side:THREE.BackSide, depthWrite:false }));
 scene.add(verre);
-// ⚠️ PAS `WireframeGeometry` : sur une sphère elle rend TOUTES les arêtes des triangles,
-// diagonales comprises — un filet de pêche, pas un globe. Mesuré à l'œil sur capture.
-// On trace donc les vraies lignes d'un globe : des méridiens et des parallèles, peu nombreux.
 const grille = (function(){
   const pts=[], MER=12, PAR=5, FIN=64;
   for(let m=0;m<MER;m++){ const lon=2*Math.PI*m/MER;
@@ -552,11 +456,9 @@ const grille = (function(){
     transparent:true, opacity:0.07, depthWrite:false }));
 })();
 scene.add(grille);
-// (atmosphère supprimée — pas de halo bleuté autour du globe, sur demande)
 
 function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967296; }
 
-// ---------- régions (continents) ----------
 const regionOf = n => n.primary_project || DOM_REGION[n.domain] || n.domain;
 let REGION_DIR={}, REGION_2D={}, REGION_COLOR={}, REGION_LIST=[], REGION_COUNT={}, REGION_AFF={}, REGION_NODES={};
 function layoutRegions(data){
@@ -566,13 +468,11 @@ function layoutRegions(data){
   for(const n of data.nodes){ const r=regionOf(n); REGION_COUNT[r]=(REGION_COUNT[r]||0)+1; nreg[n.id]=r;
     (REGION_NODES[r]=REGION_NODES[r]||[]).push(n.id);
     if(!seen.has(r)){ seen.add(r); present.push(r); } }
-  // affinité inter-régions = nb de liens qui croisent deux continents
   const aff={}, deg={}; for(const r of present) deg[r]=0;
   for(const l of data.links){ const ra=nreg[l.source], rb=nreg[l.target]; if(!ra||!rb||ra===rb) continue;
     const k=ra<rb?ra+'|'+rb:rb+'|'+ra; aff[k]=(aff[k]||0)+1; deg[ra]++; deg[rb]++; }
   const affOf=(a,b)=> aff[a<b?a+'|'+b:b+'|'+a]||0;
-  REGION_AFF=aff;                                  // réutilisé par la vue d'ensemble (liens agrégés)
-  // ordre glouton : on enchaîne les continents les plus reliés → voisins sur la spirale
+  REGION_AFF=aff;
   const order=[], used=new Set();
   let cur=present.slice().sort((a,b)=>deg[b]-deg[a])[0]; order.push(cur); used.add(cur);
   while(order.length<present.length){
@@ -582,96 +482,34 @@ function layoutRegions(data){
     if(best===null) best=present.find(r=>!used.has(r));
     order.push(best); used.add(best); cur=best;
   }
-  // ⚠️ L'ordre glouton ci-dessus commence par la région la PLUS RELIÉE, et la spirale de
-  // Fibonacci commence au pôle nord. Comme les grosses régions sont aussi les plus reliées,
-  // les cinq plus gros amas atterrissaient côte à côte en haut du globe et la moitié basse ne
-  // portait que des points isolés. Mesuré sur capture, deux fois de suite.
-  // On répartit donc les régions par TAILLE le long de la spirale, en suite de van der Corput :
-  // le plus gros au premier emplacement, le deuxième à mi-chemin, le troisième au quart, etc.
-  // Deux gros ne peuvent plus être voisins. On perd l'adjacence par affinité — elle n'était de
-  // toute façon lisible nulle part, alors que l'entassement, lui, se voyait.
-  // ⚠️ LE PLUS GROS NE DOIT PAS TOMBER AU PÔLE. La suite de van der Corput qui remplaçait
-  // l'ordre glouton donnait v=0 à la plus grosse région, donc l'emplacement i=0 de la spirale,
-  // qui est EXACTEMENT le pôle nord. Comme `principes` porte 170 fiches sur 357, la carte
-  // penchait au nord : 93 % du contenu au-dessus de 30° N, mesuré sur les amas pondérés par
-  // leur effectif (`planete-cdp.mjs repartition`). Le problème n'était pas que deux gros se
-  // touchent — c'était réglé — mais que le plus gros soit au point le plus mal placé du globe.
-  // ⚠️ ET PAS DAVANTAGE TOUTES À L'ÉQUATEUR. Premier correctif : emplacements triés par
-  // |latitude| croissante, les plus grosses au centre. Mesuré aussitôt : 97 % de l'encre entre
-  // ±30°, densité 0,1 — les cinq plus grosses régions font 90 % du contenu, les serrer autour
-  // de l'équateur ne fait que déplacer l'entassement au lieu de le défaire.
-  // Ce qu'il faut, c'est DISPERSER les grosses : la suite de van der Corput démarrée à k=1 donne
-  // ½, ¼, ¾, ⅛, ⅝… — la plus grosse à l'équateur, la deuxième à mi-chemin du nord, la troisième
-  // à mi-chemin du sud, et ainsi de suite. Aucune ne tombe sur un pôle (c'est vdc(0)=0 qui y
-  // menait), et deux grosses ne sont jamais voisines. Les pôles reviennent aux régions à une
-  // fiche, où le vide ne coûte rien.
-  // suite de van der Corput (base 2) : 0, ½, ¼, ¾, ⅛… — démarrée à k=1, elle donne ½, ¼, ¾…
   const vdc = k => { let d=0, b2=0.5; while(k>0){ d += (k&1)*b2; k>>=1; b2/=2; } return d; };
   const nreg2 = present.length;
   const parTaille = present.slice()
-    .sort((x,y)=>(REGION_COUNT[y]-REGION_COUNT[x]) || (x<y?-1:1)); // gros → petits, départage stable
+    .sort((x,y)=>(REGION_COUNT[y]-REGION_COUNT[x]) || (x<y?-1:1));
   const placeDe = {}, pris = new Array(nreg2).fill(false);
   parTaille.forEach((r,k)=>{
     let j = Math.min(nreg2-1, Math.floor(vdc(k+1)*nreg2));
-    // emplacement déjà pris → le plus proche encore libre, de proche en proche
     for(let d=1; pris[j] && d<=nreg2; d++){
       if(j-d>=0 && !pris[j-d]) { j=j-d; break; }
       if(j+d<nreg2 && !pris[j+d]) { j=j+d; break; }
     }
     pris[j]=true; placeDe[r]=j;
   });
-  // ⚠️ LA LATITUDE NE SUFFIT PAS : IL FAUT AUSSI ÉCARTER LES LONGITUDES. Avec la longitude de la
-  // spirale (angle d'or × indice), les cinq plus grosses régions ont atterri aux longitudes 210°,
-  // 262°, 275°, 294° et 327° — un tiers du globe pour 90 % du contenu. Vu sur capture : la face
-  // avant ne montrait plus que des régions à UNE fiche, et tout ce qui pèse était derrière.
-  // Ce n'était pas un hasard d'angle : choisir les latitudes par van der Corput sélectionne des
-  // indices voisins de puissances de 2, dont l'angle d'or fait des longitudes corrélées.
-  // On donne donc à chaque région sa propre longitude, par van der Corput en base 3 sur le RANG
-  // DE TAILLE : 0°, 120°, 240°, 40°, 160°… Les cinq plus grosses sont écartées par construction,
-  // quel que soit l'emplacement en latitude qu'elles ont reçu.
   const vdc3 = k => { let d=0, b3=1/3; while(k>0){ d += (k%3)*b3; k=Math.floor(k/3); b3/=3; } return d; };
   const lonDe = {};
   parTaille.forEach((r,k)=>{ lonDe[r] = 2*Math.PI*vdc3(k); });
-  REGION_LIST = present.slice().sort((x,y)=>placeDe[x]-placeDe[y]); // remis dans l'ordre de la spirale
-  // ⚠️ C'est REGION_LIST qui pilote la spirale, pas `order`. Premier essai : j'avais recalculé
-  // REGION_LIST au-dessus sans toucher à cette boucle, qui continuait de lire `order` — les
-  // positions n'avaient donc pas bougé d'un pixel, et la mesure l'a dit tout de suite (les cinq
-  // plus gros toujours entre 27° et 72° nord). Une variable renommée à moitié ne change rien.
+  REGION_LIST = present.slice().sort((x,y)=>placeDe[x]-placeDe[y]);
   const n=REGION_LIST.length;
   REGION_LIST.forEach((r,i)=>{ const y = n>1 ? 1-2*i/(n-1) : 0, rad=Math.sqrt(Math.max(0,1-y*y));
-    // `(i+0.5)/n` s'arrête à ±72° : le haut et le bas du globe restaient nus. `i/(n-1)`
-    // place la première région exactement au pôle nord et la dernière au pôle sud, donc
-    // les amas couvrent la sphère entière au lieu d'une bande.
-    const lo = lonDe[r] ?? (Math.PI*(3-Math.sqrt(5))*i);   // repli : longitude en angle d'or
+    const lo = lonDe[r] ?? (Math.PI*(3-Math.sqrt(5))*i);
     REGION_DIR[r]=new THREE.Vector3(Math.cos(lo)*rad, y, Math.sin(lo)*rad).normalize(); });
-  // 2D : capitale (principes) au centre, le reste sur un anneau (même ordre d'affinité)
   const ring=REGION_LIST.filter(r=>r!==CENTER_REGION);
   ring.forEach((r,i)=>{ const a=2*Math.PI*i/Math.max(1,ring.length); REGION_2D[r]={x:Math.cos(a),y:Math.sin(a)}; });
   REGION_2D[CENTER_REGION]={x:0,y:0};
-  // ── DES COULEURS QUI SE DISTINGUENT VRAIMENT ──
-  // La teinte d'un projet était `indice/nombre`, sans regarder les 5 couleurs fixes des régions
-  // transverses. Résultat mesuré sur capture : `claude-brain` tombait dans le même doré que
-  // `principes`, et leurs deux amas voisins se lisaient comme un seul. Une séparation nette
-  // (ce que l'auteur demande) passe autant par la couleur que par la distance.
-  // On écarte donc chaque teinte de projet des teintes déjà prises — fixes ET précédentes.
-  // ── MOTHER : UNE SEULE TEINTE (17°, mesurée sur la console Destiny) ──
-  // La couleur ne dit plus « quelle région » — 13 régions sur 20 portaient ≤2 fiches, soit
-  // 13 teintes pour 4 % du contenu. C'est la LUMINANCE qui parle, et elle dit le POIDS :
-  // la région la plus peuplée est la plus allumée. La région se lit par sa grappe + son étiquette.
-  // ── MOTHER, corrigé après essai réel ──
-  // Une teinte unique rendait le mode « sens » illisible : là, la POSITION dit la proximité
-  // sémantique, donc elle ne dit plus la région — la couleur était le seul signal restant.
-  // La luminance ne remplace pas la teinte pour une variable nominale à 20 niveaux.
-  // Solution : un ÉCART DE TEINTE À L'INTÉRIEUR DE LA BANDE PHOSPHORE (2° → 42°, du rouge
-  // à l'ambre). Ça reste une seule famille — aucun cyan, aucun vert — mais les 6 grandes
-  // régions se séparent. Les 14 petites (≤2 fiches) restent sur la teinte de référence, 17°,
-  // et s'éteignent : 13 couleurs pour 4 % du contenu, c'était le défaut mesuré.
   const rang=[...REGION_LIST].sort((a2,b2)=>(REGION_COUNT[b2]||0)-(REGION_COUNT[a2]||0));
   const GRANDES=6;
   rang.forEach((r,i)=>{
     if(i<GRANDES){
-      // bande resserrée 9°→29° et DÉSATURÉE : à saturation 1 le jaune et le rose viraient au
-      // fluo — un phosphore n'est jamais saturé comme une LED. On sépare quand même les 6.
       const t = GRANDES>1 ? i/(GRANDES-1) : 0;
       REGION_COLOR[r]=new THREE.Color().setHSL((9+20*t)/360, 0.78, 0.44 - 0.04*t);
     } else {
@@ -680,9 +518,8 @@ function layoutRegions(data){
     } });
 }
 const colorOf = n => REGION_COLOR[regionOf(n)] || new THREE.Color(0xffffff);
-const spreadOf = r => 0.12 + 0.05*Math.sqrt(REGION_COUNT[r]||1);   // continent plus grand si plus peuplé
+const spreadOf = r => 0.12 + 0.05*Math.sqrt(REGION_COUNT[r]||1);
 
-// ---------- placement 3D (continent) & 2D (carte) ----------
 function anchor3(n){
   const m=n.membership||{};
   if(n.primary_project){ const v=new THREE.Vector3(); let tot=0;
@@ -697,7 +534,6 @@ function anchor2(n){
     if(tot>0) return {x:x/tot,y:y/tot}; }
   const b=REGION_2D[regionOf(n)]||{x:0,y:0}; return {x:b.x,y:b.y};
 }
-// placement INTELLIGENT : tournesol par continent, rangé par échelle (cœur=vision → bord=détail)
 let posById={};
 function layoutNodes(data){
   posById={};
@@ -710,8 +546,8 @@ function layoutNodes(data){
     const t2=new THREE.Vector3().crossVectors(base, t1).normalize();
     const c2=REGION_2D[r]||{x:0,y:0};
     arr.forEach((n,i)=>{
-      const f=(i+0.5)/m, ang=i*2.39996323;                 // angle d'or → packing régulier
-      const rr=sp*Math.sqrt(f);                             // centre-out : i=0 (scale faible) au cœur
+      const f=(i+0.5)/m, ang=i*2.39996323;
+      const rr=sp*Math.sqrt(f);
       const dir=base.clone().multiplyScalar(Math.cos(rr))
         .add(t1.clone().multiplyScalar(Math.sin(rr)*Math.cos(ang)))
         .add(t2.clone().multiplyScalar(Math.sin(rr)*Math.sin(ang))).normalize();
@@ -719,51 +555,26 @@ function layoutNodes(data){
       posById[n.id]={ p3:dir.multiplyScalar(R), p2:new THREE.Vector3(c2.x*S2+Math.cos(ang)*RR, c2.y*S2+Math.sin(ang)*RR, 0) };
     });
   }
-  // frontières : posées SUR la frontière entre leurs deux villes (mélange des ancres)
   for(const n of data.nodes){ if(n.frontier){
     const d3=anchor3(n), b2=anchor2(n);
     posById[n.id]={ p3:d3.multiplyScalar(R*1.004), p2:new THREE.Vector3(b2.x*S2, b2.y*S2, 0) }; }}
 }
 
-// ---------- état du graphe ----------
 let group=new THREE.Group(); scene.add(group);
 let nodeObjs=[], linkObjs=[], coactObjs=[], regionObjs=[], regionLinks=[];
 let prevIds=new Set();
-// fenêtre de l'ACTIVITÉ EN DIRECT, en secondes (valeur réelle reçue dans graph.json ; 10 min par défaut).
 let LIVE_WINDOW_S=600;
 const liveEl=document.getElementById('livenow');
-let _liveShown=-1;                       // n'écrit dans le DOM que quand le compte CHANGE (pas 60×/s)
+let _liveShown=-1;
 const tip=document.getElementById('tip');
 const SEG=14;
 
 function clearGroup(){ group.removeFromParent(); group.traverse(o=>{ o.geometry?.dispose?.(); o.material?.dispose?.(); }); group=new THREE.Group(); scene.add(group); nodeObjs=[]; linkObjs=[]; coactObjs=[]; regionObjs=[]; regionLinks=[]; }
 
-// Étiquette lisible : les 20 bulles de la vue d'ensemble portent leur NOM. C'est la différence
-// entre « une carte » et « un joli nuage » — 354 points ne peuvent pas être étiquetés, 20 si.
 const LABEL_W = 4.6, LABEL_H = 0.62;
 
-// ── DÉCOLLAGE DES ÉTIQUETTES EN ESPACE ÉCRAN ────────────────────────────────────────────
-// LE DÉFAUT (2026-08-16, rapporté par Maissane Lagsir sur un tronc de 5 familles) :
-// les amas sont écartés en 3D (boucle « ÉCARTEMENT CALCULÉ » plus bas), jamais à l'écran.
-// Deux familles très éloignées EN PROFONDEUR mais alignées sur l'axe de la caméra
-// impriment donc leurs noms l'un sur l'autre — `agents 8` et `principles 3` se sont
-// soudés en une tache illisible au centre de la vue.
-//
-// ⚠️ ET C'EST PIRE SUR UN PETIT TRONC, c'est-à-dire chez tout nouvel utilisateur : le rayon
-// d'un amas vaut `SENS_TAILLE * cbrt(n)`, donc à 8 et 3 fiches les amas sont minuscules, le
-// nuage se tasse, et le recouvrement devient quasi certain. La mise en page était calibrée
-// sur un tronc de 177 fiches dans une seule famille — le contraire du premier jour.
-//
-// ON ESTOMPE, ON NE DÉPLACE PAS. Pousser les noms le long de Y les décrocherait de leur amas :
-// on gagnerait la lisibilité du texte en perdant ce qu'il désigne. Le plus proche de la caméra
-// garde sa pleine opacité, ceux qu'il couvre s'effacent — et tourner la vue les rend, ce qui
-// est déjà le geste que les utilisateurs trouvent tout seuls.
-// On réutilise `toScreen()` (défini plus bas) plutôt que d'ouvrir une seconde projection :
-// deux écritures du même calcul divergent toujours, et la divergence ne se voit pas.
 const _posEtiq = new THREE.Vector3(), _bordEtiq = new THREE.Vector3(), _droiteEtiq = new THREE.Vector3();
 function decollerEtiquettes(){
-  // Axe horizontal de la caméra = 1re colonne de sa matrice monde. Recalculé ici plutôt que
-  // repris de `magnet()` : magnet() tourne APRÈS cette passe, sa valeur aurait une image de retard.
   _droiteEtiq.setFromMatrixColumn(camera.matrixWorld, 0);
   const vus = [];
   for(const b of regionObjs){
@@ -771,32 +582,21 @@ function decollerEtiquettes(){
     if(!lab.visible || lab.material.opacity <= 0.02) continue;
     lab.getWorldPosition(_posEtiq);
     const centre = toScreen(_posEtiq);
-    if(!centre) continue;                          // derrière la caméra : rien à arbitrer
-    // Demi-largeur RÉELLE à l'écran : on projette un second point décalé de LABEL_W/2 le long
-    // de l'axe horizontal de la caméra. Un ratio fixe en pixels serait faux dès qu'on zoome.
+    if(!centre) continue;
     _bordEtiq.copy(_posEtiq).addScaledVector(_droiteEtiq, LABEL_W * 0.5);
     const bord = toScreen(_bordEtiq);
     const dx = bord ? Math.abs(bord.x - centre.x) || 6 : 6;
     vus.push({ lab, x:centre.x, y:centre.y, dx, dy: dx * (LABEL_H / LABEL_W),
                prof: _posEtiq.distanceTo(camera.position) });
   }
-  vus.sort((a, b) => a.prof - b.prof);            // le plus proche décide, les autres cèdent
+  vus.sort((a, b) => a.prof - b.prof);
   const gardes = [];
   for(const e of vus){
     let couvert = false;
     for(const g of gardes){
-      // 0,9 horizontalement (les noms tolèrent de se frôler sur les côtés), mais 1,6
-      // VERTICALEMENT. Mesuré sur le cas rapporté : six étiquettes empilées dans 15 px, et
-      // `principles` à 12 px du nom de devant restait à pleine opacité — juste hors d'un seuil
-      // symétrique. Une étiquette est très plate (0,62 pour 4,6 de large) : sa demi-hauteur
-      // vaut 13 % de sa demi-largeur, donc un seuil vertical calculé au même facteur ne
-      // rattrape presque aucun empilement, qui est pourtant LA forme que prend le défaut.
       if(Math.abs(e.x - g.x) < (e.dx + g.dx) * 0.9 &&
          Math.abs(e.y - g.y) < (e.dy + g.dy) * 1.6){ couvert = true; break; }
     }
-    // 0,12 et non 0 : un nom qui disparaît complètement fait croire à une famille absente.
-    // Assez faible pour ne plus brouiller le nom de devant, assez présent pour dire « il y a
-    // quelque chose ici, tourne ».
     if(couvert) e.lab.material.opacity *= 0.12;
     else gardes.push(e);
   }
@@ -807,35 +607,15 @@ function texteTex(txt){
   const x=cv.getContext('2d'); x.scale(dpr,dpr);
   x.font='21px "Departure Mono", ui-monospace, Menlo, monospace';
   x.textAlign='center'; x.textBaseline='middle';
-  x.shadowColor='rgba(0,0,0,0.95)'; x.shadowBlur=7;            // lisible même par-dessus une bulle claire
+  x.shadowColor='rgba(0,0,0,0.95)'; x.shadowBlur=7;
   x.fillStyle='rgba(255,188,162,0.97)'; x.fillText(txt, w/2, h/2, w-10);
   const t=new THREE.CanvasTexture(cv); t.anisotropy=4; return t;
 }
 
-// ════════ LE NUAGE DU SENS, RASSEMBLÉ PAR FAMILLE ════════
-// Demande de l'auteur (2026-08-14) : « on réattaque la structure de l'amas par famille ».
-// État de départ : la position d'une fiche venait à 100 % de son vecteur sémantique, donc les
-// 60 fiches d'un même projet étaient éparpillées dans tout le nuage. On voyait un confetti et il
-// fallait viser une famille dans la capsule pour savoir où elle était.
-//
-// Le compromis retenu — et c'en est un, il faut le nommer :
-//   · À L'INTÉRIEUR d'une famille, la disposition reste EXACTEMENT celle du sens. Ce qui se
-//     ressemble reste voisin ; on ne perd rien de ce que les embeddings ont trouvé.
-//   · ENTRE les familles, on écarte : chaque amas part du centre de gravité sémantique de sa
-//     famille (deux familles qui parlent de la même chose restent donc voisines), puis on
-//     repousse celles qui se chevauchent jusqu'à ce qu'elles se détachent.
-// Ce qu'on PERD : la distance exacte entre deux fiches de familles différentes n'est plus
-// lisible au pixel près — elle est déformée par l'écartement. Ce qu'on GAGNE : on voit enfin
-// où est une famille sans avoir à la désigner.
 let SENS_FAMILLES = true;
-// ⚠️ RACINE CUBIQUE, PAS RACINE CARRÉE. En racine carrée, `principes` (177 fiches) faisait
-// 13 unités de rayon contre 1 pour une famille d'une fiche : un amas couvrait le tiers du nuage
-// et les dix-neuf autres devenaient des miettes autour. En racine CUBIQUE, la densité est la
-// même partout — le VOLUME d'un amas dit son effectif, ce qui est justement ce qu'on veut lire —
-// et l'écart tombe de 13× à 5,6×. Les vingt amas redeviennent comparables.
-const SENS_TAILLE = 2.0;      // rayon d'un amas = ce facteur × racine cubique du nombre de fiches
-const SENS_MARGE  = 3.2;      // le vide qu'on garde entre deux amas — c'est lui qui les fait LIRE comme des îles
-const SENS_RAYON  = SEM*1.35; // le nuage entier tient dans ce rayon, quelle que soit l'échelle
+const SENS_TAILLE = 2.0;
+const SENS_MARGE  = 3.2;
+const SENS_RAYON  = SEM*1.35;
 function positionSens(nd){
   const e2 = nd.embed2;
   if(!e2) return null;
@@ -845,7 +625,6 @@ function positionSens(nd){
 function layoutSens(data){
   const brut={}, sortie={};
   for(const nd of data.nodes){ const p=positionSens(nd); if(p) brut[nd.id]=p; }
-  // 1. centre de gravité et étendue de chaque famille, dans l'espace du sens
   const fam={};
   for(const nd of data.nodes){
     if(!brut[nd.id]) continue;
@@ -855,27 +634,14 @@ function layoutSens(data){
     for(const id of f.ids) f.c.add(brut[id]);
     f.c.multiplyScalar(1/f.ids.length);
     f.etendue = Math.max(0.6, f.ids.reduce((m,id)=>Math.max(m, brut[id].distanceTo(f.c)), 0));
-    // ⚠️ LA TAILLE D'UN AMAS DIT SON EFFECTIF, PAS SON ÉTALEMENT SÉMANTIQUE. Premier essai :
-    // on gardait l'étendue brute, simplement resserrée — `principes` (177 fiches, très étalées)
-    // occupait alors la moitié du nuage et repoussait les 19 autres familles en traînée d'un
-    // seul côté. Vu en capture : une grosse tache et une comète. En racine du nombre, un amas
-    // de 4 fiches reste petit, un amas de 177 reste grand, et le rapport se lit à l'œil.
     f.R = SENS_TAILLE*Math.cbrt(f.ids.length);
   }
   const liste=Object.values(fam);
-  // 2. ÉCARTEMENT CALCULÉ, PAS FIXÉ. Mesuré : les centres de gravité des 20 familles tiennent
-  // dans ±5 unités (dispersion par axe 3,9 / 4,6 / 4,6) alors qu'un amas monte à 13 de rayon.
-  // Avec un facteur en dur (×1,3), tout se chevauchait au départ et la séparation devait pousser
-  // sur de longues distances : elle fabriquait une CHAÎNE, vue en capture — une grosse tache et
-  // une comète. On part donc d'une configuration déjà à peu près libre : on déduit le rayon
-  // qu'il faut pour loger tous les amas, et on y rapporte la dispersion réelle des centres.
   const volume = liste.reduce((s,f)=>s + f.R*f.R*f.R, 0);
-  const rayonNecessaire = Math.cbrt(volume/0.30);            // 0.30 = target packing ratio (leaves air)
+  const rayonNecessaire = Math.cbrt(volume/0.30);
   const dispersion = Math.sqrt(liste.reduce((s,f)=>s + f.c.lengthSq(), 0)/liste.length);
   const ecart = dispersion>1e-3 ? (rayonNecessaire*0.62)/dispersion : 1;
-  for(const f of liste) f.a = f.c.clone().multiplyScalar(ecart);   // le sens décide OÙ, on écarte
-  // 3. on sépare ce qui se chevauche encore — chacun ne bouge que du minimum nécessaire,
-  //    donc la géographie sémantique d'ensemble tient : deux familles proches le restent.
+  for(const f of liste) f.a = f.c.clone().multiplyScalar(ecart);
   for(let it=0; it<120; it++){
     let bouge=false;
     for(let i=0;i<liste.length;i++) for(let j=i+1;j<liste.length;j++){
@@ -889,34 +655,29 @@ function layoutSens(data){
     }
     if(!bouge) break;
   }
-  // 4. recentrer et remettre à l'échelle : la séparation pousse toujours dans le même sens et
-  //    finit par déporter le nuage entier hors du cadre (vu en capture, il partait à droite).
   const centre=new THREE.Vector3();
   for(const f of liste) centre.addScaledVector(f.a, f.ids.length);
   centre.multiplyScalar(1/data.nodes.length);
   let loin=0;
   for(const f of liste) loin = Math.max(loin, f.a.distanceTo(centre) + f.R);
   const echelle = loin>0 ? SENS_RAYON/loin : 1;
-  // 5. chaque fiche garde sa place RELATIVE dans sa famille : même voisinage sémantique,
-  //    seulement rapporté au rayon de l'amas.
   for(const r in fam){ const f=fam[r];
     const k = (f.R/f.etendue)*echelle;
     const ancre = f.a.clone().sub(centre).multiplyScalar(echelle);
     for(const id of f.ids)
       sortie[id] = brut[id].clone().sub(f.c).multiplyScalar(k).add(ancre);
   }
-  // les ancres servent aussi aux ÉTIQUETTES : dans le nuage du sens, tout est de la même
-  // teinte phosphore — sans le nom de la famille au-dessus de son amas, le regroupement est
-  // réel (mesuré) mais invisible à l'œil.
   const ancres = {};
   for(const r in fam) ancres[r] = { pos: fam[r].a.clone().sub(centre).multiplyScalar(echelle),
                                     rayon: fam[r].R*echelle };
   return { brut, sens:sortie, ancres, familles:liste.length };
 }
 
+let _reconstructions = 0;
 function build(data){
-  if(data.live_window_min) LIVE_WINDOW_S = data.live_window_min*60;   // fenêtre décidée côté hooks, pas en dur ici
-  _liveShown=-1;                                                     // force le rafraîchissement du compteur
+  _reconstructions++;
+  if(data.live_window_min) LIVE_WINDOW_S = data.live_window_min*60;
+  _liveShown=-1;
   clearGroup();
   layoutRegions(data); layoutNodes(data);
   const SENS = layoutSens(data);
@@ -924,56 +685,31 @@ function build(data){
   for(const nd of data.nodes){
     const pp=posById[nd.id]||{p3:new THREE.Vector3(0,R,0), p2:new THREE.Vector3()};
     const p3=pp.p3, p2=pp.p2, col=colorOf(nd);
-    // position SÉMANTIQUE (Étage 1) : projetée par le SENS (embeddings), indépendante du rangement.
-    // fallback sur la position structurelle si une fiche n'a pas encore de vecteur.
-    // Le SENS est en volume depuis le 2026-08-14 : `embed2` rend trois coordonnées, plus deux.
-    // À plat, 357 fiches et 1386 liens se recouvraient et redonnaient la pelote qu'on venait
-    // d'éliminer ailleurs ; en volume les groupes se séparent et on tourne autour.
-    // Repli : une fiche sans vecteur (ou un cache 2D d'avant) garde sa place structurelle.
-    // `p2sBrut` = le sens pur (sans regroupement) : gardé pour pouvoir MESURER ce que le
-    // regroupement change, et pour y revenir d'un réglage si le compromis ne tient pas.
     const p2sBrut = SENS.brut[nd.id] || p2.clone();
     const p2s = (SENS_FAMILLES ? (SENS.sens[nd.id] || p2sBrut) : p2sBrut).clone();
     const m=new THREE.Mesh(new THREE.SphereGeometry(nd.frontier?0.16:0.125, 12, 12),
       new THREE.MeshBasicMaterial({ color:col }));
     const start=p3.clone(); m.position.copy(start);
     const isNew = prevIds.size && !prevIds.has(nd.id);
-    // `col` est gardée telle quelle : la teinte du point est modulée à l'image quand une famille
-    // est visée depuis la capsule, et sans la couleur d'origine on ne saurait pas y revenir.
     m.userData={ data:nd, isNew, p3, p2, p2s, p2sBrut, col:col.clone(), base:start.clone(), hatching:isNew, _pull:0, links:[] };
     m.scale.setScalar(isNew?0.01:1);
-    // ⛔ PLUS DE HALO AUTOUR DE CHAQUE POINT (l'auteur, 2026-08-14 : « supprime le halo autour de
-    // chaque point »). C'était une deuxième sphère translucide par fiche — 366 objets de plus,
-    // et surtout un flou qui empâtait le nuage : deux points voisins se touchaient par leurs
-    // halos avant de se toucher eux-mêmes.
-    // CHALEUR (Étage 2) : le signal n'est pas perdu, il change de support. Au lieu d'un halo qui
-    // respire, c'est le point LUI-MÊME qui s'éclaircit par vagues ∝ usage récent (animé dans
-    // tick()). Même information, aucun objet supplémentaire, et le grain reste net.
     m.userData.heat=nd.heat||0; m.userData.pulse=hash(nd.id)*6.283;
-    // ANNEAU = ACTIVITÉ EN DIRECT : fiche LUE à l'instant (fenêtre glissante de LIVE_WINDOW min).
-    // ≠ « vue une fois dans la session » — cette ancienne définition allumait ~1/3 de la planète.
-    // `active_ts` permet à tick() d'ÉTEINDRE l'anneau tout seul à l'expiration, sans recharger le graphe.
     if(nd.active_ts){
       const ring=new THREE.Sprite(new THREE.SpriteMaterial({ map:RING_TEX, color:0xFF4F0C,
         transparent:true, opacity:0.6, depthTest:false, depthWrite:false }));
       ring.scale.setScalar(0.95); m.add(ring);
       m.userData.activeRing=ring; m.userData.activeTs=nd.active_ts;
     }
-    // BADGES (petites icônes À CÔTÉ du point, empilées à droite) : ⚠ avis du challenger · ✦ conviction · ↻ à reprendre
     const badges=[];
     if(nd.challenge)  badges.push([WARN_TEX,   0xFF4F0C]);
     if(nd.conviction) badges.push([CONV_TEX,   0xFFBCA2]);
     if(nd.resume)     badges.push([RESUME_TEX, 0xFF9870]);
-    // § = règle transverse. Elle est citée par un cinquième du tronc : ses arcs ne sont plus
-    // dessinés en permanence (ils reviennent au survol), et ce glyphe dit pourquoi ce point
-    // n'a pas de fils alors qu'il est le plus relié de la carte.
     if(nd.regle)      badges.push([REGLE_TEX,  0xDE3F00]);
     badges.forEach(([tex,col],i)=>{
       const b=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, color:col,
         transparent:true, opacity:0.95, depthTest:false, depthWrite:false }));
       b.scale.setScalar(0.34); b.position.set(0.3, 0.34 - i*0.27, 0); m.add(b);
     });
-    // nœud REJOUABLE (Étage 4) : glyphe ▷ cyan au-dessus → double-clic ouvre la capture 3D
     if(nd.media){
       const pl=new THREE.Sprite(new THREE.SpriteMaterial({ map:PLAY_TEX, color:0xFF6F36,
         transparent:true, opacity:0.9, depthTest:false, depthWrite:false }));
@@ -981,28 +717,17 @@ function build(data){
     }
     group.add(m); nodeObjs.push(m); meshById[nd.id]=m;
   }
-  // liens : 1 matériau par lien (surlignage individuel) + géométrie pré-allouée
   let idx=0;
   for(const l of data.links){
     const a=meshById[l.source], b=meshById[l.target]; if(!a||!b) continue;
     const arr=new Float32Array((SEG+1)*3);
     const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr,3));
-    // depthTest:false → l'arc n'est jamais TRANCHÉ par le corps de la planète (atténué via `facing`, pas coupé)
     const mat=new THREE.LineBasicMaterial({ color:LINK_GREY.clone(), transparent:true, opacity:0.16, depthTest:false, depthWrite:false });
     const ligne=new THREE.Line(g, mat); group.add(ligne);
     const L={ a, b, attr:g.getAttribute('position'), mat, ligne, hot:false, idx:idx++, regle:!!l.regle };
     linkObjs.push(L); a.userData.links.push(L); b.userData.links.push(L);
   }
-  // ⛔ LES POINTS QUI COURAIENT LE LONG DES LIENS SONT SUPPRIMÉS (l'auteur, 2026-08-14 :
-  // « les datas passant d'une fiche à une autre sont des transferts d'info temps réel ?
-  // si oui garder, si non enlever »). La réponse est NON : ils partaient sur TOUS les liens,
-  // en continu, à une vitesse tirée d'un hachage du nom des deux fiches. Ils ne montraient
-  // aucun échange réel — c'était une animation de fond qui avait l'air d'une mesure.
-  // Un décor qui imite un instrument est pire qu'un décor : on finit par le croire.
-  // (Le vrai, « un faisceau ne part que sur un lien réellement co-activé », était déféré
-  //  depuis juin — cf. carte-vivante-4-etages. Il reste à faire, il n'est pas ici.)
 
-  // liens d'USAGE (co-activation, Étage 2) — golden, invisibles jusqu'au mode ⚡ usage
   const cmax=(data.coact && data.coact[0] && data.coact[0][2]) || 1;
   for(const e of (data.coact||[])){
     const a=meshById[e[0]], b=meshById[e[1]]; if(!a||!b) continue;
@@ -1013,20 +738,7 @@ function build(data){
     coactObjs.push({ a, b, attr:g.getAttribute('position'), mat, ligne, w:e[2]/cmax });
   }
 
-  // ════════ NIVEAU 1 — LA VUE D'ENSEMBLE (une bulle par région) ════════
-  // Mesuré le 2026-08-14 : 354 points et 1374 liens dessinés en même temps, dont 83 % entassés
-  // sur le quart nord du globe. Aucune répartition ne sauve ça tant qu'une seule région pèse
-  // 59 % du tronc : une région = une calotte, et une calotte de 59 % dépasse l'hémisphère.
-  // La réponse n'est donc pas de mieux placer 354 points, c'est de ne pas les dessiner tous.
-  // On ouvre sur ~20 bulles nommées ; on entre dans une région pour voir ses fiches.
   const totalN = data.nodes.length || 1; totalNoeuds = totalN;
-  // ── SÉPARATION GARANTIE, PAS ESPÉRÉE (l'auteur : « séparation bien définie, pas mélangé ») ──
-  // Le rayon d'un amas ne peut pas dépendre que de son effectif : deux grosses régions voisines
-  // finiraient par se toucher, et deux amas qui se mêlent ne sont plus deux régions. On calcule
-  // donc, pour chaque région, la distance à sa VOISINE LA PLUS PROCHE, et on plafonne le rayon
-  // à 38 % de cette distance — deux amas voisins occupent au plus 76 % de l'espace qui les
-  // sépare, il reste toujours du vide entre eux. La contrainte est vérifiable : cf.
-  // `window.__planete.separation()`.
   const voisine = {};
   for(const a of REGION_LIST){
     const da = REGION_DIR[a]||UP; let m = Infinity;
@@ -1037,22 +749,14 @@ function build(data){
   }
   for(const r of REGION_LIST){
     const n = REGION_COUNT[r]||0, col = REGION_COLOR[r] || new THREE.Color(0xffffff);
-    // rayon ∝ √effectif : l'aire lue devient proportionnelle au nombre de fiches, donc la
-    // taille se lit comme un poids — puis plafonnée par la place réellement disponible.
     const voulu = 0.42 + 1.5*Math.sqrt(n/totalN);
-    const rad = Math.min(voulu, 0.38*voisine[r]/1.8);   // /1.8 : l'amas s'étale à rad*1.8
+    const rad = Math.min(voulu, 0.38*voisine[r]/1.8);
     const dir = (REGION_DIR[r]||UP).clone();
-    // UN AMAS DE POINTS, PAS UNE BILLE (choix de l'auteur, 2026-08-14, sur capture : « cet effet
-    // de pointillé de couleurs rassemblé qui flotte dans le vide, on garde »). Une bille pleine
-    // dit « objet » ; un amas dit « un tas de fiches », ce qui est la vérité — et il laisse
-    // voir la densité : 170 points groupés se lisent autrement que 2.
     const blob = new THREE.Object3D();
     blob.position.copy(dir).multiplyScalar(R);
-    const grains = Math.min(n, 90);                 // beyond that, the cluster saturates and stops informing
+    const grains = Math.min(n, 90);
     const pos = new Float32Array(grains*3);
     for(let i=0;i<grains;i++){
-      // distribution en boule, tirée d'une graine STABLE (le nom + l'indice) : l'amas d'une
-      // région est le même d'une session à l'autre, sinon la carte ne se mémorise pas.
       const u=hash(r+':'+i), v=hash(i+':'+r), w=hash(r+i+'z');
       const th=2*Math.PI*u, ph=Math.acos(2*v-1), rr=rad*1.8*Math.cbrt(w);
       pos[i*3]  = rr*Math.sin(ph)*Math.cos(th);
@@ -1063,14 +767,11 @@ function build(data){
     const amas=new THREE.Points(gg, new THREE.PointsMaterial({ color:col, map:POINT_TEX, size:0.40,
       transparent:true, opacity:0.95, depthWrite:false, sizeAttenuation:true }));
     blob.add(amas);
-    // ⛔ PLUS DE ROND DE SÉLECTION (l'auteur, capture du 2026-08-14 : « le rond de sélection doit
-    // disparaître »). Un disque translucide de la taille de l'amas ne montre pas ce qu'on vise :
-    // il le CACHE. Le survol se dit maintenant par l'amas lui-même — ses points grossissent et
-    // s'éclaircissent — donc par la chose qu'on regarde, pas par un cache posé dessus.
     const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map:texteTex(`${r}  ${n}`),
       transparent:true, depthTest:false, depthWrite:false, opacity:0.9 }));
+    lab.renderOrder = 6;
     lab.scale.set(LABEL_W, LABEL_H, 1);
-    lab.position.set(0, rad*1.8 + LABEL_H*0.45, 0);  // juste au-dessus de l'amas, pas en l'air
+    lab.position.set(0, rad*1.8 + LABEL_H*0.45, 0);
     blob.add(lab);
     const c2 = REGION_2D[r] || {x:0,y:0};
     const anc = SENS.ancres[r];
@@ -1082,9 +783,6 @@ function build(data){
                       lab, blobMat:amas.material, labMat:lab.material };
     group.add(blob); regionObjs.push(blob);
   }
-  // liens AGRÉGÉS région→région : un arc par paire, épaisseur d'opacité ∝ nombre de liens réels.
-  // Le calcul d'affinité existait déjà (il servait à ordonner les continents) ; il n'était juste
-  // jamais montré. 1374 traits deviennent ~40.
   {
     const paires = Object.entries(REGION_AFF).filter(([,v])=>v>0);
     const vmax = paires.reduce((m,[,v])=>Math.max(m,v), 1);
@@ -1104,12 +802,7 @@ function build(data){
   document.getElementById('counts').innerHTML =
     `${data.counts.nodes} notes · ${data.counts.links} links · ${REGION_LIST.length} regions · ${data.counts.frontier} border${data.counts.frontier>1?'s':''}`
     + (data.counts.challenged ? ` · <span style="color:#e0a13a">⚠ ${data.counts.challenged} challenged</span>` : '')
-    // Qualifications the exporter could not read. ONE line, never a list: `brain doctor`
-    // already names each note and each type, and a second detailed report here would be
-    // a second source of truth. The wording says what is actually lost — the links are
-    // still on the map, only their type is gone — so this never reads as missing notes.
     + (data.counts.unknown_relations ? ` · <span style="color:#e0a13a">⚠ ${data.counts.unknown_relations} relation type${data.counts.unknown_relations>1?'s':''} were not recognized; links remain visible but untyped. Run brain doctor for details.</span>` : '');
-  // reprise (Étage 2) : régions où la dernière session a travaillé — orientation au démarrage
   const act=data.nodes.filter(n=>n.active), sEl=document.getElementById('session');
   if(act.length){
     const rc={}; for(const n of act){ const r=regionOf(n); rc[r]=(rc[r]||0)+1; }
@@ -1117,18 +810,11 @@ function build(data){
     sEl.innerHTML=`◉ live in: ${top.join(' · ')}`;
   } else sEl.textContent='';
   buildLegend(data);
-  buildPod();                        // la capsule se refait avec le graphe : sinon elle montre l'avant-dernier tronc
-  majFil();                          // le fil d'Ariane était figé sur le texte écrit en dur dans le HTML
-  // ⚠️ LA RÉGION OUVERTE DOIT ÊTRE REPOSÉE APRÈS CHAQUE RECONSTRUCTION.
-  // `build()` recrée tous les meshes ; les nouveaux n'ont pas de `p3f`, donc `easeMagnet()` les
-  // ramène à `p3` — la calotte de leur continent. Comme on est toujours au niveau 2, les 170
-  // fiches de `principes` s'écrasaient d'un coup sur une calotte de 44° : le globe redevenait un
-  // DÔME bombé, vide en dessous (l'auteur, capture du 2026-08-14 : « ça fait ça au bout d'un
-  // moment »). « Au bout d'un moment » = au premier passage du hook qui régénère graph.json,
-  // que la boucle de rafraîchissement voit dans les 3 secondes.
+  buildPod();
+  majFil();
   if(focusRegion){
     if(REGION_NODES[focusRegion]) poserFiches(focusRegion);
-    else sortirRegion();          // la région a disparu du graphe : on ressort proprement
+    else sortirRegion();
   }
 }
 
@@ -1140,14 +826,6 @@ function buildLegend(data){
     return `<div class="row"><span class="dot" style="color:${c};background:${c}"></span>${r} (${REGION_COUNT[r]||0})</div>`; };
   const villes=order.filter(isProj).map(row).join('');
   const autres=order.filter(r=>!isProj(r)).map(row).join('');
-  // ── LE SOMMAIRE ── refondu le 2026-08-14 (l'auteur : « il faut refondre le sommaire »).
-  // Avant : 20 lignes de régions + 5 de marqueurs, en colonne, sur toute la hauteur — et
-  // « socle (1) » écrit aussi gros que « principes (170) ». Un sommaire doit hiérarchiser,
-  // pas énumérer. Trois changements :
-  //  · une BARRE de longueur proportionnelle : le poids se voit avant de se lire ;
-  //  · les régions à 1 ou 2 fiches sont repliées sur une seule ligne (elles étaient 13 pour
-  //    14 fiches, soit 65 % des lignes pour 4 % du contenu) ;
-  //  · les marqueurs passent sur une ligne compacte au lieu de cinq.
   const maxN = Math.max(...REGION_LIST.map(r=>REGION_COUNT[r]||0), 1);
   const ligne = r => { const c='#'+(REGION_COLOR[r]||new THREE.Color(0xffffff)).getHexString();
     const n = REGION_COUNT[r]||0;
@@ -1174,7 +852,6 @@ function buildLegend(data){
       : '') +
     `<div class="hd">markers</div><div class="mk">${mk.join(' · ')}</div>` +
     `<div class="mk" style="margin-top:5px"><b style="color:#7fe9ff">◯</b> ring = read less than ${Math.round(LIVE_WINDOW_S/60)} min ago</div>`;
-  // le sommaire devient une COMMANDE : cliquer une region y entre, comme cliquer son amas.
   document.querySelectorAll('#legend .row').forEach(el=>{
     el.addEventListener('click', ()=> entrerRegion(el.dataset.region));
     el.addEventListener('mouseenter', ()=> { hoveredRegion = el.dataset.region; podViser(el.dataset.region); });
@@ -1183,57 +860,25 @@ function buildLegend(data){
   });
 }
 
-// ---------- bascule de vue ----------
-// view : 0 = planète 3D ↔ 1 = carte 2D plate.  sem : 0 = 2D STRUCTURE (membership) ↔ 1 = 2D SENS (embeddings).
-// usage : overlay des liens d'USAGE (co-activation, Étage 2), indépendant de la vue.
-// ⚠️ LE SENS EST LA VUE PRINCIPALE (l'auteur, 2026-08-14 : « sens devient le main »).
-// La carte s'ouvre donc sur le nuage sémantique, pas sur le globe. Motif : le globe dit le
-// RANGEMENT (quel dossier), que la légende dit déjà en texte ; le sens dit ce qui se ressemble,
-// ce qu'aucun autre affichage ne donne. Le globe reste, en petit, dans la capsule de coin.
-// ⚠️ L'USAGE EST ALLUMÉ EN PERMANENCE (l'auteur, 2026-08-14 : « usage toujours actif, supprime
-// la pastille »). Les liens d'usage — les fiches réellement manipulées ensemble — ne sont pas
-// une option décorative à côté des liens déclarés : c'est ce que le tronc fait vraiment. Un
-// interrupteur pour ça, c'est un réglage de plus à penser pour une information qu'on veut
-// toujours. La pilule ⚡ et la touche U disparaissent avec lui.
 let view=1, viewTarget=1, sem=1, semTarget=1, usage=1, usageTarget=1;
-// CE QUE LA CARTE SAIT D'ELLE-MÊME, relu à chaque graph.json. `sem` dit la vue DEMANDÉE ;
-// ceci dit ce que la donnée permet réellement d'en faire. Les deux étaient confondues : la vue
-// demandée suffisait à afficher « proximity = meaning, every note » sur un nuage où pas une
-// fiche n'avait de vecteur (mesuré à l'écran le 2026-09-19, 0 sur 10 dans le paquet livré).
 let semCap = { state:'absent', covered:0, total:0, detail:'' };
 addEventListener('keydown', e=>{
-  if(e.key==='v'||e.key==='V'){ viewTarget = viewTarget>0.5?0:1; if(viewTarget<0.5) semTarget=0; }  // retour planète = structure
-  if(e.key==='s'||e.key==='S'){ semTarget = semTarget>0.5?0:1; if(semTarget>0.5) viewTarget=1; }      // le sens n'a de sens qu'à plat
+  if(e.key==='v'||e.key==='V'){ viewTarget = viewTarget>0.5?0:1; if(viewTarget<0.5) semTarget=0; }
+  if(e.key==='s'||e.key==='S'){ semTarget = semTarget>0.5?0:1; if(semTarget>0.5) viewTarget=1; }
   if('vVsS'.includes(e.key)) majFil();
 });
-// boutons cliquables (sans dépendre du focus clavier)
 function setMode(m){
-  // ⚠️ « STRUCTURE » EST LE GLOBE, PAS LA CARTE À PLAT (l'auteur, 2026-08-14 : « dans structure
-  // les régions ne sont plus en 3D »). Depuis que la pilule 3D a disparu, il ne reste que deux
-  // lectures, et chacune doit être la meilleure de son genre : le SENS est le nuage sémantique,
-  // la STRUCTURE est le globe des familles qu'on tourne. La carte à plat reste accessible à la
-  // touche V — elle sert à comparer deux rangements côte à côte, pas à être la vue par défaut.
-  // ⚠️ STRUCTURE = LA CARTE À PLAT · UNE FAMILLE OUVERTE = EN VOLUME (l'auteur, 2026-08-14 :
-  // « quand on touche sur structure, ça doit être en 2D posé ; mais quand on clique sur une
-  // famille, la famille elle est en 3D »). Les deux niveaux ne montrent pas la même chose et
-  // n'ont pas besoin de la même dimension : la vue d'ensemble est un PLAN — vingt familles
-  // qu'on embrasse d'un coup, sans face cachée ; une famille ouverte est un AMAS — on tourne
-  // autour pour voir ses fiches, dont la moitié serait derrière sur un plan.
   if(m==='3d'){ viewTarget=0; semTarget=0; }
   else if(m==='struct'){ viewTarget = focusRegion ? 0 : 1; semTarget=0; }
   else if(m==='sens'){ viewTarget=1; semTarget=1; }
-  majFil();                                                    // le fil dit ce que la vue permet
+  majFil();
 }
 document.querySelectorAll('#modes button').forEach(b=>
   b.addEventListener('click', ()=> setMode(b.dataset.mode)));
 
-// ════════ LES DEUX NIVEAUX ════════
-// `focus` = 0 vue d'ensemble (bulles) · 1 dans une région (ses fiches). La transition est
-// continue pour qu'on VOIE d'où sortent les points : un saut sec ferait perdre le fil.
 let focusRegion=null, focus=0, focusTarget=0, regionVue=null, hoveredRegion=null;
-// recopié à chaque image pour que updateLinks() et magnet() lisent le même niveau que tick()
 let niveau2Global=0, totalNoeuds=1;
-let _coupurePic=0;                    // pic de matière visible disparue en une seule image
+let _coupurePic=0;
 const filEl=document.getElementById('fil');
 
 function majFil(){
@@ -1242,25 +887,18 @@ function majFil(){
       + `<span class="ici">— ${REGION_COUNT[focusRegion]||0} notes · Esc to exit</span>`;
     filEl.querySelector('.retour').onclick = sortirRegion;
   } else if(semTarget>0.5){
-    // Une famille épinglée assombrit le reste du nuage : si rien ne le DIT, l'écran a l'air
-    // cassé (l'auteur, 2026-08-14 : « pourquoi aussi sombre »). L'état s'affiche, et sa sortie aussi.
     if(podPin){
       filEl.innerHTML = `<span class="retour">✕ release</span>  ·  <b>${podPin}</b> `
         + `<span class="ici">— ${REGION_COUNT[podPin]||0} notes lit up in the meaning map · Esc</span>`;
       filEl.querySelector('.retour').onclick = ()=>{ podPin=null; majPodCap(); majFil(); };
       return;
     }
-    // en mode SENS il n'y a plus de bulle à cliquer : les 366 fiches sont là, rangées par
-    // ressemblance. Dire « clic sur une région pour entrer » y serait un mode d'emploi faux.
     filEl.innerHTML = `<span class="ici">meaning map — every note next to what it resembles · the globe (left) targets a family</span>`;
   } else {
     filEl.innerHTML = `<span class="ici">overview — click a region to enter</span>`;
   }
 }
 
-// Placement DANS une région : les fiches reprennent tout le globe au lieu de tenir sur la
-// calotte de leur continent. C'est ce qui règle la densité — plus 354 points sur un quart de
-// sphère, mais N points sur la sphère entière, quel que soit N.
 function poserFiches(r){
   const ids = REGION_NODES[r]||[];
   const m = ids.length, ga = Math.PI*(3-Math.sqrt(5));
@@ -1270,25 +908,8 @@ function poserFiches(r){
     const i = rang.get(nd.id);
     if(i===undefined){ mesh.userData.p3f=null; mesh.userData.p2f=null; continue; }
     const y = 1-2*(i+0.5)/m, rad = Math.sqrt(Math.max(0,1-y*y)), a = ga*i;
-    // ⚠️ SUR LA SPHÈRE EXACTE, ça faisait une GRILLE posée sur un globe — mécanique, et plus du
-    // tout « l'amas » qu'on venait d'ouvrir (l'auteur : « quand on clique l'amas n'est plus pris en
-    // compte »). On garde la régularité du tournesol pour l'espacement, mais chaque fiche respire
-    // sur son rayon : le résultat est un nuage épais qu'on tourne, pas un quadrillage.
-    // Le décalage vient d'un hachage de l'identifiant : stable d'une session à l'autre.
-    // ⚠️ UN AMAS, PAS UNE COQUILLE (l'auteur, capture du 2026-08-14 : « pour chaque famille je veux
-    // un amas, plus de sphère »). Faire varier le rayon de 0,70 à 1,02 ne suffisait pas : ça
-    // reste une sphère creuse un peu épaisse, et à l'écran on voyait le vide au centre.
-    // ⚠️ ON REVIENT À LA SPHÈRE, ET C'EST UN CHOIX, PAS UN OUBLI.
-    // Parcours : coquille fine → « je veux un amas, plus de sphère » → boule pleine (biais vers
-    // le centre, mesurée, vérifiée) → « j'aimais bien la sphère en fait » (2026-08-14).
-    // La boule pleine est plus juste sur le papier — densité, cœur, profondeur — et moins bonne
-    // à l'usage : dans une boule, les fiches du centre sont cachées derrière celles du bord, on
-    // ne peut ni les survoler ni les compter. Sur une sphère, TOUTES sont sur le pourtour, donc
-    // toutes atteignables, et la rotation en montre une autre moitié à chaque tour.
-    // Le souffle (0,70 → 1,02 R) garde l'épaisseur qui empêche l'effet quadrillage, sans creuser.
     const souffle = 0.70 + 0.32*hash(nd.id+'r');
     mesh.userData.p3f = new THREE.Vector3(Math.cos(a)*rad, y, Math.sin(a)*rad).multiplyScalar(R*souffle);
-    // 2D : tournesol sur tout le disque, même logique
     const rr = S2*Math.sqrt((i+0.5)/m), aa = i*2.39996323;
     mesh.userData.p2f = new THREE.Vector3(Math.cos(aa)*rr, Math.sin(aa)*rr, 0);
   }
@@ -1297,17 +918,17 @@ function poserFiches(r){
 function entrerRegion(r){
   if(!r || !REGION_COUNT[r]) return;
   focusRegion=r; focusTarget=1; poserFiches(r); majFil();
-  if(semTarget<0.5) viewTarget=0;              // entrer dans une famille = passer en volume
+  if(semTarget<0.5) viewTarget=0;
   hovered=null; pinned=null; tip.classList.remove('show','expanded');
 }
 function sortirRegion(){
   focusRegion=null; focusTarget=0; majFil();
-  if(semTarget<0.5) viewTarget=1;              // ressortir = reposer la carte à plat
+  if(semTarget<0.5) viewTarget=1;
   hovered=null; pinned=null; tip.classList.remove('show','expanded');
 }
 addEventListener('keydown', e=>{
   if(e.key!=='Escape' || pinned) return;
-  if(podPin){ podPin=null; majPodCap(); majFil(); return; }   // on relâche d'abord la famille visée
+  if(podPin){ podPin=null; majPodCap(); majFil(); return; }
   if(focusRegion) sortirRegion();
 });
 function syncModeButtons(){
@@ -1317,17 +938,6 @@ function syncModeButtons(){
   });
 }
 
-// ════════ LA PLANÈTE EN PETIT — la capsule de coin ════════
-// Demande de l'auteur (2026-08-14) : « déplacer et réduire la planète dans une petite fenêtre,
-// mais toujours rotation et réponse de proximité, statique dans la capsule ».
-// Trois décisions qui en découlent :
-//  · SCÈNE SÉPARÉE, pas un second rendu de la grande. Les points de la grande carte sont
-//    interpolés à chaque image vers leurs positions du SENS ; les redessiner en globe
-//    exigerait de tout replacer deux fois par image. Ici : ~20 amas figés, aucun post-process.
-//  · STATIQUE = pas d'OrbitControls. Elle tourne toute seule et ne se manipule pas — sinon
-//    c'est un deuxième pilotage à côté du premier, et on ne sait plus lequel on tient.
-//  · PROXIMITÉ = viser une famille. Le globe dit le rangement, le grand écran dit le sens :
-//    la capsule sert à demander « et cette famille-là, elle est où dans le sens ? ».
 const podCv  = document.getElementById('pc');
 const podCap = document.querySelector('#pod .cap');
 const podR   = new THREE.WebGLRenderer({ canvas:podCv, antialias:true, alpha:true });
@@ -1338,7 +948,7 @@ const podCam   = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
 podCam.position.set(0, 4.5, 30); podCam.lookAt(0,0,0);
 let podGroup = new THREE.Group(); podScene.add(podGroup);
 let podBlobs = [];
-let podHover = null, podPin = null;                 // famille visée (survol) · famille épinglée (clic)
+let podHover = null, podPin = null;
 const podPtr = { x:-1e4, y:-1e4, in:false };
 const _pw = new THREE.Vector3(), _podDir = new THREE.Vector3();
 
@@ -1346,17 +956,11 @@ function buildPod(){
   podGroup.removeFromParent();
   podGroup.traverse(o=>{ o.geometry?.dispose?.(); o.material?.dispose?.(); });
   podGroup = new THREE.Group(); podScene.add(podGroup); podBlobs=[];
-  // le globe de verre en fil de fer : sans lui, les amas flottent sans surface commune et on
-  // ne voit plus que c'est UNE sphère qu'on tourne.
-  // ⚠️ maille LÂCHE et discrète : à 208 px, une sphère de 22×14 segments à 11 % ne se lit pas
-  // comme un repère mais comme une surface pleine, et les amas s'y noient (vérifié en capture).
   podGroup.add(new THREE.Mesh(new THREE.SphereGeometry(R*0.99, 12, 8),
     new THREE.MeshBasicMaterial({ color:0x7A2200, wireframe:true, transparent:true,
       opacity:0.30, depthWrite:false })));
-  // un amas par région, repris tel quel de la grande carte (même graine, donc même forme :
-  // la mémoire visuelle d'une famille doit survivre au changement d'échelle).
   for(const b of regionObjs){
-    const src = b.children[0];                      // children[0] = l'amas de points, [1] = l'étiquette
+    const src = b.children[0];
     if(!src || !src.geometry) continue;
     const pts = new THREE.Points(src.geometry.clone(), new THREE.PointsMaterial({
       color:b.userData.colBase.clone(), map:POINT_TEX, size:1.15, transparent:true,
@@ -1365,26 +969,18 @@ function buildPod(){
     pts.userData = { region:b.userData.region, col:b.userData.colBase.clone() };
     podGroup.add(pts); podBlobs.push(pts);
   }
-  // une famille épinglée qui a disparu du graphe laisserait tout le nuage éteint sans rien allumer
   if(podPin && !REGION_COUNT[podPin]) podPin=null;
   if(podHover && !REGION_COUNT[podHover]) podHover=null;
   majPodCap();
-  placerPod();                       // the legend was just rewritten: free space changed
+  placerPod();
 }
 
-// La capsule tient dans l'espace RÉELLEMENT libre entre le HUD et la légende. Mesuré à chaque
-// reconstruction et à chaque redimensionnement : la légende change de hauteur quand une région
-// apparaît, et une fenêtre courte ne laisse pas la même place qu'un 27 pouces.
 const podEl = document.getElementById('pod');
-const MINI = 132;                             // en dessous, le globe n'est plus lisible
+const MINI = 132;
 function placerPod(){
   const legEl = document.getElementById('legend');
   const h = document.getElementById('hud').getBoundingClientRect();
-  const MARGE = 22, CHROME = 40;              // CHROME = titre + légende + bordures de la capsule
-  // ⚠️ SUR UNE FENÊTRE COURTE, C'EST LA LÉGENDE QUI CÈDE, PAS LE GLOBE. Première version :
-  // en dessous de 150 px d'espace libre la capsule disparaissait — mesuré, elle s'effaçait dès
-  // 640 px de hauteur. Or la légende, elle, sait défiler (`overflow-y:auto`) : on lui reprend
-  // la place qu'il faut plutôt que de supprimer une des deux vues.
+  const MARGE = 22, CHROME = 40;
   legEl.style.maxHeight = '';
   let l = legEl.getBoundingClientRect();
   const requis = MINI + CHROME + MARGE*2;
@@ -1401,9 +997,6 @@ function placerPod(){
   podCam.aspect = 1; podCam.updateProjectionMatrix();
   const haut = (cote-16) + CHROME;
   podEl.style.top = Math.round(h.bottom + MARGE + Math.max(0, (libre - haut)/2)) + 'px';
-  // fenêtre trop courte pour loger le globe entre les deux : on le cache plutôt que de le laisser
-  // chevaucher la légende — un panneau posé par-dessus un autre ne se lit ni l'un ni l'autre.
-  // il ne reste que le cas vraiment extrême : une fenêtre où même la légende repliée ne libère rien
   podEl.style.display = (libre < MINI) ? 'none' : '';
 }
 addEventListener('resize', placerPod);
@@ -1415,33 +1008,22 @@ function majPodCap(){
   else  podCap.innerHTML = `<span class="off">${podBlobs.length} families · aim to light up</span>`;
 }
 
-// Le survol de la LÉGENDE allume la même chose que le survol de la capsule : deux endroits qui
-// désignent une famille ne doivent pas avoir deux effets différents.
 function podViser(r){ if(r!==podHover){ podHover=r; majPodCap(); } }
 
 podCv.addEventListener('pointermove', e=>{
   const b=podCv.getBoundingClientRect();
   podPtr.x=e.clientX-b.left; podPtr.y=e.clientY-b.top; podPtr.in=true;
-  pointerIn=false;                                  // le curseur est DANS la capsule : l'aimant de la grande carte lâche
+  pointerIn=false;
   if(podDrag){
     const dx=e.clientX-podDrag.x, dy=e.clientY-podDrag.y;
     podDrag={x:e.clientX,y:e.clientY}; podBouge += Math.hypot(dx,dy);
     podGroup.rotation.y += dx*0.009;
-    // l'inclinaison est BRIDÉE : passé les pôles le globe se retourne et la carte devient
-    // illisible — un objet qu'on oriente doit garder un haut et un bas.
     podGroup.rotation.x = THREE.MathUtils.clamp(podGroup.rotation.x + dy*0.009, -1.0, 1.0);
   }
 });
 podCv.addEventListener('pointerleave', ()=>{ podPtr.in=false; });
 
-// ── ON PEUT LA TOURNER À LA MAIN — mais RIEN D'AUTRE ────────────────────────
-// l'auteur, 2026-08-14 : « "globe les familles" peut être tournable, mais seulement rotation
-// statique ». Donc : glisser = tourner le globe, et c'est tout. Pas de zoom, pas de
-// déplacement, la capsule ne bouge pas de son coin. C'est ce qui la garde INSTRUMENT : un
-// objet qu'on oriente, pas une deuxième carte à piloter à côté de la première.
-// On n'utilise pas OrbitControls : il apporte le zoom et le panoramique avec lui, et il
-// faudrait ensuite les désactiver un par un. Deux axes suffisent, écrits à la main.
-podGroup.rotation.order = 'YXZ';                    // Y = la rotation du globe, X = l'inclinaison
+podGroup.rotation.order = 'YXZ';
 let podDrag=null, podBouge=0;
 podCv.addEventListener('pointerdown', e=>{
   podDrag={x:e.clientX,y:e.clientY}; podBouge=0;
@@ -1450,27 +1032,22 @@ podCv.addEventListener('pointerdown', e=>{
 const podLache = ()=>{ if(podDrag){ podDrag=null; podCv.style.cursor = podHover?'pointer':'default'; } };
 addEventListener('pointerup', podLache);
 podCv.addEventListener('pointercancel', podLache);
-// le clic n'épingle que si la main n'a pas glissé : sinon toute rotation finirait par épingler
 podCv.addEventListener('click', ()=>{
   if(podBouge>5) return;
   podPin = (podHover && podPin!==podHover) ? podHover : null; majPodCap(); majFil();
 });
 
-let podVit = 1;                                     // 1 = elle tourne · 0 = arrêtée sous le curseur
+let podVit = 1;
 function podTick(dt){
-  // ⚠️ ELLE S'ARRÊTE SOUS LE CURSEUR. Sans ça, la cible s'échappe : à 0,16 rad/s un amas se
-  // déplace d'une vingtaine de pixels par seconde dans une fenêtre de 208 px, donc la famille
-  // qu'on vient de viser sort du rayon de visée toute seule, sans que la souris ait bougé.
-  // Mesuré par le contrôle exécuté, qui perdait l'épingle entre deux lectures.
   podVit += ((podPtr.in ? 0 : 1) - podVit) * Math.min(1, dt*6);
-  podGroup.rotation.y += dt*0.16*podVit;            // elle tourne toute seule, à peu près un tour/40 s
+  podGroup.rotation.y += dt*0.16*podVit;
   _podDir.copy(podCam.position).normalize();
-  let best=null, bd=30;                             // rayon de visée, en pixels de la capsule
+  let best=null, bd=30;
   if(podPtr.in){
     const w=podCv.clientWidth||208, h=podCv.clientHeight||208;
     for(const p of podBlobs){
       p.getWorldPosition(_pw);
-      if(_pw.clone().normalize().dot(_podDir) < 0.02) continue;   // amas de la face arrière : pas visable
+      if(_pw.clone().normalize().dot(_podDir) < 0.02) continue;
       _pw.project(podCam);
       const sx=(_pw.x*0.5+0.5)*w, sy=(-_pw.y*0.5+0.5)*h;
       const d=Math.hypot(sx-podPtr.x, sy-podPtr.y);
@@ -1482,19 +1059,6 @@ function podTick(dt){
   const vise = podPin || podHover;
   for(const p of podBlobs){
     const on = p.userData.region===vise;
-    // ⚠️ TOUTES LES RÉGIONS RESTENT ALLUMÉES (l'auteur, 2026-08-14 : « dans la petite orbe,
-    // éclaire toutes les régions »). La capsule est une CARTE : si viser une famille éteint
-    // les dix-neuf autres, elle ne montre plus où on est. Le viser se dit par la TAILLE et la
-    // teinte chaude, pas par l'extinction du voisinage.
-    // ⚠️ L'AMAS VISÉ DOIT S'ÉCLAIRCIR POUR DE BON (l'auteur, 2026-08-14 : « elle s'éclaircit peu
-    // je trouve, sur l'amas »). Un +40 % de teinte chaude sur un orange déjà chaud ne se voit
-    // pas : c'est la même couleur, en un peu plus clair. La famille visée passe donc presque au
-    // blanc chaud, grossit franchement, et pulse une fois épinglée — trois signaux, pas un.
-    // ⚠️ ÉCLAIRCIR N'EST PAS GROSSIR (l'auteur, 2026-08-14 : « ça s'éclaircit, mais c'est très
-    // gras »). À 2,7 les grains d'un amas de 60 fiches se recouvrent et fusionnent en une tache
-    // blanche : on gagne le repérage et on perd l'information — l'amas ne dit plus combien il
-    // porte ni comment il est réparti. La visée passe donc par la LUMIÈRE (presque blanc) et par
-    // le RECUL du reste ; la taille bouge à peine, juste de quoi accrocher l'œil.
     const bat = (p.userData.region===podPin) ? 0.5+0.5*Math.sin(performance.now()/420) : 0;
     p.material.size    = THREE.MathUtils.lerp(p.material.size, on?1.42:1.15, 0.22);
     p.material.opacity = THREE.MathUtils.lerp(p.material.opacity, vise ? (on?1:0.5) : 1, 0.22);
@@ -1503,7 +1067,6 @@ function podTick(dt){
   podR.render(podScene, podCam);
 }
 
-// ---------- survol + MAGNET + surlignage ----------
 const MAGNET_RADIUS=95, MAGNET_PULL=0.45, MAGNET_SCALE=1.9;
 let hovered=null, hotMesh=null, pointerPx={x:-1e4,y:-1e4}, pointerIn=false;
 const camRight=new THREE.Vector3(), camUp=new THREE.Vector3(), _ndc=new THREE.Vector3();
@@ -1517,23 +1080,15 @@ function applyHot(m){
   if(hotMesh) for(const L of hotMesh.userData.links) L.hot=true;
 }
 
-// ---- panneau ----
-// Le contenu des fiches est du texte libre : il contient des < et des & (« 06-30→07-01 »,
-// des extraits de code). Sans échappement, une fiche pourrait couper le panneau en deux.
 const esc=s=>String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let pinned=null;
-// ---- le corps des fiches, à la demande ----
-// Il vit dans `textes.json` depuis le 2026-08-14 : dans graph.json il pesait 536 Ko sur 1051,
-// pour un texte que seul le panneau déplié montre. On le charge au premier double-clic, une
-// seule fois, et on le garde. `TEXTES_PRETS` distingue « pas encore chargé » de « cette fiche
-// n'a pas de corps » — sans quoi le panneau afficherait « chargement… » pour toujours.
 let TEXTES={}, TEXTES_PRETS=false, _texteEnVol=null;
 function chargerTextes(){
   if(TEXTES_PRETS) return Promise.resolve(TEXTES);
   if(!_texteEnVol) _texteEnVol = fetch('textes.json', {cache:'no-cache'})
     .then(r=>r.json())
     .then(j=>{ TEXTES=j; TEXTES_PRETS=true; return j; })
-    .catch(()=>{ TEXTES_PRETS=true; return TEXTES; });   // absent → on n'insiste pas, le reste marche
+    .catch(()=>{ TEXTES_PRETS=true; return TEXTES; });
   return _texteEnVol;
 }
 function memLine(n){
@@ -1541,7 +1096,7 @@ function memLine(n){
   if(!n.primary_project) return `<b>${regionOf(n)}</b> · cross-cutting, no city`;
   return (n.frontier?'border · ':'city · ')+ks.map(c=>`<b>${c}</b> ${m[c]}`).join('  ·  ');
 }
-let _ficheAffichee=null;      // quelle fiche le panneau montre, pour le rafraîchir à l'arrivée du texte
+let _ficheAffichee=null;
 function showPanel(mesh, expanded){
   const n=mesh.userData.data;
   _ficheAffichee=n.id;
@@ -1550,7 +1105,6 @@ function showPanel(mesh, expanded){
   tip.querySelector('.lbl').innerHTML=(n.primary_project||regionOf(n))+(n.frontier?' <span class="frontier">⟡ border</span>':'');
   tip.querySelector('.n').textContent=title;
   tip.querySelector('.mem').innerHTML=memLine(n);
-  // avis du challenger (Étage 3) : la carte donne son avis sur cette fiche
   const chEl=tip.querySelector('.ch');
   if(n.challenge){ chEl.textContent='⚠ challenger verdict — '+n.challenge; chEl.classList.add('show'); }
   else { chEl.classList.remove('show'); chEl.textContent=''; }
@@ -1563,12 +1117,6 @@ function showPanel(mesh, expanded){
   const mEl=tip.querySelector('.media');
   if(n.media){ mEl.textContent='▷ replayable 3D capture — double-click to open'; mEl.classList.add('show'); }
   else { mEl.classList.remove('show'); mEl.textContent=''; }
-  // connexions : les fiches reliées à ce point (titre descriptif + région si autre catégorie)
-  // ⚠ AU CLIC SEULEMENT. Demande de l'auteur (2026-08-15) : au survol, le panneau montre le
-  // titre et le résumé, rien d'autre. On lit UNE chose et on passe ; seize pastilles sous le
-  // résumé faisaient du panneau volant un mur, et allongeaient la fiche au point de la faire
-  // défiler alors que le curseur bouge encore. Les connexions sont une exploration, pas une
-  // information de survol : elles arrivent quand on a décidé de s'arrêter (clic → `expanded`).
   const others=expanded ? (mesh.userData.links||[]).map(L=> L.a===mesh?L.b:L.a) : [];
   const CAP=16, rn=regionOf(n);
   let lh='';
@@ -1579,13 +1127,6 @@ function showPanel(mesh, expanded){
     lh=`<span class="hd">connections (${others.length})</span>${chips}`+(others.length>CAP?`<span class="c">+${others.length-CAP}</span>`:'');
   }
   tip.querySelector('.lnk').innerHTML=lh;
-  // « En clair » d'abord, texte complet replié derrière (format tranché par l'auteur le
-  // 2026-08-14 : UN fichier par fiche, deux registres, l'afficheur choisit lequel montre).
-  // Les fiches pas encore converties retombent sur l'ancien comportement, sans trou.
-  // ── DEUX BLOCS, ET ON DIT LEQUEL EST POUR QUI ──
-  // l'auteur : « le résumé des fiches n'est pas visuellement séparé pour toi et moi ». C'était vrai :
-  // le bloc humain et le texte technique se suivaient dans la même colonne, même corps, même
-  // couleur — rien ne disait où l'un finissait. Chaque bloc porte maintenant son destinataire.
   const dEl=tip.querySelector('.d');
   if(expanded){
     const bloc = [];
@@ -1593,9 +1134,6 @@ function showPanel(mesh, expanded){
       `<section class="bl clair"><header><span class="qui">for you</span>`
       + `<span class="quoi">in plain words, no jargon</span></header>`
       + `<div class="txt">${esc(n.en_clair)}</div></section>`);
-    // Le corps de la fiche ne voyage plus dans graph.json (il en pesait la moitié) : il est
-    // dans `textes.json`, chargé au PREMIER dépliage puis gardé en mémoire. Le panneau s'ouvre
-    // tout de suite et se complète quand le texte arrive — on ne fait pas attendre un double-clic.
     const corps = n.long || TEXTES[n.id];
     if(corps) bloc.push(
       `<details class="bl modele"${n.en_clair?'':' open'}>`
@@ -1605,15 +1143,11 @@ function showPanel(mesh, expanded){
     else if(!TEXTES_PRETS) {
       bloc.push(`<details class="bl modele"${n.en_clair?'':' open'}><summary>`
         + `<span class="qui">for the model</span><span class="quoi">loading…</span></summary></details>`);
-      // on se rappelle QUELLE fiche est à l'écran plutôt que de regarder `pinned` : le panneau
-      // s'ouvre aussi par d'autres chemins (le harnais d'audit appelle showPanel directement),
-      // et un rafraîchissement qui ne marche que dans un seul cas est un rafraîchissement cassé.
       chargerTextes().then(()=>{ if(_ficheAffichee===n.id && tip.classList.contains('expanded')) showPanel(mesh, true); });
     }
     if(!bloc.length) bloc.push(`<div class="txt">${esc(n.desc||'(pas de contenu)')}</div>`);
     dEl.innerHTML = bloc.join('');
   } else {
-    // au survol, la place est comptée : premier paragraphe du « en clair », sinon la desc.
     const court=n.en_clair?n.en_clair.split('\n\n')[0]:null;
     dEl.textContent=court||n.desc||'(pas de description)';
   }
@@ -1623,7 +1157,7 @@ function showPanel(mesh, expanded){
 function unpin(){ pinned=null; tip.classList.remove('expanded'); if(hovered) showPanel(hovered,false); else tip.classList.remove('show'); }
 addEventListener('dblclick', ()=>{ if(hovered){
   const nd=hovered.userData.data;
-  if(nd.media){ openViewer(nd.media); return; }      // nœud REJOUABLE → ouvre la capture 3D (Étage 4)
+  if(nd.media){ openViewer(nd.media); return; }
   pinned=hovered; showPanel(pinned,true); tip.querySelector('.body').scrollTop=0; } });
 tip.querySelector('.x').addEventListener('click', unpin);
 addEventListener('keydown', e=>{ if(e.key==='Escape'&&pinned) unpin(); });
@@ -1635,12 +1169,11 @@ function magnet(){
   camera.matrixWorld.extractBasis(camRight, camUp, new THREE.Vector3());
   const camDir=camera.position.clone().normalize();
 
-  // ── NIVEAU 1 : ce sont les BULLES qu'on vise, pas les fiches (elles ne sont pas là) ──
   if(niveau2Global<0.5){
     hovered=null; applyHot(null); tip.classList.remove('show');
-    let br=null, bd=MAGNET_RADIUS*1.6;              // cible plus large : 20 bulles, pas 354 points
+    let br=null, bd=MAGNET_RADIUS*1.6;
     for(const b of regionObjs){
-      if(view<0.5 && b.userData.dir.dot(camDir)<0.05) continue;   // bulle derrière le globe
+      if(view<0.5 && b.userData.dir.dot(camDir)<0.05) continue;
       const s=toScreen(b.position); if(!s) continue;
       const d=Math.hypot(s.x-pointerPx.x, s.y-pointerPx.y);
       if(pointerIn && d<bd){ bd=d; br=b.userData.region; }
@@ -1668,30 +1201,24 @@ function magnet(){
   applyHot(pinned||best);
 }
 
-// Entrer dans une région : un simple clic. Pas de double-clic ici — le double-clic sert déjà à
-// déplier une fiche, et deux gestes voisins pour deux effets différents se confondent.
-// Le clic ne doit pas se déclencher au bout d'un GLISSER de rotation : on mesure le déplacement.
 let _downXY=null;
 addEventListener('pointerdown', e=>{ _downXY = e.target?.closest?.('#pod') ? null : [e.clientX, e.clientY]; });
 addEventListener('pointerup', e=>{
-  if(!_downXY || e.target?.closest?.('#pod')) return;   // un clic DANS la capsule n'entre pas dans une région
+  if(!_downXY || e.target?.closest?.('#pod')) return;
   const bouge = Math.hypot(e.clientX-_downXY[0], e.clientY-_downXY[1]);
   _downXY=null;
-  if(bouge>5) return;                               // c'était une rotation, pas un clic
+  if(bouge>5) return;
   if(niveau2Global<0.5 && hoveredRegion) entrerRegion(hoveredRegion);
 });
 
 const _off=new THREE.Vector3(), _tgt=new THREE.Vector3(), _p2=new THREE.Vector3();
 const _p3f=new THREE.Vector3(), _p2f=new THREE.Vector3();
 function easeMagnet(m){
-  // Dans une région ouverte, la fiche quitte la calotte de son continent pour reprendre TOUT
-  // l'espace : c'est là que la densité tombe. Le glissement est continu, donc on voit d'où
-  // chaque point sort — sinon entrer dans une région ressemblerait à un changement de page.
   const k = m.userData.p3f ? niveau2Global : 0;
   _p3f.copy(m.userData.p3).lerp(m.userData.p3f||m.userData.p3, k);
   _p2f.copy(m.userData.p2).lerp(m.userData.p2f||m.userData.p2, k);
-  _p2.copy(_p2f).lerp(m.userData.p2s, sem);            // 2D : structure → sens
-  _tgt.copy(_p3f).lerp(_p2, view);                     // 3D → 2D
+  _p2.copy(_p2f).lerp(m.userData.p2s, sem);
+  _tgt.copy(_p3f).lerp(_p2, view);
   m.userData.base.copy(_tgt);
   const pull=m.userData._pull||0;
   if(pull>0){
@@ -1704,17 +1231,13 @@ function easeMagnet(m){
   m.position.lerp(_tgt, 0.3);
 }
 
-// arcs PAR-DESSUS le globe, jamais à l'intérieur
 const _cd=new THREE.Vector3(), _mid=new THREE.Vector3(), _camDir=new THREE.Vector3();
 
-/* Trace l'arc entre deux points et rend son point de contrôle. Extrait de updateLinks pour que
-   les liens AGRÉGÉS de la vue d'ensemble utilisent exactement la même courbe — deux tracés
-   différents pour la même idée finiraient par diverger. */
 function arcEntre(a, b, attr, flat){
   const arr=attr.array;
   const an=a.length()||1, bn=b.length()||1;
   const dot=THREE.MathUtils.clamp((a.x*b.x+a.y*b.y+a.z*b.z)/(an*bn), -1, 1);
-  const lift=R*(1.12 + 0.6*(1-dot)/2);            // rayon du point de contrôle (toujours > R)
+  const lift=R*(1.12 + 0.6*(1-dot)/2);
   const mdx=a.x+b.x, mdy=a.y+b.y, mdz=a.z+b.z, ml=Math.hypot(mdx,mdy,mdz)||1;
   const ox=mdx/ml*lift, oy=mdy/ml*lift, oz=mdz/ml*lift;
   const cx=ox*(1-flat)+(mdx/2)*flat, cy=oy*(1-flat)+(mdy/2)*flat, cz=oz*(1-flat)+(mdz/2)*flat;
@@ -1724,39 +1247,13 @@ function arcEntre(a, b, attr, flat){
   return _mid.set(cx,cy,cz);
 }
 
-/* Combien ce lien est-il TOURNÉ VERS NOUS. 0 = entièrement derrière le globe.
-   ⚠️ Avant, ce calcul ne regardait que le sommet de l'arc et plancherait à 0.18 : un lien qui
-   traverse le globe a son sommet sur la tranche, donc facing ≈ 0.5 — il restait bien visible.
-   Avec 640 liens sur 1374 dans ce cas, ça faisait un grillage permanent par-dessus la face
-   avant. On prend maintenant le PLUS CACHÉ des trois points (départ, sommet, arrivée) et le
-   plancher tombe à zéro : derrière, c'est derrière.
-   Le fondu reste PROGRESSIF, jamais une coupe nette — c'est la coupe qui avait produit le bug
-   des « arcs tranchés par le corps de la planète », et depthTest:false reste là pour ça. */
-// ⚠️ « EN 2D IL N'Y A PAS DE FACE CACHÉE » — VRAI EN 2026-06, FAUX DEPUIS QUE LE SENS EST EN
-// VOLUME. Ce raccourci (`view>=0.5 → return 1`) désactivait toute l'atténuation dans la vue
-// devenue principale : les fils de l'arrière du nuage se peignaient par-dessus ceux de devant,
-// exactement le défaut que le levier 2 devait corriger. La condition regarde maintenant s'il y a
-// un VOLUME (globe ou nuage du sens), pas si `view` vaut 1.
-//
-// Et la mesure change avec la forme. Sur le globe, les fiches sont toutes sur la coquille : le
-// cosinus (diviser par |p|) dit la face. Dans le nuage du sens, elles remplissent une boule —
-// un point près du centre a un |p| minuscule, donc un cosinus qui part n'importe où. On mesure
-// donc la PROFONDEUR : la projection sur l'axe de la caméra, rapportée au rayon du nuage.
-let OCCLUSION = true;                              // débranchable pour mesurer l'avant/après
+let OCCLUSION = true;
 function versNous(a, mid, b){
   if(!OCCLUSION) return 1;
-  // « la carte à plat n'a pas de face cachée » reste vrai — mais en le tranchant par un `if`, on
-  // faisait sauter l'opacité de tous les traits au milieu de la bascule. On dose : `aplat` vaut
-  // 1 sur la carte de structure posée, 0 dès qu'il y a du volume (globe ou nuage du sens).
   const aplat = view*(1-sem);
-  _cd.copy(camera.position).normalize();           // rempli ici : les bulles s'en servent AVANT updateLinks
-  const R0 = THREE.MathUtils.lerp(R, SEM, sem);    // 10 sur le globe → 16 dans le nuage
+  _cd.copy(camera.position).normalize();
+  const R0 = THREE.MathUtils.lerp(R, SEM, sem);
   const f = p => THREE.MathUtils.clamp((p.x*_cd.x+p.y*_cd.y+p.z*_cd.z)/R0, -1, 1);
-  // ⚠️ ATTÉNUER, JAMAIS COUPER. `depthTest:false` avait été posé pour un vrai bug — les arcs
-  // tranchés net par le corps de la planète. On garde le trait entier et on baisse sa lumière.
-  // sur la coquille, c'est le point le plus en arrière qui décide ; dans un volume plein, le
-  // retenir effacerait tout fil qui traverse — c'est l'endroit où le trait PASSE qui compte,
-  // donc le milieu de l'arc, pondéré. On glisse de l'un à l'autre avec `sem`.
   const coquille = THREE.MathUtils.smoothstep(Math.min(f(a), f(mid), f(b)), -0.15, 0.35);
   const volume   = THREE.MathUtils.smoothstep((f(a)+f(b)+2*f(mid))/4, -0.45, 0.20);
   return THREE.MathUtils.lerp(THREE.MathUtils.lerp(coquille, volume, sem), 1, aplat);
@@ -1764,65 +1261,59 @@ function versNous(a, mid, b){
 
 function updateLinks(time){
   _cd.copy(camera.position).normalize();
-  const flat=view;                               // 0=sphère, 1=plan
+  const flat=view;
   for(const L of linkObjs){
-    // un lien n'existe que si ses DEUX fiches sont à l'écran (niveau 2 de la région ouverte)
     const vu = L.a.visible && L.b.visible;
     if(!vu){ L.mat.opacity=0; continue; }
     const a=L.a.position, b=L.b.position;
     const mid=arcEntre(a, b, L.attr, flat);
-    // opacité/couleur : éclairé si relié au survol ; sinon discret + effacé sur la face cachée
     const facing = versNous(a, mid, b);
     if(L.hot){ L.mat.opacity=0.92*facing; L.mat.color.copy(colorOf(L.a.userData.data)).lerp(HOT,0.45); }
-    // Dans la vue SENS, les liens DÉCLARÉS s'effacent presque : cette vue dit « ces fiches se
-    // ressemblent », pas « ces fiches se citent ». Les garder à pleine force, c'est superposer
-    // deux réponses à deux questions différentes — et 1386 traits sur 357 points redonnent
-    // exactement la pelote qu'on vient d'éliminer ailleurs. Ils restent visibles au survol.
-    // ── UNE RÈGLE TRANSVERSE N'EST PLUS UN VOISIN, C'EST UNE ÉTIQUETTE ──
-    // Six règles de travail (`type: feedback` citées par 20 fiches ou plus) portaient 215 des
-    // 1393 arcs, soit 15 % du nuage gris — `verifier-le-code-jamais-supposer` à lui seul en
-    // tire 77. Un point relié à un cinquième du tronc n'apprend plus rien sur son voisinage.
-    // Le lien EXISTE toujours (il est dans les données, le panneau le liste, le survol le
-    // rallume) : seul son dessin permanent disparaît. La fiche porte une pastille à la place.
     else if(L.regle){ L.mat.opacity=0; }
-    // ⚠️ PLUS OPAQUES (l'auteur, 2026-08-14). L'ancien calcul gardait un facteur `(1-0,8×usage)`
-    // qui datait de l'époque où l'usage était un interrupteur : depuis qu'il est allumé en
-    // permanence, il divisait TOUJOURS les liens déclarés par cinq — 0,028 d'opacité, soit un
-    // trait qu'on devine plus qu'on ne le voit. Le facteur disparaît avec l'interrupteur.
     else { L.mat.opacity=0.30*facing*niveau2Global*(1-0.80*sem);
            L.mat.color.copy(LINK_GREY); }
-    // ⚠️ UN TRAIT INVISIBLE ÉTAIT QUAND MÊME DESSINÉ. Trois façons d'être invisible cohabitaient
-    // — opacité quasi nulle (mode sens : 0,003), règle transverse (0), face arrière atténuée —
-    // et aucune n'empêchait le moteur d'envoyer sa géométrie à chaque image. Mesuré à l'écran :
-    // ~1400 appels de dessin pour zéro pixel. On éteint l'objet en dessous du seuil de visibilité.
     L.ligne.visible = L.mat.opacity > 0.012;
   }
-  // liens d'USAGE (co-activation, Étage 2) : mêmes arcs, dorés, visibles selon `usage`
   for(const C of coactObjs){
     if(!(C.a.visible && C.b.visible) || usage<=0.001){ C.mat.opacity=0; C.ligne.visible=false; continue; }
     const a=C.a.position, b=C.b.position;
     const mid=arcEntre(a, b, C.attr, flat);
-    // ⚠️ `× niveau2Global` : c'est ce qui manquait. Les fiches s'effacent progressivement en
-    // passant du sens à la structure (leur échelle suit le niveau), mais leurs liens, eux,
-    // restaient à pleine opacité jusqu'à l'instant où les deux extrémités devenaient invisibles
-    // — puis disparaissaient d'un coup. l'auteur : « on voit les liens apparaître et disparaître ».
-    // Un trait doit s'éteindre au même rythme que ce qu'il relie.
     C.mat.opacity = usage*(0.22 + 0.75*C.w)*versNous(a, mid, b)*niveau2Global;
     C.ligne.visible = C.mat.opacity > 0.012;
   }
 }
 
-// ---------- chargement ----------
-let lastStamp='';
+let lastSig=null;
+function updateLive(data){
+  if(data.live_window_min) LIVE_WINDOW_S = data.live_window_min * 60;
+  const byId = new Map(data.nodes.map(node => [node.id, node]));
+  for(const mesh of nodeObjs){
+    const node = byId.get(mesh.userData.data.id);
+    if(!node) continue;
+    mesh.userData.heat = node.heat || 0;
+    mesh.userData.activeTs = node.active_ts || 0;
+    mesh.userData.data = node;
+    if(node.active_ts && !mesh.userData.activeRing){
+      const ring = new THREE.Sprite(new THREE.SpriteMaterial({ map:RING_TEX, color:0xFF4F0C,
+        transparent:true, opacity:0.6, depthTest:false, depthWrite:false }));
+      ring.scale.setScalar(0.95); mesh.add(ring);
+      mesh.userData.activeRing = ring;
+    }
+    if(mesh.userData.activeRing) mesh.userData.activeRing.visible = !!node.active_ts;
+  }
+}
+function sceneSignature(data){
+  const nodes = data.nodes.map(({heat, active, active_ts, ...node}) => node);
+  return JSON.stringify([nodes, data.links, data.coact]);
+}
 async function poll(){
   try{
-    // `?_=Date.now()` forçait le RETÉLÉCHARGEMENT du fichier entier toutes les 3 secondes —
-    // 1 Mo à chaque tour, soit 20 Mo par minute, plus l'analyse JSON, pour un fichier qui ne
-    // change que quelques fois par jour. `cache:'no-cache'` revalide auprès du serveur : il
-    // répond 304 tant que rien n'a bougé, et on ne paie que l'aller-retour.
     const r=await fetch('graph.json', {cache:'no-cache'}); const data=await r.json();
-    if(data.generated_at!==lastStamp){
-      lastStamp=data.generated_at; semCap = capaciteSemantique(data);
+    semCap = capaciteSemantique(data);
+    const sig = sceneSignature(data);
+    if(sig===lastSig){ updateLive(data); return; }
+    {
+      lastSig=sig;
       const before=prevIds.size; build(data);
       const added=data.counts.nodes-before;
       if(before && added>0){ const g=document.getElementById('grow');
@@ -1830,10 +1321,6 @@ async function poll(){
         g.style.opacity='1'; setTimeout(()=>g.style.opacity='0',4000); }
     }
   }catch(e){
-    // ⚠️ CE CATCH MENTAIT. Il annonçait « graph.json introuvable » quoi qu'il arrive — y compris
-    // quand le fichier était là, servi en 200 et valide, et que c'était `build()` qui levait.
-    // Un diagnostic faux coûte plus cher que pas de diagnostic : on a cherché du côté du serveur
-    // pendant que le bug était dans le code (2026-08-14, une variable supprimée par une refonte).
     const reseau = (e instanceof TypeError) || /fetch|NetworkError|Failed to fetch/i.test(e?.message||'');
     document.getElementById('counts').textContent = reseau
       ? 'graph.json introuvable — lance launch.sh'
@@ -1843,25 +1330,14 @@ async function poll(){
 }
 poll(); setInterval(poll, 3000);
 
-// PRISE DE CONTRÔLE POUR LE HARNAIS HEADLESS. Tout le reste vit dans la portée du module,
-// donc invisible depuis l'extérieur : sans cette poignée, aucun contrôle automatique ne peut
-// ouvrir un panneau et LIRE ce qui s'affiche — on en serait réduit à relire le source, ce qui
-// ne prouve rien (cf. meta/verifier-le-rendu-final-contre-la-demande). Lecture seule, aucun
-// comportement de la page n'en dépend.
 window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                      get noeuds(){ return nodeObjs; },
                      get regions(){ return regionObjs; },
-                     // La CAMÉRA, sans quoi aucun contrôle ne peut dire où une chose se trouve
-                     // À L'ÉCRAN — il ne saurait parler que de positions dans la scène, c'est-à-dire
-                     // de ce que le code croit dessiner. Ajoutée le 2026-08-16 pour mesurer le
-                     // recouvrement des étiquettes de familles, qui n'existe qu'en espace écran.
                      get camera(){ return camera; },
                      get toScreen(){ return toScreen; },
                      get liens(){ return linkObjs; },
                      get niveau(){ return niveau2Global; },
                      get region_ouverte(){ return focusRegion; },
-                     // vue courante + capsule : sans ça, un contrôle ne peut rien dire de ce
-                     // qui est réellement affiché — il ne saurait que relire le fichier source.
                      get semantique(){ return semCap; },
                      get vue(){ return { view:+view.toFixed(2), sem:+sem.toFixed(2),
                                          mode: view<0.5 ? '3d' : (sem>0.5 ? 'sens' : 'struct') }; },
@@ -1869,15 +1345,12 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                                              rotation:+podGroup.rotation.y.toFixed(3),
                                              legende: podCap.innerText.trim() }; },
                      region_de: m => regionOf(m.userData ? m.userData.data : m),
-                     // le rendu tel qu'il est envoyé au GPU — pas ce que le code croit dessiner
                      get rendu(){ return {
                        appels_de_dessin: renderer.info.render.calls,
                        traits_dessines: linkObjs.filter(L=>L.ligne.visible).length
                                       + coactObjs.filter(C=>C.ligne.visible).length
                                       + regionLinks.filter(L=>L.ligne&&L.ligne.visible).length,
                        traits_en_tout: linkObjs.length + coactObjs.length + regionLinks.length }; },
-                     // Ce que le regroupement par famille change, en chiffres. Deux mesures, parce
-                     // qu'un regroupement se juge sur ce qu'il APPORTE *et* sur ce qu'il DÉFORME.
                      mesure_sens: (k=8) => {
                        const N = nodeObjs;
                        const pur = (champ) => {
@@ -1893,8 +1366,6 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                          }
                          return +(100*tot/N.length).toFixed(1);
                        };
-                       // fidélité : les distances entre fiches ont-elles gardé le même ORDRE ?
-                       // (corrélation sur un échantillon stable de paires, pas un tirage au sort)
                        const paires=[]; const P=N.length;
                        for(let i=0;i<P;i+=1) for(let j=i+7;j<P;j+=23) paires.push([N[i],N[j]]);
                        const X=paires.map(([a,b])=>a.userData.p2sBrut.distanceTo(b.userData.p2sBrut));
@@ -1909,23 +1380,17 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                                 paires_mesurees: paires.length };
                      },
                      get familles_groupees(){ return SENS_FAMILLES; },
-                     // somme des opacités réellement dessinées : l'observable d'une coupure de traits
                      get encre_des_liens(){
-                       // on somme l'OPACITÉ, pas « l'opacité si l'objet est allumé » : l'extinction
-                       // sous le seuil de visibilité est une optimisation de dessin, pas un saut visuel.
                        const f = t => t.reduce((s,L)=> s + L.mat.opacity, 0);
                        return +(f(linkObjs) + f(coactObjs) + f(regionLinks)).toFixed(2); },
-                     // la plus grosse disparition brutale observée depuis la dernière remise à zéro,
-                     // en « points à taille pleine ». L'observable d'une coupure, à l'image près.
                      get coupure(){ return +_coupurePic.toFixed(2); },
                      remettre_coupure_a_zero(){ _coupurePic = 0; return true; },
+                     get reconstructions(){ return _reconstructions; },
                      get occlusion(){ return OCCLUSION; },
                      set occlusion(v){ OCCLUSION = !!v; },
                      get camera(){ return camera.position.toArray().map(v => +v.toFixed(2)); },
                      get capsule_angles(){ return [+podGroup.rotation.y.toFixed(3), +podGroup.rotation.x.toFixed(3)]; },
                      par_id: id => nodeObjs.find(m => m.userData.data.id === id),
-                     // la contrainte de séparation, vérifiable : plus petit espace entre
-                     // deux amas voisins. Négatif = ils se touchent, la règle est cassée.
                      separation: () => { let pire = {ecart: Infinity};
                        for(const a of regionObjs) for(const b of regionObjs){
                          if(a===b) continue;
@@ -1933,26 +1398,23 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                                  - (a.userData.rad + b.userData.rad)*1.8;
                          if(e < pire.ecart) pire = {ecart:+e.toFixed(2), entre:[a.userData.region, b.userData.region]};
                        } return pire; },
-                     // ce qui est RÉELLEMENT à l'écran — la mesure de la saturation, en direct
                      visibles: () => ({
                        fiches: nodeObjs.filter(m => m.visible).length,
                        liens:  linkObjs.filter(L => L.mat.opacity > 0.01).length,
                        regions: regionObjs.filter(b => b.visible && b.userData.blobMat.opacity > 0.01).length,
                        liens_regions: regionLinks.filter(L => L.mat.opacity > 0.01).length })};
 
-// ---------- viewer 3D rejouable (Étage 4) : double-clic sur un nœud média → la capture apparaît, tournable ----------
 let vR=null, vS, vCam, vCtrl, vModel=null, vOpen=false;
 const vEl=document.getElementById('viewer'), vc=document.getElementById('vc');
 function vResize(){ const w=vc.clientWidth||720, h=vc.clientHeight||560; vR.setSize(w,h,false); vCam.aspect=w/h; vCam.updateProjectionMatrix(); }
 function openViewer(media){
   vEl.classList.add('show'); vOpen=true;
-  if(!vR){                                            // init paresseuse d'un MINI renderer dédié
+  if(!vR){
     vR=new THREE.WebGLRenderer({ canvas:vc, antialias:true, alpha:true }); vR.setPixelRatio(Math.min(devicePixelRatio,1.5));
     vR.toneMapping=THREE.ACESFilmicToneMapping; vR.toneMappingExposure=1.35;
     vS=new THREE.Scene(); vCam=new THREE.PerspectiveCamera(45,1,0.01,100); vCam.position.set(0,0,3.2);
     vCtrl=new OrbitControls(vCam,vc); vCtrl.enableDamping=true; vCtrl.dampingFactor=0.08;
     vCtrl.autoRotate=true; vCtrl.autoRotateSpeed=1.1; vCtrl.enablePan=false;
-    // éclairage FORT (Bennu est très sombre, albédo ~4%) : ambiant + hémisphère + 3 lumières dont un rim
     vS.add(new THREE.AmbientLight(0xffffff,1.1));
     vS.add(new THREE.HemisphereLight(0xFFC0A0, 0x2E1300, 1.1));
     const dl=new THREE.DirectionalLight(0xffffff,2.4); dl.position.set(3,4,5); vS.add(dl);
@@ -1965,15 +1427,12 @@ function openViewer(media){
   if(media.type==='glb'){
     new GLTFLoader().load(media.src, g=>{
       const model=g.scene;
-      // normalise le matériau : modèle scanné → souvent normales manquantes / winding inversé / base sombre.
-      // DoubleSide + normales recalculées + texture conservée, éclairé proprement → l'astéroïde devient visible.
       model.traverse(o=>{ if(o.isMesh){
         if(!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
         const map = (o.material && o.material.map) || null;
         o.material = new THREE.MeshStandardMaterial({ color: map?0xffffff:0x9b9286, map, roughness:0.92, metalness:0.02, side:THREE.DoubleSide });
         o.frustumCulled=false;
       }});
-      // centre + cadre via un GROUPE (scaler le groupe, jamais setScalar sur la racine du glb → écraserait son échelle)
       const wrap=new THREE.Group(); wrap.add(model);
       const box=new THREE.Box3().setFromObject(model), c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
       model.position.sub(c);
@@ -1989,130 +1448,63 @@ vEl.querySelector('.vx').addEventListener('click', closeViewer);
 addEventListener('keydown', e=>{ if(e.key==='Escape'&&vOpen) closeViewer(); });
 addEventListener('resize', ()=>{ if(vOpen) vResize(); });
 
-// ---------- boucle ----------
 const vtag=document.getElementById('viewtag');
 const titleEl=document.getElementById('title');
 let _last=0, _lastF=0;
 function tick(now){
   requestAnimationFrame(tick);
-  if(document.hidden) return;                 // PERF : 0 calcul quand l'onglet est caché
-  if(vOpen) return;                           // viewer 3D rejouable ouvert → planète en pause (un seul GPU à la fois)
-  if(now - _last < 16) return;                // cap ~60 fps (ProMotion 120 → on ne double pas la charge bloom)
+  if(document.hidden) return;
+  if(vOpen) return;
+  if(now - _last < 16) return;
   _last = now;
   const time=now/1000;
-  const nowSec=Date.now()/1000; let liveCount=0;    // ACTIVITÉ EN DIRECT : recomptée à chaque image
-  // ⚠️ MÊME DÉFAUT QUE `focus`, RESTÉ ICI : un `+= écart*0,08` par IMAGE met 0,8 s à 60 im/s et
-  // 5 s à 10 im/s. La bascule sens ⇄ structure durait donc « le temps qu'il faut à la machine »,
-  // pas le temps qu'on a choisi. Mesuré au banc headless : la vue n'avait pas fini de basculer
-  // au bout de 7 secondes. On passe au temps écoulé, comme les niveaux juste en dessous.
+  const nowSec=Date.now()/1000; let liveCount=0;
   const dtF = Math.min(0.1, (now-_lastF)/1000 || 0.016); _lastF = now;
   const kV = 1-Math.exp(-dtF*7);
   view += (viewTarget-view)*kV; if(Math.abs(viewTarget-view)<0.001) view=viewTarget;
   sem  += (semTarget-sem)*kV;   if(Math.abs(semTarget-sem)<0.001)   sem=semTarget;
   usage += (usageTarget-usage)*kV; if(Math.abs(usageTarget-usage)<0.001) usage=usageTarget;
-  // Transition entre les deux niveaux : basée sur le TEMPS ÉCOULÉ, pas sur le nombre d'images.
-  // Un `+= écart*0.10` par image met ~0,7 s à 60 im/s… et 3 s à 10 im/s. Mesuré au banc : à
-  // 10 im/s la sortie d'une région n'était pas finie au bout de 3 s, et les 170 fiches
-  // restaient à l'écran par-dessus les bulles. Sur une machine chargée, ça se verrait pour de
-  // vrai. Le plafond sur `dt` évite le saut après un onglet resté caché.
   focus += (focusTarget-focus)*kV;
   if(Math.abs(focusTarget-focus)<0.004) focus=focusTarget;
-  // `regionVue` survit à la sortie le temps de l'animation : sans ça, les fiches disparaîtraient
-  // d'un coup au lieu de rentrer dans leur bulle, et on perdrait le fil de « d'où ça vient ».
   if(focusRegion) regionVue=focusRegion; else if(focus<0.01) regionVue=null;
-  // le mode « sens » montre le nuage sémantique ENTIER : découper par région n'y a pas de sens,
-  // c'est justement la vue qui ignore le rangement. On force donc le niveau 2 « tout ».
-  // ⚠️ LE SAUT VENAIT D'ICI (l'auteur, 2026-08-14 : « la transition doit se faire de manière
-  // harmonieuse, que les points se déplacent et reprennent place, sans coupure d'une page à
-  // une autre »). `sem>0.5` et `toutMontrer ? 1 : focus` sont deux MARCHES : à l'instant où
-  // `sem` franchissait 0,5, les 366 fiches passaient de « toutes visibles » à « toutes
-  // invisibles » en une image, pendant que les amas de famille apparaissaient d'un coup
-  // ailleurs. Le déplacement existait déjà (la position interpole de `p2s` vers `p2`) — on ne
-  // le voyait jamais, il était coupé en plein vol.
-  // Maintenant : une fiche EXISTE tant qu'il reste un soupçon de sens, et sa présence suit la
-  // plus haute des deux lectures. Elle voyage donc jusqu'à sa famille, rétrécit en arrivant, et
-  // l'amas grossit exactement là où elle se pose.
   const toutMontrer = sem>0.01;
   const niveau2 = Math.max(focus, sem);
   niveau2Global = niveau2;
   const morphing = Math.abs(viewTarget-view)>0.001;
-  // Le mode SENS est en volume : il se tourne, comme la 3D. Seule la carte de STRUCTURE reste
-  // plate — c'est une carte, on ne tourne pas une carte.
   const enVolume = view<0.5 || sem>0.5;
   controls.autoRotate  = enVolume;
   controls.enableRotate = enVolume;
-  controls.minDistance = view>0.5 ? 5 : 16;          // en 2D on peut zoomer plus près dans un cluster
-  // on ne recadre la caméra que PENDANT la bascule vers la 2D — ensuite le zoom molette est libre
-  // on ne recadre à plat que pour la carte de STRUCTURE ; le sens, lui, garde l'angle où on est.
-  // ⚠️ « ON NE VOIT RIEN » (l'auteur, 2026-08-14). Le recadrage ne se déclenchait que si la
-  // bascule 3D⇄2D était en cours (`morphing`). Depuis que la page s'ouvre sur le SENS, passer
-  // à STRUCTURE ne change plus `view` du tout (1 → 1) : aucun morphing, donc aucun recadrage,
-  // et la carte s'affichait sous l'angle et la distance où le nuage du sens avait été laissé —
-  // de travers, hors champ. On recadre aussi quand c'est le SENS qui bascule.
+  controls.minDistance = view>0.5 ? 5 : 16;
   const morphSens = Math.abs(semTarget-sem)>0.001;
   if(viewTarget>0.5 && semTarget<0.5 && (morphing || morphSens)){
     camera.position.lerp(CAM2D, 0.06); controls.target.lerp(ORIGIN, 0.08); }
   else if(viewTarget<0.5 && (morphing || morphSens)){
-    // on ne force que la DISTANCE : l'angle où l'on est reste celui qu'on avait, sinon le globe
-    // se remet de force face à nous à chaque aller-retour et on perd le fil de ce qu'on regardait.
     const d = camera.position.length(), cible = CAM3D.length();
     if(Math.abs(d-cible) > 0.5) camera.position.multiplyScalar(1 + (cible/d - 1)*0.08);
     controls.target.lerp(ORIGIN, 0.08); }
   controls.update();
   coreMat.opacity=0.55*(1-view); core.visible=false;
-  // le globe de verre n'a de sens qu'en 3D : à plat, il n'y a plus de sphère à suggérer.
-  // Le globe de verre dit « voici l'ensemble ». Entré dans une région, il n'y a plus d'ensemble
-  // à montrer : il s'efface avec le niveau, et l'amas flotte seul.
   const verreK = (1-view)*(1-niveau2Global);
   verre.material.opacity=0.13*verreK; verre.visible=verreK>0.01;
   grille.material.opacity=0.10*verreK; grille.visible=verreK>0.01;
-  // ── les bulles de la vue d'ensemble : présentes à l'inverse des fiches ──
-  // La face cachée s'efface ici aussi. Sans ça, l'étiquette d'une région située DERRIÈRE le
-  // globe se lisait par-dessus une bulle de devant (`depthTest:false` sur les Sprites) : on
-  // croyait lire le nom de la bulle qu'on regardait, et c'était celui d'une autre.
   _camDir.copy(camera.position).normalize();
   for(const b of regionObjs){
     const dedans = b.userData.region===regionVue;
-    // seuil serré : on n'efface QUE ce qui est réellement derrière. Un premier réglage à
-    // (-0.05, 0.30) effaçait aussi tout le pourtour — la moitié des régions disparaissait
-    // alors qu'elles étaient bien en face. Vérifié sur capture.
-    // même principe : `view<0.5 ? … : 1` faisait sauter l'opacité des amas au milieu de la
-    // bascule à plat ⇄ volume. On mélange les deux régimes au lieu de choisir.
     const devant = THREE.MathUtils.lerp(
       THREE.MathUtils.smoothstep(b.userData.dir.dot(_camDir), -0.28, 0.02), 1, view);
-    // en vue 2D, les bulles rejoignent l'anneau des régions — sinon elles restaient posées sur
-    // une sphère invisible pendant que les fiches, elles, s'aplatissaient : deux mondes à la fois.
     b.position.copy(b.userData.pos3).lerp(b.userData.pos2, view).lerp(b.userData.posSens, sem);
     const k = (1-niveau2)*devant;
-    b.visible = k>0.01 || sem>0.01;        // en mode sens, la bulle ne porte plus que son nom
+    b.visible = k>0.01 || sem>0.01;
     b.userData.blobMat.visible = k>0.01;
-    // la bulle où l'on entre grossit et s'efface — c'est elle qui « s'ouvre » sur ses fiches
     const s = dedans ? THREE.MathUtils.lerp(1, 2.2, niveau2) : 1;
     b.scale.setScalar(THREE.MathUtils.lerp(b.scale.x, s, 0.2));
-    // le survol se lit SUR l'amas : points plus gros et plus clairs, rien par-dessus.
     const vise = b.userData.region===hoveredRegion || b.userData.region===(podPin||podHover);
     b.userData.blobMat.opacity = (vise?1:0.9)*k;
-    // 0,40 : des grains à peine visibles sur un fond noir (l'auteur : « c'est très peu éclairé »).
-    // Le globe des familles est maintenant une des deux vues principales — il doit se lire, pas
-    // se deviner. On monte le grain, et la visée reste un cran au-dessus.
-    // ⚠️ 0,66 AVEC UN SPRITE NET = UNE MASSE PLEINE (l'auteur : « pourquoi les points sont aussi
-    // gras »). Les deux réglages se sont additionnés : j'avais grossi le grain parce que le
-    // sprite flou l'éteignait, puis j'ai rendu le sprite net — et les 90 grains d'une famille
-    // se sont soudés en une saucisse. Le grain net n'a plus besoin d'être gros pour se voir.
     b.userData.blobMat.size = THREE.MathUtils.lerp(b.userData.blobMat.size, vise?0.62:0.42, 0.25);
     b.userData.blobMat.color.copy(b.userData.colBase).lerp(HOT, vise?0.35:0);
-    // Le poids de l'étiquette suit celui de la région : 9 régions à UNE fiche criaient
-    // aussi fort que `principes 170`, et neuf étiquettes pour neuf fiches, c'est du bruit.
-    // Elles restent lisibles, et reviennent à pleine force dès qu'on les survole.
     const poids = 0.34 + 0.61*Math.sqrt(b.userData.n/Math.max(1,totalNoeuds));
-    // ⚠️ DANS LE NUAGE DU SENS, LE NOM RESTE (les grains, eux, s'effacent : les vraies fiches
-    // sont là). Sans lui le regroupement par famille est réel — 94 % des huit plus proches
-    // voisins d'une fiche sont de sa famille — mais invisible : toute la carte est de la même
-    // teinte phosphore, et vingt amas orange côte à côte ne se distinguent pas à l'œil.
     const kLab = Math.max(k, sem*devant);
     b.userData.labMat.opacity = (b.userData.region===(hoveredRegion||podPin||podHover) ? 1 : Math.min(0.95, poids))*kLab;
-    // le nom se pose SUR l'amas, pas en orbite : à `radSens` (jusqu'à 14 unités pour la plus
-    // grosse famille) l'étiquette partait à 250 px au-dessus de son nuage, vue en capture.
     b.userData.lab.position.y = THREE.MathUtils.lerp(b.userData.rad*1.8,
                                   Math.min(b.userData.radSens*0.85, 4.5), sem) + LABEL_H*0.45;
     b.userData.lab.visible = kLab > 0.01;
@@ -2122,113 +1514,70 @@ function tick(now){
     const k=1-niveau2;
     if(k<=0.01){ L.mat.opacity=0; if(L.ligne) L.ligne.visible=false; continue; }
     const mid=arcEntre(L.a, L.b, L.attr, view);
-    // même règle que pour les liens de fiches : derrière, c'est derrière
     L.mat.opacity = k*(0.03 + 0.15*L.poids)*versNous(L.a, mid, L.b);
     if(L.ligne) L.ligne.visible = L.mat.opacity > 0.012;
   }
   magnet();
-  const viseFamille = podPin || podHover;       // famille désignée depuis la capsule (ou la légende)
+  const viseFamille = podPin || podHover;
   for(const m of nodeObjs){
-    // ── NIVEAU : une fiche n'existe que dans sa région ouverte (ou en mode « sens ») ──
     const dansLaVue = toutMontrer || (regionVue && regionOf(m.userData.data)===regionVue);
-    // ⚠️ ON N'ÉTEINT PAS UN POINT, ON LE FAIT DÉCROÎTRE. `m.scale.setScalar(0.001)` d'un coup
-    // était la dernière coupure : en ressortant d'une famille, `regionVue` repasse à null dès
-    // que le niveau tombe sous 0,01 — mais l'échelle des points, elle, LERPE derrière et vaut
-    // encore 0,3 à cet instant. Ils sautaient donc de 0,3 à 0. Mesuré par le contrôle des
-    // bascules : 97 % de chute d'un relevé au suivant, sur « famille → ensemble ».
     if(!dansLaVue || niveau2<=0.01){
       const sc = THREE.MathUtils.lerp(m.scale.x, 0, kV);
       m.scale.setScalar(Math.max(sc, 0.0001));
-      m.visible = sc > 0.02;                       // only dropped from the draw once fully faded
+      m.visible = sc > 0.02;
       continue;
     }
     m.visible = true;
     if(m.userData.hatching){ m.scale.multiplyScalar(1.08); if(m.scale.x>=1){ m.scale.setScalar(1); m.userData.hatching=false; } continue; }
     easeMagnet(m);
-    // ── la famille visée dans la capsule s'allume ICI ──
-    // C'est tout l'intérêt de garder le globe : il dit le RANGEMENT, l'écran dit le SENS.
-    // Viser un projet sur le globe montre où ses 60 fiches ont atterri dans le nuage
-    // sémantique — éparpillées ou groupées, c'est la réponse qu'aucune des deux vues ne donne seule.
-    // ── couleur du point : base → chaleur → famille visée, dans cet ordre ──
     m.material.color.copy(m.userData.col);
     const ht=m.userData.heat||0;
-    if(ht>0.25){                                       // seules les fiches VRAIMENT chaudes respirent (~10, pas 76)
+    if(ht>0.25){
       const b=0.5+0.5*Math.sin(time*(1.1+1.2*ht)+m.userData.pulse);
-      m.material.color.lerp(HOT, (0.10+0.30*ht)*b*b*b); // ease : creux étirés, pic franc
+      m.material.color.lerp(HOT, (0.10+0.30*ht)*b*b*b);
     }
     let fam = 1;
     if(viseFamille){
       const dedans = regionOf(m.userData.data)===viseFamille;
       fam = dedans ? 1.9 : 1;
-      // On agit sur la COULEUR (multiplication), pas sur la transparence : 366 matériaux
-      // transparents obligeraient le moteur à les trier à chaque image.
-      // ⚠️ DEUX RÉGLAGES, PAS UN. Premier essai : le reste tombait à 0,20 — un black-out
-      // (l'auteur, 2026-08-14 : « pourquoi aussi sombre »). Deuxième : 0,50 et rien de plus côté
-      // famille — on ne la retrouvait toujours pas dans le nuage (vérifié en capture). Donc la
-      // famille MONTE (plus grosse, teinte chaude) et le reste recule à peine : le contraste
-      // vient de ce qu'on cherche, pas de l'extinction de ce qui l'entoure.
       if(dedans) m.material.color.lerp(HOT, 0.55); else m.material.color.multiplyScalar(0.45);
     }
     const ts=((m===hovered)?MAGNET_SCALE:1)*niveau2*fam;
-    // même raison que pour les vues : un lerp par IMAGE change de durée avec la machine.
     m.scale.setScalar(THREE.MathUtils.lerp(m.scale.x, ts, 1-Math.exp(-dtF*16)));
-    // anneau d'ACTIVITÉ EN DIRECT : pulse vif tant que la fiche est dans la fenêtre, puis s'éteint
-    // TOUT SEUL (horloge du navigateur) — pas besoin d'attendre une régénération de graph.json.
     if(m.userData.activeRing){
       const alive = (nowSec - m.userData.activeTs) <= LIVE_WINDOW_S;
       m.userData.activeRing.visible = alive;
       if(alive){ liveCount++; m.userData.activeRing.material.opacity = 0.35 + 0.4*(0.5+0.5*Math.sin(time*2.4)); }
     }
-    // glyphe ▷ rejouable (Étage 4) : clignote doucement pour signaler « double-clic = rejouer »
     if(m.userData.playMark) m.userData.playMark.material.opacity = 0.55 + 0.35*(0.5+0.5*Math.sin(time*2.2));
   }
-  // ════ INSTRUMENT DE COUPURE ════
-  // Ce que l'œil appelle « ça saute » : de la matière VISIBLE qui disparaît d'une image à la
-  // suivante. Ça se mesure ici et nulle part ailleurs — un contrôle extérieur échantillonne au
-  // mieux toutes les 55 ms, soit trois images : il voit l'avant et l'après, jamais le saut.
-  // Vérifié : le contrôle des bascules laissait passer un masquage brutal remis exprès.
-  // L'unité est le POINT À TAILLE PLEINE. 0,5 = un demi-point s'est évaporé, personne ne le voit.
-  // 18 = l'équivalent de dix-huit points pleins, c'est-à-dire une famille entière qui claque.
   {
     let disparu = 0;
     for(const m of nodeObjs){
-      // ⚠️ ON NE COMPTE QUE CE QUI ÉTAIT ENCORE VISIBLE À L'ŒIL. Sans ce seuil, l'instrument
-      // additionnait 366 points éteints à 2 % de leur taille et annonçait « 7,4 points
-      // disparus » sur un fondu parfaitement propre : une somme de riens n'est pas un défaut.
-      // 0,15 = le point occupe encore 15 % de son diamètre, on le voit.
       const ech = m.userData._ech || 0;
       if(m.userData._vu && !m.visible && ech > 0.15) disparu += ech;
       m.userData._vu = m.visible; m.userData._ech = m.scale.x;
     }
     if(disparu > _coupurePic) _coupurePic = disparu;
   }
-  if(liveCount!==_liveShown){                       // compteur live : n° de points dont l'anneau est allumé
+  if(liveCount!==_liveShown){
     _liveShown=liveCount;
     liveEl.innerHTML = liveCount
       ? `◉ ${liveCount} live point${liveCount>1?'s':''} <span style="opacity:.6">— read in the last ${Math.round(LIVE_WINDOW_S/60)} min</span>`
       : `<span class="off">◉ 0 live points — nothing read for ${Math.round(LIVE_WINDOW_S/60)} min</span>`;
-    if(!liveCount){ const s=document.getElementById('session'); if(s) s.textContent=''; }  // pas d'activité fantôme
+    if(!liveCount){ const s=document.getElementById('session'); if(s) s.textContent=''; }
   }
   updateLinks(time);
-  // The TITLE follows the view. It was frozen in the HTML on "— MEANING" and never
-  // moved: in structure, laid flat, or inside a region, the header still announced
-  // meaning. Found on 2026-08-15 by LOOKING at the README captures, not at the code —
-  // a wrong label raises nothing, it just gets read.
-  // Le libellé du SENS n'est plus écrit ici : il est calculé dans semantic-label.js à partir de
-  // ce que l'exporteur a MESURÉ, pour qu'un contrôle puisse le lire sans ouvrir un navigateur.
   const _sensTag = etiquetteSens(semCap);
   const _t = view<0.5 ? (focusRegion ? `[ REGION — ${focusRegion.toUpperCase()} ]` : '[ TRUNK PLANET ]')
                       : (sem>0.5 ? _sensTag.titre : '[ TRUNK MAP — STRUCTURE ]');
-  if(titleEl && titleEl.textContent !== _t) titleEl.textContent = _t;   // written only when it changes
+  if(titleEl && titleEl.textContent !== _t) titleEl.textContent = _t;
   vtag.textContent = view<0.5 ? etiquette3d(semCap, focusRegion)
     : (sem>0.5 ? _sensTag.bandeau
-               // The count was frozen at 20 — the author's trunk. Every other trunk read a
-               // number that contradicted the panel a few hundred pixels away, which computes
-               // it correctly from the same list. Reported 2026-08-16 on a 5-family trunk.
                : `▦ STRUCTURE — the ${REGION_LIST.length} ${REGION_LIST.length > 1 ? 'families' : 'family'}, laid flat · click a family = in volume`);
   syncModeButtons();
-  composer.render();                            // rendu via le post-process (bloom + output)
-  podTick(dtF);                                 // la capsule tourne au même rythme, sans post-process
+  composer.render();
+  podTick(dtF);
 }
 tick(0);
 </script>

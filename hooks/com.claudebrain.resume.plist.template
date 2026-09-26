@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Periodic auto-resume wake-up for C Brain.
      Drains the pending-distill.json queue as soon as the quota resets,
-     sans avoir besoin d'ouvrir une session.
+     without needing to open a session.
 
      TEMPLATE — do not install this file as is: __HOME__ must be
      substituted with the real $HOME (install.sh does it automatically
      through `sed`). Written after a bug where a home path was hardcoded
-     dur et cassait silencieusement la reprise sur toute nouvelle machine. -->
+     and silently broke resume on every new machine. -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -22,6 +22,9 @@
          autonomous resume at quota reset was inoperative. We give it a full PATH. -->
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- No BRAIN_HOME here: install.sh and adopt-launchd.sh render only
+             `__HOME__`, and the child resolves the default trunk itself
+             (hooks/brain_racine.py: BRAIN_HOME, else ~/.c-brain/trunk). -->
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>

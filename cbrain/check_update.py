@@ -50,7 +50,8 @@ def report():
 
     if outcome == "ok":
         msg = (f"C Brain updated itself to {tag}. "
-               f"Your notes were not touched.")
+               f"Your notes were not touched.\n"
+               "See docs/UPGRADING.md for what changed.")
     elif outcome == "rolled-back":
         msg = (f"The automatic update to {tag} failed its selftest: C Brain "
                f"ROLLED BACK to the previous version on its own. "

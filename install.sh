@@ -368,6 +368,14 @@ else
 fi
 run mkdir -p "$TRUNK/state" "$TRUNK/sessions/archive"
 
+# An update must add product configuration that older trunks lack. Copy only
+# missing files so user settings in an existing trunk are preserved.
+if [ -f "$ENGINE/skeleton/config/ranking.json" ] && [ ! -f "$TRUNK/config/ranking.json" ]; then
+  run mkdir -p "$TRUNK/config"
+  run cp "$ENGINE/skeleton/config/ranking.json" "$TRUNK/config/ranking.json"
+  say "+ config/ranking.json added to trunk"
+fi
+
 # ─── LOCAL VERSION HISTORY ───────────────────────────────────────────────────
 #
 # ⚠️ THIS IS NOT A BACKUP. It is a local history, on this disk, in this trunk. If
@@ -817,8 +825,8 @@ echo
 # of what the tool can do. That is the screen where people give up.
 #
 # ⚠️ BUT ONLY IF IT IS ACTUALLY EMPTY. There used to be no test at all: the block
-# fired on every install, re-installs included. Reported 2026-08-16 (Maissane
-# Lagsir) on a machine where it announced an empty trunk holding 23 notes — and
+# fired on every install, re-installs included. Reported 2026-08-16 (a tester)
+# on a machine where it announced an empty trunk holding 23 notes — and
 # then offered `brain demo`, which injects demo notes into a live trunk. Telling
 # someone their knowledge is gone, then handing them the command that writes into
 # it, is the worst possible pairing.

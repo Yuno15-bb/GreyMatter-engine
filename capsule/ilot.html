@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<!-- Live activity in the menu bar: a single page, two costumes.
+     ?pilule  → the pill set in the bar (miniature orb + name and action);
+     ?panneau → the panel that drops on click (who is working, on what, the steps, the orb).
+     Layout taken from the author's reference (Live Activity on Mac, 24/09),
+     "with a different format": the car and the photo become the orb and the ships. -->
+<!-- i18n-ok: 'panneau' and 'pilule' are mode identifiers, read from the URL -->
+<script>document.documentElement.dataset.mode = location.search.includes('panneau') ? 'panneau' : 'pilule';</script>
+<style>
+  :root { --c1:#e9dcff; --c2:#9b7bff; --c3:#231a3d; --rim:#f3eeff; }
+  html, body { margin:0; height:100%; background:transparent; overflow:hidden;
+               -webkit-user-select:none; cursor:default;
+               font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; color:#fff; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ── THE PILL ────────────────────────────────────────────────────────────
+     Reference: dark capsule 85 × 26 pt, mark on the left, timer on the right.
+     ⚠ 24/09, the user: "the pill's outline makes a spike at the
+       ends". Cause measured under the magnifier: the ring that pulsed around the
+       bead (radius 16 pt) left the capsule (radius 13) on the left. Now
+       nothing sticks out — `overflow:hidden` — and the orb is CONCENTRIC: 20 pt,
+       3 pt of margin all round, so its edge follows the capsule's.
+     ⚠ The user: "when the pill is expanded it is not the orb we see" —
+       open, it showed a chevron instead. It keeps the orb and the timer;
+       only the background gets lighter. */
+  #pilule { display:none; position:absolute; inset:0; border-radius:13px; box-sizing:border-box; overflow:hidden;
+            background:rgba(22,22,24,.94); box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
+            align-items:center; justify-content:space-between; padding:0 10px 0 3px;
+            transition:background .25s ease, box-shadow .25s ease; }
+  html[data-mode="pilule"] #pilule { display:flex; }
+  /* ⚠ 24/09, the author's second feedback on the "pointy ends": with a radius
+     of 13 px, the slightest difference between the window's real height and
+     26 left a vertical flat at the end, broken into two corners. An
+     "infinite" radius gives a half-circle whatever the height. */
+  #pilule { border-radius:999px; }
+  /* Native liquid glass set behind (ilot.js): the CSS background fades, only
+     a rim of light remains to hold the edge on a light background. */
+  html[data-verre] #pilule { background:transparent; box-shadow:inset 0 0 0 .5px rgba(255,255,255,.28); }
+  html[data-verre][data-ouvert] #pilule { background:rgba(255,255,255,.12); }
+  /* ⚠ the author, 24/09: "in the mini capsule, instead of a counter, put
+     the name and the action". The timer now lives only in the panel. The width
+     follows the text: the page measures `.txt` and sends it ('ilot-largeur'), the
+     main process widens the space reserved in the bar by as much. */
+  #pilule { justify-content:flex-start; gap:7px; }
+  #pilule .txt { flex:none; white-space:nowrap; font-size:12px; line-height:26px;
+                 transition:opacity .14s ease, transform .14s ease; }
+  #pilule .txt.efface { opacity:0; transform:translateY(2px); }
+  #pilule .nom { font-weight:800; letter-spacing:.8px;
+                 color:color-mix(in oklab, var(--c1) 55%, var(--c2)); }
+  html[data-fini] #pilule .nom { color:#fff; letter-spacing:0; }
+  #pilule .act { margin-left:5px; font-weight:600; opacity:.62; }
+  #pilule .nom { transition:color .4s ease; }
+  html[data-ouvert] #pilule { background:rgba(58,58,62,.94); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); }
+
+  /* The real orb (orbe.html?seule), not an imitation: the page leaves air
+     around the sphere, so the window is larger than the round that shows it. */
+  .mini { width:20px; height:20px; border-radius:50%; overflow:hidden; flex:none; position:relative; }
+  .mini iframe { position:absolute; left:-7px; top:-7px; width:34px; height:34px; border:0; pointer-events:none; }
+
+  /* ── THE PANEL ───────────────────────────────────────────────────────────
+     Apple's rules (HIG Live Activities), applied one by one after the first
+     version, which the author judged "to be seriously reworked":
+       · "expanded = an enlarged version of the compact": the pill's bead
+         becomes the orb on the left, the pill's timer becomes the big timer
+         on the right — both keep their side;
+       · "display the logo mark without a container, don't use the entire app
+         icon": applied then cancelled by the author ("put the logo back", below);
+       · "only use the space needed": no filler subtitle, the track
+         is there from the first step (25/09: otherwise the panel jumped at the 2nd ship), the window takes the measured height;
+       · standard margin of 14 pt, the same everywhere. */
+  #panneau { display:none; position:absolute; left:0; right:0; top:0; padding:14px; box-sizing:border-box;
+             transform-origin:50% 0; }
+  html[data-mode="panneau"] #panneau { display:block; }
+  /* The rim the window's shadow used to draw, removed on 25/09 (see ilot.js,
+     creerPanneau): 24 px of page = the glass's 18 pt, 0.75 zoom included. */
+  html[data-verre] #panneau { border-radius:24px; box-shadow:inset 0 0 0 .5px rgba(255,255,255,.28); }
+  /* Folded, the panel is hidden but its page runs: its animations stop. */
+  html[data-mode="panneau"]:not([data-vu]) * { animation-play-state:paused !important; }
+  html[data-ouvert] #panneau { animation:tombe .42s cubic-bezier(.2,1.3,.4,1) both; }
+  @keyframes tombe { from { opacity:0; transform:translateY(-8px) scale(.96) } to { opacity:1; transform:none } }
+  @media (prefers-reduced-motion: reduce) { html[data-ouvert] #panneau { animation:none } }
+
+  /* ⚠ the author, 24/09: "put the logo back". Apple's rule (not the whole app
+     icon) gives way to their decision: the logo + name header comes back, as on
+     their reference. The orb goes back to the right, in place of the image. */
+  .tete { display:flex; align-items:center; gap:7px; height:22px; }
+  .tete img { width:22px; height:22px; border-radius:6px; }
+  .tete b { font-size:15px; font-weight:700; letter-spacing:-.1px; }
+  /* ⚠ the author, 24/09: "the writing in the orb + the glow have disappeared". The
+     panel's orb is again the WHOLE orb (code pad + glowing name),
+     rendered at its native size of 150 pt then scaled down: at 84 pt of window, the
+     pad (a fixed 78 pt) and the label no longer fitted in the sphere. */
+  /* the author, 24/09: "enlarge the orb slightly (big)": .8 → .9, so
+     135 pt of orb; the panel and the text's right margin follow. */
+  #panneau { min-height:138px; }
+  .corps { position:static; padding-right:128px; }
+  #orbe { position:absolute; right:2px; top:2px; width:150px; height:150px; border:0; pointer-events:none;
+          transform:scale(.9); transform-origin:100% 0; }
+  .ligne { margin-top:8px; display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
+  .vaisseau { font-size:19px; font-weight:800; letter-spacing:1.4px; line-height:23px;
+              color:color-mix(in oklab, var(--c1) 55%, var(--c2)); transition:color 1s; }
+  /* the author, 24/09: "make the names glow a little, big and coloured". A glow
+     in the ship's hue, tight then wide.
+     ⚠ 25/09: it breathed (animated text-shadow), which repainted the panel
+       60 times a second. It is fixed, in the middle of its former breath. */
+  .vaisseau { text-shadow:0 0 6px color-mix(in oklab, var(--c2) 82%, transparent),
+                          0 0 17px color-mix(in oklab, var(--c2) 52%, transparent); }
+  html[data-fini] .vaisseau { color:#fff; letter-spacing:0; text-shadow:none; }
+  /* the author, 24/09: "the 3 little animated dots next to the state have disappeared".
+     The same as under the orb (orbe.html, #dit .pt): three solid dots that
+     jump one after the other while the work runs, absent once finished.
+     ⚠ 25/09: as a CSS animation, they forced 60 frames/s on the panel. They now jump
+       in notches (one dot raised at a time, see sauterPoints). */
+  .pts { margin-left:-6px; font-size:19px; font-weight:800; color:inherit; }
+  .pts i { display:inline-block; font-style:normal; transition:transform .17s ease-in-out; }
+  .pts i.haut { transform:translateY(-2.5px); }
+  html[data-fini] .pts { display:none; }
+  html[data-repos] .grand { display:none; }
+  .grand { font-size:17px; font-weight:700; opacity:.55; }
+  .sous { margin-top:1px; font-size:13px; font-weight:600; line-height:17px; opacity:.62;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* The steps: one stop per ship that took part in this work. While the work
+     runs, what comes next is UNKNOWN: the rail after the current step is
+     dotted, with no arrival. The arrival (check mark) only exists once finished. */
+  .piste { position:relative; height:34px; margin-top:12px; margin-right:128px; display:none; }  /* the track stops before the orb */
+  html[data-etapes] .piste { display:block; }
+  .rail { position:absolute; left:8px; right:8px; top:6px; height:0; border-top:3px dotted rgba(255,255,255,.22); }
+  .plein { position:absolute; left:8px; top:6px; height:3px; border-radius:2px; background:rgba(255,255,255,.9);
+           transition:width .8s cubic-bezier(.3,.8,.3,1); }
+  .arret { position:absolute; top:0; width:15px; height:15px; margin-left:-7.5px; border-radius:50%;
+           background:var(--teinte); box-shadow:0 0 0 2.5px #fff; }
+  .arret.ici { box-shadow:0 0 0 2.5px #fff, 0 0 10px 2px var(--teinte); }
+  .arret.ici { transition:transform .6s ease-in-out; }
+  /* The current step's pulse beats in notches, in time with the three dots (sauterPoints). */
+  .arret.ici.gonfle { transform:scale(1.18); }
+  @media (prefers-reduced-motion: reduce) { .pts i, .arret.ici { transition:none; } }
+  .arret.fin { background:#fff; display:grid; place-items:center; }
+  .arret.fin svg { width:9px; height:9px; }
+  .nom-arret { position:absolute; top:21px; font-size:10px; font-weight:700; letter-spacing:.8px; opacity:.5;
+               transform:translateX(-50%); white-space:nowrap; }
+  .nom-arret.ici { opacity:.95; }
+</style>
+</head>
+<body>
+<div id="pilule">
+  <div class="mini"><iframe data-src="orbe.html?seule" allowtransparency="true"></iframe></div>
+  <span class="txt"><span class="nom"></span><span class="act"></span></span>
+</div>
+
+<div id="panneau">
+  <div class="tete"><img src="assets/gmtr-128.png" alt=""><b>GreyMatter</b></div>
+  <div class="corps">
+    <iframe id="orbe" data-src="orbe.html?ilot" allowtransparency="true"></iframe>
+    <div class="ligne"><span class="vaisseau"></span><span class="pts"><i>.</i><i>.</i><i>.</i></span><span class="grand num">0:00</span></div>
+    <div class="sous"></div>
+  </div>
+  <div class="piste"><div class="rail"></div><div class="plein"></div></div>
+</div>
+
+<script type="module">
+const { ipcRenderer } = require('electron');
+// The panel speaks English. In the author's own copy it speaks French day to day,
+//   and CAPSULE_TOURNAGE=1 switched it to English for public videos.
+const TXT = { repos: 'Idle', dernier: 'last run', etape: 'step', etapes: 'steps', fini: 'Done', par: 'by' };
+const { reglage } = await import('./orbe/palettes.js');
+const racine = document.documentElement;
+const $ = (s) => document.querySelector(s);
+// ⚠ the author, 25/09: "my PC is lagging enormously […] if it's the capsule it
+//   absolutely must be made extremely light". Measured before: 61 % of a core
+//   during work, 28 % at rest. The same page serves both windows, and
+//   each one loaded BOTH WebGL orbs, one of them never shown. Each
+//   window now loads only the orb it displays.
+const PANNEAU_MODE = racine.dataset.mode === 'panneau';
+for (const f of document.querySelectorAll('iframe[data-src]')) {
+  if (f.closest(PANNEAU_MODE ? '#panneau' : '#pilule')) f.src = f.dataset.src; else f.remove();
+}
+
+let course = null, decalage = 0;
+const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const teintes = (etat) => { const r = reglage(etat); return { c1:r.c1, c2:r.c2, c3:r.c3, rim:r.rim }; };
+function poserCouleurs(el, etat) { const t = teintes(etat); for (const k in t) el.style.setProperty('--' + k, t[k]); }
+
+// A note slug reads as words; free text passes as is.
+const lisible = (d) => /^[a-z0-9][a-z0-9-]*$/.test(d || '') ? d.replace(/-/g, ' ') : (d || '');
+
+// The timer is only seen in the open panel; elsewhere, it does not run.
+// Rewriting the same text still repaints: we only write what changes.
+function chrono() {
+  if (!course || !PANNEAU_MODE) return;
+  const t = mmss((course.fin || (Date.now() + decalage)) - course.t0), el = $('#panneau .grand');  // i18n-ok: element ids
+  if (el.textContent !== t) el.textContent = t;
+}
+setInterval(() => { if (racine.hasAttribute('data-vu')) chrono(); }, 250);
+
+// Three dots that jump one after the other, then a pause, and the
+// current step's pulse: four notches of 340 ms (the 1.35 s cycle
+// of before). Three changes a second instead of sixty frames.
+const MOUVEMENT_REDUIT = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let phasePoints = 0;
+function sauterPoints() {
+  if (!PANNEAU_MODE || MOUVEMENT_REDUIT || !racine.hasAttribute('data-vu') || racine.hasAttribute('data-fini')) return;
+  phasePoints = (phasePoints + 1) % 4;
+  document.querySelectorAll('.pts i').forEach((el, i) => el.classList.toggle('haut', i === phasePoints));
+  const ici = $('.arret.ici');
+  if (ici) ici.classList.toggle('gonfle', phasePoints < 2);
+}
+setInterval(sauterPoints, 340);
+
+// The orb (pill and panel) follows THIS work, not its own reading of the file.
+// Said again on each message (700 ms): an orb that finished loading late
+// catches up with the state at the next one.
+// `vu`: the folded panel is a HIDDEN window that still runs (the
+// background throttling is off so it stays measurable). Without this word,
+// its orb went on at 12-30 frames/s for nobody.
+function direOrbe() {
+  const m = { vu: !PANNEAU_MODE || racine.hasAttribute('data-vu') };
+  if (course) {
+    const ici = course.stations[course.stations.length - 1];
+    m.ilot = { state: course.fin ? 'idle' : 'busy', activity: ici ? ici.etat : 'working', detail: course.detail || '' };
+  }
+  document.querySelectorAll('iframe').forEach((f) => f.contentWindow && f.contentWindow.postMessage(m, '*'));
+}
+// the author, 24/09: "when the mini changes size or state the change
+// stutters". Before, the text changed at once, overflowed, then the window
+// jumped 120 ms later. Now: the text fades, the pill slides
+// to its new width (window animated by macOS), then the text comes back.
+// ⚠ the author, 25/09: "the jolts between states are unbearable". Third
+//   pass on this axis: as long as the width follows the text, each change
+//   of state redoes the space in the bar, macOS pushes all the icons and the
+//   panel slides with it. So the width no longer follows the text: it is that of the
+//   longest possible label (all the ships and their actions, "Done",
+//   idle), measured once. It never changes again; only the text
+//   crossfades.
+let largeurFixe = 0;
+function mesurerLargeurFixe(voc) {
+  if (largeurFixe || !voc) return;
+  const txt = $('#pilule .txt'), nom = $('#pilule .nom'), act = $('#pilule .act');
+  const avant = [nom.textContent, act.textContent];
+  const paires = Object.entries(voc).map(([a, v]) => [v, a]).concat([[TXT.fini, ''], ['GreyMatter', 'idle']]);
+  for (const [n, a] of paires) { nom.textContent = n; act.textContent = a; largeurFixe = Math.max(largeurFixe, txt.offsetWidth); }
+  [nom.textContent, act.textContent] = avant;
+}
+let texteVoulu = null, fondu = null, largeurEnvoyee = 0;
+function textePilule(nom, act) {
+  const cle = nom + '|' + act;
+  if (cle === texteVoulu) return;
+  const premier = texteVoulu === null;
+  texteVoulu = cle;
+  const txt = $('#pilule .txt');
+  const poser = () => {
+    $('#pilule .nom').textContent = nom;
+    $('#pilule .act').textContent = act;
+    // 3 (margin) + 20 (orb) + 7 (gap) + text + 11 (right margin)
+    const l = Math.max(60, Math.min(240, Math.ceil(3 + 20 + 7 + Math.max(largeurFixe, txt.offsetWidth) + 11)));
+    const change = l !== largeurEnvoyee;
+    largeurEnvoyee = l;
+    ipcRenderer.send('ilot-largeur', l);
+    return change;
+  };
+  clearTimeout(fondu);
+  if (premier) return poser();
+  txt.classList.add('efface');
+  // The text comes back when the pill has reached its place (message from the
+  // main process), or at the latest 0.7 s after — same width, no message.
+  fondu = setTimeout(() => { fondu = setTimeout(() => txt.classList.remove('efface'), poser() ? 700 : 40); }, 140);
+}
+function peindre() {
+  if (!course) return;
+  const st = course.stations, ici = st[st.length - 1], fini = !!course.fin, repos = !!course.repos;
+  racine.toggleAttribute('data-fini', fini);
+  racine.toggleAttribute('data-repos', repos);
+  // At rest (the user: "even at rest the mini capsule stays"): the pill
+  // says GreyMatter · idle; the panel keeps the last work on one line.
+  if (repos) {
+    poserCouleurs(racine, 'idle');
+    if (racine.dataset.mode !== 'panneau') {
+      textePilule('GreyMatter', 'idle');
+      return;
+    }
+    const d = course.dernier;
+    $('.vaisseau').textContent = TXT.repos;
+    $('.sous').textContent = d ? TXT.dernier + ' · ' + (d.n > 1 ? d.n + ' ' + TXT.etapes : '1 ' + TXT.etape) + ' · ' + mmss(d.duree) : '';
+    racine.removeAttribute('data-etapes');
+    requestAnimationFrame(() => ipcRenderer.send('ilot-hauteur', $('#panneau').offsetHeight));
+    return;
+  }
+  if (ici) poserCouleurs(racine, fini ? 'idle' : ici.etat);
+  chrono();
+  if (racine.dataset.mode !== 'panneau') {
+    textePilule(fini ? TXT.fini : (ici ? ici.vaisseau : ''), fini ? '' : (ici ? ici.etat : ''));
+    return;
+  }
+  const n = st.length;
+  $('.vaisseau').textContent = fini ? TXT.fini : (ici ? ici.vaisseau : '');
+  // The subtitle says what is being done and on what — nothing else. Without detail,
+  // the action alone: a filler "in progress" says nothing (first version).
+  // An agent's detail ("stale notes") comes first; without it, the broad theme.
+  const detail = lisible(course.detail) || course.theme || '';
+  $('.sous').textContent = fini
+    ? (n > 1 ? n + ' ' + TXT.etapes : TXT.par + ' ' + (ici ? ici.vaisseau : ''))
+    : (ici ? (detail ? ici.etat + ' · ' + detail : ici.etat) : '');
+  // From the first step (the author, 25/09, the jolts): the track appeared at the
+  // second ship and the panel grew by 46 pt at once.
+  racine.toggleAttribute('data-etapes', n >= 1);
+  const piste = $('.piste');
+  piste.querySelectorAll('.arret, .nom-arret').forEach((x) => x.remove());
+  if (n >= 1) {
+    // Stops spread out; in progress, the last place is the unknown continuation.
+    // n places: the steps, then at the end the arrival (finished) or the unknown continuation (in progress).
+    const places = n;
+    const pos = (i) => 'calc(8px + (100% - 16px) * ' + (i / places) + ')';
+    st.forEach((x, i) => {
+      const a = document.createElement('div');
+      const courant = !fini && i === n - 1;
+      a.className = 'arret' + (courant ? ' ici' : '');
+      a.style.left = pos(i);
+      a.style.setProperty('--teinte', teintes(x.etat).c2);
+      piste.appendChild(a);
+      const l = document.createElement('div');
+      l.className = 'nom-arret' + (courant ? ' ici' : '');
+      l.textContent = x.vaisseau;
+      l.style.left = pos(i);
+      if (i === 0) { l.style.transform = 'translateX(-7.5px)'; }
+      piste.appendChild(l);
+    });
+    // ⚠ the author, 24/09: "the names overlap" — at five steps, 50 pt per
+    //   stop for names of 70 to 80 pt. Under 84 pt of gap, only the name of
+    //   the current step (or of the last, once finished) stays written; the
+    //   colour dot already says which ship went by.
+    const ecart = (piste.clientWidth - 16) / places;
+    if (ecart < 84) piste.querySelectorAll('.nom-arret').forEach((l, i) => { if (i !== n - 1) l.remove(); });
+    if (fini) {
+      const f = document.createElement('div'); f.className = 'arret fin'; f.style.left = pos(n);
+      f.innerHTML = '<svg viewBox="0 0 10 10"><path d="M2 5.2 4.2 7.4 8 3" fill="none" stroke="#111" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      piste.appendChild(f);
+    }
+    $('.plein').style.width = 'calc((100% - 16px) * ' + ((fini ? n : n - 1) / places) + ')';
+  }
+  // The window takes the content's height (Apple: 84 to 160 pt).
+  requestAnimationFrame(() => ipcRenderer.send('ilot-hauteur', $('#panneau').offsetHeight));
+}
+
+ipcRenderer.on('ilot', (_e, c) => {
+  if (!c) return direOrbe();
+  // data-vu, not data-ouvert: setting data-ouvert late would replay the panel's drop.
+  if (PANNEAU_MODE && racine.hasAttribute('data-vu') !== !!c.ouvert) { racine.toggleAttribute('data-vu', !!c.ouvert); chrono(); }
+  decalage = c.maintenant - Date.now();
+  const avant = JSON.stringify(course && [course.stations, course.fin, course.detail, course.theme]);
+  course = c;
+  mesurerLargeurFixe(c.vocabulaire);
+  if (JSON.stringify([c.stations, c.fin, c.detail, c.theme]) !== avant) peindre(); else chrono();
+  direOrbe();
+});
+ipcRenderer.on('ilot-pose', () => { clearTimeout(fondu); $('#pilule .txt').classList.remove('efface'); });
+ipcRenderer.on('ilot-verre', () => racine.setAttribute('data-verre', ''));
+ipcRenderer.on('ilot-ouvert', (_e, v) => {
+  racine.toggleAttribute('data-ouvert', v);
+  if (PANNEAU_MODE) racine.toggleAttribute('data-vu', v);
+  chrono(); direOrbe();
+});
+$('#pilule').addEventListener('mousedown', () => ipcRenderer.send('ilot-clic'));
+</script>
+</body>
+</html>

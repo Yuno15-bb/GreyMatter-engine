@@ -1,6 +1,6 @@
 # Engine-owned paths, mounted INSIDE the trunk as symlinks by install.sh.
 #
-# WHY THIS FILE EXISTS (2026-08-16, reported by Maissane Lagsir).
+# WHY THIS FILE EXISTS (2026-08-16, reported by a tester).
 # These directories live in the trunk but belong to the ENGINE's git repository.
 # Nothing told the gardening agents that this corner of the trunk is not note
 # content, so the architect wove `[[...]]` links into `agents/*.md` — correct work,

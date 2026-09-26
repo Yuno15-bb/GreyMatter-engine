@@ -1,0 +1,112 @@
+{
+  "_about": "Provenance protocol cases for ADR-0009. Valid examples are followed by one violation per invariant. All notes are synthetic. JSON prevents test material from entering the indexed Markdown corpus.",
+  "_shape": "Each case contains frontmatter as text, exercising the parser rather than a pre-parsed dictionary. parent_kind models the provenance of a parent note.",
+  "cases": [
+    {
+      "id": "F1-user-decision",
+      "expected": "valid",
+      "description": "The owner made an explicit, cited project decision.",
+      "frontmatter": "provenance:\n  kind: user_decision\n  ref: \"the owner, 2026-08-15: keep both applications\"\n  captured_at: 2026-08-15\nauthority:\n  validated: true\n  scope: project\n  confidence: high"
+    },
+    {
+      "id": "F2-official-documentation",
+      "expected": "valid",
+      "description": "Official vendor documentation is reliable evidence but has no right to instruct the project.",
+      "frontmatter": "provenance:\n  kind: official_documentation\n  ref: \"https://docs.anthropic.com/…  (accessed on 2026-08-16)\"\n  captured_at: 2026-08-16\nauthority:\n  validated: false\n  scope: world\n  confidence: high"
+    },
+    {
+      "id": "F3-web",
+      "expected": "valid",
+      "description": "A discovered web page can support facts, not rules.",
+      "frontmatter": "provenance:\n  kind: web\n  ref: \"https://example.test/article  (accessed on 2026-08-16)\"\n  captured_at: 2026-08-16\nauthority:\n  validated: false\n  scope: world\n  confidence: low"
+    },
+    {
+      "id": "F4-validated-internal-experience",
+      "expected": "valid",
+      "description": "A replayable local observation can be validated without the owner.",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  ref: \"tests/golden_recall.py\"\n  captured_at: 2026-08-16\nauthority:\n  validated: true\n  scope: repository\n  confidence: high\nvalidation:\n  method: deterministic_replay\n  command: \"python3 tests/golden_recall.py --check\"\n  result: pass\n  at: 2026-08-16"
+    },
+    {
+      "id": "F5-agent-inference",
+      "expected": "valid",
+      "description": "A model conclusion without observation is valid as a note but has no authority.",
+      "frontmatter": "provenance:\n  kind: agent_inference\n  ref: \"session reasoning, no observable\"\n  captured_at: 2026-08-16\nauthority:\n  validated: false\n  scope: repository\n  confidence: low"
+    },
+    {
+      "id": "F6-unknown",
+      "expected": "valid",
+      "description": "I2: record when the origin is unknown; ref is optional here.",
+      "frontmatter": "provenance:\n  kind: unknown\nauthority:\n  validated: false\n  scope: repository\n  confidence: low"
+    },
+    {
+      "id": "F7-multiple-sources",
+      "expected": "valid",
+      "description": "I5: a web illustration does not weaken a sound internal basis.",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  sources:\n    - kind: internal_experience\n      role: basis\n      ref: \"tests/golden_recall.py\"\n    - kind: official_documentation\n      role: evidence\n      ref: \"https://docs.example.test/bm25\"\n    - kind: web\n      role: illustration\n      ref: \"https://example.test/article\"\n  captured_at: 2026-08-16\nauthority:\n  validated: true\n  scope: repository\n  confidence: high\nvalidation:\n  method: deterministic_replay\n  command: \"python3 tests/golden_recall.py --check\"\n  result: pass\n  at: 2026-08-16"
+    },
+    {
+      "id": "V1-kind-outside-vocabulary",
+      "expected": "rejected",
+      "invariant": "closed vocabulary",
+      "description": "An invented vocabulary value must be rejected.",
+      "frontmatter": "provenance:\n  kind: intuition\n  ref: \"—\"\nauthority:\n  validated: false\n  scope: repository\n  confidence: low"
+    },
+    {
+      "id": "V2-missing-ref",
+      "expected": "rejected",
+      "invariant": "named observable",
+      "description": "Every known kind must name an observable ref.",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  captured_at: 2026-08-16\nauthority:\n  validated: false\n  scope: repository\n  confidence: medium"
+    },
+    {
+      "id": "V3-user-decision-world-scope",
+      "expected": "rejected",
+      "invariant": "I6",
+      "description": "The owner decides project conventions, not external facts.",
+      "frontmatter": "provenance:\n  kind: user_decision\n  ref: \"the owner: BM25 is better than embeddings\"\n  captured_at: 2026-08-16\nauthority:\n  validated: true\n  scope: world\n  confidence: high"
+    },
+    {
+      "id": "V4-validated-web",
+      "expected": "rejected",
+      "invariant": "I1 + I3",
+      "description": "An external source cannot validate itself.",
+      "frontmatter": "provenance:\n  kind: web\n  ref: \"https://example.test/article\"\n  captured_at: 2026-08-16\nauthority:\n  validated: true\n  scope: repository\n  confidence: high"
+    },
+    {
+      "id": "V5-validation-without-proof",
+      "expected": "rejected",
+      "invariant": "I1",
+      "description": "Validation without proof or a linked decision is self-promotion.",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  ref: \"observed in a session\"\n  captured_at: 2026-08-16\nauthority:\n  validated: true\n  scope: repository\n  confidence: high"
+    },
+    {
+      "id": "V6-correction-without-trace",
+      "expected": "rejected",
+      "invariant": "I4",
+      "description": "A correction without actor, time, and reason is indistinguishable from falsification.",
+      "frontmatter": "provenance:\n  kind: web\n  ref: \"https://example.test/article\"\n  captured_at: 2026-08-16\n  corrections:\n    - from: internal_experience\n      to: web\nauthority:\n  validated: false\n  scope: repository\n  confidence: low"
+    },
+    {
+      "id": "V7-laundering-through-transformation",
+      "expected": "rejected",
+      "invariant": "I7",
+      "description": "A note derived from web material cannot declare itself internal experience.",
+      "parent_kind": "web",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  ref: \"rewritten and filed in the trunk\"\n  captured_at: 2026-08-16\n  derived_from: [a-note-derived-from-web]\nauthority:\n  validated: false\n  scope: repository\n  confidence: medium"
+    },
+    {
+      "id": "V8-multiple-sources-without-basis",
+      "expected": "rejected",
+      "invariant": "I5 + I7",
+      "description": "The principal kind cannot claim internal experience when no basis source has that kind.",
+      "frontmatter": "provenance:\n  kind: internal_experience\n  sources:\n    - kind: web\n      role: basis\n      ref: \"https://example.test/article\"\n    - kind: internal_experience\n      role: illustration\n      ref: \"a screenshot\"\n  captured_at: 2026-08-16\nauthority:\n  validated: false\n  scope: repository\n  confidence: medium"
+    },
+    {
+      "id": "V9-validated-unknown",
+      "expected": "rejected",
+      "invariant": "I2",
+      "description": "Unknown origin means no authority.",
+      "frontmatter": "provenance:\n  kind: unknown\nauthority:\n  validated: true\n  scope: repository\n  confidence: high"
+    }
+  ]
+}

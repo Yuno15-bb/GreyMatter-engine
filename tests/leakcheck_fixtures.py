@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 # C Brain — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
-"""Prouve que l'exception « leurres de test » n'a pas ouvert une porte.
+"""Prove that the synthetic fixture exception has not opened a leak path.
 
-POURQUOI CE FICHIER EXISTE. Le contrôle de fuite bloquait les tests écrits POUR
-LUI : `fiche_write_contract.py` doit contenir une fausse clé pour prouver qu'une
-clé est refusée. On a donc ajouté une exception (`FIXTURES` dans leakcheck.py).
-Une exception non testée est un trou qui s'ignore : ce fichier est la
-contre-épreuve.
+The leak check must allow a fake key in `fiche_write_contract.py` so that test
+can prove a real key is rejected. This countercheck exercises the exception:
+  1. a declared decoy is allowed under tests/;
+  2. the same decoy is rejected outside tests/;
+  3. a nearby but undeclared value is rejected;
+  4. a real key and personal path are rejected even under tests/;
+  5. the marker count stays fixed.
 
-CE QU'IL VÉRIFIE. Les trois verrous, un par un, en essayant de les forcer :
-  1. le leurre déclaré passe — sinon l'exception ne sert à rien ;
-  2. le MÊME leurre hors de `tests/` reste ROUGE — l'exception ne fuit pas ;
-  3. une valeur VOISINE mais non déclarée reste ROUGE — la liste est fermée ;
-  4. une vraie clé et un vrai chemin, DANS `tests/`, restent ROUGES ;
-  5. le nombre de marqueurs n'a pas bougé — personne n'en a désarmé un.
+Forbidden values are assembled at runtime. A complete literal here would
+trigger the scanner on its own test and require a circular exemption.
 
-⚠ Les valeurs interdites de ce fichier sont ASSEMBLÉES À L'EXÉCUTION, jamais
-écrites en clair : un littéral déclencherait le contrôle sur ce fichier même,
-et il faudrait alors l'exempter — ce qui reviendrait à se mordre la queue.
-
-Lancer : python3 tests/leakcheck_fixtures.py
+Run: python3 tests/leakcheck_fixtures.py
 """
 
 import importlib.util
@@ -38,59 +32,56 @@ COMPILED = [(label, re.compile(motif)) for label, motif in lc.MARKERS]
 
 
 def fuites(source: str, texte: str):
-    """Rejoue le vrai `scan` du contrôleur, sans réimplémenter sa logique."""
+    """Call the real scanner without duplicating its detection logic."""
     trouve = []
     lc.scan(source, texte, COMPILED, trouve)
     return [(label, extrait) for _, label, extrait in trouve]
 
 
-# Valeurs assemblées — voir l'avertissement du docstring.
+# Assemble values at runtime as described above.
 LEURRE_CLE = "sk-" + "ant-" + "AAAABBBBCCCCDDDDEEEE"
 LEURRE_CHEMIN = "/Users/" + "x/"
 VRAIE_CLE = "sk-" + "ant-" + "api03" + "-9f2Kd7Qm4Xr8Tz1Lb6Vn0Yc3Hs5Wj"
-VRAI_CHEMIN = "/Users/" + "dylanp/"
-VOISIN = "sk-" + "ant-" + "AAAABBBBCCCCDDDDEEEF"   # une lettre de plus, non déclaré
+VRAI_CHEMIN = "/Users/" + "exampleuser/"
+AUTRE_CHEMIN = "/Users/" + "exampleuser2/"
+VOISIN = "sk-" + "ant-" + "AAAABBBBCCCCDDDDEEEF"   # one extra letter, undeclared
 
-# ⚠ L'AFFECTATION AUSSI est assemblée, pas seulement la valeur. Un f-string qui
-# écrirait le mot-clé, l'égal, le guillemet et un champ nommé sur une même ligne
-# correspondrait LUI-MÊME au marqueur « secret assigné en clair » : le motif ne
-# regarde pas la valeur, il regarde la FORME de la ligne. Constaté deux fois le
-# 2026-08-26 — d'abord dans les cas de test, puis dans le commentaire qui
-# l'expliquait en le citant. Ne rien écrire ici qui ait cette forme.
+# Assemble the assignment as well as its value. A formatted assignment with
+# the keyword and quoted value on one line would match the plaintext secret
+# pattern in this file. This occurred twice on 2026-08-26, even in a comment.
 def _affectation(valeur: str) -> str:
     return "SECRET" + ' = "' + valeur + '"'
 
 
-# ⚠ DURCI le 2026-08-26. Chaque cas nomme le marqueur qui DOIT se déclencher,
-# au lieu de se contenter d'un « quelque chose a été signalé ». Un sabotage l'a
-# prouvé nécessaire : en autorisant une vraie clé comme leurre, le cas « une
-# VRAIE clé reste rouge » continuait de passer — parce qu'un AUTRE marqueur
-# (« secret assigné en clair ») prenait le relais. Le contrôle semblait tenir
-# alors que le marqueur visé avait été désarmé.
+# Each case requires a specific marker, not merely any alert. Allowing a real
+# key as a decoy once still appeared to fail because another marker caught the
+# assignment shape. The targeted marker had actually been disabled.
 CAS = [
-    # (intitulé, chemin, texte, marqueur attendu — None = doit rester vert)
-    ("le leurre déclaré passe sous tests/",
+    # (case name, path, text, expected marker; None means clean)
+    ("declared decoy passes under tests/",
      "tests/fiche_write_contract.py", _affectation(LEURRE_CLE), None),
-    ("le chemin leurre passe sous tests/",
+    ("path decoy passes under tests/",
      "tests/a1_pixel_lib.py", f'p = "{LEURRE_CHEMIN}.c-brain"', None),
 
-    ("le MÊME leurre hors de tests/ reste rouge",
-     "cbrain/engine-lib.sh", _affectation(LEURRE_CLE), "clé Anthropic"),
-    ("le MÊME chemin leurre hors de tests/ reste rouge",
-     "install.sh", f'p = "{LEURRE_CHEMIN}.c-brain"', "chemin personnel"),
+    ("same decoy is blocked outside tests/",
+     "cbrain/engine-lib.sh", _affectation(LEURRE_CLE), "Anthropic key"),
+    ("same path decoy is blocked outside tests/",
+     "install.sh", f'p = "{LEURRE_CHEMIN}.c-brain"', "personal path"),
 
-    ("une valeur VOISINE non déclarée reste rouge",
-     "tests/fiche_write_contract.py", _affectation(VOISIN), "clé Anthropic"),
+    ("nearby undeclared value is blocked",
+     "tests/fiche_write_contract.py", _affectation(VOISIN), "Anthropic key"),
 
-    ("une VRAIE clé dans tests/ reste rouge",
-     "tests/fiche_write_contract.py", _affectation(VRAIE_CLE), "clé Anthropic"),
-    ("un VRAI chemin personnel dans tests/ reste rouge",
-     "tests/a1_pixel_lib.py", f'p = "{VRAI_CHEMIN}.c-brain"', "chemin personnel"),
+    ("real key is blocked under tests/",
+     "tests/fiche_write_contract.py", _affectation(VRAIE_CLE), "Anthropic key"),
+    ("real personal path is blocked under tests/",
+     "tests/a1_pixel_lib.py", f'p = "{VRAI_CHEMIN}.c-brain"', "personal path"),
+    ("another invented user path is blocked under tests/",
+     "tests/a1_pixel_lib.py", f'p = "{AUTRE_CHEMIN}.c-brain"', "personal path"),
 
-    ("l'historique d'un test est traité comme le test",
-     "historique:tests/fiche_write_contract.py", _affectation(LEURRE_CLE), None),
-    ("l'historique d'un fichier moteur reste rouge",
-     "historique:install.sh", _affectation(LEURRE_CLE), "clé Anthropic"),
+    ("test history gets the same narrow exception",
+     "history:tests/fiche_write_contract.py", _affectation(LEURRE_CLE), None),
+    ("engine file history stays blocked",
+     "history:install.sh", _affectation(LEURRE_CLE), "Anthropic key"),
 ]
 
 
@@ -102,40 +93,39 @@ def main() -> int:
         labels = [l for l, _ in trouve]
         if marqueur_attendu is None:
             ok = not trouve
-            attendu = "vert"
+            attendu = "clean"
         else:
-            # Il ne suffit PAS qu'un marqueur ait parlé : c'est CELUI-LÀ qui doit
-            # parler. Sinon un marqueur désarmé passe inaperçu derrière un voisin.
+            # Require the targeted marker; another marker could mask its failure.
             ok = marqueur_attendu in labels
-            attendu = f"ROUGE sur « {marqueur_attendu} »"
-        obtenu = f"ROUGE sur {labels}" if trouve else "vert"
+            attendu = f"RED for {marqueur_attendu}"
+        obtenu = f"RED for {labels}" if trouve else "clean"
         marque = "✅" if ok else "❌"
-        print(f"  {marque} {intitule}\n       attendu {attendu}, obtenu {obtenu}")
+        print(f"  {marque} {intitule}\n       expected {attendu}, got {obtenu}")
         if not ok:
             echecs.append(intitule)
 
-    # Personne n'a désarmé un marqueur en passant.
+    # No marker may be silently disabled.
     attendus = 21
     if len(lc.MARKERS) != attendus:
-        print(f"  ❌ le nombre de marqueurs a changé : {len(lc.MARKERS)} au lieu de {attendus}")
-        echecs.append("nombre de marqueurs")
+        print(f"  ❌ marker count changed: {len(lc.MARKERS)} instead of {attendus}")
+        echecs.append("marker count")
     else:
-        print(f"  ✅ les {attendus} marqueurs sont toujours armés")
+        print(f"  ✅ all {attendus} markers remain active")
 
-    # L'exception reste étroite : uniquement sous tests/.
+    # Keep the decoy exception limited to tests/.
     if lc.FIXTURES_DIRS != ("tests/",):
-        print(f"  ❌ la portée des leurres s'est élargie : {lc.FIXTURES_DIRS}")
-        echecs.append("portée des leurres")
+        print(f"  ❌ decoy scope widened: {lc.FIXTURES_DIRS}")
+        echecs.append("decoy scope")
     else:
-        print("  ✅ les leurres restent confinés à tests/")
+        print("  ✅ decoys remain confined to tests/")
 
     print()
     if echecs:
-        print(f"⛔ {len(echecs)} contre-épreuve(s) en échec — l'exception a ouvert un trou.")
+        print(f"⛔ {len(echecs)} countercheck(s) failed — the exception has a gap.")
         for e in echecs:
             print(f"   · {e}")
         return 1
-    print("✅ L'exception tient : les leurres passent, tout le reste rougit.")
+    print("✅ Exception holds: decoys pass and other values are blocked.")
     return 0
 
 

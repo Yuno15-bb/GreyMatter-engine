@@ -409,8 +409,8 @@ fi
 # directories are mounted inside the trunk as symlinks, so an agent weaving
 # `[[...]]` links across the trunk reaches them and dirties the ENGINE repo. That
 # used to close a loop: every pass dirtied the engine, the next update refused,
-# and the user fell behind for ever, silently. Reported 2026-08-16 by Maissane
-# Lagsir on an install stranded exactly this way.
+# and the user fell behind for ever, silently. Reported 2026-08-16 by a tester
+# on an install stranded exactly this way.
 #
 # Tolerating it costs nothing: the block further down already runs
 # `git checkout -- .` after a successful update, so these edits were always going

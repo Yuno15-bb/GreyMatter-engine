@@ -2,11 +2,32 @@
 
 Generated from the annotated git tags by `cbrain/changelog.sh` — do not edit by hand.
 Every entry is the message that was attached to the tag when the version was published.
+The Unreleased section below records the local port and is not a published tag.
 
 The `fr` branch stopped being a released product on 2026-08-13 — it is the staging
 buffer the engine is synced onto, and `publish.sh` refuses to tag from it. The `-fr`
 tags up to v1.27.0-fr stay published (moving a tag breaks the fetch of anyone still on
 it), and are not listed here.
+
+## [Unreleased]
+
+- Ported the newer French engine behavior into the English hooks and CLI, while
+  retaining the English package's trunk layout, plugin interface, and activity
+  freshness features (lots 1–2).
+- Replaced eight role briefs with four ship briefs covering eight missions (lot 3).
+- Ported the portable French test fixtures and behavior checks, including the
+  synthetic governance and recovery cases (lots 4–5).
+- Updated synchronization, generalization, ranking defaults, the Planet's live
+  scene, and the capsule's motion cadence (lot 6).
+- Replaced clear-text named leak markers and exception values with salted
+  fingerprints; kept the numeric postal-code pattern (lot 7).
+- Aligned the installation, security, verification, Planet, and translation
+  guides with the current code (lot 8).
+- Removed private corpus witnesses and personal references from the package;
+  extended the leak guard with fingerprints for private paths and identifiers.
+  The local branch history remains subject to the owner's publication decision.
+- Expanded English checks to data and capsule benches, translated the public
+  authority and provenance fixtures, and removed dated private measurements.
 
 ## v1.28.0 — 2026-08-16
 
@@ -158,13 +179,12 @@ English by default, public, 8 agents renamed and rewritten
 
 ## v1.0.2 — 2026-07-26
 
-publication verrouillée, sync --check corrigé
+Publication guarded, `sync --check` corrected
 
 ## v1.0.1 — 2026-07-26
 
-documentation de l'authentification sur dépôt privé
+Documented authentication for a private repository
 
 ## v1.0.0 — 2026-07-26
 
-C Brain v1.0.0 — première version installable
-
+C Brain v1.0.0 — first installable release

@@ -222,10 +222,19 @@ def clean_body(text):
     return txt
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, legitimate
+import topics_fiche  # noqa: E402
+# A trunk without `meta/topics.json` (the benches' mini-trunks) exports its topics as None;
+# a real trunk has its source, and `tests/topics_canoniques.py` locks that it exists.
+TOPICS = ({t["id"]: t.get("name", t["id"])
+           for t in json.load(open(topics_fiche.SOURCE, encoding="utf-8"))["topics"]}
+          if os.path.exists(topics_fiche.SOURCE) else {})
+
+
 def scan():
     nodes = {}      # id -> {id, name, domain, group, desc, file}
     raw_links = []   # (src_id, target_name)
-    link_types = {}  # (src_id, target_name) -> "based_on" | "contradicts" | "replaces"
+    link_types = {}  # (src_id, target_name) -> one of RELATION_TYPES
     unknown_relations = 0   # qualifications lost to a type outside RELATION_TYPES
     embed2, sem_state, sem_detail = load_embed2()   # semantic positions + WHY, keyed by note path
     heat, coact_edges, live, live_window_min = load_coact()   # heat + usage links + live activity
@@ -271,6 +280,12 @@ def scan():
                 sm = FM_SCALE.search(fm)
                 scale = float(sm.group(1)) if sm else guess_scale(nid)
                 rel_file = os.path.relpath(path, BRAIN)
+                # ── THE TOPIC (N1, 09/23): `topic:` and its values from `meta/topics.json`, read
+                # by `topics_fiche` — the trunk's only definition, not a seventh dialect. A value
+                # outside the source (old vocabulary) is exported as None: the map must not
+                # invent an extra topic that the `topics_canoniques` bench refuses.
+                topic, _secondary = topics_fiche.lire(text)
+                topic = topic if isinstance(topic, str) and topic in TOPICS else None
                 nodes[nid] = {"id": nid, "name": nid, "title": title, "domain": domain,
                               "group": group, "desc": desc,
                               "born_from": born, "scale": scale,
@@ -291,6 +306,7 @@ def scan():
                               "conviction": beliefs.get(rel_file),     # a dated conviction, or None
                               "media": media.get(rel_file),            # a replayable capture, or None
                               "resume": bool(RESUME_RE.search(text)),  # carries a resume point (↻ badge)
+                              "topic": topic,
                               "file": rel_file}
                 # outgoing links (deduplicated below)
                 for tgt in set(LINK.findall(text)):
@@ -405,6 +421,8 @@ def scan():
                    # how many, so the loss is visible without a second validator.
                    "unknown_relations": unknown_relations},
         "domains": DOMAINS,
+        # the topics and their names, in the source's order: the map copies no list
+        "topics": TOPICS,
         # LIVE ACTIVITY window (minutes): the visualizer fades out a ring whose `active_ts`
         # has left the window on its own, without waiting for a graph regeneration.
         "live_window_min": live_window_min,
@@ -434,9 +452,56 @@ def scan():
     }
 
 
-RELATION_TYPES = ("based_on", "contradicts", "replaces")
+# ── THE RELATION VOCABULARY — closed, decided by the author on 2026-09-17 (ADR-0019) ──
+# Four types that each say one precise thing, plus ONE catch-all that must say why.
+# The catch-all exists because refusing it does not remove the need, it pushes it towards
+# invented words the export drops silently: measured on 09/17, a made-up "neighbour of"
+# type — in no vocabulary — carried 239 links, 42 % of the total, and vanished without a word.
+#   based_on     this note PRESUPPOSES the other
+#   refines      this note sharpens the other without contradicting it
+#   contradicts  the two cannot both be true
+#   replaces     the other is dead, this one takes over (the ONLY active type: leaves recall)
+#   related_to   everything else — only complete with its reason, in one sentence
+RELATION_TYPES = ("based_on", "refines", "contradicts", "replaces", "related_to")
+
+# TWO FORMS, because both were already written in the trunk on 09/17:
+#     based_on: [a, b]         the short form;
+#     based_on:                the block form (a YAML list) — it used to be dropped
+#       - a                    SILENTLY, the parser only accepting brackets;
+#     related_to:              the block form also carries the reason, after a colon.
+#       - a: because …
+# `- a: reason` is valid YAML (a list of mappings), so a real YAML reader does not choke
+# on it the day one goes through.
 _REL_BLOCK = re.compile(r"^relations:\s*$(.*?)(?=^\S|\Z)", re.M | re.S)
 _REL_LINE = re.compile(r"^\s+(\w+)\s*:\s*\[([^\]]*)\]", re.M)
+_REL_HEAD = re.compile(r"^\s+(\w+)\s*:\s*$")
+_REL_ITEM = re.compile(r"""^\s+-\s+["']?([^:"'\n]+?)["']?\s*(?::\s*(\S.*?))?\s*$""")
+
+
+def raw_relations(block):
+    """[(type, target, reason|None)] for EVERYTHING written under `relations:`, without
+    filtering on RELATION_TYPES. It is what the doctor reads to NAME the types the export
+    will drop: it can only say so if it first sees what is written, the unknown included."""
+    out, current = [], None
+    for line in block.split("\n"):
+        m = _REL_LINE.match(line)
+        if m:
+            current = None
+            for c in m.group(2).split(","):
+                c = c.strip().strip('"\'')
+                if c:
+                    out.append((m.group(1), c, None))
+            continue
+        m = _REL_HEAD.match(line)
+        if m:
+            current = m.group(1)
+            continue
+        m = _REL_ITEM.match(line) if current else None
+        if m:
+            out.append((current, m.group(1).strip(), (m.group(2) or "").strip() or None))
+        elif line.strip():
+            current = None
+    return out
 
 
 def _relations(text):
@@ -447,7 +512,8 @@ def _relations(text):
     RELATION_TYPES used to vanish without a word, and 58 `base_sur` in the private trunk
     would come out unqualified under this exporter with no error and no log.
 
-    What is counted is the unrecognized TYPE LINE, not its targets, for two reasons: it is
+    What is counted is the unrecognized TYPE, once per note, not its targets — whether it
+    is written as a bracket line or as a block list — for two reasons: it is
     what the viewer's wording says ("relation types were not recognized"), and it makes
     this count comparable to `brain_doctor`'s `unknown_relation`, which lists one entry per
     (note, type) — the two read the same block with the same parser and must agree.
@@ -461,13 +527,13 @@ def _relations(text):
     block = _REL_BLOCK.search(fm.group(1) + "\n")
     if not block:
         return {}, 0
-    out, unknown = {}, 0
-    for typ, targets in _REL_LINE.findall(block.group(1)):
+    out, unknown_types = {}, set()
+    for typ, target, _reason in raw_relations(block.group(1)):
         if typ in RELATION_TYPES:
-            out[typ] = [c.strip().strip('"\'') for c in targets.split(",") if c.strip()]
+            out.setdefault(typ, []).append(target)
         else:
-            unknown += 1
-    return out, unknown
+            unknown_types.add(typ)
+    return out, len(unknown_types)
 
 
 def main():

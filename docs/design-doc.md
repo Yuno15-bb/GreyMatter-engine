@@ -62,14 +62,18 @@ In an isolated `HOME` first, then on a third-party machine:
 | Installation | `git clone && ./install.sh` — **zero manual steps** beyond an admin password, under 10 minutes |
 | Health | `brain selftest` **green**, `brain doctor` without error |
 | Hooks live | a test session triggers recall + archiving (proven by `state/`, not by the docs) |
-| Agents resolved | the 8 agents listed by the CLI (the symlink trap is detected by the installer) |
+| Agents resolved | the 4 ship briefs listed by the CLI, covering 8 missions (the symlink trap is detected by the installer) |
 | Capsule | an Electron window animating on a change to `state/status.json` |
 | Planet | double-clicking the `.command` → a globe served on `localhost:8765` |
 | Status line | visible in the CLI, same rendering as on the source machine |
 | Idempotence | a second `install.sh` run does zero damage, `settings.json` untouched |
 | **Updates** | a fix published here reaches the user **at their next session start**, without intervention, **without touching a single one of their notes** |
 | **User rollback** | `brain update --rollback` restores the previous version in one command |
-| Leaks | `leakcheck`: **zero marker** of personal data or secrets in the repo, git history included |
+| Leaks | `leakcheck`: **zero marker** of personal data or secrets in the published repo and its history |
+
+The local port branch has a clean working tree scan but old commits with names
+now covered by new fingerprints. It must not be published as-is; the owner will
+decide how to handle its history.
 
 ## Non-goals (explicit boundaries)
 
@@ -94,7 +98,8 @@ imported from the same module would be tautological and could never fail.
 **The ranking weights live in `config/ranking.json`**, not in the engine. Each weight ships
 with the measurement that justifies it, and `brain_recall.py --explain` decomposes any
 result into the components that actually exist — the BM25 contribution per term, and the
-utility factor as the multiplier it really is. It publishes no invented component: a number
+utility annotation. Since ADR-0018, usage no longer multiplies the ranking score;
+configured `alpha` is zero. It publishes no invented component: a number
 nobody computes would be worse than no explanation, because it would be trusted.
 
 The file is optional. Absent, unreadable or truncated, recall falls back on defaults that
@@ -105,7 +110,8 @@ of silently serving one scored under the old rules.
 One knob ships OFF: `index.family_bridge_weight`, the vocabulary bridge between notes of the
 same thematic family. At weight 1, on a 15-case golden set over a real trunk, it demoted the
 note that literally answers the query from 1st to 2nd place and promoted an off-topic one.
-The mechanism is there; turning it up is a decision that owes a measurement.
+The setting remains off, and this package has no thematic-family registry to read.
+Turning it up would require a registry and a fresh measurement.
 
 ## One owner per vocabulary
 
@@ -239,7 +245,7 @@ c-brain/
                       #   coherence|utility|credit|embed|push|metrics|selftest|backup|
                       #   update|demo|capsule|version)
   hooks/              # the hooks + .plist.template  (desktop-sync EXCLUDED)
-  agents/             # 8 agent definitions, generalized (no client or project names)
+  agents/             # 4 ship briefs, 8 missions (no client or project names)
   capsule/            # Electron, without node_modules, without dead assets
   planet/             # index.html, launch.sh, media/  (graph.json EXCLUDED)
   companion/          # live change tracking

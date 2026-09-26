@@ -24,6 +24,10 @@ The launcher rebuilds the graph **before** opening the page, so the map never
 shows a stale state. Nothing is stored between launches: close the tab and it all
 comes back from the trunk next time.
 
+While the page is open, heat and activity update on the existing scene. A change
+to a note's content or title changes the scene signature and rebuilds its points;
+the visible rebuild counter makes this distinction observable.
+
 It announces itself as `📟 Trunk planet — MOTHER signature`. MOTHER is the
 phosphor-and-frame look the map wears — the one the ship's terminal wears in
 *Alien* — and the launcher names it so you can tell at a glance which face you

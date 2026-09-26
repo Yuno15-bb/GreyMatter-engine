@@ -41,9 +41,9 @@ SKIP_FILES = {
     "docs/translation.md",   # documents the fr branch, quotes it
     "sync.sh",               # reads the author's living, French Brain
     "rules.json",            # the French→English rules themselves
+    "tests/banc-retrieval/cas.json",  # French retrieval queries are the benchmark input
     "generalize.py",         # ships the French patterns it rewrites
-    "leakcheck.py",          # French markers are what it hunts for
-    "tests/leakcheck_fixtures.py",  # its counter-proof: same markers, same reason
+    "leakcheck.py",          # its postal-address pattern must recognize French street terms
     "tests/english_only.py",
 }
 SKIP_DIRS = {".git", "node_modules", "docs/media", "planet/media", "skeleton", "demo"}
@@ -64,7 +64,8 @@ PATTERNS = [
     re.compile(r">([^<>{}\n]{4,})<"),
 ]
 
-EXTS = {".py", ".sh", ".js", ".html", ".md", ""}
+EXTS = {".py", ".sh", ".js", ".html", ".md", "", ".json", ".jsonl",
+        ".txt", ".cjs", ".yml", ".yaml", ".toml", ".css"}
 
 
 def visible_strings(text):
@@ -261,7 +262,9 @@ def main():
             continue
         lines = text.splitlines()
         body = strip_comments(text, p.suffix)
-        for s in visible_strings(body):
+        # Plain text has no quoting syntax: each line is display text.
+        candidates = body.splitlines() if p.suffix == ".txt" else visible_strings(body)
+        for s in candidates:
             hit = [c for c in s if c in ACCENTS] or sans_accent(s)
             if not hit or ALLOWED.search(s):
                 continue

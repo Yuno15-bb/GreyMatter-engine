@@ -55,6 +55,16 @@ SKIP_DIRS = {
     #     sense if it keeps competing with the present in search. Kept on disk and in
     #     git, kept out of recall.
     "archive",
+    # `vision/` = SOURCE documents about vision and continuity (the C Brain/GMatter
+    # MASTER, 2026-08-19). They are not knowledge notes: they are long narratives
+    # that explain WHY the system exists. A single one of them weighs more than 20
+    # notes and touches the project's whole vocabulary — indexed, it would surface on
+    # almost every query and crush the precise note being looked for (the same
+    # mechanism as `archive/`, measured on 2026-08-14).
+    # They stay reachable through their POINTER in MEMORY.md and through the short
+    # note that serves as their entry point, which is indexed.
+    # Locked by tests/vision_hors_corpus.py.
+    "vision",
 }
 SKIP_PREFIX = ("sessions",)
 SKIP_FILES = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}

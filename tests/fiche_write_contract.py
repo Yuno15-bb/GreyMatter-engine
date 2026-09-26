@@ -5,7 +5,8 @@
 one golden rule:
 
     1. a plaintext secret is masked IN THE FILE
-    2. a note absent from the map is dropped into the Inbox — exactly once
+    2. a note absent from the map is queued in state/a-classer.md — exactly once,
+       and MEMORY.md itself is never written (ADR-0015: a human validates the map)
     3. an unknown `metadata.type` is RECORDED (never refused)
     4. the save is logged to state/manual-saves.jsonl
     0. it never blocks: it always exits 0, whatever happens
@@ -17,7 +18,7 @@ a working one from the outside. Only reading the trunk afterwards separates them
 test builds a trunk, feeds the hook the same JSON Claude Code feeds it, and reads the disk.
 
 WHY IT ALSO RUNS TWICE. The hook fires on EVERY write, including its own follow-ups. An
-Inbox that grows a line per save would bury the map under duplicates within a day.
+queue that grows a line per save would bury the map under duplicates within a day.
 Idempotence is part of the contract, not a nicety.
 
 This is possible at all because the hook honours BRAIN_HOME. Pointed at the author's real
@@ -54,7 +55,7 @@ def build(trunk):
     for d in ("lessons", "state"):
         os.makedirs(os.path.join(trunk, d), exist_ok=True)
     with open(os.path.join(trunk, "MEMORY.md"), "w", encoding="utf-8") as f:
-        f.write("# Map\n\n## 🆕 Inbox — notes to file (auto)\n")
+        f.write("# Map\n")
     with open(os.path.join(trunk, "lessons", "INDEX.md"), "w", encoding="utf-8") as f:
         f.write("# Index\n")
 
@@ -95,7 +96,8 @@ def main():
         rc2 = fire(trunk, p)                      # fired twice: the hook runs on every write
 
         body = read(trunk, "lessons", "fresh-note.md")
-        memory = read(trunk, "MEMORY.md")
+        memory = read(trunk, "state", "a-classer.md")
+        the_map = read(trunk, "MEMORY.md")
         unknown = read(trunk, "state", "unknown-types.jsonl")
         saves = read(trunk, "state", "manual-saves.jsonl")
 
@@ -121,9 +123,11 @@ def main():
 
     report("the secret is masked in the file", SECRET not in body,
            "the plaintext key is still on disk")
-    report("the note is dropped into the Inbox", "fresh-note" in memory,
-           "nothing was added to MEMORY.md")
-    report("firing twice adds ONE Inbox line", memory.count("(lessons/fresh-note.md)") == 1,
+    report("the note is queued for filing", "fresh-note" in memory,
+           "nothing was added to state/a-classer.md")
+    report("the map itself is left alone", the_map == "# Map\n",
+           "the hook wrote into MEMORY.md, which only a human validates")
+    report("firing twice adds ONE queue line", memory.count("(lessons/fresh-note.md)") == 1,
            f"{memory.count('(lessons/fresh-note.md)')} lines: the map would fill with duplicates")
     report("the unknown type is recorded", "not-a-real-type" in unknown,
            "an unknown type passed in silence")

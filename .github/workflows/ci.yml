@@ -33,10 +33,13 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 leakcheck.py --history
-      # Contre-épreuve de l'exception « leurres de test » : prouve que les
-      # valeurs déclarées passent ET que tout le reste rougit encore. Sans elle,
-      # l'exception serait un trou qui s'ignore.
+      # Check the test-decoy exception: declared values pass while all other
+      # leaks still fail. Without this check, the exception could go unnoticed.
       - run: python3 tests/leakcheck_fixtures.py
+      - run: python3 tests/leakcheck_history.py
+      # The leak check alone cannot detect a rule that stopped anonymizing
+      # before any private value reached the public repository.
+      - run: python3 tests/regles_non_muettes.py
 
   english:
     name: English only (main)
@@ -58,6 +61,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 tests/plugin_manifest.py
+      - run: python3 tests/referenced_files.py
+      - run: python3 tests/home_paths.py
       # The manifests parsing is not the same thing as the plugin WORKING.
       # This runs the bootstrap the way Claude Code does — from a copy, on a
       # fresh HOME — because that is the path everyone from the marketplace

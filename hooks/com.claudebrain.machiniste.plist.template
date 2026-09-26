@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Machiniste — ronde machine du C Brain (RAM / CPU / chaleur).
-     Toutes les 10 minutes, sans LLM : mesure, tue les serveurs de dev orphelins,
+<!-- Machinist — the C Brain's machine round (RAM / CPU / heat).
+     Every 10 minutes, no LLM: measures, kills orphaned dev servers,
      reports the rest. Quota cost: zero.
 
      TEMPLATE — __HOME__ must be substituted with the real $HOME at install time
      (the same trap as com.claudebrain.resume: a hardcoded home path silently broke
-     silencieusement la reprise sur machine neuve le 2026-07-22). -->
+     resume on a fresh machine on 2026-07-22). -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -18,6 +18,9 @@
     </array>
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- No BRAIN_HOME here: install.sh and adopt-launchd.sh render only
+             `__HOME__`, and the child resolves the default trunk itself
+             (hooks/brain_racine.py: BRAIN_HOME, else ~/.c-brain/trunk). -->
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
@@ -25,7 +28,7 @@
     <integer>600</integer>
     <key>RunAtLoad</key>
     <true/>
-    <!-- Nice bas : la ronde ne doit jamais disputer le CPU au travail de l'utilisateur. -->
+    <!-- Low nice: the round must never compete for CPU with the user's work. -->
     <key>Nice</key>
     <integer>10</integer>
     <key>ProcessType</key>

@@ -5,6 +5,14 @@ Replay this **before every published tag**. Everything happens inside an isolate
 
 The order matters: each step assumes the previous one is green.
 
+The translation barrier includes JSON, JSONL, plain text, CJS, YAML, TOML,
+and CSS as well as Python, shell, JavaScript, HTML, and Markdown. Run
+`python3 -B tests/english_only.py` after changing data or capsule benches.
+The authority and provenance JSON fixtures are translated test inputs; run
+their three readers with `--check` after editing them. French retrieval queries
+remain intentional benchmark input and are exempted with that reason in the
+checker.
+
 ## 0. The extraction chain (on the `fr` branch)
 
 ```bash
@@ -44,9 +52,37 @@ next to the check:
 python3 leakcheck.py
 python3 leakcheck.py --history
 python3 tests/leakcheck_fixtures.py
+python3 tests/leakcheck_fingerprints.py
 ```
 
-**Expected**: `✅ CLEAN` twice, then 11 green cases.
+**Expected on a publishable branch**: a clean scan twice, 12 green fixture cases, and a passing
+fingerprint check. Run the invented-name check with `--sabotage`; it must fail.
+The named markers and exception values are stored as salted SHA-256 digests.
+The guard also fingerprints private note paths and identifiers, and it reads
+`rules.json` with every `*_b64` value decoded first: base64 is a reversible
+encoding, so a name stored that way is a name in clear, and it is refused like
+one. The local postal-code class remains a numeric pattern because a digest
+cannot represent a range. The guard's status, instructions and marker labels
+are printed in English.
+
+**History that is already public.** The fingerprints grew after the first
+commits of `main` and `fr` were published, so `--history` turned red on commits
+that are already online and that no new version can take back. Rewriting them is
+ruled out: moving a published tag breaks updates for every installation that
+fetched it. `leakcheck.py` therefore holds a closed list, `ALREADY_PUBLIC`, of
+the two tips published on 2026-09-26, and the history scan skips the commits
+reachable from them — only those. A tip missing from the local clone is simply
+not excluded, so the check leans red, never green, and every commit after those
+tips is scanned in full. The list never receives a tip that is not already
+public: `tests/leakcheck_history.py` turns red if its size changes, and proves
+in a throwaway repository that a new leak after an excluded tip is still caught.
+The history scan reads only the lines each commit **adds**: a removed line was
+added by an earlier commit, which is scanned in turn unless it is public. Reading
+removed lines too made the v2.0.0 release commit red for taking names *out* of
+published files; the same test proves that removing a public value stays green,
+and that a leak added then removed after the public tips is still caught.
+A local port branch keeps its intermediate commits and stays red on
+`--history`; it is never published as such, only squashed onto `main`.
 
 The counter-proof NAMES the marker it expects for every case instead of settling
 for "something was flagged" — a sabotage found exactly that hole in the first
@@ -304,6 +340,18 @@ HOME=$T brain update
 > Remember: it is the **installed** updater that runs. A fix in `update.sh` only
 > protects users already on that version or later. Think twice before publishing
 > a change to the updater itself.
+
+The same updater hands the final word to the selftest of the **new** version, and
+that selftest runs files from the candidate engine. One of them was missing
+before v2.0.0 was tagged: a test never ported from the French source. A fresh
+install ended on "some hooks are broken", and the v1.28.1 updater would have
+rolled every upgrade back. Two checks now stand in front of it:
+
+```bash
+python3 tests/referenced_files.py   # every file the selftest, brain, install.sh,
+                                    # cbrain/*.sh, hooks.json and the CI invoke exists
+python3 tests/home_paths.py         # no home path that exists on one machine only
+```
 
 ### What it must REFUSE — the other half of the test
 

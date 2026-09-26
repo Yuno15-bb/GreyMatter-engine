@@ -6,7 +6,7 @@ The SessionEnd loop (auto_maintain.py) wakes only two agents:
 The four WATCH agents (challenger, architect, archivist, mechanic) used to
 run only by hand. This module wires them into the automation WITHOUT blowing up the cost.
 
-Principe « cadence + seuil capteur » :
+The "cadence + sensor threshold" principle:
   1. we only REGENERATE the sensors of agents whose cooldown has elapsed
      (free, zero LLM; no point recomputing topology while the architect sleeps):
        brain_topology --json  → state/topology.json   (architecte)
@@ -22,7 +22,7 @@ Principe « cadence + seuil capteur » :
      the agent actually succeeded (a quota/login failure is retried, not "burned").
 
 Separation of powers respected: HERE we MEASURE and DECIDE who to wake;
-l'agent LLM, lui, JUGE et agit. On ne touche jamais au contenu des fiches.
+the LLM agent, for its part, JUDGES and acts. Note contents are never touched.
 
 Called from auto_maintain's headless wrapper (already under a preflighted quota,
 CLAUDE_BRAIN_GARDENING=1). Best effort: if an agent fails (quota/login), the
@@ -31,15 +31,16 @@ watch pass is simply skipped — unlike distillation, nothing is lost.
 Usage :
   brain_upkeep.py decide        → the decision as JSON (debug, no effect)
   brain_upkeep.py run [sid]      → regenerates, decides, wakes at most one agent
-Sort toujours 0 (ne bloque jamais un hook).
+Always exits 0 (never blocks a hook).
 """
 import os, sys, json, time, shutil, subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from brain_status import write_status
+    from brain_status import write_status, journal_agent
 except Exception:
     def write_status(*a, **k): pass
+    def journal_agent(*a, **k): return None
 try:
     import brain_guard as guard          # quota/account resilience (the same guard as layer 1)
 except Exception:
@@ -53,8 +54,8 @@ LOG = os.path.join(BRAIN, "sessions", "gardening.log")
 COST = os.path.join(BRAIN, "sessions", "cost.jsonl")
 
 # Cooldown: the same agent does not run again for N hours, even if its sensor
-# reste au-dessus du seuil (anti-thrash : laisse le temps qu'une passe porte ses
-# fruits avant d'en redemander une).
+# stays above the threshold (anti-thrash: gives a pass time to bear fruit
+# before asking for another).
 COOLDOWN_H = 12
 
 # Wake priority (at most one per pass): honesty first (contradictions),
@@ -68,12 +69,12 @@ MODEL = {"architect": "sonnet", "challenger": "sonnet",
 
 # Capsule activity per agent (keys ALREADY recognized by capsule/index.html: the
 # creature shows the right role at work). The architect has ITS own scene
-# ('architecting' : ponts inter-domaines) — distincte du 'mapping' du jardinier.
+# ('architecting': cross-domain bridges) — distinct from the gardener's 'mapping'.
 ACT = {"architect": "architecting", "challenger": "challenging",
        "archivist": "archiving", "mechanic": "auditing"}
 
-# The mechanical sensor to regenerate for EACH agent (we do not recompute a
-# QUE les capteurs des agents dont le cooldown est ouvert — inutile de recalculer la
+# The mechanical sensor to regenerate for EACH agent (we recompute ONLY the
+# sensors of agents whose cooldown is open — no point recomputing the
 # TF-IDF topology over every note if the architect is on cooldown anyway).
 # The challenger has no sensor to regenerate (coherence.json is accumulated
 # continuously by check_coherence on every note written).
@@ -91,7 +92,7 @@ def load_json(path, default):
 
 def regen_sensors(agents):
     """Regenerates ONLY the sensors of the given `agents` (cheap, zero LLM).
-    Optimisation O1 : on ne recalcule pas un capteur dont l'agent est en cooldown."""
+    Optimisation O1: a sensor whose agent is on cooldown is not recomputed."""
     py = sys.executable
     seen = set()
     for ag in agents:
@@ -142,7 +143,7 @@ def sensor_signal():
     sig["archivist"] = (n_dead >= 3, f"{n_dead} note(s) of dead weight")
     # MECHANIC: the doctor reports infrastructure defects (dead links, orphans,
     # front matter, naming, off-index). It wakes ONLY on a real defect —
-    # donc rare, exactement quand on en a besoin (sinon doctor.total = 0).
+    # so rare, exactly when it is needed (otherwise doctor.total = 0).
     sig["mechanic"] = (n_defaut >= 1, f"{n_defaut} infrastructure defect(s) reported by the doctor")
     return sig
 
@@ -225,7 +226,37 @@ def _last_cost_line():
     return last
 
 
+def _cout_du_segment(offset):
+    """What the pass that just ended cost — and NOTHING else.
+
+    We read cost.jsonl FROM the byte offset kept before the launch. Taking "the
+    last line" of the file would charge this agent for the cost of a distillation
+    written in parallel: cost.jsonl is a SHARED, append-only journal."""
+    out = {}
+    try:
+        with open(COST, "r", encoding="utf-8", errors="replace") as f:
+            f.seek(offset)
+            for ligne in f:
+                try:
+                    o = json.loads(ligne)
+                except Exception:
+                    continue
+                if "total_cost_usd" not in o:
+                    continue
+                out = {"cost_usd": round(o.get("total_cost_usd") or 0, 4),
+                       "session_id": o.get("session_id"),
+                       "output_tokens": (o.get("usage") or {}).get("output_tokens"),
+                       "error": True if o.get("is_error") else None}
+    except Exception:
+        pass
+    return {k: v for k, v in out.items() if v is not None}
+
+
 def run(sid=""):
+    # The freeze is read HERE too (2026-09-15). Before, only auto_maintain read it: launched
+    # by hand, this module woke a robot up during the freeze.
+    if os.path.exists(os.path.join(STATE, "FREEZE")):
+        return
     now = time.time()
     # Which agents have an elapsed cooldown? If none, we stop BEFORE any
     # spending: no sensor regeneration, no LLM call. Cost strictly zero.
@@ -241,23 +272,43 @@ def run(sid=""):
     d = decide(now)
     agent = d["chosen"]
     if not agent:
-        return                          # capteurs sous le seuil → veille au repos
+        return                          # sensors below threshold → the watch rests
     claude = shutil.which("claude")
     if not claude:
         return
     reason = d["agents"][agent]["reason"]
     write_status("busy", ACT.get(agent, "gardening"), f"{agent}: {reason}", source="agent")
-    cmd = [claude, "-p", "--model", MODEL.get(agent, "sonnet"),
-           "--output-format", "json", "--dangerously-skip-permissions",
-           "--agent", agent, TASKS[agent]]
+    # 19/09 — the PER-AGENT line that status.json cannot carry (it holds only one global
+    # state, overwritten by the next pass). See brain_status.journal_agent.
+    modele = MODEL.get(agent, "sonnet")
+    t0 = journal_agent(agent, "start", reason=reason,
+                       activity=ACT.get(agent, "gardening"), model=modele) or time.time()
+    # No more free pass since 2026-09-15: each robot has only its named tools,
+    # see robots_permissions.py. If the permissions cannot be built, nothing is launched.
+    try:
+        from robots_permissions import drapeaux
+        droits = drapeaux(agent, BRAIN)
+    except Exception:
+        journal_agent(agent, "end", start=t0, duration_s=round(time.time() - t0, 1),
+                      verdict="permissions-unavailable")
+        return
+    cmd = [claude, "-p", "--model", modele,
+           "--output-format", "json", *droits, TASKS[agent]]
+    try:
+        offset = os.path.getsize(COST)
+    except OSError:
+        offset = 0
+    code = None
     try:
         with open(COST, "a") as cf, open(LOG, "a") as lf:
-            subprocess.run(cmd, cwd=BRAIN, stdin=subprocess.DEVNULL,
-                           stdout=cf, stderr=lf, timeout=900)
+            code = subprocess.run(cmd, cwd=BRAIN, stdin=subprocess.DEVNULL,
+                                  stdout=cf, stderr=lf, timeout=900).returncode
     except Exception:
+        journal_agent(agent, "end", start=t0, duration_s=round(time.time() - t0, 1),
+                      verdict="interrupted", **_cout_du_segment(offset))
         return  # best effort: a failed watch pass loses no data
-    # ENGRAVE the 12 h cooldown only if the agent REALLY succeeded. A failure
-    # quota/login sort en code 0 avec is_error=true (pas d'exception Python) : sans ce
+    # ENGRAVE the 12 h cooldown only if the agent REALLY succeeded. A quota/login
+    # failure exits with code 0 and is_error=true (no Python exception): without this
     # guard, we burned 12 h of watch doing nothing. interpret_result also sets the
     # quota/login markers → layer 1 knows to defer next time.
     ok = True
@@ -268,6 +319,15 @@ def run(sid=""):
             ok = True   # when in doubt we engrave (avoids a loop if interpret breaks)
     if ok:
         record_run(agent, now)
+    # Seen on the 19/09 bench: `subprocess.run` raises NOTHING on a non-zero exit code,
+    # so the journal wrote "ok" for an agent that had just failed. A panel fed by
+    # that verdict would have lied in green.
+    if code:
+        verdict = f"failed-code-{code}"
+    else:
+        verdict = "ok" if ok else "quota-or-login"
+    journal_agent(agent, "end", start=t0, duration_s=round(time.time() - t0, 1),
+                  verdict=verdict, **_cout_du_segment(offset))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,10 @@ This document draws the target model, the migration of existing installs, and
 the behaviour of every command that touches an engine. It is the reference the
 implementation and the end-to-end contract are written against.
 
+The installer also seeds `config/ranking.json` in an existing trunk when that
+file is absent. It leaves a user's existing weights in place, so updating the
+engine cannot silently replace their recall configuration.
+
 ## The one sentence
 
 `install.sh` used to **observe** whether the engine happened to be clean,
@@ -307,7 +311,7 @@ Developers convert by running `./install.sh --dev` once.
 
 **Agent briefs.** `agents/` is mounted into the trunk from the engine
 (`cbrain/engine-paths.txt`), and the gardening agents edit `agents/*.md` through
-those links — the incident reported by Maissane Lagsir on 2026-08-16. Under an
+those links — the incident reported by a tester on 2026-08-16. Under an
 immutable engine those edits land in a version that is not supposed to change:
 doctor will flag them, and a version switch will drop them. That is the correct
 behaviour for "immutable", and it is a real change from today. Named here, not

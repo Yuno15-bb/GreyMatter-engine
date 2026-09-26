@@ -8,5 +8,8 @@
   },
   "devDependencies": {
     "electron": "^33.0.0"
+  },
+  "dependencies": {
+    "electron-liquid-glass": "^1.1.1"
   }
 }

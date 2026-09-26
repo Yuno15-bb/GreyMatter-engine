@@ -2,10 +2,10 @@
 """
 PostToolUse (Write|Edit) hook — the instant mechanical guard.
 On EVERY note landing in the trunk, with no LLM, no loop and no blocking:
-  1. masque tout secret en clair
-  2. guarantees the note is on the MEMORY.md + lessons/INDEX.md map
-     (otherwise -> the "to file" Inbox)
-  3. signale si le frontmatter manque
+  1. masks any plaintext secret
+  2. checks that the note is on the MEMORY.md + lessons/INDEX.md map
+     (otherwise -> state/a-classer.md; the map itself is never written here, ADR-0015)
+  3. reports a missing front matter
 
 Loop guard: this script edits files through direct Python I/O (not through the
 Write/Edit tool), so it never re-triggers the hook. The semantic work
@@ -24,7 +24,6 @@ BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 MAP_RELS = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
-INBOX_HEADER = "## 🆕 Inbox — notes to file (auto)"
 
 # The `metadata.type` vocabulary. THESE FOUR ARE NOT CHOSEN HERE: they are the ones the
 # writing agents are told to use, in agents/*.md ("type: user | feedback | project |
@@ -153,6 +152,60 @@ def main(data):
     except Exception:
         pass        # never block: a wobbly frontmatter must not cost a note its save
 
+    # --- 1 ter. ADR-0019 vocabulary: OBSERVE AT WRITE TIME, never block ---
+    # Decided by the author on 2026-09-17: the topic is mandatory on NEW notes only.
+    # This rule cannot live in the doctor, which sees all 686 notes at once and would
+    # accuse the 51 older ones without a topic; it lives at the ONLY moment where "new"
+    # means something — when the note is written. Same shape as check 1 bis just above:
+    # we record, we do not fix, we do not block.
+    #
+    # The vocabulary is not copied, it is IMPORTED: `TYPES_RELATION` and its reader
+    # come from hooks/graph_export.py, the 12 topics from meta/topics.json via topics_fiche.
+    # A third copy would be a third thing to drift apart — exactly the drift ADR-0019
+    # just measured (309 qualified links out of 563 silently dropped).
+    #
+    # THIS JOURNAL HAS A NAMED READER, and that is the condition for writing it: ADR-0019
+    # sets as a refutable hypothesis that forcing `related_to` to carry its reason produces
+    # reasons actually written. The experiment that refutes it is "count, two weeks after
+    # 17/09, the notes written AFTER that date that break the rule" — and only a journal
+    # dated at write time can tell those notes apart from the older ones.
+    if rel.split(os.sep)[0] in ("projects", "lessons", "meta", "life"):
+        try:
+            import time
+            import topics_fiche
+            from graph_export import TYPES_RELATION, _REL_BLOC, relations_brutes
+            fm = re.match(r"^---\n(.*?)\n---", txt, re.S)
+            ecarts = []
+            if fm:
+                topic, secondaires = topics_fiche.lire(txt)
+                if not topic:
+                    ecarts.append({"field": "topic", "gap": "missing"})
+                elif isinstance(topic, list):     # `topic:` key written twice — see topics_fiche.lire
+                    ecarts.append({"field": "topic", "gap": "duplicated", "value": ", ".join(topic)})
+                elif topic not in topics_fiche.ids_canoniques():
+                    ecarts.append({"field": "topic", "gap": "off-vocabulary", "value": topic})
+                bloc_rel = _REL_BLOC.search(fm.group(1) + "\n")
+                if bloc_rel:
+                    for typ, cible, raison in relations_brutes(bloc_rel.group(1)):
+                        if typ not in TYPES_RELATION:
+                            ecarts.append({"field": "relation", "gap": "type-off-vocabulary",
+                                           "value": typ, "target": cible})
+                        elif typ == "related_to" and not raison:
+                            ecarts.append({"field": "relation", "gap": "related_to-without-reason",
+                                           "target": cible})
+            if ecarts:
+                journal = os.path.join(BRAIN, "state", "vocabulary-at-write.jsonl")
+                os.makedirs(os.path.dirname(journal), exist_ok=True)
+                with open(journal, "a", encoding="utf-8") as f:
+                    for e in ecarts:
+                        f.write(json.dumps(dict(e, ts=int(time.time()), path=rel),
+                                           ensure_ascii=False) + "\n")
+                premier = ecarts[0]
+                write_status("busy", "correcting",
+                             f"{premier['field']} {premier['gap']} in {fname}")
+        except Exception:
+            pass
+
     # --- 2. guarantee presence on the composed map ---
     try:
         mem = open(MEMORY, encoding="utf-8").read()
@@ -165,22 +218,31 @@ def main(data):
     card = mem + "\n" + lessons_index
     linked = (rel in card) or (fname in card) or (slug and f"[[{slug}]]" in card) \
              or (slug and f"({rel})" in card)
-    # F2 — pendant une passe de maintenance (CLAUDE_BRAIN_GARDENING=1), c'est le
-    # gardener owns the map: it files notes into MEMORY/lessons INDEX and empties
-    # the Inbox. Dropping into the Inbox in parallel would race (re-adding a note
-    # fiche qu'il vient de classer). On garde le masquage des secrets et le capteur de
-    # coherence (above, always active) but we skip the Inbox drop here.
-    if not linked and os.environ.get("CLAUDE_BRAIN_GARDENING") != "1":
-        title = slug or fname
-        line = f"- [{title}]({rel}) — auto-added, to be filed by the [[gardener]]"
-        if INBOX_HEADER in mem:
-            mem = mem.replace(INBOX_HEADER, INBOX_HEADER + "\n" + line, 1)
-        else:
-            mem = mem.rstrip() + f"\n\n---\n\n{INBOX_HEADER}\n\n*The hook drops any note not yet on the map here; the gardener files them into the right section afterwards.*\n\n{line}\n"
-        try:
-            open(MEMORY, "w", encoding="utf-8").write(mem)
-        except Exception:
-            pass
+    # THE QUEUE IS NO LONGER IN MEMORY.md (2026-09-15). The Inbox dates from 21/06, before
+    # two decisions that made it impossible: the map's 20,000-byte budget, and ADR-0015
+    # (the manifest is authoritative, every map entry is validated by a human).
+    # Measured on 15/09 on a copy: MEMORY.md 90 bytes under budget, ONE Inbox line pushed
+    # it to 20,003 bytes and the pre-commit refused every commit, in every zone.
+    # So the note waits in state/a-classer.md; the gardener PROPOSES its place in
+    # state/a-valider.md; a human writes it into the map and reconciles the manifest.
+    # No more race with the gardener (it no longer touches the map): the drop also holds
+    # during a maintenance pass, otherwise notes written by a robot would be lost from view.
+    if not linked:
+        a_classer = os.path.join(BRAIN, "state", "a-classer.md")
+        deja = ""
+        for p in (a_classer, os.path.join(BRAIN, "state", "a-valider.md")):
+            try:
+                deja += open(p, encoding="utf-8").read()
+            except Exception:
+                pass
+        if f"({rel})" not in deja:
+            title = slug or fname
+            try:
+                os.makedirs(os.path.dirname(a_classer), exist_ok=True)
+                with open(a_classer, "a", encoding="utf-8") as f:
+                    f.write(f"- [{title}]({rel}) — not on the map yet\n")
+            except Exception:
+                pass
 
 def refresh_doctor():
     """Refreshes state/doctor.json in the background (detached, never blocking)."""

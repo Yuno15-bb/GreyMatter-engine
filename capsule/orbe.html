@@ -1,128 +1,188 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Capsule — orb</title>
+<title>Capsule — orbe</title>
 <!--
-  THE DESKTOP COMPANION: THE ORB.
+  THE DESKTOP COMPANION, ORB VERSION (2026-08-01).
 
-  A pane of living glass. Its fluid mechanic says what kind of work is going on,
-  its speed the intensity, its hue the agent family — and the code actually
-  being written scrolls inside it.
+  Replaces the Lottie character. A page SEPARATE from index.html on purpose: the
+  "box" capsule keeps its canvas creature, and the free mode no longer has to
+  live with 1,400 lines that do not concern it.
 
-  The reusable shell lives in `orbe/`: it knows nothing about the capsule or the
-  Brain. Only this page maps states to meanings.
+  The reusable shell lives in `orbe/` — it knows neither the capsule nor
+  the Brain. Its rendering code and examples live in `orbe/`.
 -->
+<script>
+  // Set BEFORE the stylesheet: otherwise the first frame shows the orb out.
+  if (location.search.includes('encoche')) document.documentElement.dataset.encoche = '1';
+  // ?seule: the orb without its labels, for the menu bar panel (ilot.html),
+  // which itself says who is working and on what.
+  if (location.search.includes('seule')) document.documentElement.dataset.seule = '1';
+  // ?ilot: the orb of the menu bar panel. The author, 24/09: "the writing
+  // in the orb + the glow have disappeared" — it keeps the code pad. Then: "remove
+  // the writing under the orb, it is already there on the left" — the name and the line
+  // below fade out, like the note counter.
+  if (location.search.includes('ilot')) document.documentElement.dataset.ilot = '1';
+</script>
 <style>
   html, body { margin:0; height:100%; background:transparent; overflow:hidden;
                -webkit-user-select:none; }
   #scene { position:absolute; inset:0; }
-  /* ⚠ WITHOUT THIS RULE the canvas lays out at its BUFFER size (300 px on a
-     retina screen) inside a 150 px window: the orb spills out bottom-right and
-     everything else — pad, label, which are centred on the WINDOW — looks
-     shifted to one side. Nothing crashes; the render simply goes off-centre.
-     It was once deleted by a block removal that bit past its target, and the
-     defect was only visible on a real desktop. */
+  html[data-seule] #dit, html[data-seule] #fiche, html[data-seule] #pave, html[data-seule] #restant { display:none !important; }
+  html[data-ilot] #restant, html[data-ilot] #dit, html[data-ilot] #fiche { display:none !important; }
+  /* ⚠ WITHOUT THIS RULE, the canvas lays out at its BUFFER size (300 px
+     on a retina screen) in a 150 window: the orb overflows at the bottom
+     right and everything else — pad, badge, centred on the WINDOW —
+     looks shifted to the side. The render does not crash, it goes off-centre.
+     It was erased once by a block deletion that bit beyond
+     its target; the defect only showed on the real desktop. */
   canvas { width:100%; height:100%; display:block; }
 
-  /* ⚠ NO CSS BREATHING. Tried, MEASURED, then removed: a CSS animation on a
-     transparent always-on-top window forces the window server to recomposite at
-     display rate, even while the WebGL render itself sleeps. Cost at rest:
-     17 % CPU against 2.2 %. "The compositor is free" holds in an ordinary web
-     page, not for a HUD sitting on the desktop. Smoothness at rest is therefore
-     paid in FRAME RATE, which is measurable and bounded. */
+  /* ⚠ NO BREATHING IN CSS. Tried, then MEASURED, then removed: a CSS
+     animation on an always-on-top transparent window forces WindowServer to
+     recomposite at the screen's rate, even while the WebGL render sleeps.
+     Cost measured at rest: 17 % CPU against 2.2 %. "The compositor is
+     free" is true in an ordinary web page, false for a HUD sitting on
+     the desktop. So the smoothness at rest is paid in RENDER RATE, which
+     is measurable and bounded. */
 
-  /* ── THE LABEL, SET INTO THE GLASS ────────────────────────────────────────
-     ⚠ THREE ATTEMPTS, and the failures share one root cause: they all tried to
-       make the text legible AGAINST the desktop instead of making it belong to
-       the orb.
-       1. A black pill → a UI component glued onto an object that is not one.
-       2. Light text with a dark halo → it looks engraved, but engraved into the
-          DESKTOP. The halo outlines every letter: game-overlay lettering, and
-          it smears whatever text passes behind it.
-       3. A `screen` blend → the text does enter the material… and DISAPPEARS on
-          a light desktop. `screen` can only lighten; over white it has nothing
-          left to add. Measured on the three-background sheet.
-     What works: put it ON the sphere — not under it, not in front of the
-     desktop — low down, where the lighting leaves the glass darkest, with a
-     single shadow cast DOWNWARD. A directional shadow reads as relief; an
-     outline reads as a cut-out. That is the whole difference between "engraved"
-     and "stuck on".
-     Placement itself was measured, not eyeballed: the silhouette was read state
-     by state off the alpha channel, and the mesh occupies `y 25 → 128` in the
-     150 px window. */
-  /* ── THE LABEL, LAID IN THE ORB'S SHADOW ──────────────────────────────────
-     ⚠ FOURTH PLACEMENT, and each earlier one failed differently — the trail is
-       the point:
-       1. black pill under the orb → a UI component glued onto the object;
-       2. dark halo under the orb → game-overlay outlining, filthy the moment it
-          crosses desktop text;
-       3. ON the sphere → it finally belonged to the object… but the mesh
-          changes shape AND brightness with every mechanic. On `committing`,
-          whose bottom is lumpy and bright, half the letters were eaten. You do
-          not lay fixed text on a moving surface.
-     What holds: the label goes back UNDER the orb — there the geometry is
-     stable whatever the mechanic — but it does not float alone: it is laid in
-     the sphere's CAST SHADOW. A shadow belongs to the scene, not to a UI; it
-     hugs the object instead of outlining it, and it supplies the contrast the
-     text cannot give itself, on a light desktop as on a dark one. */
-  #dit { position:absolute; left:50%; bottom:14.5px; transform:translateX(-50%);
-         white-space:nowrap; color:rgba(255,255,255,.95);
-         /* 2026-08-08 — +1.5 px on both lines, at the author's request. The
-            label goes up TOO: growing only the line underneath would invert the
-            hierarchy that case alone carries. */
+  /* ── THE LABEL, ENGRAVED IN THE GLASS ─────────────────────────────────────
+     ⚠ THREE ATTEMPTS. The first two failed for the same underlying reason:
+       they tried to make the text readable AGAINST the desktop, instead of
+       making it belong to the orb.
+       1. Black pill → an interface component stuck on an object that is
+          not one.
+       2. Light text with a dark halo → looks engraved, but engraved in the DESKTOP. The
+          halo cuts out every letter: a video-game overlay, and it dirties
+          everything that passes behind.
+       3. `screen` blending → the text did enter the material… and
+          DISAPPEARED on a light desktop. `screen` can only lighten: on
+          white it has nothing left to add. Measured on the three-background
+          board, invisible on the light one.
+     What works: set it ON the sphere — not under it, not in front of the
+     desktop — at the bottom, the area the lighting leaves darkest, and
+     use only a shadow CAST DOWNWARD. A directional shadow reads
+     as relief; an outline reads as a cut-out. That is the only
+     difference between "engraved" and "stuck on". */
+  /* ── THE LABEL, SET IN THE ORB'S SHADOW ──────────────────────────────
+     ⚠ FOURTH PLACEMENT, and the three before each failed for a
+       different reason — the trail is what counts:
+       1. black pill under the orb → an interface component stuck on the object;
+       2. dark halo under the orb → a "game overlay" cut-out, dirty as soon
+          as it crosses desktop text;
+       3. ON the sphere → it finally belonged to the object… but the mesh changes
+          shape AND brightness with each mechanic. On `committing`, whose bottom
+          is bumpy and shiny, half the letters got eaten. One
+          does not set fixed text on a moving surface.
+     What holds: the label goes back UNDER the orb — there, the geometry is
+     stable whatever the mechanic — but it does not float there alone: it is
+     set in the sphere's CAST SHADOW. The shadow belongs to the scene, not to
+     an interface; it hugs the object, it does not cut it out. And it gives
+     the contrast the text cannot give itself, on a light desktop
+     as on a dark one. */
+  /* ⚠ 2026-09-20 — OPAQUE, NO MORE .95 (the user: "everything written under the
+     orbs must be opaque"). White at 95 % let the desktop through between
+     the letters: on a light wallpaper, the label turned dirty grey.
+     Text set on a scene we do not control provides its own opacity,
+     it does not borrow it from the background. */
+  /* 2026-09-20 — LOWERED BY 2 pt (the user: "lower the writing under the orb
+     very slightly, sometimes the orb passes over it"). On the most
+     swollen mechanics — `synthesizing`, `challenging` — the bottom of the glass and its glow
+     came down to touch the top of the capitals. Measured on the
+     20/09 shoot: the glass reaches y=265 px where the capitals start at
+     y=254. Both lines go down together to keep their gap. */
+  #dit { position:absolute; left:50%; bottom:12.5px; transform:translateX(-50%);
+         white-space:nowrap; color:#fff;
+         /* 2026-08-08 — +1.5 px on both lines at the author's request. The
+            label goes up TOO: enlarging only the line below would invert
+            the hierarchy that the case alone carries. */
          font:600 9px/1.2 ui-sans-serif,-apple-system,sans-serif;
          letter-spacing:1.4px; text-indent:1.4px;
-         /* ⚠ THE CAST SHADOW WAS REMOVED (2026-08-04, user request: "remove the
-            black shadow under WORKING / SYNTHESIZING"). It was a 126 px dark
-            ellipse behind the label, there to give it contrast on any desktop.
-            It did that job, but it lays a black patch under an orb that has
-            become properly transparent — the two no longer go together: since
-            the glass lets the desktop through, the only opaque part of the
-            object was its shadow.
-            Contrast therefore rests entirely on the letters: a SHORT drop
-            shadow plus a very tight dark glow, both hugging the glyph shapes
-            instead of drawing an area. Same distinction as for the pad — a
-            shadow, never an outline, never a plate. */
+         /* 2026-09-20 — THE NAME IS RE-CENTRED, NOT THE LINE (the user: "shift the
+            names a bit to the right to re-centre them with the rest"). The
+            three dots count in the block's width: centring the block
+            pushed the NAME 8 px to the left, measured on the shoot —
+            word centre at 133.5 px when the line below is at 149.5. A
+            left margin equal to the dots' width puts the word back in the middle,
+            plumb with the small line and with the orb. */
+         padding-left:16px;
+         /* ⚠ THE CAST SHADOW WAS REMOVED (2026-08-04, the author's request:
+            "remove the black shadow under WORKING / SYNTHESIZING").
+            It was a 126 px dark ellipse set behind the label to
+            give it contrast on any desktop. It did that
+            job, but it puts a black stain under an orb that has become
+            plainly transparent — the two no longer go together: since
+            the see-through glass, the only opaque piece of the object was its
+            shadow.
+            Contrast therefore rests entirely on the letters themselves:
+            a SHORT cast shadow and a very tight dark glow, which
+            hug the glyphs instead of drawing an area. It is
+            the same distinction as for the pad — a shadow, never an
+            outline, never a background. */
          text-shadow:0 1px 1.5px rgba(4,7,12,.85),
                      0 0 2.5px rgba(4,7,12,.55);
          opacity:0; transition:opacity .28s ease; pointer-events:none; }
   #dit.vu { opacity:1; }
 
-  /* ── WHAT ON ──────────────────────────────────────────────────────────────
-     The label says what the machine IS DOING; it does not say what ON.
-     "FILING" for two minutes gives no landmark at all: you cannot tell whether
-     the work is moving, nor whether it is about what you think. This second
-     line names the note — or the file — actually in hand.
-     ⚠ It is in normal case, with no letter-spacing: it is a TITLE, not a tag.
-       Were both lines the same weight and the same caps, you would read one
-       block of two labels and the landmark would be lost. The hierarchy is
-       carried by case and brightness, not by size — the size does have a floor
-       though, see below.
-     ⚠ 146 px wide at most, cut with an ellipsis: a note slug commonly runs to
-       60 characters, and the window is 150 px.
-     ⚠ 2026-08-08 — "you cannot make out the writing under the WORKING" (the
-       author, screenshot of the real desktop). Three causes stacked, all fixed
-       here:
-         · 6 px at weight 500: too little matter per glyph once antialiasing
-           has had its way;
-         · no separation from the background — the desktop text passes BETWEEN
-           the letters and blurs the word. The label above escapes that through
-           its caps and letter-spacing, not through its size;
-         · glued 2 px from the bottom edge, the line fell exactly onto the next
-           line of desktop text.
-       Answer: 7 px / 600, and a multi-layer dark halo TIGHT on the glyphs. The
-       hierarchy still holds — caps + letter-spacing on top, normal case below —
-       so 7 px does not turn the two lines into one block of two labels. */
-  #fiche { position:absolute; left:50%; bottom:3.5px; transform:translateX(-50%);
+  /* ── ON WHAT ────────────────────────────────────────────────────────────
+     The label says what the machine DOES; it does not say on WHAT. "FILING"
+     for two minutes gives no bearing: one cannot tell whether the work
+     is progressing nor whether it is on what one thinks. This second line names the
+     note — or the file — actually in progress.
+     ⚠ It is in normal case, without letter-spacing: it is a TITLE, not a
+       label. If both lines had the same weight and the same
+       capitals, one would read a block of two labels and the bearing would be lost.
+       The hierarchy here comes from case and brightness, not size —
+       size still has a floor, see below.
+     ⚠ 146 px wide at most, cut with an ellipsis: a note slug
+       commonly runs 60 characters, and the window is 150.
+     ⚠ 2026-08-08 — "you can't make out the writing under WORKING" (the author,
+       capture of the real desktop). Three combined causes, all fixed here:
+         · 6 px at weight 500: too little matter per glyph once
+           anti-aliasing is done;
+         · no separation from the background — desktop text runs
+           BETWEEN the letters and blurs the word. The label above escapes it
+           through its capitals and letter-spacing, not its size;
+         · stuck 2 px from the bottom edge, the line fell right on the line of
+           desktop text that follows.
+       Answer: 7 px / 600, and a multi-layer dark halo TIGHT on the
+       glyphs. The hierarchy still holds — capitals + letter-spacing at the
+       top, normal case at the bottom — so 7 px does not turn the two lines into a
+       block of two labels. */
+  /* ── "LEFT TO PROCESS" BADGE (2026-08-14, the author's request) ────────────
+     How many notes are still waiting for the gardener. The source of truth is
+     the queue state/a-classer.md — the one `on_fiche_write.py` feeds on its own.
+     Set at the TOP RIGHT: the bottom of the window is already taken by the label
+     and the note line, and the centre by the pad.
+     No elliptical cast shadow (removed on 2026-08-04): contrast is held
+     by an opaque fill + a thin border, like an app badge. */
+  /* 2026-08-14 — MOVED CLOSER TO THE ORB (the user: "bring it closer"). Stuck in the
+     window's corner, the counter floated alone in the desktop's emptiness and
+     visually attached to nothing. Set at the sphere's edge, it reads as
+     a label OF the orb, not as a desktop element. */
+  #restant { position:absolute; top:27px; right:23px; display:none;
+             color:rgba(255,255,255,.95); letter-spacing:.6px;
+             font:700 9px/1.2 ui-sans-serif,-apple-system,sans-serif;
+             /* Same treatment as #fiche: no fill and no pill (the author,
+                2026-08-14: "no pill, rather a 1/4"). Contrast
+                holds through three shadow layers — two tight ones that switch off the
+                background between the letters, a wide faint one that lifts the word
+                off the desktop without drawing an area. */
+             text-shadow:0 0 1px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.75),
+                         0 0 7px rgba(0,0,0,.45); }
+  #restant .tot { opacity:.62; font-weight:600; }
+  #restant.vu { display:block; }
+  #fiche { position:absolute; left:50%; bottom:2px; transform:translateX(-50%);
            max-width:146px; overflow:hidden; text-overflow:ellipsis;
            white-space:nowrap; text-align:center;
            color:#fff; letter-spacing:.1px;
            font:600 8.5px/1.2 ui-sans-serif,-apple-system,sans-serif;
-           /* ⚠ A HEAVIER shadow than the label's, the opposite of what the
-              hierarchy would suggest: this line is thinner and longer, so it
-              has less matter to stand out with. Seen on the light-background
-              sheet, the soft version drowned in the desktop text behind it.
-              Rank is read from the case, not from weak contrast.
-              The two tight layers (1 px and 2 px) kill the background between
+           /* ⚠ A HEAVIER shadow than the label's, contrary to what
+              the hierarchy would suggest: this line is thinner and
+              longer, so it has less matter to stand out with. Seen
+              on a light-background board, the soft version drowned in the
+              desktop text behind. Rank reads in the case, not in
+              weak contrast.
+              The two tight layers (1 px and 2 px) switch off the background between
               the letters; the third, wide and faint, lifts the word off the
               desktop without drawing an area — a shadow, never an outline. */
            text-shadow:0 1px 1.5px rgba(4,7,12,1),
@@ -130,90 +190,201 @@
                        0 0 5px rgba(4,7,12,.8);
            opacity:0; transition:opacity .28s ease; pointer-events:none; }
   #fiche.vu { opacity:1; }
-  /* The three dots say it is STILL GOING — an agent pass runs for minutes, and
-     the label itself never changes during it. */
-  #dit .pt { opacity:.25; animation:pt 1.35s ease-in-out infinite; }
+  /* The three dots say it CONTINUES — an agent pass lasts
+     minutes during which the label never changes. */
+  /* ⚠ 2026-09-20 — THE DOTS NO LONGER BLINK THROUGH TRANSPARENCY. They said
+     "it continues" by dropping to 25 % opacity; that is exactly what
+     the author refused ("must be opaque"). The same message goes through
+     MOTION: three solid dots jumping one after the other, like
+     the typing indicator in Messages. Nothing turns translucent, and
+     continuity stays readable. */
+  #dit .pt { display:inline-block; opacity:1;
+             animation:pt 1.35s ease-in-out infinite; }
   #dit .pt:nth-child(2) { animation-delay:.18s; }
   #dit .pt:nth-child(3) { animation-delay:.36s; }
-  @keyframes pt { 0%,70%,100% { opacity:.25 } 35% { opacity:1 } }
-  @media (prefers-reduced-motion: reduce) { #dit .pt { animation:none; opacity:.6 } }
+  @keyframes pt { 0%,70%,100% { transform:translateY(0) }
+                  35%         { transform:translateY(-1.2px) } }
+  @media (prefers-reduced-motion: reduce) { #dit .pt { animation:none; transform:none } }
 
-  /* ── THE PAD — the lines actually being written, INSIDE the orb ────────────
-     The old capsule scrolled a FROZEN agent file behind its creature, and cut
-     that off entirely in free mode: "on the desktop it is a slab covering what
-     the user is reading". Both objections are answered here — these are the
-     real lines being written, and being locked inside the orb's disc, the slab
-     no longer covers anything.
-     It sits ON TOP of the render, not inside it: the `orbe/` shader is a shared,
-     project-agnostic engine and a block of text has no business in it. The
-     `screen` blend plus a radial mask do the rest — the light of the text mixes
-     with the light of the material and dies out at the edges, as on a sphere. */
-  /* ⚠ TWICE TOO WIDE, TWICE. 124 px first, then 96 — and 96 still overflowed.
-     The mistake was aiming at an AVERAGE width: the mesh is not the same width
-     for every mechanic. Read off the bench, five states: 103 px for
-     `synthesizing`… but 84 for `challenging` and 85 for `committing`. A pad is
-     sized on the NARROWEST one, otherwise it bleeds onto the desktop in the
-     thinnest states — and that is exactly where it shows, because the green
-     text is then floating in empty space. 78 px leaves room for the falloff. */
-  /* ⚠ `mix-blend-mode:screen` REMOVED (2026-08-04, user feedback: "the writing
-     in the background is not clear enough"). `screen` can only LIGHTEN: on the
-     bright crests of the material it had almost nothing left to add, and now
-     that the glass lets the desktop through, the text also lands straight on
-     the desktop — white included, where `screen` gives nothing at all. The
-     opacity gain that compensated (`.88`) could not make up for that: the
-     blend mode was the problem.
-     So it is painted NORMALLY, and a shadow — not an outline — gives it
-     contrast: it hugs the letters and holds on a white desktop as on a dark
-     one. Same principle as the label. */
+  /* ── THE SHIP'S NAME SHINES ────────────────────────────────────────────
+     The author's request on 2026-09-20: "the agents' name must shine with that
+     effect around the letters", with the `metal-fx` library as reference
+     (preset "chromatic"). A capture of the real render was looked at before writing:
+     a ONE-pixel rim running around the shape, and on that rim the
+     colour splits into pink, green and cyan — the inside does not change.
+     What their shader does: a chromatic aberration (red and blue
+     channels shifted to either side) on a cold blue tint #88ccff.
+     No WebGL here for three 9 px words: the same fringes are laid
+     as coloured cast shadows, shifted half a pixel to each side, and
+     the angle of that shift TURNS in 5 s — that slow travel is what makes it read
+     "metal" rather than "badly printed text".
+     ⚠ Applies to the NAME only: the dots and the line below stay sharp.
+     The two dark layers are at the END of the stack, so under the colours: the
+     contrast on a light desktop holds without switching off the fringes. */
+  #dit .nom.brille {
+    text-shadow:
+      .55px 0 .6px rgba(255,110,165,.9), -.55px 0 .6px rgba(110,225,255,.92),
+      0 .55px .9px rgba(150,255,195,.5),  0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),       0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),        0 0 2.5px rgba(4,7,12,.6);
+    animation:chrome 5s linear infinite; }
+  @keyframes chrome {
+    0%,100% { text-shadow:
+      .55px 0 .6px rgba(255,110,165,.9), -.55px 0 .6px rgba(110,225,255,.92),
+      0 .55px .9px rgba(150,255,195,.5),  0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),       0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),        0 0 2.5px rgba(4,7,12,.6); }
+    33% { text-shadow:
+      -.28px .48px .6px rgba(255,110,165,.9), .28px -.48px .6px rgba(110,225,255,.92),
+      -.48px -.28px .9px rgba(150,255,195,.5), 0 0 1.5px rgba(255,255,255,.75),
+      0 0 5px rgba(136,204,255,.95),           0 0 11px rgba(136,204,255,.56),
+      0 1px 1.5px rgba(4,7,12,.9),             0 0 2.5px rgba(4,7,12,.6); }
+    66% { text-shadow:
+      -.28px -.48px .6px rgba(255,110,165,.9), .28px .48px .6px rgba(110,225,255,.92),
+      .48px .28px .9px rgba(150,255,195,.5),   0 0 1.5px rgba(255,255,255,.62),
+      0 0 4px rgba(136,204,255,.82),            0 0 10px rgba(136,204,255,.46),
+      0 1px 1.5px rgba(4,7,12,.9),             0 0 2.5px rgba(4,7,12,.6); } }
+  @media (prefers-reduced-motion: reduce) { #dit .nom.brille { animation:none } }
+
+  /* ── THE PAD — the lines really being written, INSIDE the orb ──────────────────
+     Taken from the old capsule's `drawCodeBg`, with the two fixes
+     its own comment asked for:
+       · there it scrolled a FROZEN agent file; here it is the real
+         lines being written (the session's diff stream);
+       · there it was CUT in free mode — "on the desktop it is a block that
+         covers what the user reads". Enclosed in the orb's disc,
+         the objection falls: it no longer spills over anything.
+     It is laid ON the render, not in it: the `orbe/` engine's shader is
+     shared with the Desktop project, and a text pad has no business there.
+     The `screen` + the radial mask do the rest — the text's light mixes
+     with the material's, and fades at the edges as on a sphere. */
+  /* ⚠ TWICE TOO WIDE, TWICE. 124 px first, then 96 — and 96 still
+     overflowed. The mistake was aiming at an AVERAGE width: the mesh does not have the
+     same width across mechanics. Measured on the bench, five states: 103 px for
+     `synthesizing`… but 84 for `challenging` and 85 for `committing`. A
+     pad is sized on the NARROWEST, otherwise it smears onto the desktop in
+     the thinnest states — and that is where it gets noticed, because the green
+     text then floats in the void. 78 px leaves the gradient's margin. */
+  /* ⚠ `mix-blend-mode:screen` REMOVED (2026-08-04), the author's feedback "the
+     background writing is not light enough". `screen` can only LIGHTEN:
+     on the material's light ridges it had almost nothing left to
+     add, and the glass now being see-through, the text ends up
+     in places directly on the desktop — white included, where `screen`
+     gives nothing at all. The opacity gain that compensated (`.88`) could not
+     make up for it: the blend mode was the problem.
+     So it is painted NORMALLY, and it is a shadow — not an outline — that
+     gives it contrast: it hugs the letters and holds as well on
+     a white desktop as on a dark one. Same principle as the label. */
   #pave { position:absolute; left:50%; top:50%; width:78px; height:78px;
           transform:translate(-50%,-50%); border-radius:50%; overflow:hidden;
           opacity:0; transition:opacity .5s ease; pointer-events:none;
-          /* the text fades towards the edge: without this it is cut dead on the
+          /* the text fades toward the edge: without it, it cuts sharply on the
              circle and the pad reads as a sticker, not as an inside */
           -webkit-mask-image:radial-gradient(circle at 50% 46%,
                              #000 22%, rgba(0,0,0,.68) 46%, transparent 66%); }
   #pave.vu { opacity:1; }
-  /* ── THE CURVE ────────────────────────────────────────────────────────────
-     Lines are no longer stacked: each one SITS on a latitude of the sphere.
-     Two effects, and the second is the one that matters:
-       · it narrows horizontally away from the equator (the chord of a circle),
-         which gives the volume;
-       · latitudes BUNCH UP towards the poles, so far more lines fit in the same
-         height than with regular stacking.
-     Each line is absolutely positioned and transformed: the roll itself never
-     moves at all. */
-  /* ⚠ 5.5 px over 26 slots: at the equator latitudes are only ~4.5 px apart, so
-     the lines OVERLAPPED. Text walking over itself reads as a texture, not as
-     code. 6 px over 18 slots → ~6.4 px apart: fewer lines, but each one reads. */
+  /* ── THE CURVATURE ──────────────────────────────────────────────────────────
+     The lines are no longer stacked: each one is SET on a latitude of the
+     sphere. Two effects, and the second is the one that counts for the user:
+       · it narrows horizontally moving away from the equator (the chord
+         of a circle), which gives the volume;
+       · the latitudes CROWD toward the poles, so clearly more
+         lines fit in the same height than with a regular stack.
+     Each line is placed absolutely and transformed: the scroll itself no
+     longer moves at all. */
+  /* ⚠ 5.5 px over 26 slots: at the equator the latitudes are only
+     ~4.5 px apart, so the lines OVERLAPPED. Text stepping on itself
+     reads as a texture, not as code. 6 px over 18 slots → ~6.4 px
+     apart: fewer lines, but each one reads. */
   #pave .rouleau { position:absolute; inset:0;
                    font:600 6px/7.6px ui-monospace,SFMono-Regular,Menlo,monospace;
                    white-space:pre; letter-spacing:-.05px; }
-  /* ⚠ THE WRITING IS ALWAYS GREEN, never tinted by the family. The pad does not
-     say WHO is working — the body colour and the label already do. It says that
-     code is being written, and terminal green says so at a glance on any
-     background. A hue that changed with the agent would add a third colour
-     signal carrying zero information. */
+  /* ⚠ THE WRITING IS ALWAYS GREEN, never tinted by the family. The pad does
+     not say WHO is working — the body colour and the badge already
+     do that. It says code is being written, and terminal green says so at a
+     glance on any background. A tint that changes with the agent
+     would add a third colour signal for zero information. */
   #pave .l { position:absolute; left:0; width:100%; text-align:center;
              color:#6dfaa2; opacity:.92;
              /* the shadow makes the contrast, not an outline: a tight dark halo
-                plus a one-pixel drop. Readable on a white desktop as on a dark
-                one, without outlining the letters. */
+                + a one-pixel drop. Readable on a white desktop as on a
+                dark one, without cutting out the letters. */
              text-shadow:0 0 1.5px rgba(0,22,12,.95), 0 0 4px rgba(0,30,16,.6),
                          0 1px 1px rgba(0,0,0,.55);
              will-change:transform; overflow:hidden; text-overflow:clip; }
-  /* Still green: only BRIGHTNESS separates added, removed and header. Plain red
-     would fight the hue of the orb. */
+  /* We stay in the green: only BRIGHTNESS tells added, removed and
+     header apart. A frank red would fight the orb's hue. */
   #pave .l.plus  { color:#9dffc4; opacity:1; }
   #pave .l.moins { color:#4fae76; opacity:.72; }
   #pave .l.tete  { color:#e6fff1; opacity:1; }
   @media (prefers-reduced-motion: reduce) { #pave .rouleau { transition:none } }
 
+
+  /* ── THE ORB IN THE NOTCH ─────────────────────────────────────────────────
+     The author, 24/09: "it must appear in the notch and stay there until the
+     end", "like a notification appearing". The notch is a HOLE in the panel:
+     no pixel shows there. Being "in the notch" therefore means the
+     NOTCH GROWS: a black exactly its width (not one wing more,
+     the user: "without extra space on the sides") comes down under it and
+     carries the orb, at its real size. At rest this black has the notch's height
+     and merges with it: there is nothing to see.
+     `#bloc` carries ALL the desktop orb's drawing (orb, name, line, pad),
+     unchanged; only the block travels. `--decal` and `--barre` come from main.js. */
+  html[data-encoche]:not([data-pret]) body > * { visibility:hidden; }
+  /* ⚠ THE FRAME MUST LET THE TEXT BREATHE. First version: the black
+     stopped flush with the line below — the author, 24/09: "working grazes the
+     bottom edge". 10 px under the last line, not one more: "a better
+     frame that stays small". Then, same day: "make the notch a square".
+     The width cannot move (179 pt, the hole's, measured: any
+     narrower and the hole would stick out): the HEIGHT is what comes down. The frame, out,
+     is `--haut` (158 pt from the top of the screen) and the orb `--echelle`
+     (0.9 — the user: "the orb's new size is good, keep it"). ⚠ What the author sees is not what the capture sees: on the
+     panel, the frame's black fuses with the hole AND the black border above
+     the screen, and looks taller than it is in pixels. Their eye decides.
+     THE ANIMATION, in order (the user: "a much better animation"):
+       out  — the frame opens on a SPRING (a slight overshoot then
+                 back, like the iPhone's island), the orb draws itself inside
+                 coming out of a blur, then the text rises 6 px;
+       in   — the reverse, faster: the text leaves, the orb closes into the
+                 blur, the frame goes back up without a bounce.
+     The springs are real physical curves, computed in the script and
+     set as `linear()` (--ressort-*), not Bezier curves eyeballed. */
+  #ile { display:none; }
+  html[data-encoche] #ile { display:block; position:absolute; top:0; left:0; right:0;
+    height:var(--barre, 33px); background:#000; border-radius:0 0 12px 12px;
+    transition:height .42s var(--ressort-rentree, ease) .16s, border-radius .42s ease .16s; }
+  /* The radius follows the scale (30 pt at 0.9): shrunk by a third, the frame keeps its shape. */
+  html[data-encoche][data-sortie] #ile { height:var(--haut, 116px);
+    border-radius:0 0 calc(33.3px * var(--echelle, .6)) calc(33.3px * var(--echelle, .6));
+    transition:height .72s var(--ressort-sortie, ease), border-radius .5s ease; }
+  /* The orb's ink starts at 27.5 pt in its box: we set it 5 pt under
+     the bottom of the notch, at scale `--echelle`. The author, 24/09 evening: "raise
+     the orb slightly, but very slightly" → 2 pt instead of 5 (the text
+     gets back its 10 pt of margin above the bottom of the frame). */
+  html[data-encoche] #bloc { position:absolute; left:50%;
+    top:calc(var(--barre, 33px) + 2px - 27.5px * var(--echelle, .6));
+    width:150px; height:150px; margin-left:-75px;
+    transform:scale(.5); transform-origin:50% 0; opacity:0; filter:blur(10px);
+    transition:transform .26s cubic-bezier(.5,0,.9,.4), opacity .2s ease .04s, filter .22s ease; }
+  html[data-encoche][data-sortie] #bloc { transform:scale(var(--echelle, .6)); opacity:1; filter:none;
+    transition:transform .8s var(--ressort-sortie, ease) .1s, opacity .3s ease .1s, filter .42s ease .1s; }
+  html[data-encoche] #dit, html[data-encoche] #fiche { translate:0 6px;
+    transition:opacity .12s ease, translate .12s ease; }
+  html[data-encoche][data-sortie] #dit, html[data-encoche][data-sortie] #fiche { translate:0 0;
+    transition:opacity .35s ease .34s, translate .5s var(--ressort-sortie, ease) .34s; }
+  html[data-encoche]:not([data-sortie]) #dit, html[data-encoche]:not([data-sortie]) #fiche { opacity:0; }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-encoche] #ile, html[data-encoche] #bloc, html[data-encoche] #dit,
+    html[data-encoche] #fiche { transition:opacity .2s ease !important; filter:none !important; } }
+
 </style>
 
+<div id="ile"></div>
 <div id="scene"><canvas id="c"></canvas></div>
 <div id="dit"></div>
 <div id="fiche"></div>
 <div id="pave"><div class="rouleau"></div></div>
+<div id="restant" title="notes waiting to be filed"></div>
 
 <script type="module">
 const { ipcRenderer } = require('electron');
@@ -240,50 +411,131 @@ const REDUIT = window.matchMedia &&
 
 const depart = reglage('idle');
 const orbe = creerOrbe(document.getElementById('c'), depart.meca, snoise, depart);
-let cible = depart, vu = true;
-// Exposed for the verification bench: we judge the render of THIS page, not of
-// a demo whose layout shrinks the orb to 69 px.
+// The badge's panel is born folded: its orb waits to be told "seen".
+let cible = depart, vu = !document.documentElement.dataset.ilot;
+// Exposed for the verification bench: we look at the render of THIS page,
+// not of a demo whose layout shrinks the orb to 69 px.
 window.__orbe = orbe;
 
-/* ── HOW MUCH GLASS ─────────────────────────────────────────────────────────
-   0 = solid material · 1 = full glass. Set to 0.55 on a comparison sheet, the
-   three values laid over one and the same fake desktop.
-   ⚠ 0.55 WAS A COMPROMISE FORCED BY THE OLD MODEL. There, raising the glass
-     lowered the opacity of the WHOLE body: the family tint was diluted with it,
-     and at 1.0 Inspection and Transformation turned back into two colourless
-     bubbles over a blue-violet background.
-     The ABSORPTION model (2026-08-04) moves the colour onto the EDGE: the core
-     can be properly empty without the family fading, because a filled surface
-     no longer carries it. The compromise falls away → 1.0.
-     The physical constraint does not fall away: over a violet desktop, the
-     violet family will always be the weakest. The mechanic and the label are
-     what carry it there. */
+/* ── DOSING THE GLASS ─────────────────────────────────────────────────────
+   0 = solid matter · 1 = clear glass. Chosen at 0.55 on a comparison board,
+   the three values set on the same fake desktop (`/tmp/orbe/cmp.png`).
+   ⚠ 0.55 WAS A COMPROMISE FORCED BY THE OLD MODEL. There, raising the
+     glass lowered the opacity of the WHOLE body: the family's hue
+     diluted with it, and at 1.0 Inspection and Transformation became two
+     colourless bubbles on a blue-violet background again.
+     The ABSORPTION model (2026-08-04) moves the colour to the EDGE:
+     the core can be plainly empty without the family fading, since
+     it is no longer the solid surface that carries it. The compromise falls → 1.0.
+     The physical constraint does not fall: on a violet desktop, the
+     violet family will always be the weakest. The mechanic and the
+     badge make up for it. */
 orbe.setVerre(1.0);
 
-/* ── FRAME RATE: pay for smoothness where it shows ──────────────────────────
-   Measured, 150 px orb: 60 fps ≈ 12 %, 12 fps ≈ 5.4 %, 2 fps ≈ 0.6 %. A
-   permanent companion cannot hold 12 % forever.
-   ⚠ REST AT 12, NOT AT 4. At 4 fps there are 250 ms between frames, and the
-     breathing of the rest state advanced in visible steps. Rest is the state
-     displayed by far the longest; it deserves its few points of CPU rather than
-     looking like a broken object.
-   A mechanic cross-fade runs at 60 — below that the morph steps and reads as a
-   stutter. */
-const CADENCE = { repos: 12, travail: 30, transition: 60 };
+/* ── RATE: smoothness is paid where it shows ───────────────────────
+   Measured, 150 px orb: 60 f/s ≈ 12 %, 12 f/s ≈ 5.4 %, 2 f/s ≈ 0.6 %. A
+   permanent companion cannot hold 12 % for life.
+   ⚠ REST AT 12, NOT 4. At 4 f/s there are 250 ms between two frames, and the
+     resting breath moved in visible notches. Rest is by far
+     the state shown the longest; it deserves its few points of CPU
+     rather than giving the impression of a broken object.
+   A mechanic cross-fade runs at 60 — below that, the morphing moves in notches
+   and reads as stutter. */
+/* ── OUT / IN (notch mode only) ──────────────────────────────
+   Going out follows the state ALREADY read for the orb (freshness guard included):
+   no second opinion on "are we working". Going in waits 4 s, otherwise
+   the orb would go back and forth between two tool calls of the same job.
+   Tucked in, it barely paints any more (rate 1). */
+const ENCOCHE = document.documentElement.dataset.encoche === '1';
+let rentree = ENCOCHE, force = false, attenteRentree = null;
+function sortir(v) {
+  if (v) {
+    clearTimeout(attenteRentree); attenteRentree = null;
+    if (!rentree) return;
+    rentree = false; document.documentElement.dataset.sortie = '1'; majCadence();
+  } else if (!rentree && !attenteRentree) {
+    attenteRentree = setTimeout(() => {
+      attenteRentree = null; rentree = true;
+      delete document.documentElement.dataset.sortie;
+      setTimeout(majCadence, 700);       // let the orb finish going in at full rate
+    }, force ? 0 : 4000);
+  }
+}
+// For the bench: force going out or in without waiting for real work.
+window.__sortir = (v) => { force = true; sortir(v); };
+/* A damped spring, sampled as a `linear()` curve: x(t) for a unit
+   mass, stiffness k, damping c, over the given duration. Beyond the duration
+   the curve is at 1: the CSS duration must cover the spring's settling time. */
+function ressort(k, c, duree) {
+  const w0 = Math.sqrt(k), z = c / (2 * w0), pts = [];
+  for (let i = 0; i <= 48; i++) {
+    const t = duree * i / 48;
+    let x;
+    if (z < 1) { const wd = w0 * Math.sqrt(1 - z * z);
+      x = 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)); }
+    else x = 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+    pts.push((i === 48 ? 1 : x).toFixed(4));
+  }
+  return 'linear(' + pts.join(',') + ')';
+}
+if (ENCOCHE) {
+  const st = document.documentElement.style;
+  st.setProperty('--ressort-sortie',  ressort(260, 20, 0.72));   // ~8 % overshoot
+  st.setProperty('--ressort-rentree', ressort(400, 40, 0.42));   // critically damped: no bounce
+  require('electron').ipcRenderer.on('cap-encoche', (_e, g) => {
+    document.documentElement.style.setProperty('--decal', g.decal + 'px');
+    document.documentElement.style.setProperty('--barre', g.barre + 'px');
+    document.documentElement.style.setProperty('--haut', g.haut + 'px');
+    document.documentElement.style.setProperty('--echelle', g.echelle);
+  });
+  // All of the desktop orb's drawing goes into a single block, which travels.
+  const bloc = document.createElement('div'); bloc.id = 'bloc';
+  ['scene', 'dit', 'fiche', 'pave', 'restant'].forEach((id) => bloc.appendChild(document.getElementById(id)));
+  document.body.appendChild(bloc);
+  document.documentElement.dataset.pret = '1';
+}
+
+// Filming (CAPSULE_TOURNAGE=1): 60 everywhere. The author, 24/09: the video "stutters at
+// some moments, at others it's smooth" — it was the orb switching from 30
+// (work) to 60 (transition): a changing rate shows on screen.
+// ⚠ The author, 25/09: "my PC lags enormously […] it absolutely has to be
+//   made extremely light". Measured that day, badge launched alone on a
+//   fake status: each frame per second costs ~1.2 % of a core to the badge
+//   and ~0.8 % to WindowServer, WHATEVER the orb's size. The rate
+//   is therefore the only lever, and it is set per place:
+//     · ?seule (badge, 20 pt): at that size, 4 f/s shows no notches;
+//       at rest, 1 f/s is enough for a breath that moves less than a point;
+//     · ?ilot (panel): 16 at work, the pad's threshold (see tournerPave).
+const DANS = document.documentElement.dataset;
+const ENV = typeof process !== 'undefined' ? process.env : {};
+const CADENCE = ENV.CAPSULE_CADENCE
+  ? { repos: +ENV.CAPSULE_CADENCE, travail: +ENV.CAPSULE_CADENCE, transition: +ENV.CAPSULE_CADENCE }
+  : ENV.CAPSULE_TOURNAGE === '1'
+  ? { repos: 60, travail: 60, transition: 60 }
+  : DANS.seule || DANS.ilot ? { repos: 1, travail: 30, transition: 60 }
+  : { repos: 12, travail: 30, transition: 60 };
+// Work needs regular frames; at rest the small orb slows its clock so sparse
+// frames read as stillness rather than a jump between positions.
+const TEMPO_REPOS = (DANS.seule || DANS.ilot) && !ENV.CAPSULE_CADENCE ? 0.1 : 1;
 let occupe = false;
 function majCadence() {
-  if (!vu || document.hidden) return orbe.setCadence(1);
-  if (orbe.enTransition()) return orbe.setCadence(CADENCE.transition);
+  if (!vu || document.hidden || rentree) return orbe.setCadence(1);
+  if (orbe.enTransition()) { orbe.setTempo(1); return orbe.setCadence(CADENCE.transition); }
+  orbe.setTempo(occupe ? 1 : TEMPO_REPOS);
   orbe.setCadence(occupe ? CADENCE.travail : CADENCE.repos);
 }
 setInterval(majCadence, 200);
 
-/* Colours travel continuously; the mechanic cross-fades over 1.4 s.
-   ⚠ anti-NaN net: one non-finite value would contaminate the geometry for the
-     whole session, without a single console error. */
+/* Colours travel continuously; the mechanic cross-fades in 1.4 s.
+   ⚠ anti-NaN net: a non-finite value would contaminate the geometry for
+   the whole session, without a single error in the console. */
 const lerp = (a, b, k) => a + (b - a) * k;
+// ⚠ 25/09: this timer ran 30 times a second for life, colours arrived or
+//   not. Once at the target, it goes quiet until the next state.
+let cibleAtteinte = null;
+const ecartCouleur = (c, h) => { const t = new THREE.Color(h); return Math.abs(c.r - t.r) + Math.abs(c.g - t.g) + Math.abs(c.b - t.b); };
 setInterval(() => {
-  if (!vu || document.hidden) return;
+  if (!vu || document.hidden || cible === cibleAtteinte) return;
   const U = orbe._u, k = 0.045;
   const sur = (a, b) => Number.isFinite(a) && Number.isFinite(b) ? lerp(a, b, k) : b;
   U.uC1.value.lerp(new THREE.Color(cible.c1), k);
@@ -294,21 +546,61 @@ setInterval(() => {
   U.uFreq.value  = sur(U.uFreq.value,  cible.freq);
   U.uSpeed.value = sur(U.uSpeed.value, cible.speed);
   U.uRimI.value  = sur(U.uRimI.value,  cible.rimI);
+  const pret = (u, c) => !Number.isFinite(cible[c]) || Math.abs(U[u].value - cible[c]) < 0.002;
+  if (ecartCouleur(U.uC1.value, cible.c1) + ecartCouleur(U.uC2.value, cible.c2) + ecartCouleur(U.uC3.value, cible.c3)
+      + ecartCouleur(U.uRim.value, cible.rim) < 0.006
+      && pret('uDisp', 'disp') && pret('uFreq', 'freq') && pret('uSpeed', 'speed') && pret('uRimI', 'rimI')) cibleAtteinte = cible;
 }, 1000 / 30);
 
-/* ── THE STATE ──────────────────────────────────────────────────────────────
-   ⚠ FRESHNESS GUARD. `status.json` can stay on "busy" with a stale timestamp:
-     past 30 s without a heartbeat we consider that nothing is working any more.
-     The heartbeat is written by hooks/brain_battement.py on every tool call.
-   ⚠ ONE SYSTEM ONLY. An earlier set mixed ROLES (GARDENER, ARCHIVIST) with
-     ACTIONS (FIXING, SAVING): less systematic than the rest of the object, and
-     wrong on top of it — the gardener alone carries four activities, so a role
-     name does not say what is happening. The orb says WHAT IS BEING DONE, so
-     every label is an -ING action, exactly the state names. */
+/* ── THE STATE ────────────────────────────────────────────────────────────────
+   ⚠ FRESHNESS GUARD. `status.json` can stay on "busy" with a
+   stale timestamp: past the liveness window without a heartbeat, we consider that nothing
+   is working any more. The heartbeat is set by hooks/brain_battement.py, on
+   every tool call. The windows come from hooks/status_freshness.json. */
+/* ⚠ ONE SINGLE SYSTEM. The previous set mixed ROLES (GARDENER,
+   ARCHIVIST) and ACTIONS (FIXING, SAVING): less systemic than the rest of
+   the object, and above all wrong — the gardener alone carries four activities,
+   so a role name does not say what is happening. The orb says WHAT IS BEING DONE.
+   All labels are therefore -ING actions, exactly the state names. */
 const NOMS = { mapping:'MAPPING', auditing:'AUDITING', architecting:'ARCHITECTING',
   challenging:'CHALLENGING', filing:'FILING', archiving:'ARCHIVING',
   gardening:'GARDENING', correcting:'CORRECTING', working:'WORKING',
   distilling:'DISTILLING', synthesizing:'SYNTHESIZING', committing:'COMMITTING' };
+/* ⚠ 20/09 — THE AUTHOR RENAMED THE AGENTS INTO FOUR SHIPS ("we put the new
+   names in"). When the activity belongs
+   to a ship, the label carries ITS NAME and the action goes down to the line
+   below: "NOSTROMO" then "auditing · hooks and links". The table follows
+   `hooks/brain_upkeep.py` (ACT) and `hooks/brain_status.py`: auditing = mechanic,
+   mapping/filing = gardener.
+
+   ⚠ 20/09 evening — THE SESSION JOINS THE FAMILY too. Version before:
+   working, committing and correcting kept their -ING "because they have no
+   author among the ships". Wrong, and above all invisible in use — the session
+   works ALMOST ALL THE TIME, so the orb showed "WORKING" permanently
+   and a ship's name only appeared for a few seconds a day. The author, seeing
+   the gap: "I had nostromo but now I have working, I don't understand", then
+   "they must adopt similar names too, with the same glow effect".
+
+   TORRENS, and the choice is not free. The series obeys a rule measured on 20/09:
+   the Alien ships
+   almost all bear a name drawn from JOSEPH CONRAD — Nostromo after the
+   1904 novel, Narcissus after The Nigger of the 'Narcissus', Sulaco the town in Nostromo. The
+   Torrens is the clipper on which Conrad was first mate from November 1891 to June
+   1893: the LAST ship he worked on before becoming a writer. And in Alien:
+   Isolation, the USCSS Torrens is the ship you are aboard while you go
+   fetch the Nostromo's flight recorder. That is exactly the session's place:
+   the ship you are on, while the work gets done.
+   MOTHER was the obvious candidate and it is FORBIDDEN: the name has been taken since
+   14/08 by the Brain's visual signature, and a
+   homonym already cost two defects here.
+
+   MECHANICAL CONSEQUENCE: the twelve states now have a ship, so `NOMS`
+   above only serves as a net for an unknown state. We keep it for that. */
+const VAISSEAUX = { auditing:'NOSTROMO',
+  mapping:'NARCISSUS', filing:'NARCISSUS', gardening:'NARCISSUS', distilling:'NARCISSUS',
+  challenging:'SULACO', architecting:'SULACO', archiving:'SULACO',
+  synthesizing:'ANESIDORA',
+  working:'TORRENS', committing:'TORRENS', correcting:'TORRENS' };
 
 const dit   = document.getElementById('dit');
 const fiche = document.getElementById('fiche');
@@ -316,30 +608,30 @@ const pave = document.getElementById('pave');
 const rouleau = pave.querySelector('.rouleau');
 let dernier = null;
 
-/* ── THE REAL WRITING FEED ──────────────────────────────────────────────────
-   `~/.claude/companion/sessions/<id>.jsonl`: one line per writing tool, with
-   the unified diff actually applied. Same source as the companion's live panel
-   — not a frozen agent file.
-   ⚠ We take the MOST RECENTLY WRITTEN file, not the most recently created:
-     several sessions can be open, only the one doing work counts. */
+/* ── THE REAL WRITING STREAM ────────────────────────────────────────────────
+   `~/.claude/companion/sessions/<id>.jsonl`: one line per writing tool,
+   with the unified diff really applied. It is the SAME source as the companion's live
+   panel — not a frozen agent file as in the old capsule.
+   ⚠ We take the most RECENTLY WRITTEN file, not the most recently created:
+     several sessions can be open, only the one that works counts. */
 const FLUX = path.join(os.homedir(), '.claude', 'companion', 'sessions');
 const LARGEUR = 19;    // characters that fit in 78 px at a 6 px font
-const GARDE   = 90;    // lines kept: beyond that we pay for invisible DOM
+const GARDE   = 90;    // lines kept: beyond that, we pay for invisible DOM
 let fluxFichier = null, fluxTaille = 0, lignes = [], dernierFichier = null;
 
-/* ── THE "WHAT ON" LINE ─────────────────────────────────────────────────────
-   `status.json` already carries a `detail` field, but it is HETEROGENEOUS
-   depending on who writes it — and that is the whole job here:
-     · `on_fiche_write.py` puts a bare note slug ....... `format-arbre-projet`
-     · `brain_upkeep.py`  puts "agent: reason" ......... `gardener: 3 to file`
-     · `on_fiche_write.py` also puts prose ............. `updating the map`
-     · `brain_battement.py` (your own passes) .......... nothing at all
-   A slug resolves to a REAL TITLE; a sentence is shown as is; and the empty
-   case falls back on the last file written. Without that last case the line
-   would be blank during the longest passes — so missing exactly when you look,
-   which is the very defect already fixed on the pad.
-   ⚠ Everything is cached, misses included: resolving opens directories, and
-     `lire()` runs every 700 ms. */
+/* ── THE "ON WHAT" LINE ──────────────────────────────────────────────────
+   `status.json` already carries a `detail` field, but it is HETEROGENEOUS depending on who
+   writes it — and that is all the work here:
+     · `on_fiche_write.py` puts a bare note slug ........... `format-arbre-projet`
+     · `brain_upkeep.py`  puts "agent: reason" ............. `gardener: 3 to file`
+     · `on_fiche_write.py` also puts prose ................. `updating the map`
+     · `brain_battement.py` (my own passes) ................ nothing at all
+   A slug resolves to a REAL TITLE; a sentence shows as is; and
+   absence is made up for with the last file written. Without this last case the
+   line would be empty during the longest passes — so absent right
+   when one looks, exactly the defect already fixed on the pad.
+   ⚠ Everything is cached, failures included: resolution opens folders,
+     and `lire()` runs every 700 ms. */
 const TRONC = path.join(os.homedir(), '.c-brain', 'trunk');
 const RACINES = ['lessons', 'meta', 'life', 'projects', 'agents', 'sessions'];
 const cacheTitre = {};
@@ -349,7 +641,7 @@ function cheminFiche(slug) {
     const base = path.join(TRONC, r);
     const direct = path.join(base, slug + '.md');
     try { if (fs.existsSync(direct)) return direct; } catch (e) {}
-    // one level of sub-folder only: `projects/<project>/<slug>.md`
+    // a single level of subfolder: `projects/<project>/<slug>.md`
     try {
       for (const sous of fs.readdirSync(base, { withFileTypes: true })) {
         if (!sous.isDirectory()) continue;
@@ -361,8 +653,8 @@ function cheminFiche(slug) {
   return null;
 }
 
-/** Readable title of a note: frontmatter `title:`, else the first `# `, else
- *  the slug made readable. Never throws back to the caller. */
+/** Readable title of a note: front matter `title:`, else the first `# `,
+ *  else the slug made readable. Never an exception toward the caller. */
 function titreDeFichier(p, repli) {
   try {
     const tete = fs.readFileSync(p, 'utf8').slice(0, 2000).split('\n');
@@ -390,7 +682,7 @@ function surQuoi(detail) {
     }
     return cacheTitre[brut] = sortie;
   }
-  // fallback: the last file actually written
+  // fallback: the last file really written
   if (!dernierFichier) return '';
   if (cacheTitre['~' + dernierFichier] !== undefined) return cacheTitre['~' + dernierFichier];
   const nom = dernierFichier.split('/').pop();
@@ -402,7 +694,7 @@ function surQuoi(detail) {
   return cacheTitre['~' + dernierFichier] = sortie;
 }
 
-function fichierActif() {
+function fichierActif(sansAge) {
   try {
     let best = null, bestTs = 0;
     for (const f of fs.readdirSync(FLUX)) {
@@ -410,8 +702,8 @@ function fichierActif() {
       const st = fs.statSync(path.join(FLUX, f));
       if (st.mtimeMs > bestTs) { bestTs = st.mtimeMs; best = path.join(FLUX, f); }
     }
-    // A feed that has not moved for 3 min no longer describes the present.
-    return (best && Date.now() - bestTs < 180000) ? best : null;
+    // A stream that has not moved for 3 min no longer tells the present.
+    return (best && (sansAge || Date.now() - bestTs < 180000)) ? best : null;
   } catch (e) { return null; }
 }
 
@@ -422,18 +714,22 @@ function classe(l) {
   return '';
 }
 
-/* ── THE FALLBACK ───────────────────────────────────────────────────────────
-   With no diff for 3 min the pad emptied and the orb went mute WHILE AN AGENT
-   WAS WORKING — which is exactly when someone looks at it. An agent spends long
-   minutes reading and thinking without writing a line: "nothing was written"
-   does not mean "nothing is happening".
-   So we fall back to the file THAT agent runs. A net, never the main source. */
+/* ── THE FALLBACK ───────────────────────────────────────────────────────────────
+   When no diff had arrived for 3 min, the pad emptied and the orb
+   went mute again WHILE AN AGENT IS WORKING — precisely the moment
+   one looks. An agent spends long minutes reading and thinking without
+   writing anything: "nothing was written" does not mean "nothing is happening".
+   So we fall back on the file THIS agent executes — the old capsule's
+   behaviour, kept here as a net and not as the main source. */
+/* Since 2026-09-20 the 8 agents are grouped into 4 SHIPS. The fallback
+   file is the FAMILY's; several activities therefore land on the same one,
+   which is right: that is indeed the file the agent executes. */
 const SOURCE_AGENT = {
-  distilling:'agents/distillateur.md', gardening:'agents/jardinier.md',
-  filing:'agents/jardinier.md', correcting:'agents/jardinier.md',
-  mapping:'agents/jardinier.md', architecting:'agents/architecte.md',
-  challenging:'agents/challenger.md', archiving:'agents/archiviste.md',
-  synthesizing:'agents/synthetiseur.md', auditing:'hooks/brain_upkeep.py',
+  distilling:'agents/narcissus.md', gardening:'agents/narcissus.md',
+  filing:'agents/narcissus.md', correcting:'agents/narcissus.md',
+  mapping:'agents/narcissus.md', architecting:'agents/sulaco.md',
+  challenging:'agents/sulaco.md', archiving:'agents/sulaco.md',
+  synthesizing:'agents/anesidora.md', auditing:'hooks/brain_upkeep.py',
   committing:'hooks/auto_maintain.py', working:'hooks/auto_maintain.py' };
 const cacheAgent = {};
 function lignesAgent(etat) {
@@ -444,30 +740,86 @@ function lignesAgent(etat) {
     const brut = fs.readFileSync(path.join(os.homedir(), '.c-brain', 'trunk', rel), 'utf8');
     return cacheAgent[rel] = brut.split('\n')
       .map(l => l.replace(/\t/g, '  ').trim())
-      // ⚠ Agent notes are Markdown: without this filter one slot in four shows
-      //   a rule, a fence or a table row. The pad has to look like work, not
-      //   like punctuation scrolling by.
+      // ⚠ Agent files are Markdown: without this filter, one slot in
+      //   four shows "---", "```" or a table row. The pad must
+      //   look like work, not like scrolling punctuation.
       .filter(l => l.length > 2 && !/^[-`#*_|>=:\s]+$/.test(l))
       .slice(0, 400)
       .map(l => ({ t: l.slice(0, LARGEUR), c: '' }));
   } catch (e) { return cacheAgent[rel] = []; }
 }
 
+// ⚠ The author, 24/09: "above all in English and anonymised". When filming, the pad
+//   reads NO real file: it unrolls neutral code, in English, invented
+//   for the video. Otherwise a personal note scrolls by, readable on screen.
+const PAVE_TOURNAGE = {
+  synthesizing: `── notes/digest.ts
++ export async function weeklyDigest(notes) {
++   const themes = groupBy(notes, n => n.topic);
++   for (const [topic, items] of themes) {
++     const links = items.flatMap(n => n.links);
++     if (links.length < 2) continue;
++     digest.push({ topic, summary: merge(items) });
++   }
+-   return notes.map(n => n.title);
++   return rank(digest, { by: 'reuse' });
++ }
+  const merge = items => items
+    .map(n => n.lesson)
+    .filter(Boolean)
+    .join('\\n');
++ // cross-project patterns only
++ const rank = (xs, o) => xs.sort(score(o));`,
+  autre: `── src/index/graph.ts
++ export function mapLayout(nodes, edges) {
++   const seen = new Set();
++   for (const e of edges) {
++     if (!seen.has(e.from)) place(e.from);
++     link(e.from, e.to, e.weight);
++   }
+-   return nodes;
++   return settle(nodes, { steps: 120 });
++ }
+  function place(id) {
+    seen.add(id);
+    grid.put(id, nearestFree(id));
+  }
++ // commit: 3 files changed
++ git.add(['graph.ts', 'layout.ts']);
++ git.commit('map layout: stable seeds');`,
+};
+const cachePave = {};
+function paveTournage(etat) {
+  const cle = PAVE_TOURNAGE[etat] ? etat : 'autre';
+  return cachePave[cle] || (cachePave[cle] = PAVE_TOURNAGE[cle].split('\n')
+    .map(t => ({ t: t.slice(0, LARGEUR), c: t.startsWith('──') ? 'tete' : classe(t) })));
+}
+
 function lireFlux(etat) {
-  const f = fichierActif();
+  if (process.env.CAPSULE_TOURNAGE === '1') {
+    const l = paveTournage(etat);
+    if (lignes === l) return false;
+    lignes = l; return true;
+  }
+  let f = fichierActif();
+  // ⚠ The author, 24/09: "the writing in the orb has disappeared again". Cause: with no
+  //   diff written for 3 min, `working` has no fallback agent file
+  //   (SOURCE_AGENT) → empty pad. In the menu bar, the last real
+  //   write, even an old one, beats a mute orb during work.
+  if (!f && HOTE && !lignesAgent(etat).length) f = fichierActif(true);
   if (!f) {
     const repli = lignesAgent(etat);
-    // ⚠ only return `true` when the content CHANGES: otherwise the pad is
-    //   repainted on every pass of `lire()` and the scroll restarts endlessly.
+    // ⚠ only return `true` if the content CHANGES: otherwise the pad is repainted
+    // on every turn of `lire()` and the scroll restarts from zero endlessly.
     if (lignes === repli) return false;
     lignes = repli; fluxFichier = null; fluxTaille = 0;
     return true;
   }
   let taille = 0;
   try { taille = fs.statSync(f).size; } catch (e) { return false; }
-  // ⚠ Re-read ONLY if the file grew. Without this guard we re-split a 100 KB
-  //   file every 1.5 s for nothing, and the pad is rebuilt whole — so it
-  //   flickers while nothing at all has been written.
+  // ⚠ Re-read ONLY if the file has grown. Without this guard, a 100 KB file
+  //   is re-split every 1.5 s for nothing, and the pad rebuilds
+  //   entirely — so it flickers although nothing was written.
   if (f === fluxFichier && taille === fluxTaille) return false;
   fluxFichier = f; fluxTaille = taille;
   let brut = '';
@@ -477,26 +829,26 @@ function lireFlux(etat) {
     if (!ligne.trim()) continue;
     let j; try { j = JSON.parse(ligne); } catch (e) { continue; }
     if (j.type !== 'diff' || !Array.isArray(j.diff)) continue;
-    // Kept for the "what on" line: when `status.json` has no `detail` — the
-    // case of your own passes, where the heartbeat writes "working" and
-    // nothing else — the last file actually written is the only landmark
-    // available, and it is the right one.
+    // Kept for the "on what" line: when `status.json` has no
+    // `detail` — the case of my own passes, where the heartbeat writes
+    // "working" and nothing else — the last file really written is
+    // the only bearing available, and it is the right one.
     dernierFichier = j.rel || j.file || dernierFichier;
     out.push({ t: '── ' + (j.rel || j.file || '?'), c: 'tete' });
     for (const d of j.diff) {
-      // ⚠ INDENTATION WAS THROWING THE WHOLE PAD OFF-CENTRE (2026-08-08). The
-      //   lines are CENTRED in the disc, and `white-space:pre` keeps leading
-      //   spaces: a line indented by twelve spaces centres WITH them, so its
-      //   text drifts to the right and out of the mask while the left half of
-      //   the pad stays empty. Visible as soon as you look at a deeply nested
-      //   code file — a shader, typically. We keep two spaces: enough to see
-      //   there is a level, not enough to push the line out of the disc. It
-      //   also buys back 10 useful characters out of 19.
+      // ⚠ INDENTATION OFF-CENTRED THE WHOLE PAD (2026-08-08). The lines are
+      //   CENTRED in the disc, and `white-space:pre` keeps the leading
+      //   spaces: a line indented by twelve spaces is centred WITH them, so
+      //   its text heads right and leaves the mask, while the left half
+      //   of the pad stays empty. Visible as soon as one looks at a deeply
+      //   nested code file — a shader, typically. We keep two
+      //   spaces: enough to see there is a level, not enough to push
+      //   the line out of the disc. And it also makes 10 useful characters out of 19.
       // ⚠ THE DIFF SIGN COMES BEFORE THE INDENTATION — "+          vec3 x". A
-      //   first attempt anchored the pattern on the space alone (`^ {3,}`): it
-      //   therefore matched NO added or removed line, that is, almost the whole
-      //   pad, and the sheet came back identical. The sign is captured and put
-      //   back, otherwise `classe()` no longer recognises the line.
+      //   first try anchored the pattern on the space only (`^ {3,}`): it therefore
+      //   matched NO added or removed line, that is almost
+      //   the whole pad, and the board came back identical. The sign is captured
+      //   and put back, otherwise `classe()` no longer recognises the line.
       const t = d.replace(/\t/g, '  ').replace(/\s+$/, '')
                  .replace(/^([+-]?) {2,}/, '$1 ');
       if (!t) continue;
@@ -508,16 +860,16 @@ function lireFlux(etat) {
 }
 
 /* ── THE CURVED PAD ─────────────────────────────────────────────────────────
-   `FENTES` fixed lines in the DOM, reused on every turn: nothing is rebuilt,
-   things only move. Rebuilding 30 nodes every 60 ms would recompute layout
-   continuously for a 96 px-wide box.
-   Each slot k occupies a latitude θ ∈ ]−90°, +90°[ :
-     y  = R·sin θ        → latitudes bunch up towards the poles
+   `FENTES` fixed lines in the DOM, reused on every turn: nothing is
+   rebuilt, things are only moved. Rebuilding 30 nodes every
+   90 ms would recompute the layout continuously for 96 px of width.
+   Each slot k takes a latitude θ ∈ ]−90°, +90°[:
+     y  = R·sin θ        → latitudes crowd toward the poles
      sx = cos θ          → the line narrows like the chord of a circle
-   Scrolling slides the latitudes, not the block: the text climbs along the
-   sphere instead of crossing a rectangle.
-   ⚠ Animated through `transform`, never through `top`: `top` redoes layout on
-     every frame and puts the whole compositor to work for 96 px. */
+   Scrolling slides the latitudes, not the block: the text climbs
+   along the sphere instead of crossing a rectangle.
+   ⚠ Animated by `transform`, never by `top`: `top` redoes the layout on
+     every frame and makes the whole compositor work for 96 px. */
 const FENTES = 18, RAYON_TXT = 37;
 const fentes = [];
 for (let k = 0; k < FENTES; k++) {
@@ -528,20 +880,22 @@ for (let k = 0; k < FENTES; k++) {
 }
 
 let defilement = 0;
-function tournerPave() {
+function tournerPave(dt = 0) {
   if (!occupe || !lignes.length || !vu || document.hidden) return;
-  // ⚠ SET THREE TIMES, and the first two overshot in both directions — 0.055
-  //   (0.6 line/s): the orb looked frozen; 0.13 (2.2 lines/s): the text fled,
-  //   unreadable even out of the corner of an eye.
-  //   The right speed is neither "readable" nor "alive", it is FOLLOWABLE: the
-  //   eye must be able to catch a line and lose it without effort.
+  // ⚠ TUNED IN THREE GOES, and the first two tries overshot the target in
+  //   both directions — 0.055 (0.6 line/s): the orb looked frozen; 0.13
+  //   (2.2 lines/s): the text ran away, unreadable even from the corner of the eye.
+  //   The right speed is neither "readable" nor "alive", it is FOLLOWABLE:
+  //   the eye must be able to catch a line and lose it without effort.
   //   0.075 ≈ 1.25 line/s.
-  if (!REDUIT) defilement += 0.075;
+  // 1.25 line/s (0.075 per 60 ms step), now in real elapsed time:
+  // the pad moves forward INSIDE the orb's frames (orbe.surImage), with no timer of its own.
+  if (!REDUIT) defilement += 1.25 * dt;
   const base = Math.floor(defilement), frac = defilement - base;
   for (let k = 0; k < FENTES; k++) {
     const d = fentes[k];
-    // 0.97 rather than 1: exactly at the pole cos θ is 0 and the line collapses
-    // into a stroke — we stop just short of it.
+    // 0.97 rather than 1: exactly above the pole, cos θ is 0 and the
+    // line vanishes into a stroke — we stop just before.
     const th = (((k - frac) / (FENTES - 1)) - 0.5) * Math.PI * 0.97;
     const y  = RAYON_TXT * Math.sin(th);
     const sx = Math.cos(th);
@@ -549,76 +903,96 @@ function tournerPave() {
     if (d._t !== l.t) { d.textContent = l.t; d._t = l.t; }
     if (d._c !== l.c) { d.className = 'l' + (l.c ? ' ' + l.c : ''); d._c = l.c; }
     d.style.transform = `translate(0, ${(37 + y).toFixed(1)}px) scaleX(${sx.toFixed(3)})`;
-    // the material is thicker seen edge-on: the text drowns in it
+    // the material is thicker seen at an angle: the text drowns in it
     d.style.opacity = (0.50 + 0.50 * Math.pow(sx, 0.9)).toFixed(2);
   }
 }
-// 60 ms rather than 90: at the current speed a 90 ms step is visibly notched
-// along the latitudes.
-setInterval(tournerPave, 60);
+// A 90 ms step is seen moving in notches along the latitudes; 60 ms is not.
+// Hence the panel's work rate at 16 f/s (62 ms), not 12: see CADENCE.
+// ⚠ 25/09: the pad had its own timer (60 ms), out of step with the orb's frames:
+//   each step forced one more frame. It now moves inside the render
+//   loop — as many frames as the orb, not one more.
+orbe.surImage = tournerPave;
 
-/* The slots are permanent: painting only opens or closes the pad, the content
-   is laid down by `tournerPave` on every turn. */
+/* The slots are permanent: painting only opens or closes the pad,
+   the content is set by `tournerPave` on every turn. */
 function peindrePave() {
   if (!lignes.length) { pave.classList.remove('vu'); return; }
   if (occupe) { pave.classList.add('vu'); tournerPave(); }
 }
 
+// ?seule / ?ilot: the orb is in the menu bar badge or panel,
+// and it is the host page (ilot.html) that TELLS it the state. The author, 24/09:
+// "the sphere only shows one state even when it switches to other colours
+// or ships" — reading the file on its own side, it had its own
+// freshness guard (30 s against 180 for the badge) and could fail to
+// follow what the panel said. One single source now: the host.
+const HOTE = !!(document.documentElement.dataset.seule || document.documentElement.dataset.ilot);
+let impose = null;
+if (HOTE) window.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if ('vu' in e.data && vu !== !!e.data.vu) { vu = !!e.data.vu; majCadence(); }
+  if (e.data.ilot) { impose = e.data.ilot; lire(); }
+});
 function lire() {
   let st = { state:'idle' };
-  try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
-  // TWO questions, two timestamps, and they are NOT the same question.
-  //   `ts`          — is Claude still working?     refreshed by every tool (heartbeat)
-  //   `activity_ts` — is this LABEL still current?  set only by whoever knows the activity
-  // Measured on 2026-08-17: `busy / correcting`, 654 s old, while the session had never
-  // stopped. Refreshing everything from the heartbeat would have made the orb announce
-  // "correcting" for the rest of the session — fresh-looking, and false. So a stale label
-  // falls back to the honest word the code already had: `working`.
+  if (HOTE) st = impose ? Object.assign({}, impose, { ts: Date.now() / 1000 }) : st;
+  else try { st = JSON.parse(fs.readFileSync(STATUT, 'utf8')); } catch (e) {}
+  // In the notch, the end is told by the Stop hook (`idle` written at the end of
+  // the reply): the freshness guard is only a net if the session
+  // dies. At 30 s, it tucked the orb in while Claude was thinking.
   const F = fenetresFraicheur();
-  const frais = (Date.now()/1000 - (st.ts || 0)) < F.live;
-  const actFraiche = (Date.now()/1000 - (st.activity_ts || 0)) < F.activity;
+  const frais = (Date.now()/1000 - (st.ts || 0)) < (ENCOCHE ? Math.max(180, F.live) : F.live);
+  // An activity older than its own window is no longer named: the orb says
+  // "working" rather than a job that may have ended minutes ago.
+  const actFraiche = HOTE || (Date.now()/1000 - (st.activity_ts || 0)) < F.activity;
   const etat = (st.state === 'busy' && frais)
     ? ((actFraiche && st.activity) || 'working')
     : 'idle';
-  // ⚠ The feed grows WITHOUT the state changing: one agent writes dozens of
-  //   times in a row. Keeping this outside the `etat === dernier` guard is the
-  //   only way to see anything past each agent's first diff.
+  // ⚠ The stream grows WITHOUT the state changing: the same agent writes dozens
+  //   of times in a row. Taking it out of the `etat === dernier` guard is the only way
+  //   to see anything arrive beyond each agent's first diff.
   occupe = etat !== 'idle';
-  // ⚠ BEFORE the `etat === dernier` guard, and that is the whole point: the
-  //   DETAIL changes without the state moving — "FILING" stays "FILING" while
-  //   the agent walks from one note to the next. Placed after the guard, this
-  //   line would be frozen on the first note of every pass. Same class of
-  //   defect as the pad that would not light back up.
+  if (ENCOCHE && !force) sortir(occupe);
+  // ⚠ BEFORE the `etat === dernier` guard, and that is the whole point: the DETAIL
+  //   changes without the state moving — "FILING" stays "FILING" while
+  //   the agent goes from one note to the next. Set after the guard, this line
+  //   would be frozen on the first note of each pass. Same class of defect
+  //   as the pad that did not light up again.
   if (occupe) {
-    // SAME clock as the label, and deliberately not a third one: `activity` and
-    // `detail` describe ONE operation ("gardening" / "Organizing the tree"), so they
-    // go stale together. Seen on screen on 2026-08-17, and it is the defect the first
-    // fix left behind: the label had honestly fallen back to WORKING… while the line
-    // underneath still read "Organizing the tree". Half a truth is the worse half —
-    // the subtitle is the precise part, so it is the part that misleads.
-    const quoi = actFraiche ? surQuoi(st.detail) : '';
+    const sur = actFraiche ? surQuoi(st.detail) : '';
+    // a ship on the label → the action moves here, in front of the "on what"
+    const quoi = VAISSEAUX[etat] ? (sur ? etat + ' · ' + sur : etat) : sur;
     if (fiche._t !== quoi) { fiche.textContent = quoi; fiche._t = quoi; }
     fiche.classList.toggle('vu', !!quoi);
   } else { fiche.classList.remove('vu'); }
-  // ⚠ BEFORE: `if (lireFlux(etat)) peindrePave();` — the pad was only turned
-  //   BACK ON when the content had just changed. But `lireFlux` returns `false`
-  //   as soon as the file has not grown (and the fallback returns the same
-  //   array). So an agent resuming work after a spell at rest, without writing
-  //   within the second, left the pad DARK for its whole pass. The content was
-  //   there, the `vu` class never came back. Seen on the bench: a mute orb on
-  //   every working state but the first.
-  //   Reading may be conditional; DISPLAYING may not.
-  if (occupe) { lireFlux(etat); peindrePave(); }
-  else { pave.classList.remove('vu'); }
+  // ⚠ BEFORE: `if (lireFlux(etat)) peindrePave();` — the pad was only LIT AGAIN
+  //   if the content had just changed. But `lireFlux` returns `false` as soon as
+  //   the file has not grown (and the fallback returns the same array). So an
+  //   agent resuming work after a spell at rest, without writing within
+  //   the second, left the pad OFF for its whole pass. The content was
+  //   there, the `vu` class never came back. Seen on a board: mute orb on
+  //   every work state but the first.
+  //   Reading may be conditional; displaying may not.
+  // ⚠ 25/09: each read of the stream goes through ~180 files. The badge
+  //   (?seule) does not show the pad, a hidden orb shows it to nobody.
+  if (occupe && vu && !document.documentElement.dataset.seule) { lireFlux(etat); peindrePave(); }
+  else if (!occupe) { pave.classList.remove('vu'); }
   if (etat === dernier) return;
   dernier = etat;
+  // the state is carried on the body: useful for styling, and readable when debugging
   document.body.dataset.etat = etat;
   cible = reglage(etat);
   if (!REDUIT) orbe.setMecanique(cible.meca);
   if (occupe) {
-    // textContent would wipe the dots: lay the label down first, then the three
-    // spans, each carrying its own animation delay.
-    dit.replaceChildren(document.createTextNode(NOMS[etat] || etat.toUpperCase()));
+    // textContent would erase the dots: we set the label back then the three
+    // spans, each of which carries its own animation offset.
+    // The name lives in its own span: the chromatic shine must
+    // touch it alone, never the three dots that follow it.
+    const nom = document.createElement('span');
+    nom.className = VAISSEAUX[etat] ? 'nom brille' : 'nom';
+    nom.textContent = VAISSEAUX[etat] || NOMS[etat] || etat.toUpperCase();
+    dit.replaceChildren(nom);
     for (let i = 0; i < 3; i++) {
       const pt = document.createElement('span');
       pt.className = 'pt'; pt.textContent = '.';
@@ -629,18 +1003,92 @@ function lire() {
   else dit.classList.remove('vu');
   majCadence();
 }
-setInterval(lire, 700);
+// Hosted, the orb reads what the host page tells it, on each message: its
+// own reading loop was a duplicate.
+if (!HOTE) setInterval(lire, 700);
+/* Exposed for STEP-BY-STEP FILMING (banc/film.cjs, FILM_PAS). There the page's
+   clock is frozen and advanced one sixtieth of a second at a time: if the
+   state change waited for the timer above, it would fall anywhere
+   in a 0.7 s window and each state would no longer take the same number of
+   frames. So the film calls the read itself, right after writing
+   status.json. Nothing else uses it, and the page behaves the same without it. */
+window.__lire = lire;
 lire();
 
-/* ── GRABBING THE ORB ───────────────────────────────────────────────────────
-   The window lets clicks through, otherwise it would swallow a whole 150 px
-   square of desktop. `forward: true` still delivers mouse moves: we use them to
-   know when the cursor is ON the orb, and only then hand control back to the
-   window.
-   ⚠ We test a DISC, not the window rectangle: in the corners the pixel is
-     transparent — blocking the click there would kill a patch of desktop where
-     the user sees nothing at all. */
-const RAYON = 62;   // px; the orb spans ~124 px inside a 150 px window
+/* ── HOW MANY NOTES ARE LEFT TO PROCESS ────────────────────────────────────
+   The author's request (2026-08-14): "every time the orb is launched, it
+   must show a small badge saying how many notes it still has
+   to process".
+   Source of truth: `state/a-classer.md`, fed automatically by
+   `hooks/on_fiche_write.py`. Until 2026-09-15 it was the Inbox in MEMORY.md; it
+   left it because a single Inbox line made every commit get refused (the map's
+   budget + ADR-0015).
+   It is the ONLY place that says what is waiting, and it is already kept up to date —
+   we recount nothing, we read.
+   ⚠ Slow rate on purpose: `lire()` runs at 700 ms for the agent's state,
+   but the Inbox only moves when a note is written. Re-reading it 85 times a
+   minute would cost without teaching anything. 20 s is enough, plus a call at
+   launch so the badge is right from the first frame. */
+const RESTANT_EL = document.getElementById('restant');
+const A_CLASSER = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'a-classer.md');
+
+function compterEnAttente() {
+  let t;
+  try { t = fs.readFileSync(A_CLASSER, 'utf8'); }
+  catch (e) { return e.code === 'ENOENT' ? 0 : null; }   // no queue = nothing waiting
+  return t.split('\n').filter(l => l.trim().startsWith('- [')).length;
+}
+
+/* The counter shows "2/4": where we are in the current BATCH.
+   What is left to process is read in MEMORY.md, but the batch's TOTAL is
+   read nowhere — as soon as a note is filed it leaves the Inbox. So
+   we remember the highest level reached in `state/orbe-lot.json`, which
+   also lets the batch survive a restart of the orb (otherwise "3/4" would
+   fall back to "1/2" at the next start, and the progress would lie).
+   The batch closes on its own when the Inbox empties. */
+const LOT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'orbe-lot.json');
+
+function lireLot() {
+  try { return JSON.parse(fs.readFileSync(LOT, 'utf8')).total | 0; } catch (e) { return 0; }
+}
+function ecrireLot(total) {
+  try { fs.writeFileSync(LOT, JSON.stringify({ total, maj: new Date().toISOString() })); }
+  catch (e) {}
+}
+
+function majRestant() {
+  const reste = compterEnAttente();
+  if (reste === null) return;                  // failed read: keep the previous display
+
+  if (reste === 0) {                           // batch done: the counter fades and resets
+    RESTANT_EL.classList.remove('vu');
+    if (lireLot() !== 0) ecrireLot(0);
+    return;
+  }
+  let total = lireLot();
+  if (reste > total) { total = reste; ecrireLot(total); }   // new notes enlarge the batch
+
+  // reste=4 of 4 -> "1/4" (we are on the first); reste=1 -> "4/4"; reste=0 -> hidden.
+  const rang = total - reste + 1;
+  RESTANT_EL.innerHTML = rang + '<span class="tot">/' + total + '</span>';
+  RESTANT_EL.title = rang + ' of ' + total + ' — ' + reste
+                   + (reste > 1 ? ' notes left to file' : ' note left to file');
+  RESTANT_EL.classList.add('vu');
+}
+majRestant();
+setInterval(majRestant, 20000);
+
+
+/* ── CATCHING THE ORB ────────────────────────────────────────────────────────
+   The window lets clicks through (`setIgnoreMouseEvents(true, {forward:true})`)
+   otherwise it would swallow a whole 150 px square of the desktop. `forward:true` still
+   sends mouse moves up: we use them to know when
+   the cursor is ON the orb, and only give the window control back at that
+   moment.
+   ⚠ We test a DISC, not the window's rectangle: in the corners, the
+     pixel is transparent — blocking the click there would kill a patch of desktop
+     where the user sees nothing. */
+const RAYON = 62;   // px, the orb takes ~124 px of width in a 150 window
 let surOrbe = false, attrape = false;
 
 function dansOrbe(e) {
@@ -650,7 +1098,8 @@ function dansOrbe(e) {
 }
 
 window.addEventListener('mousemove', (e) => {
-  if (attrape) return;                 // during a drag the window keeps control
+  if (attrape) return;                 // while dragging, the hand stays taken
+  if (ENCOCHE) return;                 // nothing to catch: the click goes through
   const dedans = dansOrbe(e);
   if (dedans === surOrbe) return;      // only send on TRANSITIONS
   surOrbe = dedans;
@@ -659,12 +1108,13 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mousedown', (e) => {
+  if (ENCOCHE) return;                 // the notch orb does not move
   if (e.button !== 0 || !dansOrbe(e)) return;
   attrape = true;
   document.body.style.cursor = 'grabbing';
-  // ⚠ Cursor tracking happens IN THE MAIN PROCESS, not here. On a fast drag the
-  //   cursor leaves the window: the renderer stops receiving moves and the orb
-  //   would lag behind the gesture.
+  // ⚠ Cursor tracking happens IN THE MAIN PROCESS, not here. When
+  //   dragging fast, the cursor leaves the window: the renderer then stops
+  //   receiving moves and the orb would stay stuck behind the gesture.
   ipcRenderer.send('cap-drag-begin', { x: e.clientX, y: e.clientY });
 });
 
@@ -677,8 +1127,8 @@ const lacher = () => {
 window.addEventListener('mouseup', lacher);
 window.addEventListener('blur', lacher);   // net: released outside the window
 
-/* The animation stops when nobody is looking: window hidden, screen off.
-   Without this it paints for no one and makes the desktop recomposite. */
+/* The animation stops when nobody sees it: hidden window, screen
+   off. Without it, it paints for nobody and makes WindowServer recomposite. */
 ipcRenderer.on('cap-visible', (_e, v) => { vu = v; majCadence(); });
 document.addEventListener('visibilitychange', majCadence);
 </script>

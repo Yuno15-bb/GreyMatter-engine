@@ -61,6 +61,12 @@ def build(trunk, notes):
     for slug, body in notes.items():
         with open(os.path.join(trunk, "projects", f"{slug}.md"), "w", encoding="utf-8") as f:
             f.write(body)
+    # Resume points are ranked by COMMIT date, never by mtime: the trunk under test is a
+    # repository, as a versioned trunk is. An unversioned one is tested on its own below.
+    if notes:
+        for cmd in (["init", "-q"], ["add", "-A"],
+                    ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "fixture"]):
+            subprocess.run(["git", "-C", trunk, *cmd], check=True, capture_output=True)
 
 
 def run(trunk, *args):
@@ -103,8 +109,23 @@ def main():
            f"it would add {len(out_hook.strip().splitlines())} line(s) to every prompt")
     report("…but the command says so", "No pending resume point" in out_cmd,
            "a display command that prints nothing looks exactly like a broken one")
-    report("it never blocks", rc == rc_hook == rc_cmd == 0,
-           f"exit codes {rc}, {rc_hook}, {rc_cmd}")
+    # An UNVERSIONED trunk: resume points cannot be ranked (commit dates only, never
+    # mtime). A legitimate choice here, reported by brain_doctor — so the hook stays
+    # silent instead of repeating it in every session, and the command still says it.
+    with tempfile.TemporaryDirectory() as trunk:
+        os.makedirs(os.path.join(trunk, "projects"))
+        with open(os.path.join(trunk, "projects", "real-one.md"), "w", encoding="utf-8") as f:
+            f.write(NOTES["real-one"])
+        rc_uv_hook, out_uv_hook = run(trunk, "--hook")
+        rc_uv_cmd, out_uv_cmd = run(trunk)
+
+    report("an unversioned trunk injects nothing", out_uv_hook.strip() == "",
+           "a permanent 'not a git repository' line would reach every session")
+    report("…but the command names why", "unavailable" in out_uv_cmd,
+           "no ranking was possible, and the command must not pass for an empty list")
+
+    report("it never blocks", rc == rc_hook == rc_cmd == rc_uv_hook == rc_uv_cmd == 0,
+           f"exit codes {rc}, {rc_hook}, {rc_cmd}, {rc_uv_hook}, {rc_uv_cmd}")
 
     print("Anticipate contract — what reaches the model\n")
     for label, ok, detail in results:
