@@ -145,9 +145,13 @@ engine.
   and a full-path command that works right away (`tests/closing_verdict.sh`).
   Since v2.0.3 a red selftest is said on that screen even when the PATH advice
   is there too, and the installer exits 1, so a script, a CI job or an agent
-  running it sees the failure (`tests/install_exit_code.sh`). An update that
-  replays `install.sh` still treats that exit as a warning: the candidate's
-  own selftest is what decides the switch.
+  running it sees the failure (`tests/install_exit_code.sh`). That includes an
+  install over another installation's agents folder: Claude Code cannot reach
+  C Brain's agents there, the verification was already red in v2.0.2 behind an
+  exit 0, and the closing screen no longer calls that install "working"
+  (`tests/e2e_occupied_surfaces.sh`). An update that replays `install.sh` still
+  treats that exit as a warning: the candidate's own selftest is what decides
+  the switch.
 - **No stray "Abort trap: 6".** Checking a capsule whose Electron is broken no
   longer prints the shell's crash report in the middle of the install.
 - **One commit, one engine.** Installing from a clone with uncommitted edits no

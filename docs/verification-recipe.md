@@ -131,7 +131,9 @@ C Brain, and once on a machine that has.
 Read the exit code too (`echo $?` right after). Since v2.0.3 it is `0` only when
 the selftest is green; a red selftest ends the install with `1`. Until then the
 installer printed the red and exited 0, so anything that ran it read success
-(`tests/install_exit_code.sh`).
+(`tests/install_exit_code.sh`). Over another installation, expect the same: its
+agents folder left to its owner makes the verification red, so `1`, with the
+surfaces left alone counted on the closing screen.
 
 ## 1 bis. The preview must leave the machine exactly as it found it
 
