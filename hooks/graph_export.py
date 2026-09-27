@@ -2,7 +2,7 @@
 """
 graph_export.py — exports the trunk as a graph for the knowledge PLANET.
 
-Scanne toutes les fiches .md du tronc (projects/, lessons/, meta/, life/, agents/),
+Scans every .md note in the trunk (projects/, lessons/, meta/, life/, agents/),
 reads their front matter (`name`, `description`) and their `[[...]]` links, and writes
 `planet/graph.json`: the raw material of the 3D visualizer (one note = one dot on the globe).
 
@@ -12,11 +12,12 @@ Designed to be called:
 
 Deterministic and free of external dependencies. Always exits 0 (never blocks a hook).
 """
-import os, re, json, sys
+import os, re, json, sys, tempfile
 from collections import Counter
 
 BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 OUT = os.path.join(BRAIN, "planet", "graph.json")
+OUT_TEXTES = os.path.join(BRAIN, "planet", "textes.json")
 EMBED2 = os.path.join(BRAIN, "state", "embed2.json")   # SEMANTIC map, computed by brain_embed2.py
 COACT = os.path.join(BRAIN, "state", "coactivation.json")  # working memory, computed by coactivation.py
 CHALLENGES = os.path.join(BRAIN, "state", "challenges.json")  # the challenger's verdict (the map has an opinion)
@@ -62,7 +63,7 @@ def load_challenges():
             # BILINGUAL: the challenger writes these words itself, and its prompt
             # exists in both languages. Matching only one would keep dead
             # challenges alive on the map, marking notes as contested forever.
-            dead = ("stale", "resolved", "périmé", "resolu", "résolu")
+            dead = ("stale", "resolved", "périmé", "resolu", "résolu")  # i18n-ok: bilingual source values
             blob = (prob + " " + vp).lower()
             if any(w in blob for w in dead):
                 continue                                  # challenge extinguished → not a live verdict
@@ -70,7 +71,7 @@ def load_challenges():
             if not f:
                 continue
             reason = vp or prob
-            out.setdefault(f, reason[:200])               # 1 verdict (le 1er actif) par fiche
+            out.setdefault(f, reason[:200])               # One active verdict per note
     except Exception:
         return {}
     return out
@@ -114,7 +115,7 @@ def load_coact():
         return c.get("heat_id", {}), c.get("edges", []), live, int(lv.get("window_min", 10))
     except Exception:
         return {}, [], {}, 10
-# dossiers de premier niveau = « domaines » (couleurs sur le globe)
+# Top-level folders become the globe's colored domains.
 DOMAINS = ["projects", "lessons", "meta", "life", "agents"]
 
 FM_NAME = re.compile(r'^\s*name:\s*["\']?([^"\'\n]+)["\']?\s*$', re.M)
@@ -161,17 +162,17 @@ def load_resume_points():
 DASH = re.compile(r'\s+[—–]\s+')                # em/en dash surrounded by spaces
 
 # membership weights (continent / city / frontier model)
-W_PRIMARY = 1.00     # dossier d'origine (un projet) = appartenance forte
+W_PRIMARY = 1.00     # Home project folder gives strong membership.
 W_BORN    = 0.70     # born of a project (born_from) but filed elsewhere (e.g. a reusable lesson)
-W_LINK    = 0.18     # lien [[...]] vers/depuis une fiche de projet = appartenance douce
-HOME_MIN  = 0.50     # appartenance mini pour avoir une VILLE maison (dossier/born_from, pas un simple lien)
+W_LINK    = 0.18     # A link to or from a project note gives soft membership.
+HOME_MIN  = 0.50     # A home city requires a folder or born_from, not just a link.
 FRONTIER_MIN = 0.30  # threshold for a second membership to count as a "frontier"
 
 # scale heuristic when `scale:` is absent: city centre (vision/project) → outskirts (detail)
 def guess_scale(nid):
     s = nid.lower()
     if s.startswith("project-") or "vision" in s:
-        return 1.0                                   # cœur : le projet, sa vision
+        return 1.0                                   # The project and its vision form the core.
     if any(k in s for k in ("audit", "naming", "precision", "couts", "labo", "lab")):
         return 3.0                                   # outskirts: detail / appendix
     return 2.0                                        # ville standard
@@ -182,7 +183,7 @@ def clean_desc(raw):
     otherwise the whole description; never cut mid-word."""
     full = (raw or "").strip()
     summary = DASH.split(full, 1)[0].strip()
-    if len(summary) < 35:                       # accroche trop maigre → on garde tout
+    if len(summary) < 35:                       # Keep the full description when the hook is too short.
         summary = full
     if len(summary) > 180:                       # coupe nette au mot + …
         summary = summary[:180].rsplit(" ", 1)[0].rstrip(" ,;:") + "…"
@@ -283,7 +284,7 @@ def scan():
             for fn in files:
                 if not fn.endswith(".md"):
                     continue
-                # on ne garde QUE des fiches de savoir : pas les README ni les docs
+                # Keep knowledge notes only, excluding README and documentation files.
                 if fn.lower() == "readme.md":
                     continue
                 low = dirpath.lower()
@@ -297,7 +298,7 @@ def scan():
                 fm = frontmatter(text)
                 m = FM_NAME.search(fm)
                 if not m:
-                    continue                     # pas de `name:` → ce n'est pas une fiche, on saute
+                    continue                     # Without a name, this is not a note.
                 nid = m.group(1).strip()
                 dm = FM_DESC.search(fm)
                 desc = clean_desc(dm.group(1) if dm else "")
@@ -394,7 +395,7 @@ def scan():
             l["regle"] = True
 
     # ---------- MEMBERSHIP (continent / city / frontier model) ----------
-    # « villes » = les sous-dossiers du domaine projects (chaque projet est une ville).
+    # Each project subfolder represents one city.
     projects = sorted({n["group"] for n in nodes.values() if n["domain"] == "projects"})
     proj_set = set(projects)
     # undirected neighbourhood towards project notes (for the soft membership of lessons)
@@ -426,7 +427,7 @@ def scan():
         m = {k: round(min(v, 1.0), 3) for k, v in m.items()}
         n["membership"] = dict(sorted(m.items(), key=lambda kv: -kv[1]))
         mx = max(m.values())
-        # une fiche n'a une VILLE que si son appartenance est FORTE (dossier d'origine ou born_from).
+        # A note has a home city only through strong membership (folder or born_from).
         # A plain link (~0.18) is not enough → an agent or meta note mentioning a project is not filed there.
         n["primary_project"] = max(m, key=m.get) if mx >= HOME_MIN else None
         # frontier = has a real home city AND a second city above the threshold
@@ -574,12 +575,38 @@ def _relations(text):
     return out, len(unknown_types)
 
 
+def write_atomic(path, data, indent=None):
+    """Replace one JSON artifact only after its complete contents reach disk."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(path),
+                                         prefix=".graph-export-", suffix=".tmp", delete=False) as stream:
+            temporary = stream.name
+            json.dump(data, stream, ensure_ascii=False, indent=indent)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def main():
     try:
         data = scan()
         os.makedirs(os.path.dirname(OUT), exist_ok=True)
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=1)
+        texts = {}
+        for node in data["nodes"]:
+            body = node.pop("long", None)
+            if body:
+                texts[node["id"]] = body
+            plain = node.get("en_clair")
+            if plain:
+                texts[node["id"] + "::clair"] = plain
+                node["en_clair"] = plain.split("\n\n")[0]
+        # Publish texts first so a new graph never points at a missing text file.
+        write_atomic(OUT_TEXTES, texts)
+        write_atomic(OUT, data, indent=1)
         if sys.stdout.isatty():
             c = data["counts"]
             print(f"🪐 graph.json written: {c['nodes']} dots, {c['links']} links → {os.path.relpath(OUT, BRAIN)}")

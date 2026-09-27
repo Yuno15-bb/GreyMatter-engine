@@ -2315,15 +2315,19 @@ function showPanel(mesh, expanded){
 
   const dEl=tip.querySelector('.d');
   if(expanded){
+    if(!TEXTES_PRETS) chargerTextes().then(()=>{
+      if(_ficheAffichee===n.id && tip.classList.contains('expanded')) showPanel(mesh, true);
+    });
     const bloc = [];
+    const clair = TEXTES[n.id+'::clair'] || n.en_clair;
     if(n.en_clair) bloc.push(
       `<section class="bl clair"><header><span class="qui">for you</span>`
       + `<span class="quoi">plain language, no jargon</span></header>`
-      + `<div class="txt">${esc(n.en_clair)}</div></section>`);
+      + `<div class="txt">${esc(clair)}</div></section>`);
 
 
 
-    const corps = n.long || TEXTES[n.id];
+    const corps = TEXTES[n.id];
     if(corps) bloc.push(
       `<details class="bl modele"${n.en_clair?'':' open'}>`
       + `<summary><span class="qui">for the model</span>`
@@ -2335,7 +2339,6 @@ function showPanel(mesh, expanded){
 
 
 
-      chargerTextes().then(()=>{ if(_ficheAffichee===n.id && tip.classList.contains('expanded')) showPanel(mesh, true); });
     }
     if(!bloc.length) bloc.push(`<div class="txt">${esc(n.desc||'(no content)')}</div>`);
     dEl.innerHTML = bloc.join('');

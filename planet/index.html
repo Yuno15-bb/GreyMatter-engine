@@ -1202,12 +1202,16 @@ function showPanel(mesh, expanded){
   tip.querySelector('.lnk').innerHTML=lh;
   const dEl=tip.querySelector('.d');
   if(expanded){
+    if(!TEXTES_PRETS) chargerTextes().then(()=>{
+      if(_ficheAffichee===n.id && tip.classList.contains('expanded')) showPanel(mesh, true);
+    });
     const bloc = [];
+    const clair = TEXTES[n.id+'::clair'] || n.en_clair;
     if(n.en_clair) bloc.push(
       `<section class="bl clair"><header><span class="qui">for you</span>`
       + `<span class="quoi">in plain words, no jargon</span></header>`
-      + `<div class="txt">${esc(n.en_clair)}</div></section>`);
-    const corps = n.long || TEXTES[n.id];
+      + `<div class="txt">${esc(clair)}</div></section>`);
+    const corps = TEXTES[n.id];
     if(corps) bloc.push(
       `<details class="bl modele"${n.en_clair?'':' open'}>`
       + `<summary><span class="qui">for the model</span>`
@@ -1216,7 +1220,6 @@ function showPanel(mesh, expanded){
     else if(!TEXTES_PRETS) {
       bloc.push(`<details class="bl modele"${n.en_clair?'':' open'}><summary>`
         + `<span class="qui">for the model</span><span class="quoi">loading…</span></summary></details>`);
-      chargerTextes().then(()=>{ if(_ficheAffichee===n.id && tip.classList.contains('expanded')) showPanel(mesh, true); });
     }
     if(!bloc.length) bloc.push(`<div class="txt">${esc(n.desc||'(pas de contenu)')}</div>`);
     dEl.innerHTML = bloc.join('');
