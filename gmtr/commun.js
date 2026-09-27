@@ -4,10 +4,10 @@
   const mouvementReduit = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function lire(cle, defaut) {
-    try { return localStorage.getItem('cbrain.' + cle) ?? defaut; } catch { return defaut; }
+    try { return localStorage.getItem('greymatter.gmtr.' + cle) ?? defaut; } catch { return defaut; }
   }
   function ecrire(cle, valeur) {
-    try { localStorage.setItem('cbrain.' + cle, valeur); } catch {  }
+    try { localStorage.setItem('greymatter.gmtr.' + cle, valeur); } catch {  }
   }
 
   racine.dataset.palette = params.get('palette') || lire('palette', 'vert');
