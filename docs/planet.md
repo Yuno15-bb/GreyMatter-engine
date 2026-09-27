@@ -20,6 +20,9 @@ planet/launch.sh          # http://localhost:8765
 planet/launch.sh 8770     # another port, if 8765 is taken
 ```
 
+The installer also puts a **GreyMatter Planet** app on your Desktop that runs the
+same launcher; the page opens in your browser as *3D/2D Knowledge Map — GreyMatter*.
+
 The launcher rebuilds the graph **before** opening the page, so the map never
 shows a stale state. Nothing is stored between launches: close the tab and it all
 comes back from the trunk next time.
