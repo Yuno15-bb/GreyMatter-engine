@@ -649,6 +649,7 @@ class Guichet(SimpleHTTPRequestHandler):
                 relatif += "index.html"
             if Path(relatif).suffix not in STATIQUES and chemin not in IMAGES_OUVERTES:
                 return self.send_error(404)
+        racine = racine.resolve()
         cible = (racine / relatif).resolve()
         if racine not in cible.parents or not cible.is_file():
             return self.send_error(404)
