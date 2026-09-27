@@ -8,6 +8,10 @@ buffer the engine is synced onto, and `publish.sh` refuses to tag from it. The `
 tags up to v1.27.0-fr stay published (moving a tag breaks the fetch of anyone still on
 it), and are not listed here.
 
+## v2.0.4 — 2026-09-27
+
+Fix: an update test run from a managed install no longer empties the caller's directory
+
 ## v2.0.3 — 2026-09-26
 
 Fix: the first minutes after an install say what is true
