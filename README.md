@@ -57,7 +57,7 @@ conversation history, which only gets longer.
 - **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
 
 <p align="center">
-  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 5 ms at 100 notes and 47 ms at 1,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="880">
+  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 2 ms at 1,000 notes and 15 ms at 5,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the capsule, the 3D map and the brain CLI." width="880">
 </p>
 
 ### How good is the recall?
@@ -66,11 +66,15 @@ Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
 where finding the answer means picking one note out of ~120 that share its
 subject and most of its vocabulary:
 
-| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search |
+| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search (median) |
 |---|---|---|---|---|---|
-| 100 | 0.94 | 0.98 | 0.96 | 35% | 5 ms |
-| 1000 | 0.79 | 0.93 | 0.86 | 24% | 47 ms |
-| 5000 | 0.46 | 0.83 | 0.64 | 39% | — |
+| 100 | 0.94 | 0.98 | 0.96 | 35% | 0.2 ms |
+| 1000 | 0.79 | 0.93 | 0.86 | 24% | 2.4 ms |
+| 5000 | 0.46 | 0.84 | 0.64 | 39% | 15 ms |
+
+Measured 2026-09-27 on an Apple-silicon Mac. "Per search" is the search
+alone; a fresh `brain recall` also loads its cached index first, about
+0.1 s at 1,000 notes.
 
 It holds to about a thousand notes and degrades sharply past that. Published
 here because a memory tool that will not say how well it remembers is asking
