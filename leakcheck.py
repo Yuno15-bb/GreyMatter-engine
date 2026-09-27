@@ -25,11 +25,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-# These tips were already public on 2026-09-26. History before them cannot be
-# recalled; never add a tip here unless it has already been published.
+# These tips were already public on 2026-09-27 (read from `git ls-remote`, not
+# from a local branch). History before them cannot be recalled; never add a tip
+# here unless it has already been published. Moved from the 2026-09-26 tips when
+# the v2.0.4 publish went red on two patches already on origin (c2556d1 on main,
+# acf6345 on fr): a flag on history nobody can recall blocks every release and
+# protects nothing.
 ALREADY_PUBLIC = (
-    "313bfec95b4c1cc0cce960464d2131bdfedfba76",  # main
-    "dc28c37234a5e5ec418d9abddf5e8a7a81cfbcd0",  # fr
+    "00ea39213f05d3850c95b3b4bf1f61aa866dfdc1",  # main (v2.0.3)
+    "acf63453bc4bba2f63aca7bdeacdf657cc54a38b",  # fr
 )
 
 # Named private parties and secrets both block publication.
