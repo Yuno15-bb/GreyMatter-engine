@@ -141,6 +141,11 @@ before.
 ~/dev/greymatter/uninstall.sh
 ```
 
+Installed before v2.1.0, when the project was called C Brain? Your clone is still <!-- pre-rename -->
+`~/dev/c-brain` and its `uninstall.sh` works the same: it hands over to the <!-- pre-rename -->
+engine's own uninstaller, which knows both names. `~/.greymatter/engine/uninstall.sh`
+is the same script, whichever way you installed.
+
 **Your trunk and your notes are never deleted.** Removed: the GreyMatter hooks (the
 rest of `settings.json` untouched), the engine symlinks, the `brain` command, the
 Desktop launcher, the scheduled jobs. Backups stay in `~/.greymatter/backups/`.

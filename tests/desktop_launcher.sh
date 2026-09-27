@@ -4,7 +4,7 @@
 # desktop_launcher.sh — THE DESKTOP APP IS OURS TO REBUILD, AND ONLY OURS.
 #
 # WHY IT EXISTS. The launcher was renamed "GreyMatter.app" on 2026-09-27 (it was
-# "GreyMatter Planet.app" for one unreleased day, "C Brain Planet.app" before).
+# "GreyMatter Planet.app" for one unreleased day, "C Brain Planet.app" before).   # pre-rename
 # The installer rebuilds it with `rm -rf` and the uninstaller removes it. Under a
 # name that plain, another app can sit there — a download, a future release
 # built elsewhere — and an `rm -rf` on the name alone would delete it without a

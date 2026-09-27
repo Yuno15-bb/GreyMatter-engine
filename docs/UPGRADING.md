@@ -31,6 +31,10 @@ launchctl bootout gui/$(id -u)/com.claudebrain.resume   # pre-rename; same for .
 back, removes the v2.1.0 hooks and jobs, and the older installer puts its own
 back. The root stays at `~/.greymatter`; the old path reaches it through the link.
 
+The Desktop app is now called `GreyMatter.app`. To uninstall, the `uninstall.sh`
+of your old clone still works: it hands over to the engine's own uninstaller,
+which knows both names.
+
 ### If you installed the Claude Code plugin
 
 The commands become `/greymatter:recall`, `/greymatter:distill`,

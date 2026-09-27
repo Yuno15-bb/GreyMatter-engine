@@ -254,6 +254,17 @@ the CI runner) it read the Finder shortcut it had just created, saw
 else's and left it on the machine. Same trap as the ownership record install.sh
 already warns about, one file further on.
 
+**The Desktop app is removed by bundle id, not by name** (2026-09-27). It became
+`GreyMatter.app`, a name plain enough for another app to carry, so both scripts
+read `org.greymatter.planet` in its `Info.plist` before their `rm -rf`; anything
+else under that name stays, with a warning (`tests/desktop_launcher.sh`).
+
+**An uninstaller from before the rename hands over.** A clone at v2.0.x has its
+own `uninstall.sh`, which sources `cbrain/launchd-lib.sh` from the engine and knows <!-- pre-rename -->
+only the old names. The engine ships a stub at that path which `exec`s
+the engine's own `uninstall.sh --yes`; on a blank Mac, without it, the old
+script reported success and left both jobs, the shortcut and the Desktop app.
+
 ### `brain doctor`
 
 - It used to run `git -C engine status` to detect a dirty engine. A versioned

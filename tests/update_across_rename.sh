@@ -147,6 +147,24 @@ echo "▸ and forward again"
 brain update >"$H/update2.log" 2>&1; check $? "the second update exits 0" "$(tail -3 "$H/update2.log")"
 assert_new_name
 
+# The uninstaller an updated user has at hand is the OLD one, in their clone at
+# the old tag: it looks for cbrain/launchd-lib.sh and the old names. Without the
+# forwarding stub it printed "✅ Uninstalled" and left the jobs, the shortcut and
+# the Desktop app behind (blank Mac, 2026-09-27).
+echo "▸ uninstalled with the OLD clone's script"
+( cd "$H/engine-src" && ./uninstall.sh --yes ) >"$H/uninstall-old.log" 2>&1 </dev/null
+check $? "the old uninstaller exits 0" "$(tail -3 "$H/uninstall-old.log")"
+[ -z "$(registered)" ]; check $? "no launchd job is left" "$(registered)"
+[ -z "$(ls "$H/Library/LaunchAgents" 2>/dev/null | grep -iE 'greymatter|claudebrain')" ]
+check $? "no LaunchAgent plist is left"
+[ ! -e "$H/GreyMatter" ]; check $? "the Home shortcut is gone"
+[ ! -e "$H/Desktop/GreyMatter.app" ]; check $? "the Desktop app is gone"
+read -r total distinct old new <<<"$(hooks_report)"
+[ "$old" = 0 ] && [ "$new" = 0 ]; check $? "no hook of ours is left" "old=$old new=$new"
+grep -q '"echo mine"' "$SETTINGS"; check $? "the user's own hook is still kept"
+[ "$(shasum -a 256 "$NEW/trunk/lessons/mine.md" | cut -d' ' -f1)" = "$NOTE_SUM" ]
+check $? "the user's note is still byte-identical"
+
 echo
 if [ "$FAILS" -eq 0 ]; then
   echo "✅ a $OLD_TAG install crosses the rename, both ways, with one of everything"

@@ -191,7 +191,7 @@ HOME=$T bash $T/dev-greymatter/uninstall.sh --yes
 ```
 
 **Expected**: the note still exists, `settings.json` is **identical to its
-original state**, the engine symlinks are gone.
+original state**, the engine symlinks are gone, and so is `~/Desktop/GreyMatter.app`.
 
 ## 4. Every CLI command
 
