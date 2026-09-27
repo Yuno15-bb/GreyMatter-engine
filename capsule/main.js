@@ -129,7 +129,9 @@ if (!gotLock) {
 } else {
   announceSelf();
   app.on('second-instance', () => {       // a 2nd launch → re-show the existing one
-    if (win) { win.showInactive(); }
+    // A manual show restarts the idle clock: kept as it was, the next poll saw an
+    // idle that had already lasted past IDLE_BEFORE_HIDE and hid it at once (issue #4).
+    if (win) { idleSince = null; win.showInactive(); }
   });
 }
 
