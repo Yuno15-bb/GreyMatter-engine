@@ -737,10 +737,15 @@ fi
 # (#07070b ground, #5ad7e6 accent) — see tools/icone-planete.py in the author's
 # trunk, which redraws it with the standard library alone.
 step "Planet launcher (Desktop)"
-APP="$HOME/Desktop/GreyMatter Planet.app"
+APP="$HOME/Desktop/GreyMatter.app"
 OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
 if [ "$DO_PLANET" = "0" ]; then say "(skipped — --core-only)"
 elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
+# "GreyMatter.app" is a plain name another app could carry: only OUR launcher
+# (its bundle id) is rebuilt, anything else under that name is left alone.
+elif [ -d "$APP" ] && ! grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; then
+  warn "$APP is not this launcher — left alone. The planet stays reachable at:"
+  warn "  $TRUNK/planet/launch.sh"
 elif [ -d "$HOME/Desktop" ]; then
   run rm -rf "$APP"                       # idempotent: rebuilt whole, never patched
   run mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -753,8 +758,8 @@ elif [ -d "$HOME/Desktop" ]; then
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>GreyMatter Planet</string>
-  <key>CFBundleDisplayName</key><string>GreyMatter Planet</string>
+  <key>CFBundleName</key><string>GreyMatter</string>
+  <key>CFBundleDisplayName</key><string>GreyMatter</string>
   <key>CFBundleIdentifier</key><string>org.greymatter.planet</string>
   <key>CFBundleExecutable</key><string>planet</string>
   <key>CFBundleIconFile</key><string>planete</string>

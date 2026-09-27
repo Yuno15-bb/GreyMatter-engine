@@ -110,7 +110,9 @@ echo "▸ Odds and ends"
 # straight past it. An uninstaller that leaves a launcher on the Desktop leaves
 # the impression the tool is still installed, and the icon still points at a
 # trunk we may just have unlinked.
-[ -d "$HOME/Desktop/GreyMatter Planet.app" ] && { rm -rf "$HOME/Desktop/GreyMatter Planet.app"; say "- Desktop launcher (GreyMatter Planet.app)"; }
+if [ -d "$HOME/Desktop/GreyMatter.app" ] && grep -q org.greymatter.planet "$HOME/Desktop/GreyMatter.app/Contents/Info.plist" 2>/dev/null; then
+  rm -rf "$HOME/Desktop/GreyMatter.app"; say "- Desktop launcher (GreyMatter.app)"
+fi
 
 OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
 if [ -d "$OLD_APP" ] && grep -q org.cbrain.planet "$OLD_APP/Contents/Info.plist" 2>/dev/null; then  # pre-rename

@@ -36,7 +36,7 @@ def allowed(value, line):
     if root == "Desktop":
         return (value == "Desktop" or value.startswith("Desktop/Planete-C-Brain.command")   # pre-rename launcher
                 or value.startswith("Desktop/chatgpt-export.zip")
-                or (value == "Desktop/GreyMatter" and "GreyMatter Planet.app" in line)
+                or value.startswith("Desktop/GreyMatter.app")
                 or (value == "Desktop/C" and "C Brain Planet.app" in line))   # pre-rename
     if root == "GreyMatter":
         return value == "GreyMatter"

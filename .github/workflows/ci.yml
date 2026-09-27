@@ -365,6 +365,17 @@ jobs:
           # taken on trust.
           bash tests/update_auto.sh
 
+      - name: the Desktop launcher rebuilds its own app, and nothing else
+        run: |
+          set -euo pipefail
+          # "GreyMatter.app" is a plain name: another app can sit there, and the
+          # installer's `rm -rf` must read the bundle id before it touches it.
+          bash tests/desktop_launcher.sh
+          if bash tests/desktop_launcher.sh --sabotage no-guard >/dev/null 2>&1; then
+            echo "❌ sabotage no-guard left the contract green"; exit 1
+          fi
+          echo "✅ sabotage no-guard reddens"
+
       - name: uninstall gives the settings back, and keeps the trunk
         run: |
           set -euo pipefail

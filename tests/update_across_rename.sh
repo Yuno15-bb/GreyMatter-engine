@@ -123,7 +123,7 @@ assert_new_name() {  # the state a v2.1.0 machine must be in
   [ ! -e "$H/C Brain" ]; check $? "the old Home shortcut is gone"             # pre-rename
   [ -L "$H/GreyMatter" ]; check $? "the new Home shortcut exists"
   [ ! -e "$H/Desktop/C Brain Planet.app" ]; check $? "the old Desktop app is gone"  # pre-rename
-  [ -d "$H/Desktop/GreyMatter Planet.app" ]; check $? "the new Desktop app exists"
+  [ -d "$H/Desktop/GreyMatter.app" ]; check $? "the new Desktop app exists"
   [ "$(shasum -a 256 "$NEW/trunk/lessons/mine.md" | cut -d' ' -f1)" = "$NOTE_SUM" ]
   check $? "the user's note is byte-identical"
 }
