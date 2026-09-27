@@ -43,6 +43,3 @@ __pycache__/
 
 # --- System ---
 .DS_Store
-
-# GMTR map is generated from the engine map on launch.
-/gmtr/carte/index.html
