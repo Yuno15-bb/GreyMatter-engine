@@ -233,6 +233,9 @@ body{ letter-spacing:.03em; }
   min-height:13px; padding:2px 2px 0; letter-spacing:.03em;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #pod .cap b{ color:var(--ph-100); font-weight:400; }
+#pod .hd .bascule{ cursor:pointer; opacity:.45; }
+#pod .hd .bascule:hover{ opacity:.8; }
+#pod .hd .bascule.on{ opacity:1; color:var(--ph-100); text-decoration:underline; }
 #pod .cap .off{ color:var(--ph-600); }
 
 #title{ font-family:var(--disp); font-size:13px; letter-spacing:.09em; color:var(--ph-100);
@@ -333,7 +336,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
   <div id="legend"></div>
 
   <div id="pod">
-    <div class="hd">[ globe — the families ]</div>
+    <div class="hd">[ globe — <span class="bascule" data-mode="folders">folders</span> · <span class="bascule" data-mode="topics">topics</span> ]</div>
     <canvas id="pc"></canvas>
     <div class="cap"></div>
   </div>
@@ -769,8 +772,11 @@ function build(data){
     blob.add(amas);
     const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map:texteTex(`${r}  ${n}`),
       transparent:true, depthTest:false, depthWrite:false, opacity:0.9 }));
-    lab.renderOrder = 6;
     lab.scale.set(LABEL_W, LABEL_H, 1);
+    // `depthTest:false` alone is insufficient. Three.js sorts transparent objects by
+    // distance, so front cluster points can cover their own label. `renderOrder`
+    // makes the label draw last, as verified in the 2026-09-21 capture.
+    lab.renderOrder = 6;
     lab.position.set(0, rad*1.8 + LABEL_H*0.45, 0);
     blob.add(lab);
     const c2 = REGION_2D[r] || {x:0,y:0};
@@ -810,6 +816,7 @@ function build(data){
     sEl.innerHTML=`◉ live in: ${top.join(' · ')}`;
   } else sEl.textContent='';
   buildLegend(data);
+  lireFamilles(data);                // load topics before the capsule uses them
   buildPod();
   majFil();
   if(focusRegion){
@@ -861,6 +868,9 @@ function buildLegend(data){
 }
 
 let view=1, viewTarget=1, sem=1, semTarget=1, usage=1, usageTarget=1;
+// What the graph can actually show, refreshed on each graph.json. `sem` records the
+// requested view; the available vectors determine what that view can claim.
+// On 2026-09-19 a sample had zero vectors in ten notes.
 let semCap = { state:'absent', covered:0, total:0, detail:'' };
 addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V'){ viewTarget = viewTarget>0.5?0:1; if(viewTarget<0.5) semTarget=0; }
@@ -949,8 +959,34 @@ podCam.position.set(0, 4.5, 30); podCam.lookAt(0,0,0);
 let podGroup = new THREE.Group(); podScene.add(podGroup);
 let podBlobs = [];
 let podHover = null, podPin = null;
+let podMode = 'folders';                          // note scope or topic
+// Select the group that a note belongs to in the current capsule mode.
+function groupeDe(nd){ return podMode==='topics' ? (FAM_DE[nd.id]||null) : regionOf(nd); }
 const podPtr = { x:-1e4, y:-1e4, in:false };
 const _pw = new THREE.Vector3(), _podDir = new THREE.Vector3();
+
+// Topics are the second axis. Their IDs and names come from graph.json, whose
+// exporter reads the trunk's canonical meta/topics.json.
+let FAMILLES_TITRES = {};
+let FAM_INFO = {}, FAM_DE = {};
+function lireFamilles(data){
+  FAM_INFO = {}; FAM_DE = {}; FAMILLES_TITRES = data.topics || {};
+  for(const n of data.nodes){
+    const t = n.topic || null;
+    if(!t) continue;
+    FAM_DE[n.id] = t;
+    (FAM_INFO[t] = FAM_INFO[t] || { n:0 }).n++;
+  }
+  // Fibonacci placement starts at 0.5; ordering by size keeps the largest
+  // topic from landing on the pole and obscuring the others.
+  const noms = Object.keys(FAM_INFO).sort((a,b)=>FAM_INFO[a].n-FAM_INFO[b].n);
+  const m = noms.length, ga = Math.PI*(3-Math.sqrt(5));
+  noms.forEach((nom,i)=>{
+    const y = 1-2*(i+0.5)/m, rad = Math.sqrt(Math.max(0,1-y*y)), a = ga*i;
+    FAM_INFO[nom].dir = new THREE.Vector3(Math.cos(a)*rad, y, Math.sin(a)*rad).normalize();
+    FAM_INFO[nom].col = new THREE.Color().setHSL(0.02 + 0.10*(i/Math.max(1,m-1)), 0.62, 0.62);
+  });
+}
 
 function buildPod(){
   podGroup.removeFromParent();
@@ -959,6 +995,21 @@ function buildPod(){
   podGroup.add(new THREE.Mesh(new THREE.SphereGeometry(R*0.99, 12, 8),
     new THREE.MeshBasicMaterial({ color:0x7A2200, wireframe:true, transparent:true,
       opacity:0.30, depthWrite:false })));
+  const amasPour = (graine, n, col, dir) => {
+    const grains = Math.min(n, 90), rad = 0.42 + 1.05*Math.cbrt(n/60);
+    const pos = new Float32Array(grains*3);
+    for(let i=0;i<grains;i++){
+      const u=hash(graine+':'+i), v=hash(i+':'+graine), w=hash(graine+i+'z');
+      const th=2*Math.PI*u, ph=Math.acos(2*v-1), rr=rad*Math.cbrt(w);
+      pos[i*3]=rr*Math.sin(ph)*Math.cos(th); pos[i*3+1]=rr*Math.sin(ph)*Math.sin(th); pos[i*3+2]=rr*Math.cos(ph);
+    }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    const pts=new THREE.Points(g, new THREE.PointsMaterial({ color:col.clone(), map:POINT_TEX,
+      size:1.15, transparent:true, opacity:1, depthWrite:false, sizeAttenuation:true }));
+    pts.position.copy(dir).multiplyScalar(R);
+    return pts;
+  };
+  // Folder clusters reuse the large map's geometry and seed.
   for(const b of regionObjs){
     const src = b.children[0];
     if(!src || !src.geometry) continue;
@@ -966,11 +1017,21 @@ function buildPod(){
       color:b.userData.colBase.clone(), map:POINT_TEX, size:1.15, transparent:true,
       opacity:1, depthWrite:false, sizeAttenuation:true }));
     pts.position.copy(b.userData.pos3);
-    pts.userData = { region:b.userData.region, col:b.userData.colBase.clone() };
+    pts.userData = { region:b.userData.region, col:b.userData.colBase.clone(), mode:'folders' };
     podGroup.add(pts); podBlobs.push(pts);
   }
-  if(podPin && !REGION_COUNT[podPin]) podPin=null;
-  if(podHover && !REGION_COUNT[podHover]) podHover=null;
+  // Topic clusters.
+  for(const [nom, f] of Object.entries(FAM_INFO)){
+    if(!f.dir) continue;
+    const pts = amasPour(nom, f.n, f.col, f.dir);
+    pts.userData = { region:nom, col:f.col.clone(), mode:'topics', titre:(FAMILLES_TITRES[nom]||nom) };
+    pts.visible = false;
+    podGroup.add(pts); podBlobs.push(pts);
+  }
+  const connu = n => podMode==='topics' ? !!FAM_INFO[n] : !!REGION_COUNT[n];
+  if(podPin && !connu(podPin)) podPin=null;
+  if(podHover && !connu(podHover)) podHover=null;
+  for(const p of podBlobs) p.visible = (p.userData.mode===podMode);
   majPodCap();
   placerPod();
 }
@@ -1003,10 +1064,19 @@ addEventListener('resize', placerPod);
 
 function majPodCap(){
   const r = podPin || podHover;
-  if(r) podCap.innerHTML = `<b>${r}</b> — ${REGION_COUNT[r]||0} notes`
+  const combien = n => podMode==='topics' ? (FAM_INFO[n]||{n:0}).n : (REGION_COUNT[n]||0);
+  const nom = n => podMode==='topics' ? (FAMILLES_TITRES[n]||n) : n;
+  const total = podBlobs.filter(p=>p.userData.mode===podMode).length;
+  if(r) podCap.innerHTML = `<b>${nom(r)}</b> — ${combien(r)} notes`
                          + (podPin===r ? ` <span class="off">· click = release</span>` : '');
-  else  podCap.innerHTML = `<span class="off">${podBlobs.length} families · aim to light up</span>`;
+  else  podCap.innerHTML = `<span class="off">${total} ${podMode==='topics'?'topics':'folders'} · point to highlight</span>`;
+  document.querySelectorAll('#pod .bascule').forEach(b=>b.classList.toggle('on', b.dataset.mode===podMode));
 }
+document.querySelectorAll('#pod .bascule').forEach(b=> b.addEventListener('click', ()=>{
+  podMode = b.dataset.mode; podHover = null; podPin = null;
+  for(const p of podBlobs) p.visible = (p.userData.mode===podMode);
+  majPodCap(); majFil();
+}));
 
 function podViser(r){ if(r!==podHover){ podHover=r; majPodCap(); } }
 
@@ -1046,6 +1116,7 @@ function podTick(dt){
   if(podPtr.in){
     const w=podCv.clientWidth||208, h=podCv.clientHeight||208;
     for(const p of podBlobs){
+      if(p.userData.mode!==podMode) continue;
       p.getWorldPosition(_pw);
       if(_pw.clone().normalize().dot(_podDir) < 0.02) continue;
       _pw.project(podCam);
@@ -1117,6 +1188,8 @@ function showPanel(mesh, expanded){
   const mEl=tip.querySelector('.media');
   if(n.media){ mEl.textContent='▷ replayable 3D capture — double-click to open'; mEl.classList.add('show'); }
   else { mEl.classList.remove('show'); mEl.textContent=''; }
+  // Show connections only after a click. Hover shows a title and summary so the
+  // floating panel remains readable while the pointer moves (2026-08-15).
   const others=expanded ? (mesh.userData.links||[]).map(L=> L.a===mesh?L.b:L.a) : [];
   const CAP=16, rn=regionOf(n);
   let lh='';
@@ -1283,7 +1356,9 @@ function updateLinks(time){
   }
 }
 
+// ---------- loading ----------
 let lastSig=null;
+// Update heat and live activity in place, without rebuilding the scene.
 function updateLive(data){
   if(data.live_window_min) LIVE_WINDOW_S = data.live_window_min * 60;
   const byId = new Map(data.nodes.map(node => [node.id, node]));
@@ -1304,17 +1379,18 @@ function updateLive(data){
 }
 function sceneSignature(data){
   const nodes = data.nodes.map(({heat, active, active_ts, ...node}) => node);
-  return JSON.stringify([nodes, data.links, data.coact]);
+  return JSON.stringify([nodes, data.links, data.coact, data.topics]);
 }
 async function poll(){
   try{
     const r=await fetch('graph.json', {cache:'no-cache'}); const data=await r.json();
+    // Do not rebuild on generated_at: track_read.py can update it after every
+    // read. Compare only graph structure and markers (2026-08-15).
     semCap = capaciteSemantique(data);
     const sig = sceneSignature(data);
-    if(sig===lastSig){ updateLive(data); return; }
+    if(sig === lastSig){ updateLive(data); return; }
     {
-      lastSig=sig;
-      const before=prevIds.size; build(data);
+      lastSig = sig; const before=prevIds.size; build(data);
       const added=data.counts.nodes-before;
       if(before && added>0){ const g=document.getElementById('grow');
         g.textContent=`✦ +${added} note${added>1?'s':''} — the planet is growing`;
@@ -1323,8 +1399,8 @@ async function poll(){
   }catch(e){
     const reseau = (e instanceof TypeError) || /fetch|NetworkError|Failed to fetch/i.test(e?.message||'');
     document.getElementById('counts').textContent = reseau
-      ? 'graph.json introuvable — lance launch.sh'
-      : 'erreur d\'affichage : ' + (e?.message || e) + ' — voir la console';
+      ? 'graph.json not found — run launch.sh'
+      : 'display error: ' + (e?.message || e) + ' — see the console';
     console.error('[planet] poll/build failed:', e);
   }
 }
@@ -1341,7 +1417,10 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                      get semantique(){ return semCap; },
                      get vue(){ return { view:+view.toFixed(2), sem:+sem.toFixed(2),
                                          mode: view<0.5 ? '3d' : (sem>0.5 ? 'sens' : 'struct') }; },
-                     get capsule(){ return { familles:podBlobs.length, vise:podHover, epingle:podPin,
+                     // Count clusters in the current capsule mode only.
+                     get capsule(){ return { mode:podMode,
+                                             familles:podBlobs.filter(p=>p.userData.mode===podMode).length,
+                                             vise:podHover, epingle:podPin,
                                              rotation:+podGroup.rotation.y.toFixed(3),
                                              legende: podCap.innerText.trim() }; },
                      region_de: m => regionOf(m.userData ? m.userData.data : m),
@@ -1538,7 +1617,7 @@ function tick(now){
     }
     let fam = 1;
     if(viseFamille){
-      const dedans = regionOf(m.userData.data)===viseFamille;
+      const dedans = groupeDe(m.userData.data)===viseFamille;
       fam = dedans ? 1.9 : 1;
       if(dedans) m.material.color.lerp(HOT, 0.55); else m.material.color.multiplyScalar(0.45);
     }
@@ -1568,13 +1647,15 @@ function tick(now){
     if(!liveCount){ const s=document.getElementById('session'); if(s) s.textContent=''; }
   }
   updateLinks(time);
+  // The title follows the actual view (2026-08-15). The semantic label comes
+  // from semantic-label.js and the exporter's measured coverage.
   const _sensTag = etiquetteSens(semCap);
   const _t = view<0.5 ? (focusRegion ? `[ REGION — ${focusRegion.toUpperCase()} ]` : '[ TRUNK PLANET ]')
                       : (sem>0.5 ? _sensTag.titre : '[ TRUNK MAP — STRUCTURE ]');
   if(titleEl && titleEl.textContent !== _t) titleEl.textContent = _t;
   vtag.textContent = view<0.5 ? etiquette3d(semCap, focusRegion)
     : (sem>0.5 ? _sensTag.bandeau
-               : `▦ STRUCTURE — the ${REGION_LIST.length} ${REGION_LIST.length > 1 ? 'families' : 'family'}, laid flat · click a family = in volume`);
+               : '▦ STRUCTURE — folder clusters laid flat · click a cluster for volume');
   syncModeButtons();
   composer.render();
   podTick(dtF);

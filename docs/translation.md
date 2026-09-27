@@ -267,3 +267,6 @@ remain benchmark input. Private corpus measurements and the dated sabotage
 register have been removed from the public package because no public test reads
 them. The three provenance and authority fixtures remain public test inputs;
 their schemas and readers use the English names above.
+
+Planet topic capsule: French `graph.json` node `tags[0]` → engine node `topic`;
+topic labels come from the engine's `graph.json` `topics` object.
