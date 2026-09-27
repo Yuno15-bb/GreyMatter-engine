@@ -725,6 +725,9 @@ else
 fi
 
 # ─── 9. Planet launcher ─────────────────────────────────────────────
+# SINCE v2.2 IT OPENS GMTR, NOT THE OLD PLANET. Same bundle, same icon, same
+# place on the Desktop — only the target changed: gmtr/launch.sh serves the map
+# on localhost:8767 and opens it in the default browser. No Electron.
 # AN APP BUNDLE, NOT A `.command`. Both are one double-click, but only a bundle
 # can carry an icon: a `.command` takes one solely through its resource fork,
 # which on macOS is set with `Rez` — from the Xcode Command Line Tools, exactly
@@ -747,7 +750,7 @@ elif [ -d "$HOME/Desktop" ]; then
   if [ "$DRY" != "1" ]; then
     # The GUI hands a launched app a minimal PATH — python3 and `open` have to be
     # findable, or the double-click does nothing at all and says nothing either.
-    printf '#!/bin/bash\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\nexec "%s/planet/launch.sh"\n' "$TRUNK" > "$APP/Contents/MacOS/planet"
+    printf '#!/bin/bash\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\nexec "%s/gmtr/launch.sh"\n' "$TRUNK" > "$APP/Contents/MacOS/planet"
     chmod +x "$APP/Contents/MacOS/planet"
     cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -772,7 +775,7 @@ PLIST
     touch "$APP"
   fi
   note dir "$APP"
-  say "+ $APP (double-click → globe on localhost:8765)"
+  say "+ $APP (double-click → GMTR map in your browser, localhost:8767)"
   # An installer that leaves the previous version's shortcut behind hands the
   # user two icons for one action, and lets them pick the stale one.
   OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
@@ -786,7 +789,7 @@ PLIST
   fi
 else
   warn "~/Desktop not found — launcher not created. The planet stays reachable at:"
-  warn "  $TRUNK/planet/launch.sh"
+  warn "  $TRUNK/gmtr/launch.sh"
 fi
 
 # ─── 10. Making the trunk findable ────────────────────────────────────────

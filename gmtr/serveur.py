@@ -554,6 +554,9 @@ class Guichet(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if "--code-present" in sys.argv:
+        # launch.sh asks for a code on first launch only: this answers without serving.
+        sys.exit(0 if code_juste("") is not None else 1)
     if "--definir-code" in sys.argv:
         code = sys.stdin.read().strip()
         if len(code) < 4:
@@ -561,7 +564,8 @@ if __name__ == "__main__":
         CODE_P.parent.mkdir(parents=True, exist_ok=True)
         CODE_P.write_text(empreinte(code) + "\n")
         os.chmod(CODE_P, 0o600)
-        sys.exit(f"Access code set: {CODE_P}")
+        print(f"Access code set: {CODE_P}")
+        sys.exit(0)
     print(f"GMTR launch screen: http://127.0.0.1:{PORT} (Ctrl+C to stop)")
 
     class Serveur(ThreadingHTTPServer):
