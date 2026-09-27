@@ -36,8 +36,14 @@ trap 'rm -rf "$H"' EXIT
 export HOME="$H"
 
 echo "▸ building a local upstream with two versions"
-git clone -q "$ROOT" "$H/upstream"
-cd "$H/upstream"
+# ⚠ Every step below runs from a `cd`. If the clone fails, the `cd` fails too,
+# and without `set -e` the rest ran in the CALLER's directory: `git commit`,
+# `git tag`, then `rsync --delete` emptied it (issue #3, a managed install has no
+# .git). So: no checkout of its own, no test; and a failed `cd` stops everything.
+[ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" = "$ROOT" ] \
+  || { echo "⤳ skipped: $ROOT is not a Git checkout (a managed install ships none)"; exit 0; }
+git clone -q "$ROOT" "$H/upstream" && cd "$H/upstream" \
+  || { echo "❌ could not enter $H/upstream, stopping before anything runs elsewhere"; exit 1; }
 git config user.email greymatter-test
 git config user.name greymatter-test
 git checkout -q -B main
@@ -47,7 +53,7 @@ git checkout -q -B main
 # of the code on disk — which it did, and it is how this line came to exist: a
 # mutation deliberately introduced into update.sh left the suite fully green.
 # A test that reads different code than the one being changed proves nothing.
-rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" ./
+rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" "$H/upstream/"
 git add -A
 git diff --cached --quiet || git commit -q -m "test: working tree"
 
@@ -59,8 +65,8 @@ git add UPDATE_MARKER && git commit -q -m "test: new"
 git tag -a v9.9.1 -m "test: new"
 
 echo "▸ installing the OLD version"
-git clone -q "$H/upstream" "$H/engine-src"
-cd "$H/engine-src"
+git clone -q "$H/upstream" "$H/engine-src" && cd "$H/engine-src" \
+  || { echo "❌ could not enter $H/engine-src, stopping before anything runs elsewhere"; exit 1; }
 git checkout -q v9.9.0
 mkdir -p "$H/.claude"
 printf '{"model": "opus"}\n' > "$H/.claude/settings.json"

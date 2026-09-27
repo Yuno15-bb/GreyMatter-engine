@@ -65,14 +65,20 @@ wait_done() {  # wait_done [seconds]
 hook() { python3 "$H/.greymatter/engine/greymatter/check_update.py" 2>&1; }
 
 echo "▸ local upstream: one old version, one new"
-git clone -q "$ROOT" "$H/upstream"
-cd "$H/upstream"
+# ⚠ Every step below runs from a `cd`. If the clone fails, the `cd` fails too,
+# and without `set -e` the rest ran in the CALLER's directory: `git commit`,
+# `git tag`, then `rsync --delete` emptied it (issue #3, a managed install has no
+# .git). So: no checkout of its own, no test; and a failed `cd` stops everything.
+[ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" = "$ROOT" ] \
+  || { echo "⤳ skipped: $ROOT is not a Git checkout (a managed install ships none)"; exit 0; }
+git clone -q "$ROOT" "$H/upstream" && cd "$H/upstream" \
+  || { echo "❌ could not enter $H/upstream, stopping before anything runs elsewhere"; exit 1; }
 git config user.email greymatter-test
 git config user.name greymatter-test
 git checkout -q -B main
 # We overlay the WORKING TREE: without this the test exercises the last commit
 # instead of the code just written (cf. update_rollback.sh, same trap).
-rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" ./
+rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" "$H/upstream/"
 git add -A
 git diff --cached --quiet || git commit -q -m "test: working tree"
 git tag -a v9.9.0 -m "test: old"
@@ -89,8 +95,8 @@ git tag -a v9.9.1 -m "test: new"
 # was measuring a scenario other than the one it describes.
 
 echo "▸ installing the OLD version (v9.9.0)"
-git clone -q "$H/upstream" "$H/engine-src"
-cd "$H/engine-src"
+git clone -q "$H/upstream" "$H/engine-src" && cd "$H/engine-src" \
+  || { echo "❌ could not enter $H/engine-src, stopping before anything runs elsewhere"; exit 1; }
 git checkout -q v9.9.0
 mkdir -p "$H/.claude"
 printf '{"model": "opus"}\n' > "$H/.claude/settings.json"

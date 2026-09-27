@@ -52,15 +52,21 @@ export PATH="$H/.local/bin:$H/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # ─── A local upstream: the old tag, then this working tree on top ───────────
 echo "▸ building a local upstream: $OLD_TAG, then this working tree"
-git clone -q "$ROOT" "$H/upstream"
-cd "$H/upstream"
+# ⚠ Every step below runs from a `cd`. If the clone fails, the `cd` fails too,
+# and without `set -e` the rest ran in the CALLER's directory: `git commit`,
+# `git tag`, then `rsync --delete` emptied it (issue #3, a managed install has no
+# .git). So: no checkout of its own, no test; and a failed `cd` stops everything.
+[ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" = "$ROOT" ] \
+  || { echo "⤳ skipped: $ROOT is not a Git checkout (a managed install ships none)"; exit 0; }
+git clone -q "$ROOT" "$H/upstream" && cd "$H/upstream" \
+  || { echo "❌ could not enter $H/upstream, stopping before anything runs elsewhere"; exit 1; }
 git config user.email greymatter-test
 git config user.name greymatter-test
 git checkout -q -B main "$OLD_TAG"
 git tag -a v9.8.0 -m "test: old name" 2>/dev/null || { echo "❌ v9.8.0 already exists"; exit 1; }
 # Overlay the WORKING TREE, as update_rollback.sh does and for the same reason:
 # a clone copies commits, and the change under test is not committed yet.
-rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" ./
+rsync -a --delete --exclude .git --exclude node_modules "$ROOT/" "$H/upstream/"
 git add -A
 git commit -q -m "test: working tree" || { echo "❌ nothing differs from $OLD_TAG"; exit 1; }
 git tag -a v9.9.0 -m "test: new name"
