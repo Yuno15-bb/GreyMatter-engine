@@ -881,7 +881,10 @@ function demelerEtiquettes(){
                                             || Math.min(b.y1,p.y1) <= Math.max(b.y0,p.y0));
 
   const _bo = window.__gmtrBornes, _bH = _bo ? Math.max(0, _bo.haut) : 0, _bB = _bo ? Math.min(H, _bo.bas) : H;
-  const demDansCadre = (e, etage) => (e.y + e.uy*etage - e.dh) >= _bH && (e.y + e.uy*etage + e.dh) <= _bB;
+  // The sides too (2026-09-27): the frame only checked top and bottom, and at 440 px wide
+  // `data-pipeline` ran 9 px past the screen edge, cut like a name leaving through the top.
+  const demDansCadre = (e, etage) => (e.y + e.uy*etage - e.dh) >= _bH && (e.y + e.uy*etage + e.dh) <= _bB
+    && (e.x + e.ux*etage - e.dl) >= 0 && (e.x + e.ux*etage + e.dl) <= W;
   const _demReste = [];
   for(const e of _demB){
     let garde = false;

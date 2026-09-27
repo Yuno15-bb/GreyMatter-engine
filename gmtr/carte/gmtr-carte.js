@@ -336,7 +336,14 @@
     const remesurer = () => { CAPACITE = capaciteLog(); };
     addEventListener('resize', remesurer, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(remesurer);
-    const place = (avant, apres) => Math.max(18, CAPACITE - avant - apres); // i18n-ok
+    // ⚠️ AN 18-SIGN FLOOR MADE THE NARROW JOURNAL OVERFLOW. Measured 2026-09-27 at 1024×800: the
+    // right column leaves the journal 284 px, 36 signs, and a path held at 18 pushed "· OK",
+    // "10/11 FOUND" and the session id out of the frame — 17 lines out of 17. The end of the line
+    // is the part that matters: the path gives way, and under 44 signs the fixed lines switch to
+    // their short form (`serre`).
+    const place = (avant, apres) => Math.max(3, CAPACITE - avant - apres); // i18n-ok
+    const serre = () => CAPACITE < 44;
+    const tient = (texte) => texte.length <= CAPACITE;   // a fixed line keeps its long form if it fits
     const ajouter = (html, classe = '') => {
       const colle = enBas();
       const li = document.createElement('li');
@@ -351,7 +358,8 @@
     if (document.fonts && document.fonts.ready) await document.fonts.ready.catch(() => {});
     remesurer();
     if (amorce) {
-      ajouter(`<span class="b">GMTR POWER-ON SELF-TEST</span> <span class="p">//</span> <span class="ref">trunk ${echapper(amorce.commit || 'unknown')}</span>`, 'tete');
+      const commit = amorce.commit || 'unknown', long = tient(`GMTR POWER-ON SELF-TEST // trunk ${commit}`);
+      ajouter(`<span class="b">${long ? 'GMTR POWER-ON SELF-TEST' : 'SELF-TEST'}</span> <span class="p">//</span> <span class="ref">${long ? 'trunk ' : ''}${echapper(commit)}</span>`, 'tete');
       for (const [k, l] of amorce.lignes.entries()) {
         const mot = l.present ? 'OK' : (l.chemin === 'state/FREEZE' ? 'NONE' : 'ABSENT');
         const classe = l.present ? 'ok' : (l.chemin === 'state/FREEZE' ? 't' : 'ko');
@@ -361,8 +369,10 @@
           + `<span class="p">·</span> <span class="${classe}">${mot}</span>`, 'boot');
         await M.attendre(60);
       }
-      ajouter(`<span class="t">${hex(amorce.lignes.length)} |</span> <span class="b">SELF-TEST COMPLETE</span> in <span class="n">${amorce.duree_ms.toFixed(2)}</span> ms `
-        + `<span class="p">·</span> <span class="ok">${amorce.lignes.filter((l) => l.present).length}/${amorce.lignes.length} FOUND</span>`, 'boot');
+      const trouves = `${amorce.lignes.filter((l) => l.present).length}/${amorce.lignes.length}`, ms = amorce.duree_ms.toFixed(2);
+      const fin = tient(`${hex(amorce.lignes.length)} | SELF-TEST COMPLETE in ${ms} ms · ${trouves} FOUND`);
+      ajouter(`<span class="t">${hex(amorce.lignes.length)} |</span> <span class="b">${fin ? 'SELF-TEST COMPLETE' : 'DONE'}</span> in <span class="n">${ms}</span> ms `
+        + `<span class="p">·</span> <span class="ok">${trouves}${fin ? ' FOUND' : ''}</span>`, 'boot');
     }
     let dernier = 0;
     async function sonder() {
@@ -371,7 +381,8 @@
         const nouveaux = d.evenements.filter((e) => e.ts > dernier).sort((a, b) => a.ts - b.ts);
         if (!dernier) { etat.innerHTML = '<span class="vif">live</span>'; $('#g-journal-titre').textContent = 'system log · self-test + live'; }
         for (const e of (dernier ? nouveaux : nouveaux.slice(-4))) {
-          const tete = `${heure(e.ts)} |`, verbe = String(e.type).toUpperCase().padEnd(6), sess = e.session || '';
+          const tete = `${serre() ? heure(e.ts).slice(0, 5) : heure(e.ts)} |`, sess = e.session || '';
+          const verbe = String(e.type).toUpperCase().padEnd(serre() ? 5 : 6);
           const cible = (e.cible || '').replace(/\.md$/, '');
           const li = ajouter(`<span class="t">${tete}</span> <span class="b">${verbe}</span> `
             + `<span class="ref">${echapper(court(cible, place(tete.length + verbe.length + 2, sess.length + 3)))}</span> `

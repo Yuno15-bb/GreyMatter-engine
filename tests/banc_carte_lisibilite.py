@@ -100,7 +100,9 @@ async function calme(p, max = 25000) {
   for (const t0 = Date.now(); Date.now() - t0 < max;) {
     await p.waitForTimeout(400);
     const c = await p.evaluate(CENTRES);
-    if (c && c === prec) return true;
+    // an EMPTY list that stops changing is still too: inside a region no label is left on the
+    // cloud, and `c &&` made every region wait out the full 25 s (run killed at 600 s, 2026-09-27)
+    if (prec !== null && c === prec) return true;
     prec = c;
   }
   return false;
@@ -128,23 +130,47 @@ for (const [w, h] of TAILLES) {
   const pose = [];
   pose.push(await calme(p));
   const noms = { region: 'at rest', ...(await p.evaluate(NOMS)) };
+  // The "panel" view lays its regions out flat and apart: its labels never overlap, untangling on
+  // or off (9 labels, 0 pairs, measured 2026-09-27). Labels compete only in the "graph" view.
+  await p.evaluate(() => window.__planete.setMode('sens'));
+  pose.push(await calme(p));
+  const graphe = { region: 'graph view at rest', ...(await p.evaluate(NOMS)) };
+  await p.evaluate(() => window.__planete.setMode('struct'));
+  await calme(p);
   const dedans = [];
   for (const r of await p.evaluate(QUATRE)) {
     await p.evaluate((x) => window.__planete.entrerRegion(x), r);
     pose.push(await calme(p));
-    dedans.push({ region: r, ...(await p.evaluate(NOMS)) });
+    // Inside a region the cloud drops every label on purpose; the header `#g-lieu` names the
+    // open region ("principles · 402"). `#fil` still exists but the GMTR skin hides it.
+    const fil = await p.evaluate(() => {
+      const e = document.querySelector('#g-lieu');
+      return e && e.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+        ? e.textContent.split(' · ')[0].trim() : '';
+    });
+    dedans.push({ region: r, fil, ...(await p.evaluate(NOMS)) });
   }
   await p.evaluate(() => window.__planete.sortirRegion());
   await calme(p);
 
   let fiche = null;
   if (premier && FICHE) {
+    // At rest no note is clickable, by design: notes show only inside their open region. So the
+    // largest region is opened first, and closed again after.
+    await p.evaluate((x) => window.__planete.entrerRegion(x), (await p.evaluate(QUATRE))[0]);
+    await calme(p);
+    await p.waitForTimeout(800);
     const cible = await p.evaluate(() => {
       const P = window.__planete, cam = P.camera_objet, W = innerWidth, H = innerHeight;
       const V3 = cam.position.constructor;
       let best = null, dmin = Infinity;
       for (const o of P.noeuds) {
         if (!o.visible || (o.material && o.material.opacity <= 0.2)) continue;
+        // The back half of an open region's sphere is not aimable, by design: `magnet()` skips notes
+        // facing away from the camera (under 0.12). Aiming at the one nearest the screen centre
+        // without this rule hit a back note (-0.74) on the synthetic trunk, 2026-09-27.
+        if (P.vue.view < 0.5 && o.position.clone().normalize()
+              .dot(cam.position.clone().normalize()) < 0.12) continue;
         const q = o.getWorldPosition(new V3()).project(cam);
         if (q.z > 1) continue;
         const x = Math.round((q.x * .5 + .5) * W), y = Math.round((-q.y * .5 + .5) * H);
@@ -156,19 +182,39 @@ for (const [w, h] of TAILLES) {
       }
       return best;
     });
-    fiche = { vise: !!cible, apercu: 0, grand: 0, titre: '' };
+    fiche = { vise: !!cible, apercu: 0, grand: 0, titre: '', attendu: 0 };
     if (cible) {
       await p.mouse.move(cible.x, cible.y);
       await p.waitForTimeout(600);
+      // what the preview has to show: the first plain-words paragraph, or the one-line description
+      fiche.attendu = await p.evaluate(() => {
+        const m = window.__vise = window.__planete.survol, n = m && m.userData.data;
+        return n ? ((n.en_clair ? n.en_clair.split('\n\n')[0] : n.desc) || '').trim().length : 0;
+      });
       await p.mouse.click(cible.x, cible.y);
       fiche.apercu = await ecrit(p);
       fiche.titre = await p.evaluate(() =>
         (document.querySelector('#g-fiche-titre').textContent || '').trim());
-      await p.mouse.dblclick(cible.x, cible.y);
+      // THE CLOUD SLIDES LEFT WHEN THE NOTE PANEL OPENS: the free zone gives the panel its room, so the
+      // clicked note is no longer under the pointer — 245 px away on the synthetic trunk, 2026-09-27.
+      // Double-clicking the old spot hit nothing on a sparse trunk and a NEIGHBOUR on a dense one. A
+      // person double-clicks the note where it now stands: so does the bench.
+      const la = await p.evaluate(() => {
+        const m = window.__vise, cam = window.__planete.camera_objet;
+        if (!m) return null;
+        const q = m.userData.base.clone().project(cam);
+        return { x: Math.round((q.x * .5 + .5) * innerWidth), y: Math.round((-q.y * .5 + .5) * innerHeight) };
+      });
+      const ici = la || cible;
+      await p.mouse.move(ici.x, ici.y);
+      await p.waitForTimeout(400);
+      await p.mouse.dblclick(ici.x, ici.y);
       fiche.grand = await ecrit(p);
       await p.keyboard.press('Escape');
       await p.waitForTimeout(600);
     }
+    await p.evaluate(() => window.__planete.sortirRegion());
+    await calme(p);
   }
 
   const m = await p.evaluate(() => {
@@ -241,7 +287,7 @@ for (const [w, h] of TAILLES) {
     return { lignes: li.length, bords, fins, rognes, queues, codes, signes: texte.length, jour, cache,
              croises, panneaux: vus.length, scie, vuFiche: Math.round(vu), lhFiche: Math.round(lh * 100) / 100 };
   });
-  sorties.push({ largeur: w, hauteur: h, ...m, noms, dedans, pose, fiche, erreurs: err });
+  sorties.push({ largeur: w, hauteur: h, ...m, noms, graphe, dedans, pose, fiche, erreurs: err });
   await p.close();
 }
 await b.close();
@@ -302,14 +348,25 @@ def faults(results):
         if not item['cache'] and item['jour'] is not None and item['jour'] < 0:
             issues.append(f"{where}: expanded note overlaps live code")
         note = item.get('fiche')
-        if note and (not note['vise'] or note['apercu'] < 40 or note['grand'] < note['apercu']):
+        # 40 characters, or the note's whole preview when it is shorter: a note without a plain-words
+        # section previews its one-line description (30 characters on the synthetic trunk)
+        if note and (not note['vise'] or note['apercu'] < min(40, max(1, note.get('attendu', 40)))
+                     or note['grand'] < note['apercu']):
             issues.append(f"{where}: clicked note lacks text")
-        states = [item['noms']] + item['dedans']
+        states = [item['noms'], item['graphe']] + item['dedans']
         if not all(item.get('pose', [])):
             issues.append(f"{where}: map labels did not settle")
         for state in states:
-            if state['total'] < 5:
-                issues.append(f"{where}: map labels did not load")
+            if 'fil' not in state:        # at rest: the cloud carries the labels
+                # the load check stays on the panel view: the graph view shows fewer labels by
+                # design (3 of 7 regions on the synthetic trunk at 1280), it is measured for overlap
+                if state['region'] == 'at rest' and state['total'] < 5:
+                    issues.append(f"{where}: map labels did not load")
+            else:                         # in a region: the header names it, the cloud is silent
+                if state['fil'] != state['region']:
+                    issues.append(f"{where} ({state['region']}): header does not name the open region")
+                if state['total']:
+                    issues.append(f"{where} ({state['region']}): {state['total']} other region label(s) left on the cloud")
             if state['coupes']:
                 issues.append(f"{where}: map labels clipped at viewport edge")
             if state['paires']:
@@ -321,9 +378,12 @@ SABOTAGES = [
     ("narrow region list", ".g-regions{ width:150px !important }", "", "clipped region names"),
     ("narrow journal", ".g-journal{ width:380px !important }", "", "clipped journal"),
     ("journal overlaps code", ".g-journal{ width:min(900px, 66vw) !important }", "", "overlapping panels"),
-    ("unbounded note", ".g-fiche.grand{ max-height:none !important }", "", "expanded note overlaps"),
+    # The cap has three floors: the note box, the text's stylesheet cap, and an inline maxHeight
+    # set by the script. Lifting only the first left the sabotage mute (2026-09-27).
+    ("unbounded note", ".g-fiche.grand, .g-fiche.grand .g-fiche-texte{ max-height:none !important }", "", "expanded note overlaps"),
     ("disable label spacing", "", "window.__planete.demelage = false", "map labels overlap"),
     ("read hidden note text", "", "document.documentElement.dataset.ficheBrute = '1'", "clicked note lacks text"),
+    ("open region missing from header", "#g-lieu{ visibility:hidden !important }", "", "header does not name"),
     ("cut a text line", ".g-fiche .g-fiche-texte{ max-height:101px !important; overflow:hidden !important }", "", "cut between lines"), # i18n-ok: inherited CSS and JS identifiers
 ]
 
