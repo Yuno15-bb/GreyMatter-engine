@@ -70,8 +70,13 @@ commits of `main` and `fr` were published, so `--history` turned red on commits
 that are already online and that no new version can take back. Rewriting them is
 ruled out: moving a published tag breaks updates for every installation that
 fetched it. `leakcheck.py` therefore holds a closed list, `ALREADY_PUBLIC`, of
-the two tips published on 2026-09-26, and the history scan skips the commits
-reachable from them — only those. A tip missing from the local clone is simply
+the two tips `origin` served on 2026-09-27 (read with `git ls-remote`), and the
+history scan skips the commits reachable from them — only those. They were the
+tips of 2026-09-26 until v2.0.4: a fingerprint added since then matched two
+patches already online, and the check blocked a release over history nobody
+could recall. The tips only ever move forward, to a commit `origin` already
+serves. Local branches that are never pushed still count: publish from a fresh
+clone when one of them trips the check, so it sees exactly what leaves. A tip missing from the local clone is simply
 not excluded, so the check leans red, never green, and every commit after those
 tips is scanned in full. The list never receives a tip that is not already
 public: `tests/leakcheck_history.py` turns red if its size changes, and proves
