@@ -1,29 +1,5 @@
 #!/usr/bin/env python3
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import difflib
 import hashlib
 import hmac
@@ -44,14 +20,7 @@ BRAIN = Path(brain_root(__file__))
 CARTE = ICI.parent / "planet" # i18n-ok
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8767
 
-
-
-
-
 STATIQUES = {".html", ".css", ".js", ".woff2", ".ico"}
-
-
-
 
 IMAGES_OUVERTES = {"/logo/marque-carre.png", "/logo/marque-mot.png"}
 FENETRE_SESSION_S = 10 * 60
@@ -142,11 +111,6 @@ def _json(p):
     except (OSError, ValueError):
         return None
 
-
-
-
-
-
 AGENTS_NOMS = [
     ("architect",   "HUGINN"),
     ("distiller", "MUNINN"),
@@ -158,21 +122,10 @@ AGENTS_NOMS = [
     ("mechanic",   "EITRI"),
 ]
 
-
-
 AGENT_PERDU_S = 1200
 
 
 def agents():
-
-
-
-
-
-
-
-
-
 
     chemin = os.environ.get("GMTR_AGENTS_JOURNAL")
     source = Path(chemin) if chemin else (BRAIN / "state" / "agents.jsonl")
@@ -187,9 +140,6 @@ def agents():
                 nom = o.get("agent")
                 if not nom:
                     continue
-
-
-
 
                 if o.get("phase") == "start":
                     dernier[nom] = o
@@ -272,8 +222,6 @@ def etat():
     if isinstance(st, dict) and isinstance(st.get("ts"), (int, float)):
         recente = maintenant - st["ts"] < FENETRE_SESSION_S
 
-
-
         session = {"etat": st.get("state") if recente else "idle", "ts": int(st["ts"]),
                    "activite": st.get("activity") if recente else None,
                    "detail": st.get("detail") if recente else None,
@@ -310,17 +258,6 @@ def etat():
 
 def _queue(p, n, _plafond=8 << 20):
 
-
-
-
-
-
-
-
-
-
-
-
     try:
         with open(p, "rb") as f:
             f.seek(0, 2)
@@ -345,27 +282,6 @@ def _queue(p, n, _plafond=8 << 20):
         except ValueError:
             continue
     return out
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 COMPANION = Path(os.environ["GMTR_COMPANION"]).expanduser() if os.environ.get("GMTR_COMPANION") else None
 _VU = {}
@@ -400,9 +316,6 @@ def _version_commitee(rel):
 
     try:
 
-
-
-
         r = subprocess.run(["git", "-C", str(BRAIN), "show", f"HEAD:./{rel}"], capture_output=True, timeout=3)
         return r.stdout.decode("utf-8", "replace").splitlines() if r.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
@@ -410,11 +323,6 @@ def _version_commitee(rel):
 
 
 def _scruter_disque():
-
-
-
-
-
 
     if time.time() - _SCAN["t"] < 1.5:
         return
@@ -479,12 +387,6 @@ def ecrit(depuis=0.0, n=40):
                 continue
             evts.append({"ts": ts, "chemin": e.get("rel") or e.get("file"), "fichier": e.get("file"),
 
-
-
-
-
-
-
                          "diff": [str(l)[:220] for l in e["diff"][:300]],
                          "coupees": max(0, len(e["diff"]) - 300),
                          "ajoutees": e.get("added"), "retirees": e.get("removed"), "outil": (e.get("tool") or "").lower(),
@@ -544,11 +446,6 @@ class Guichet(SimpleHTTPRequestHandler):
         pass
 
     def end_headers(self):
-
-
-
-
-
 
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -631,11 +528,6 @@ class Guichet(SimpleHTTPRequestHandler):
             return self.end_headers()
         if chemin in ("/carte/", "/carte/index.html") and (ICI / "carte" / "index.html").is_file(): # i18n-ok
 
-
-
-
-
-
             racine, relatif = ICI / "carte", "index.html" # i18n-ok
         elif chemin.startswith("/carte/gmtr-carte.") and Path(chemin).suffix in (".js", ".css"): # i18n-ok
 
@@ -671,9 +563,6 @@ if __name__ == "__main__":
         os.chmod(CODE_P, 0o600)
         sys.exit(f"Access code set: {CODE_P}")
     print(f"GMTR launch screen: http://127.0.0.1:{PORT} (Ctrl+C to stop)")
-
-
-
 
     class Serveur(ThreadingHTTPServer):
         request_queue_size = 128

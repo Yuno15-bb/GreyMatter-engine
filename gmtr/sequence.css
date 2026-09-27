@@ -13,8 +13,6 @@
 .passer.visible{ display:block; }
 .passer .touche{ color:var(--texte); }
 
-
-
 .chargement{ --logo:140px; }
 .chargement .logo{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); }
 .barre{ position:absolute; left:50%; top:calc(44% + var(--logo) / 2 + 40px); transform:translateX(-50%);
@@ -31,8 +29,6 @@
   white-space:nowrap; min-height:1.3em; }
 .barre-legende .pct{ color:var(--texte); font-variant-numeric:tabular-nums; }
 .barre-legende .ref{ color:var(--actif); }
-
-
 
 .logo-centre{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:5; }
 

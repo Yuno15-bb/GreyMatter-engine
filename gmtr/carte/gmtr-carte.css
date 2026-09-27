@@ -97,9 +97,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 .g-fiche-voisins em{ font-style:normal; color:var(--m-sombre); }
 .g-fiche-voisins li.reste{ color:var(--m-sombre); }
 
-
-
-
 .g-regions{ position:absolute; left:var(--g-marge);
   top:calc(84px + env(safe-area-inset-top, 0px)); width:calc(var(--g-colonne-gauche) + 2 * var(--g-pad)); font-size:12px; line-height:var(--m-ligne);
   display:flex; flex-direction:column; }
@@ -163,10 +160,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 
 #gmtr-shell.chargement .g-regions, #gmtr-shell.chargement .g-entete, #gmtr-shell.chargement .g-pied{ visibility:hidden; }
 
-
-
-
-
 .g-journal{ position:absolute; left:var(--g-marge);
   bottom:calc(56px + env(safe-area-inset-bottom, 0px));
   width:min(480px, calc(100% - var(--g-colonne) - 3 * var(--g-marge) - 2 * var(--g-pad))); font:10px/15px var(--police-pixel);
@@ -198,9 +191,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 
 .g-evt.m-rang.claire .txt, .g-evt.m-rang.claire .txt *{ color:var(--fond) !important; }
 
-
-
-
 .g-fiche.grand{ width:calc(var(--g-colonne) + 2 * var(--g-pad));
   max-height:calc(100vh - 195px - 2 * var(--g-pad) - var(--g-code-haut)
                   - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
@@ -222,8 +212,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 .g-agent .age{ color:var(--m-sombre); margin-left:auto; white-space:nowrap; }
 .g-agent.tourne .puce{ color:var(--actif); }
 .g-agent.tourne .quoi{ color:var(--m-clair); }
-
-
 
 .g-ecrit{ position:fixed; right:var(--g-marge);
   bottom:calc(56px + env(safe-area-inset-bottom, 0px));
@@ -251,8 +239,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 #g-ecrit-etat .g-attente{ display:inline-block; margin-left:4px; animation:g-clignote 1.06s steps(1) infinite; }
 @keyframes g-clignote{ 50%{ opacity:0 } }
 @media (prefers-reduced-motion:reduce){ #g-ecrit-etat .g-attente{ animation:none; } }
-
-
 
 @media (max-width:1180px){
 
@@ -386,8 +372,6 @@ body.g-cherche-ouverte .g-fiche{ visibility:hidden; }
 
 
 .g-regions.serree #g-liste, .g-regions.serree #g-liste-sujets{ max-height:var(--m-liste-max); }
-
-
 
 html .g-resultats.accroche.g-plaque{ z-index:2; border-radius:0 0 var(--g-rayon) var(--g-rayon);
   -webkit-backdrop-filter:none; backdrop-filter:none;

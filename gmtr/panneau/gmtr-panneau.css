@@ -5,8 +5,6 @@
   --ambre:#ffa227;
   --ambre-sourd:#8a5416;
 
-
-
   --rosace:clamp(470px, min(calc(100svh - 210px), calc(100vw - 96px)), 640px);
   --gelule-l:calc(var(--rosace) * .245);
   --gelule-c:calc(var(--rosace) * .125);
@@ -127,8 +125,6 @@ body{ overflow:auto; }
 .case[data-etat="stale"] .glyphe,.case[data-etat="stale"] .mot{ color:var(--alerte); }
 
 .case[data-echec="1"] .glyphe,.case[data-echec="1"] .mot{ color:var(--alerte); }
-
-
 
 .coeur{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
   width:calc(var(--rosace) * .3); display:flex; flex-direction:column; align-items:center; gap:var(--e1); text-align:center; }
