@@ -363,7 +363,7 @@ def main():
                 return 1
             for name, css, script, expected in SABOTAGES:
                 result = measure(pw, port, token, directory, css=css, script=script,
-                                 sizes=[SIZES[1]], note="ficheBrute" in script)
+                                 sizes=SIZES, note="ficheBrute" in script)
                 seen = faults(result) if result is not None else []
                 if not any(expected in fault for fault in seen):
                     print(f"RED — sabotage {name} did not trigger {expected}: {seen}")
