@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Source of docs/media/recall.png — the real output of brain demo, brain recall
+     and brain demo --remove on an empty trunk (v2.1.0), redrawn so the path is
+     nobody's. Descriptions are cut at 110 characters by the tool itself.
+     Render: docs/media/src/render.sh recall 880 FIT -->
+<html><head><meta charset="utf-8"><style>
+* { box-sizing:border-box; margin:0; }
+html,body { width:880px; background:transparent; }
+body { padding:0; font:14px/1.6 ui-monospace,"SF Mono",Menlo,monospace; }
+.t { background:#16181d; border-radius:12px; overflow:hidden; color:#c9ccd3; }
+.bar { height:40px; display:flex; align-items:center; gap:8px; padding-left:16px; background:#20232a;
+  border-bottom:1px solid #2c3038; color:#8a8f98; font-size:13px; }
+.bar i { width:12px; height:12px; border-radius:50%; display:block; }
+.bar span { margin-left:14px; }
+.body { padding:20px 24px 24px; }
+.o, .c { white-space:pre-wrap; }
+.r { padding-left:12ch; text-indent:-12ch; }
+.c b { color:#fff; } .p { color:#61c554; font-weight:700; }
+.s { color:#e5c07b; } .n { color:#56c8d8; } .dim { color:#7d828c; } .ok { color:#61c554; }
+.d { padding-left:10ch; color:#b3b7bf; }
+.gap { height:22px; }
+</style></head><body><div class="t" id="t">
+<div class="bar"><i style="background:#ec6a5e"></i><i style="background:#f4bf4f"></i><i style="background:#61c554"></i><span>brain — the memory, from the command line</span></div>
+<div class="body">
+<div class="c"><span class="p">$</span> <b>brain demo</b></div>
+<div class="o">  3 note(s) placed</div>
+<div class="o"> </div>
+<div class="o dim">  Try now:</div>
+<div class="o dim">    brain recall cache deploy    ← what recall finds</div>
+<div class="o dim">    brain status                 ← the state of the trunk</div>
+<div class="o dim">    brain demo --remove          ← once you no longer need them</div>
+<div class="gap"></div>
+<div class="c"><span class="p">$</span> <b>brain recall cache deployment</b></div>
+<div class="o">🔎 Top 3 for &#x27;cache deployment&#x27;:</div>
+<div class="o"> </div>
+<div class="o r">  [ <span class="s">0.25</span>] <span class="n">the-cache-lies-after-a-deploy</span>  <span class="dim">(lessons/the-cache-lies-after-a-deploy.md)</span></div>
+<div class="o d">A deploy reported as &quot;successful&quot; can still be serving the old version — check the artefact being served…</div>
+<div class="o r">  [ <span class="s">0.14</span>] <span class="n">resuming-the-pricing-page-rework</span>  <span class="dim">(projects/example-marketing-site/resuming-the-pricing-page-rework.md)</span></div>
+<div class="o d">Resume point for work in progress — where it stands, what is settled, the next action. When you pick a…</div>
+<div class="o r">  [ <span class="s">0.12</span>] <span class="n">how-this-trunk-works</span>  <span class="dim">(meta/how-this-trunk-works.md)</span></div>
+<div class="o d">The trunk loop in four beats — write, recall, file, review. When you wonder what GreyMatter actually does…</div>
+<div class="gap"></div>
+<div class="c"><span class="p">$</span> <b>brain demo --remove</b></div>
+<div class="o">  3 note(s) removed</div>
+<div class="o ok">  the index is clean — the trunk is yours</div>
+</div></div>
+<script>document.body.dataset.h = document.getElementById("t").offsetHeight;</script>
+</body></html>

@@ -105,19 +105,45 @@ its noise on every message for a service rendered about four times in a hundred,
 so since 2026-09-09 it fires only when you ask. The search itself did not
 change: the numbers above still hold whenever you do.
 
+### And on a public benchmark?
+
+[LongMemEval](https://github.com/xiaowu0162/LongMemEval) asks 500 questions,
+each hidden in a long history of past conversations: about 48 of them per
+question in its S set, about 475 in its M set. We measured **retrieval only** —
+is a conversation holding the answer among the five handed back
+(recall-any@5)? — not whether an agent then answers correctly. Measured
+2026-09-26, same questions and same scoring for every system:
+
+| system | S (~48 conversations) | M (~475 conversations) |
+|---|---|---|
+| **GreyMatter**, default search | **96.8 %** | **86.4 %** |
+| a plain BM25, nothing else | 96.8 % | 86.8 % |
+| claude-mem's search alone (Chroma, one message per entry) | 96.4 % | 83.0 % |
+| agentmemory hybrid, its own code at `bcf4f0d` | 95.6 % | 78.6 % |
+| GreyMatter, semantic mode | 88.2 % | 61.0 % |
+
+**Read it for what it says.** GreyMatter's default search ties a plain BM25 —
+the textbook keyword ranking — on both sets (no significant difference:
+p = 1.0 on S, p = 0.77 on M). It is ahead of claude-mem's search on M
+(p = 0.046), and only its search: claude-mem's full memory was not tested.
+agentmemory advertises 95.2 %; we measured 95.6 % on S and 78.6 % on M. So the
+bench shows GreyMatter is not behind — not that it is better than the simplest
+baseline. Its semantic mode (`brain recall --semantic`, static embeddings) loses on
+both sets; it stays off unless you ask for it.
+
 ## Install
 
 **As a Claude Code plugin** — the short way, and the one that updates itself:
 
 ```
 /plugin marketplace add Yuno15-bb/GreyMatter-engine
-/plugin install c-brain@c-brain
+/plugin install greymatter@greymatter
 ```
 
 That gives you the whole memory: the trunk, recall, the four agents,
 the `brain` command inside Claude Code (your own terminal gets it from the full
-install below), and three commands you can type — `/c-brain:recall`,
-`/c-brain:distill`, `/c-brain:doctor`. It creates `~/.c-brain/trunk` on your first session and
+install below), and three commands you can type — `/greymatter:recall`,
+`/greymatter:distill`, `/greymatter:doctor`. It creates `~/.greymatter/trunk` on your first session and
 tells you so. It does **not** set up the capsule, the planet or the scheduled
 jobs — a plugin cannot install a background service, and pretending otherwise
 would leave you with a window that never opens.
@@ -126,12 +152,16 @@ would leave you with a window that never opens.
 unattended maintenance:
 
 ```
-Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/greymatter, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
-Or by hand: `git clone … && cd c-brain && ./install.sh`
+Or by hand: `git clone … && cd greymatter && ./install.sh`
 
+> **Upgrading from v2.0.x?** `brain update` carries you across the rename to
+> GreyMatter on its own; [docs/UPGRADING.md](docs/UPGRADING.md) says what moves
+> and how to roll back.
+>
 > **Upgrading from v1.28.1 or earlier?** Read
 > [docs/UPGRADING.md](docs/UPGRADING.md) first — a one-time warning about
 > uncommitted changes in your engine checkout, the renamed agents, and recall
@@ -144,27 +174,33 @@ background job:
 ./install.sh --core-only
 ```
 
+The `brain` command lands in `~/.local/bin`. If your shell says
+`command not found`, that folder is not on your `PATH` yet — the installer
+prints the one line to add to your shell profile.
+
 Details, prerequisites and uninstall: **[INSTALL.md](INSTALL.md)**.
 
 ## The idea holding it all together
 
 ```
-~/.c-brain/engine  ← link to the ACTIVE version under versions/. Code, replaceable, disposable.
-~/.c-brain/trunk     ← the TRUNK. Your notes. Changes only when YOU write.
+~/.greymatter/engine  ← link to the ACTIVE version under versions/. Code, replaceable, disposable.
+~/.greymatter/trunk     ← the TRUNK. Your notes. Changes only when YOU write.
 ```
 
 The two never mix. That is what lets an update land with zero risk to your work —
 and lets `uninstall.sh` remove everything while leaving your knowledge intact.
 
 Both live behind a leading dot, out of the way. Your notes should not: the
-install puts a **`C Brain` shortcut in your home folder**, tagged, so the one
-part that is yours is the one part you can see. That folder, the `~/.c-brain`
-paths and the `/c-brain:` commands keep the engine's original name: they are
-addresses, and an address that changes breaks every install that already
-follows it.
+install puts a **`GreyMatter` shortcut in your home folder**, tagged, so the one
+part that is yours is the one part you can see.
+
+Since v2.1.0 the engine carries one name everywhere — folder, commands, launchd
+jobs, plugin. An older install is moved over by its own updater: the root moves
+once, the old path stays behind as a link to it, and your notes are not
+rewritten. What changes and how to go back: [docs/UPGRADING.md](docs/UPGRADING.md).
 
 <p align="center">
-  <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged C Brain folder, with an arrow pointing at it" width="900">
+  <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged GreyMatter folder, with an arrow pointing at it" width="900">
 </p>
 
 ## What it does not do
@@ -256,9 +292,9 @@ point, the markers, and what the map cannot do.
 Inside your agent, once the plugin is installed:
 
 ```
-/c-brain:recall <subject>   what the trunk already knows about it
-/c-brain:distill            turn what was just worked out into a note
-/c-brain:doctor             check the wiring and the trunk
+/greymatter:recall <subject>   what the trunk already knows about it
+/greymatter:distill            turn what was just worked out into a note
+/greymatter:doctor             check the wiring and the trunk
 ```
 
 And in any shell once `install.sh` has run — with the plugin alone, ask Claude to run them:
