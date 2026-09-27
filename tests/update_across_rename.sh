@@ -13,7 +13,7 @@
 # two roots, doubled hooks or orphaned jobs, and no unit test sees it — only the
 # real sequence does.
 #
-# The old release is the tag v2.0.3, read from this repository's own history.
+# The old release is the tag v2.0.4, read from this repository's own history.
 # launchd is a text file (tests/_fake_launchd.py): $HOME does not isolate the
 # real domain. npm is kept off PATH, so the capsule is skipped as on a Mac
 # without Node.
@@ -22,7 +22,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
-OLD_TAG=v2.0.3
+OLD_TAG=v2.0.4
 FAILS=0
 
 check() {  # check <exit-code> <label> [detail]
