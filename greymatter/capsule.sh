@@ -4,7 +4,7 @@
 # WHY THIS VERB EXISTS (decided 2026-09-20, C bis entry B3).
 # The installer installs the capsule, then PROVES the Electron binary answers
 # `--version`, and stops there. It never says how to get a window on screen.
-# The only documented gesture was `cd ~/.c-brain/trunk/capsule && npm start`
+# The only documented gesture was `cd ~/.greymatter/trunk/capsule && npm start`
 # in capsule/README.md: a terminal gesture, inside a directory whose leading dot
 # makes Finder hide it, in a README nothing else points to.
 #
@@ -37,7 +37,7 @@ BIN="$ED/dist/$rel"
 # package.json rather than spelled here, because the author's trunk and the
 # shipped package do not carry the same name.
 name="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["name"])' \
-        "$CAPSULE/package.json" 2>/dev/null || echo c-brain-capsule)"
+        "$CAPSULE/package.json" 2>/dev/null || echo greymatter-capsule)"
 MARK="$HOME/Library/Application Support/$name/instance.json"
 
 alive() { kill -0 "$1" 2>/dev/null; }

@@ -20,7 +20,7 @@ one definition are five chances to diverge: `grep -l "def racine"` returned noth
 RULE (spec frozen on 2026-08-20, clauses 1 to 5):
     1. `realpath` is mandatory — the ~/.claude/projects/…/memory symlink gives two paths
        for a single tree, and two paths make two roots.
-    2. never a literal `~/.c-brain/trunk` OUTSIDE this file — measured: 7 sites no
+    2. never a literal `~/.greymatter/trunk` OUTSIDE this file — measured: 7 sites no
        variable could redirect. Here it is the one default, and BRAIN_HOME overrides it.
     3. never the `cwd` — it has no effect today; creating the dependency would be a step back.
     4. `BRAIN_HOME` set but EMPTY ≡ unset — measured on 2026-08-20.
@@ -30,19 +30,19 @@ import os
 
 
 def brain_root(depuis=None):
-    """Canonical root of the Brain being MEASURED: `BRAIN_HOME`, else `~/.c-brain/trunk`.
+    """Canonical root of the Brain being MEASURED: `BRAIN_HOME`, else `~/.greymatter/trunk`.
 
     `depuis` (the caller's `__file__`) is accepted and NOT used for the identity. The
     folder above the code is never the trunk in an installed engine: the hooks run as
-    `~/.c-brain/trunk/hooks/X.py`, `hooks` is a symlink into the engine, and `realpath`
+    `~/.greymatter/trunk/hooks/X.py`, `hooks` is a symlink into the engine, and `realpath`
     resolves it BEFORE applying `..` — measured on 2026-09-25, the "parent of the code"
-    landed in `~/.c-brain/versions/<version>`, the frozen engine doctor checks against
+    landed in `~/.greymatter/versions/<version>`, the frozen engine doctor checks against
     its manifest. Every state file would have been written there. Under the plugin,
     the code sits in the plugin cache: no trunk at all."""
     demande = os.environ.get("BRAIN_HOME")
     if demande:                                   # "" is falsy: clause 4
         return os.path.realpath(demande)
-    return os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+    return os.path.realpath(os.path.expanduser("~/.greymatter/trunk"))
 
 
 def code_root(depuis):

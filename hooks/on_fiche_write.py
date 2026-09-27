@@ -20,7 +20,7 @@ try:
 except Exception:
     def write_status(*a, **k): pass
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 MAP_RELS = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}

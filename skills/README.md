@@ -3,7 +3,7 @@
 There are two kinds of skill here, and conflating them is what this file exists
 to prevent.
 
-**Skills that drive C Brain** — `recall`, `distill`, `doctor` — ship with it.
+**Skills that drive GreyMatter** — `recall`, `distill`, `doctor` — ship with it.
 They are the product's surface, the same category as the `brain` command: they
 operate the tool and know nothing about you. Without them, installing the plugin
 gives a user hooks they cannot see and no command they can type.
@@ -61,7 +61,7 @@ skill — and a generic memo triggers badly and produces nothing good.
 This is the distinction that stops everything piling into one place:
 
 - **Autonomous system, standing trait → agent.** It runs in the background,
-  untriggered, with separated powers. C Brain's agents live in `agents/`.
+  untriggered, with separated powers. GreyMatter's agents live in `agents/`.
 - **One-off action, on demand → skill.** You invoke it, it produces, it hands
   back control.
 

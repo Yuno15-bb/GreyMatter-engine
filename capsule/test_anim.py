@@ -4,7 +4,7 @@ the timestamp to stay 'busy' (idle threshold = 6 s)."""
 import json, time, os
 
 # Derived from $HOME, not __file__: it is the TRUNK's state we drive.
-STATUS = os.path.join(os.path.expanduser('~'), '.c-brain', 'trunk', 'state', 'status.json')
+STATUS = os.path.join(os.path.expanduser('~'), '.greymatter', 'trunk', 'state', 'status.json')
 
 # ordre du pipeline → couvre les 11 activités reconnues par index.html (idle exclu)
 STEPS = [

@@ -12,14 +12,14 @@
 #   brain demo --status   report where they stand
 set -euo pipefail
 
-ENGINE="${CBRAIN_ENGINE:-$HOME/.c-brain/engine}"
-TRUNK="${CBRAIN_TRUNK:-$HOME/.c-brain/trunk}"
+ENGINE="${GREYMATTER_ENGINE:-$HOME/.greymatter/engine}"
+TRUNK="${GREYMATTER_TRUNK:-$HOME/.greymatter/trunk}"
 SRC="$ENGINE/demo"
 
 # Boundaries of the index block. Writing between two markers rather than "at the
 # end" keeps removal an exact operation, even if the user has written below it.
-BEGIN="<!-- c-brain:demo:begin -->"
-END="<!-- c-brain:demo:end -->"
+BEGIN="<!-- greymatter:demo:begin -->"
+END="<!-- greymatter:demo:end -->"
 
 say()  { echo "  $*"; }
 warn() { echo "  ⚠️  $*"; }

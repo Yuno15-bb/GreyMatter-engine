@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """launchd_adoption.py — adopting a legacy job needs proof AND permission.
 
-THE CONTRACT UNDER TEST (cbrain/adopt-launchd.sh):
+THE CONTRACT UNDER TEST (greymatter/adopt-launchd.sh):
 
     TECHNICAL CONCORDANCE OBSERVED
   + EXPLICIT HUMAN AUTHORISATION
@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _fake_launchd import FAKE   # one definition of the fake domain
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADOPT = os.path.join(ROOT, "cbrain", "adopt-launchd.sh")
-LIB = os.path.join(ROOT, "cbrain", "launchd-lib.sh")
+ADOPT = os.path.join(ROOT, "greymatter", "adopt-launchd.sh")
+LIB = os.path.join(ROOT, "greymatter", "launchd-lib.sh")
 
 fails = []
 
@@ -54,10 +54,10 @@ class Bench:
     """One synthetic machine, with a HOME of its own and no real launchctl."""
 
     def __init__(self, script=None, tpl_dir=None):
-        self.tmp = os.path.realpath(tempfile.mkdtemp(prefix="cbrain-adopt."))
+        self.tmp = os.path.realpath(tempfile.mkdtemp(prefix="greymatter-adopt."))
         self.home = os.path.join(self.tmp, "home")
         self.bin = os.path.join(self.tmp, "bin")
-        self.cb = os.path.join(self.home, ".c-brain")
+        self.cb = os.path.join(self.home, ".greymatter")
         self.agents = os.path.join(self.home, "Library", "LaunchAgents")
         for d in (self.bin, self.agents, os.path.join(self.cb, "state")):
             os.makedirs(d)
@@ -101,7 +101,7 @@ class Bench:
 
     def env(self):
         e = dict(os.environ)
-        e.update({"HOME": self.home, "CB": self.cb,
+        e.update({"HOME": self.home, "GM": self.cb,
                   "PATH": self.bin + os.pathsep + e["PATH"],
                   "FAKE_LOG": self.log, "FAKE_REG": self.reg})
         return e
@@ -136,8 +136,8 @@ class Bench:
         shutil.rmtree(self.tmp, ignore_errors=True)
 
 
-LABEL = "com.claudebrain.resume"
-OTHER = "com.claudebrain.machiniste"
+LABEL = "com.greymatter.resume"
+OTHER = "com.greymatter.machiniste"
 
 
 def refusal(name, build, label=LABEL, answer="y\n", expect_rc=3):
@@ -201,7 +201,7 @@ def case_adopted():
         else:
             ko("  no audit trail was written")
         # the guard must now let the ordinary operation through
-        rc2, _ = b.call_lib("cb_launchd_owned", LABEL, "")
+        rc2, _ = b.call_lib("gm_launchd_owned", LABEL, "")
         if rc2 == 0:
             ok("  state/launchd-owned now recognises the Label as ours")
         else:
@@ -288,7 +288,7 @@ def case_adopt_one_mutate_another():
         if rc != 0:
             ko("setup: the first adoption did not go through")
             return
-        rc2, out2 = b.call_lib("cb_launchd_install", OTHER, b.plist_path(OTHER))
+        rc2, out2 = b.call_lib("gm_launchd_install", OTHER, b.plist_path(OTHER))
         if rc2 == 3 and not [i for i in b.invocations if i.startswith("unload")]:
             ok("adopting one Label grants nothing on another: refused")
         else:
@@ -305,8 +305,8 @@ def case_adopt_one_mutate_another():
 def case_no_automatic_caller():
     """An adoption a machine can trigger on its own is not an adoption."""
     callers = []
-    for rel in ("install.sh", "uninstall.sh", "cbrain/update.sh",
-                "cbrain/check_update.py", "bin/brain", "sync.sh"):
+    for rel in ("install.sh", "uninstall.sh", "greymatter/update.sh",
+                "greymatter/check_update.py", "bin/brain", "sync.sh"):
         p = os.path.join(ROOT, rel)
         if os.path.exists(p) and "adopt-launchd" in open(p, errors="replace").read():
             callers.append(rel)
@@ -322,16 +322,16 @@ def case_sabotage_detects():
     Without this, every refusal above could come from a bench that refuses
     everything, and the greens would prove nothing.
     """
-    tmp = tempfile.mkdtemp(prefix="cbrain-adopt-sab.")
+    tmp = tempfile.mkdtemp(prefix="greymatter-adopt-sab.")
     try:
         pkg = os.path.join(tmp, "pkg")
-        shutil.copytree(os.path.join(ROOT, "cbrain"), os.path.join(pkg, "cbrain"))
+        shutil.copytree(os.path.join(ROOT, "greymatter"), os.path.join(pkg, "greymatter"))
         os.makedirs(os.path.join(pkg, "hooks"))
         for f in os.listdir(os.path.join(ROOT, "hooks")):
             if f.endswith(".plist.template"):
                 shutil.copy(os.path.join(ROOT, "hooks", f),
                             os.path.join(pkg, "hooks", f))
-        doctored = os.path.join(pkg, "cbrain", "adopt-launchd.sh")
+        doctored = os.path.join(pkg, "greymatter", "adopt-launchd.sh")
         src = open(doctored).read()
         src = src.replace('if ! diff -q <(python3 "$NORM" < "$PLIST") \\',
                           'if false && ! diff -q <(python3 "$NORM" < "$PLIST") \\')
@@ -371,15 +371,15 @@ def main():
     refusal("plist matches, live loaded from another file",
             lambda b: (b.put_plist(LABEL),
                        b.register(LABEL, b.program(LABEL),
-                                  "/Library/LaunchDaemons/com.claudebrain.resume.plist")))
+                                  "/Library/LaunchDaemons/com.greymatter.resume.plist")))
     refusal("the Label alone is identical",
             lambda b: (b.put_plist(LABEL, "<plist>foreign</plist>\n"),
                        b.register(LABEL, "/opt/elsewhere/job.py",
                                   "/opt/elsewhere/other.plist")))
-    refusal("the com.claudebrain.* prefix alone",
-            lambda b: b.register("com.claudebrain.somebodyelse",
+    refusal("the com.greymatter.* prefix alone",
+            lambda b: b.register("com.greymatter.somebodyelse",
                                  "/opt/elsewhere/job.py", "/opt/x.plist"),
-            label="com.claudebrain.somebodyelse")
+            label="com.greymatter.somebodyelse")
     refusal("a confirmation offered with no proofs at all",
             lambda b: None)
 

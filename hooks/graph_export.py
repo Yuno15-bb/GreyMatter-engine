@@ -15,7 +15,7 @@ Deterministic and free of external dependencies. Always exits 0 (never blocks a 
 import os, re, json, sys
 from collections import Counter
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 OUT = os.path.join(BRAIN, "planet", "graph.json")
 EMBED2 = os.path.join(BRAIN, "state", "embed2.json")   # SEMANTIC map, computed by brain_embed2.py
 COACT = os.path.join(BRAIN, "state", "coactivation.json")  # working memory, computed by coactivation.py

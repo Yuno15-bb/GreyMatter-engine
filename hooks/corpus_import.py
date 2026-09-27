@@ -23,7 +23,7 @@ Usage :
 """
 import os, sys, re, json, zipfile, hashlib, glob, argparse, io, datetime
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 COLD = os.path.join(BRAIN, "corpus", "cold")
 INDEX = os.path.join(BRAIN, "corpus", "INDEX.md")
 REG = os.path.join(BRAIN, "corpus", ".imported.json")

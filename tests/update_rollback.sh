@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # update_rollback.sh — an update that cannot be undone is not an update.
@@ -38,8 +38,8 @@ export HOME="$H"
 echo "▸ building a local upstream with two versions"
 git clone -q "$ROOT" "$H/upstream"
 cd "$H/upstream"
-git config user.email cbrain-test
-git config user.name cbrain-test
+git config user.email greymatter-test
+git config user.name greymatter-test
 git checkout -q -B main
 
 # ⚠ Overlay the WORKING TREE on top of the clone. `git clone` copies committed
@@ -68,7 +68,7 @@ printf '{"model": "opus"}\n' > "$H/.claude/settings.json"
   || { echo "❌ install failed:"; tail -20 "$H/install.log"; exit 1; }
 export PATH="$H/.local/bin:$PATH"
 
-TRUNK="$H/.c-brain/trunk"
+TRUNK="$H/.greymatter/trunk"
 # A note the user wrote. It must be untouched at every step below.
 mkdir -p "$TRUNK/lessons"
 printf -- "---\nname: mine\ndescription: \"my own note\"\n---\nwork I cannot lose\n" \
@@ -76,13 +76,13 @@ printf -- "---\nname: mine\ndescription: \"my own note\"\n---\nwork I cannot los
 NOTE_SUM="$(shasum -a 256 "$TRUNK/lessons/mine.md" | cut -d' ' -f1)"
 
 [ "$(brain version 2>/dev/null | tr -d '[:space:]')" ] || true
-echo "  installed: $(basename "$(cd "$H/.c-brain/engine" && pwd -P)")"
+echo "  installed: $(basename "$(cd "$H/.greymatter/engine" && pwd -P)")"
 
 echo "▸ brain update --check reports the newer version without applying it"
 brain update --check >"$H/check.log" 2>&1; rc=$?
 grep -q "v9.9.1" "$H/check.log"; check $? "--check names the new version" "$(tail -2 "$H/check.log")"
 [ "$rc" = "10" ]; check $? "--check exits 10 (an update exists)" "got $rc"
-[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "--check applied nothing"
+[ ! -f "$H/.greymatter/engine/UPDATE_MARKER" ]; check $? "--check applied nothing"
 
 # WHERE FROM, exactly. An update runs code on this machine; naming a version is
 # not naming a source. Both lines are asserted because a disclosure nobody
@@ -94,16 +94,16 @@ check $? "--check names the exact commit it would move to" "$(tail -4 "$H/check.
 
 echo "▸ brain update moves the engine"
 brain update >"$H/update.log" 2>&1 || { echo "❌ update failed:"; tail -20 "$H/update.log"; FAILS=$((FAILS+1)); }
-[ -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is really on disk" "$(tail -3 "$H/update.log")"
-[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
+[ -f "$H/.greymatter/engine/UPDATE_MARKER" ]; check $? "the new version is really on disk" "$(tail -3 "$H/update.log")"
+[ "$(basename "$(cd "$H/.greymatter/engine" && pwd -P)")" = "v9.9.1" ]
 check $? "the engine reports the new tag"
-[ "$(cat "$H/.c-brain/state/previous-version" 2>/dev/null)" = "v9.9.0" ]
+[ "$(cat "$H/.greymatter/state/previous-version" 2>/dev/null)" = "v9.9.0" ]
 check $? "the previous version was recorded" "rollback would have nowhere to go"
 
 echo "▸ brain update --rollback puts it back"
 brain update --rollback >"$H/rollback.log" 2>&1 || { echo "❌ rollback failed:"; tail -20 "$H/rollback.log"; FAILS=$((FAILS+1)); }
-[ ! -f "$H/.c-brain/engine/UPDATE_MARKER" ]; check $? "the new version is gone from disk"
-[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.0" ]
+[ ! -f "$H/.greymatter/engine/UPDATE_MARKER" ]; check $? "the new version is gone from disk"
+[ "$(basename "$(cd "$H/.greymatter/engine" && pwd -P)")" = "v9.9.0" ]
 check $? "the engine is back on the old tag"
 
 echo "▸ and through all of it, the notes never moved"

@@ -23,7 +23,7 @@ def _transcripts_key() -> str:
     return os.path.expanduser("~").replace("/", "-").replace(".", "-")
 
 
-BRAIN = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.path.expanduser("~/.greymatter/trunk"))
 STATE = os.path.join(BRAIN, "state")
 LOCK  = os.path.join(STATE, "maintenance.lock")
 QUEUE = os.path.join(STATE, "pending-distill.json")   # sessions to distil later

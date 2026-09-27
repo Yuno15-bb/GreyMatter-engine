@@ -10,7 +10,7 @@ A signal grounded in REAL usage, not introspection. Always exits 0.
 """
 import sys, os, json, time
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 LOG = os.path.join(BRAIN, "state", "read_log.jsonl")
 STRUCTURAL_MAPS = {"MEMORY.md", os.path.join("lessons", "INDEX.md")}
 

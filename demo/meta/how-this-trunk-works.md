@@ -1,6 +1,6 @@
 ---
 name: how-this-trunk-works
-description: The trunk loop in four beats — write, recall, file, review. When you wonder what C Brain actually does once installed, or what triggers what.
+description: The trunk loop in four beats — write, recall, file, review. When you wonder what GreyMatter actually does once installed, or what triggers what.
 metadata:
   type: meta
   demo: true

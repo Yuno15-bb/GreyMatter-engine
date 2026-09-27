@@ -1,4 +1,4 @@
-# C Brain — CI
+# GreyMatter — CI
 #
 # SCOPE, AND WHY IT STOPS THERE. This does NOT run a full install: launchd
 # jobs and an Electron capsule on a hosted macOS runner are a swamp, and they
@@ -65,6 +65,12 @@ jobs:
       - run: python3 tests/plugin_manifest.py
       - run: python3 tests/referenced_files.py
       - run: python3 tests/home_paths.py
+      - run: python3 tests/one_name.py
+      - run: |
+          if python3 tests/one_name.py --sabotage >/dev/null; then
+            echo "❌ sabotage left the one-name sensor green"; exit 1
+          fi
+          echo "✅ sabotage reddens the one-name sensor"
       # The manifests parsing is not the same thing as the plugin WORKING.
       # This runs the bootstrap the way Claude Code does — from a copy, on a
       # fresh HOME — because that is the path everyone from the marketplace
@@ -219,7 +225,7 @@ jobs:
           H="$(mktemp -d)"
           HOME="$H" ./install.sh --dry-run --no-launchd --no-capsule
           # The point of --dry-run is that it is inert. Anything on disk is a bug.
-          if [ -e "$H/.c-brain" ] || [ -e "$H/.claude" ]; then
+          if [ -e "$H/.greymatter" ] || [ -e "$H/.claude" ]; then
             echo "❌ --dry-run created something:"; find "$H" | head -40; exit 1
           fi
           echo "✅ nothing written"
@@ -242,7 +248,7 @@ jobs:
           grep -q hooks "$H/.claude/settings.json" || { echo "❌ settings.json was never merged"; exit 1; }
           # The visible door on a hidden folder: if it stops being created, a
           # user gets a memory they cannot find, and nothing else would notice.
-          [ -L "$H/C Brain" ] || { echo "❌ the Finder shortcut was not created"; exit 1; }
+          [ -L "$H/GreyMatter" ] || { echo "❌ the Finder shortcut was not created"; exit 1; }
 
       - name: install is idempotent
         run: |
@@ -335,7 +341,7 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$H/.local/bin:$PATH"
-          T="$H/.c-brain/trunk"
+          T="$H/.greymatter/trunk"
           before="$(shasum -a 256 "$T/MEMORY.md" | cut -d' ' -f1)"
           HOME="$H" brain demo
           HOME="$H" brain recall cache deploy | head -5
@@ -377,10 +383,10 @@ jobs:
               sys.exit(1)
           print("✅ settings.json restored, key for key")
           PY
-          if [ -e "$H/C Brain" ]; then echo "❌ the Finder shortcut survived uninstall"; exit 1; fi
+          if [ -e "$H/GreyMatter" ]; then echo "❌ the Finder shortcut survived uninstall"; exit 1; fi
           echo "✅ shortcut removed"
           # The trunk is the user's; uninstall must never take it.
-          [ -d "$H/.c-brain/trunk" ] || { echo "❌ uninstall removed the trunk"; exit 1; }
+          [ -d "$H/.greymatter/trunk" ] || { echo "❌ uninstall removed the trunk"; exit 1; }
           echo "✅ trunk still there"
 
   migrations:
@@ -391,14 +397,14 @@ jobs:
       - name: every migration, twice
         run: |
           set -euo pipefail
-          for m in cbrain/migrations/*.sh; do
+          for m in greymatter/migrations/*.sh; do
             H="$(mktemp -d)"
             mkdir -p "$H/claude-brain/lessons"
             echo "keep me" > "$H/claude-brain/lessons/a-note.md"
             echo "▸ $m — first run";  HOME="$H" bash "$m"
             echo "▸ $m — second run"; HOME="$H" bash "$m"
             # A replayed migration must be a non-event, and must never eat a note.
-            grep -q "keep me" "$H/.c-brain/trunk/lessons/a-note.md" \
+            grep -q "keep me" "$H/.greymatter/trunk/lessons/a-note.md" \
               || { echo "❌ $m lost a note on replay"; exit 1; }
           done
           echo "✅ migrations are idempotent and keep their notes"

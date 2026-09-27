@@ -71,7 +71,7 @@ except Exception as e:
     topics_fiche = TOPIC_IDS = None
     TOPICS_ERROR = str(e)
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 LESSONS_INDEX = os.path.join(BRAIN, "lessons", "INDEX.md")
 # ⚠ TWO LIMITS, NOT ONE — and the FIRST ONE REACHED cuts, silently.
@@ -446,7 +446,7 @@ def main():
     #
     #    (a) THE ENGINE'S OWN WORKTREE. The gardening agents reach engine files
     #        through the symlinks mounted in the trunk, and dirty the engine repo.
-    #        `cbrain/update.sh` then refuses to update a dirty engine — so the user
+    #        `greymatter/update.sh` then refuses to update a dirty engine — so the user
     #        silently falls behind for ever. Doctor looked only at the TRUNK, came
     #        back fully green, and could not see the one thing that was stuck.
     #
@@ -473,12 +473,12 @@ def main():
     #    A --dev engine keeps the git check: there, a dirty tree is normal work
     #    and the question "has this changed" has a different, correct answer.
     moteur_sale = []
-    engine = os.path.realpath(os.path.expanduser("~/.c-brain/engine"))
-    manifest = os.path.join(engine, ".cbrain-manifest")
+    engine = os.path.realpath(os.path.expanduser("~/.greymatter/engine"))
+    manifest = os.path.join(engine, ".greymatter-manifest")
     if os.path.isdir(engine) and engine != BRAIN:
         if os.path.isfile(manifest):
             try:
-                r = subprocess.run(["shasum", "-a", "256", "-c", ".cbrain-manifest"],
+                r = subprocess.run(["shasum", "-a", "256", "-c", ".greymatter-manifest"],
                                    cwd=engine, capture_output=True, text=True,
                                    timeout=120)
                 # `shasum -c` prints "<file>: FAILED" per mismatch, and
@@ -576,7 +576,7 @@ def main():
                   + ", ".join(problems["engine_dirty"][:8]))
             print("      → this BLOCKS every future update (update.sh refuses a dirty engine).")
             print("      → if a gardening agent did it, it is not your work:")
-            print("        git -C ~/.c-brain/engine checkout -- .")
+            print("        git -C ~/.greymatter/engine checkout -- .")
 
         # Advisory, never counted: nothing is broken, but a feature the user believes
         # is running is in fact saving nothing.
@@ -585,7 +585,7 @@ def main():
             print("      It runs at the end of every session and saves nothing:")
             print("      no history, no way back if an agent overwrites a note.")
             print("      Resume points are OFF too: they are ranked by commit date.")
-            print("      → turn it on:  git -C ~/.c-brain/trunk init")
+            print("      → turn it on:  git -C ~/.greymatter/trunk init")
 
         if report["ok"] and trunk_versionne:
             print("  Nothing to report — the tree is consistent.")

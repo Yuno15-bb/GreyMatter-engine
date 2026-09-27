@@ -22,7 +22,7 @@ the one already running is brought back instead.
 The installer does the `npm install` for you. By hand, if you need it:
 
 ```bash
-cd ~/.c-brain/trunk/capsule && npm install && npm start
+cd ~/.greymatter/trunk/capsule && npm install && npm start
 ```
 
 - The creature **sleeps** (zzz) when nothing is happening.
@@ -36,7 +36,7 @@ cd ~/.c-brain/trunk/capsule && npm install && npm start
 ## How it works
 
 ```
-hooks (on_fiche_write / auto_maintain) ──write──▶ ~/.c-brain/trunk/state/status.json
+hooks (on_fiche_write / auto_maintain) ──write──▶ ~/.greymatter/trunk/state/status.json
                                                               │
                                           capsule (poll 400ms) ┘  ──▶ animation
 ```
@@ -46,13 +46,13 @@ hooks (on_fiche_write / auto_maintain) ──write──▶ ~/.c-brain/trunk/sta
 ## Testing the animation by hand
 
 ```bash
-python3 ~/.c-brain/trunk/hooks/brain_status.py busy distilling "extracting <project>"
-python3 ~/.c-brain/trunk/hooks/brain_status.py busy filing "filing lessons/pwa-cache"
-python3 ~/.c-brain/trunk/hooks/brain_status.py idle
+python3 ~/.greymatter/trunk/hooks/brain_status.py busy distilling "extracting <project>"
+python3 ~/.greymatter/trunk/hooks/brain_status.py busy filing "filing lessons/pwa-cache"
+python3 ~/.greymatter/trunk/hooks/brain_status.py idle
 ```
 
 Or walk through every activity in one pass:
 
 ```bash
-python3 ~/.c-brain/trunk/capsule/test_anim.py
+python3 ~/.greymatter/trunk/capsule/test_anim.py
 ```

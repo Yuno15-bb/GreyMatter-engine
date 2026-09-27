@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, le
 from brain_racine import brain_root
 
 # I-1 (2026-08-21). A HUMAN diagnostic surface: a status tool that silently reads
-# ~/.c-brain/trunk while being asked about another Brain makes a FALSE statement
+# ~/.greymatter/trunk while being asked about another Brain makes a FALSE statement
 # that looks authoritative. Measured on 2026-08-20: `brain doctor` run inside a
 # worktree reported the author trunk's metrics, without the slightest sign.
 STATE_DIR = os.path.join(brain_root(__file__), "state")

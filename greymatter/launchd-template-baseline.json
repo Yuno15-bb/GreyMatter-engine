@@ -1,0 +1,15 @@
+{
+  "_why": "The sha256 of each launchd template's NORMAL FORM (see greymatter/plist_normalise.py), and the migration decision taken when that form last changed. Changing a template semantically shuts the legacy adoption window for every machine that has not adopted yet: update the hash AND say here what happens to them. tests/launchd_template_migration.py goes red otherwise.",
+  "com.greymatter.machiniste.plist.template": {
+    "normal_form_sha256": "330ab4675114fe26ed050ce5ddbb980f4b0ca9daede2c61bf3644ff6b803434e",
+    "migration_decision": "renamed in v2.1.0, 2026-09-27 (the pre-rename names are quoted on purpose): the label com.claudebrain.X became com.greymatter.X and the paths ~/.c-brain became ~/.greymatter (the old root stays as a link). Machines that have not adopted: install.sh retires an old-label job only when it is on record as its own; an unrecorded one is left running, its new twin is not installed, and the installer says how to stop it. tests/update_across_rename.sh replays the recorded case."
+  },
+  "com.greymatter.resume.plist.template": {
+    "normal_form_sha256": "8d2078bfc0acf072497efcd55738de32e117eed32696d658d8b8c18a600c90b6",
+    "migration_decision": "renamed in v2.1.0, 2026-09-27 (the pre-rename names are quoted on purpose): the label com.claudebrain.X became com.greymatter.X and the paths ~/.c-brain became ~/.greymatter (the old root stays as a link). Machines that have not adopted: install.sh retires an old-label job only when it is on record as its own; an unrecorded one is left running, its new twin is not installed, and the installer says how to stop it. tests/update_across_rename.sh replays the recorded case."
+  },
+  "com.greymatter.etat.plist.template": {
+    "normal_form_sha256": "2f00e6b1680d9b44866e3e155355eb330b26e39dfba3852b7b326670f7e33b48",
+    "migration_decision": "renamed in v2.1.0, 2026-09-27 (the pre-rename names are quoted on purpose): the label com.claudebrain.X became com.greymatter.X and the paths ~/.c-brain became ~/.greymatter (the old root stays as a link). Machines that have not adopted: install.sh retires an old-label job only when it is on record as its own; an unrecorded one is left running, its new twin is not installed, and the installer says how to stop it. tests/update_across_rename.sh replays the recorded case."
+  }
+}

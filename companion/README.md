@@ -59,4 +59,4 @@ stream), `snap/<sid>/` (before-images), `agg/<sid>.json` (the bar's totals),
 ## Disabling it
 
 - The bar: remove the `status_part` block from `~/.claude/statusline.py` (backup at `statusline.py.bak-*`).
-- The hooks: remove the three `companion/hooks/*.py` entries from `~/.claude/settings.json` (`PreToolUse`, `PostToolUse`, `SessionEnd`). Backup: `settings.json.bak-c-brain-*`. Or simply run `uninstall.sh`.
+- The hooks: remove the three `companion/hooks/*.py` entries from `~/.claude/settings.json` (`PreToolUse`, `PostToolUse`, `SessionEnd`). Backup: `settings.json.bak-greymatter-*`. Or simply run `uninstall.sh`.

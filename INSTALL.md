@@ -6,7 +6,7 @@
 > checkout, once, during the move to v1.29.0. One command tells you whether it
 > concerns you:
 > ```bash
-> git -C ~/.c-brain/engine status --short
+> git -C ~/.greymatter/engine status --short
 > ```
 > Your notes are not affected — the trunk is a separate directory and no update
 > path writes to it.
@@ -16,7 +16,7 @@
 Paste this into your CLI (Claude Code or another command-line agent):
 
 ```
-Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/c-brain, read its INSTALL.md,
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/greymatter, read its INSTALL.md,
 then run ./install.sh and show me the final verification output.
 ```
 
@@ -25,8 +25,8 @@ That's it. The agent clones, installs, and hands you back the selftest result.
 ## The manual way
 
 ```bash
-git clone https://github.com/Yuno15-bb/GreyMatter-engine ~/dev/c-brain
-cd ~/dev/c-brain
+git clone https://github.com/Yuno15-bb/GreyMatter-engine ~/dev/greymatter
+cd ~/dev/greymatter
 ./install.sh
 ```
 
@@ -41,7 +41,7 @@ Options: `--dry-run` (writes nothing, shows what would happen) ·
 `--dev` (for working ON GreyMatter: links the engine to your checkout and turns
 automatic engine updates off for it) ·
 `--no-launchd` (no scheduled jobs) · `--no-capsule` (no Electron) · `--no-shortcut`
-(no `C Brain` shortcut in your home folder).
+(no `GreyMatter` shortcut in your home folder).
 
 ---
 
@@ -50,13 +50,13 @@ automatic engine updates off for it) ·
 Two locations, and keeping them apart is the heart of the system:
 
 ```
-~/.c-brain/versions/  each installed version. CODE only, immutable.
-~/.c-brain/engine     → link to the ACTIVE version. Updating switches this link.
-~/.c-brain/trunk      → YOUR trunk. Your notes. Never overwritten, never updated.
+~/.greymatter/versions/  each installed version. CODE only, immutable.
+~/.greymatter/engine     → link to the ACTIVE version. Updating switches this link.
+~/.greymatter/trunk      → YOUR trunk. Your notes. Never overwritten, never updated.
 ```
 
 **This repository is the SOURCE, not the engine.** The installer reads it to
-build a version under `~/.c-brain/versions/` and never writes to it again — so
+build a version under `~/.greymatter/versions/` and never writes to it again — so
 `brain update` has nothing to do with your clone, and cannot move, reset or
 overwrite it. Update your clone with git, like any other repository.
 See [docs/install-model.md](docs/install-model.md).
@@ -131,16 +131,16 @@ brain capsule         open the floating orb  (stop · status)
 brain selftest        verify the installation
 ```
 
-Then open `~/.c-brain/trunk/MEMORY.md`: it is the index loaded at the start of every
+Then open `~/.greymatter/trunk/MEMORY.md`: it is the index loaded at the start of every
 session, and it explains the note format. Your tree grows with the work, not
 before.
 
 ## Uninstalling
 
 ```bash
-~/dev/c-brain/uninstall.sh
+~/dev/greymatter/uninstall.sh
 ```
 
 **Your trunk and your notes are never deleted.** Removed: the GreyMatter hooks (the
 rest of `settings.json` untouched), the engine symlinks, the `brain` command, the
-Desktop launcher, the scheduled jobs. Backups stay in `~/.c-brain/backups/`.
+Desktop launcher, the scheduled jobs. Backups stay in `~/.greymatter/backups/`.

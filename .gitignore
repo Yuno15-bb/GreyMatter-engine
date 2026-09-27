@@ -1,4 +1,4 @@
-# === C Brain — what must NEVER be committed =========================
+# === GreyMatter — what must NEVER be committed =========================
 # Rule: the engine travels, lived experience does not.
 # This file is the SECOND net. The first is sync.sh's allowlist
 # (deny by default), the third is leakcheck.py (which blocks the commit).
@@ -30,7 +30,7 @@
 planet/*.json
 
 # --- Machine-specific (contains a hardcoded home path) ---
-hooks/com.claudebrain.resume.plist
+hooks/com.greymatter.resume.plist
 *.plist
 !*.plist.template
 

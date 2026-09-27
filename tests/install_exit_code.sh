@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # install_exit_code.sh — a red selftest has to reach whoever ran the installer.
@@ -92,7 +92,7 @@ check $? "the selftest really is red (the bench is aimed at the right case)"
 [ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
 last_screen_has "own verification did not pass"
 check $? "the last screen names the failed verification"
-last_screen_has "✅ C Brain installed."
+last_screen_has "✅ GreyMatter installed."
 [ $? -ne 0 ]; check $? "it does not claim a clean install"
 
 echo "▸ the selftest fails AND ~/.local/bin is not on PATH (a new Mac)"
@@ -106,7 +106,7 @@ check $? "and the PATH advice no longer hides the failed verification"
 echo "▸ control: a healthy install, PATH or not"
 install_in "" 1
 [ "$RC" -eq 0 ]; check $? "a green selftest exits 0" "exit code $RC — $(grep -E '❌|failed' <<<"$LAST" | head -2 | tr '\n' ' ')"
-last_screen_has "✅ C Brain installed."
+last_screen_has "✅ GreyMatter installed."
 check $? "and says so plainly"
 install_in "" 0
 [ "$RC" -eq 0 ]; check $? "a PATH still to fix is a working install: exit 0" "exit code $RC"

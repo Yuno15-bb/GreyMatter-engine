@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # a1_capsule_pixel.sh — A1: does the capsule of an INSTALLED engine actually put
@@ -55,7 +55,7 @@ set -uo pipefail
 MODE="${1:---prepare}"
 REPO="$(cd "$(dirname "$0")/.." && pwd -P)"
 LIB="$REPO/tests/a1_pixel_lib.py"
-WORK="${A1_WORK:-$HOME/.c-brain-a1}"
+WORK="${A1_WORK:-$HOME/.greymatter-a1}"
 export A1_WORK="$WORK"
 fails=0
 ok()   { echo "  ✅ $1"; }
@@ -202,7 +202,7 @@ check_negative() {
   status="$(lib capture "$ORB_RECT" "$empty" | sed 's/^CAPTURE=//')"
 
   local facts alive procs start
-  facts="$(lib machine-facts "$HOME/.c-brain/trunk/state/capsule-alive" \
+  facts="$(lib machine-facts "$HOME/.greymatter/trunk/state/capsule-alive" \
                              "$HOME/claude-brain/state/capsule-alive")"
   procs="$(echo "$facts" | sed -n 's/^CAPSULE_PROCESSES=//p')"
   alive="$(echo "$facts" | sed -n 's/^ALIVE_MTIME=//p')"
@@ -221,7 +221,7 @@ check_negative() {
 # ═══════════════════════════════════════════════════════════════════════════
 check_engine_identity() {
   local link real
-  link="$HOME/.c-brain/engine"
+  link="$HOME/.greymatter/engine"
   [ -e "$link" ] || halt "no engine at $link — install first."
   real="$(cd "$link" && pwd -P)"
   ENGINE_ROOT="$real"
@@ -269,7 +269,7 @@ check_launch() {
   #   capsule quit INSTANTLY and SILENTLY: no message, no log, no exit code
   #   anyone sees. Without its own data dir this launch would die and the orb
   #   already on screen would be measured instead.
-  CBRAIN_PROBE_OUT="$WORK/probe.json" \
+  GREYMATTER_PROBE_OUT="$WORK/probe.json" \
     "$bin" "$ENGINE_CAPSULE" --user-data-dir="$UDD" >"$WORK/41-capsule.log" 2>&1 &
   CAPSULE_PID=$!
   info "launched pid $CAPSULE_PID with its own user-data-dir"
@@ -288,7 +288,7 @@ check_launch() {
 # STEP 5 — drive busy then idle, collecting BOTH observables in each state
 # ═══════════════════════════════════════════════════════════════════════════
 check_drive() {
-  STATUS_FILE="$HOME/.c-brain/trunk/state/status.json"
+  STATUS_FILE="$HOME/.greymatter/trunk/state/status.json"
   mkdir -p "$(dirname "$STATUS_FILE")"
   if [ -f "$STATUS_FILE" ]; then
     STATUS_BACKUP="$WORK/50-status.backup.json"
@@ -310,7 +310,7 @@ json.dump({"state": "busy", "ts": now, "activity": "distilling",
 PY
   # The path on the left is the one main.js derives from os.homedir(); the one on
   # the right is what this harness just wrote. They must be the same file.
-  lib judge-drive "$HOME/.c-brain/trunk/state/status.json" "$STATUS_FILE" "$STATUS_FILE" "$liveness" \
+  lib judge-drive "$HOME/.greymatter/trunk/state/status.json" "$STATUS_FILE" "$STATUS_FILE" "$liveness" \
     || halt "the harness is not driving the file this capsule reads."
   ok "busy/distilling written to the file the capsule reads"
 
@@ -339,7 +339,7 @@ PY
 # STEP 6 — what the RENDERER says
 # ═══════════════════════════════════════════════════════════════════════════
 check_dom() {
-  if lib judge-dom "$PROBE_BUSY" "$PROBE_IDLE" "/.c-brain/versions/"; then
+  if lib judge-dom "$PROBE_BUSY" "$PROBE_IDLE" "/.greymatter/versions/"; then
     DOM_OK="yes"; ok "the renderer reports the two states, and they differ"
   else
     DOM_OK="no";  ko "the renderer's report does not hold"

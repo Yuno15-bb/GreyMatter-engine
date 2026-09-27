@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """The anonymizer must not be able to disable itself silently.
 

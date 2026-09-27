@@ -1,5 +1,5 @@
 #!/bin/zsh
-# C Brain — capsule: a refused second instance must NAME the one holding the lock.
+# GreyMatter — capsule: a refused second instance must NAME the one holding the lock.
 #
 # WHAT THIS BENCH MEASURES: not an exit code — the PRINTED output. Before the
 # 2026-09-19 fix, a second capsule launched by hand exited 0 with zero bytes on
@@ -121,7 +121,7 @@ print -r -- "── D. the scope of the lock: one userData, not one machine ─�
 # it cannot touch a capsule already running: that isolation only works because
 # the lock follows userData. MEASURED outside the bench on 2026-09-20: the
 # author's trunk (package name `claude-brain-capsule`) and the shipped package
-# (`c-brain-capsule`) had two orbs on screen at the same time. A different
+# (`greymatter-capsule`) had two orbs on screen at the same time. A different
 # package name is a different userData is a different lock.
 #
 # The true statement, which section A now carries and main.js now prints: ONE

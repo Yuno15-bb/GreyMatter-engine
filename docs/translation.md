@@ -26,7 +26,7 @@ would catch it: no test reads prose. Only a reader would notice, much later.
 ❌ ./sync.sh runs on the `fr` branch, not on `main`.
 ```
 
-`CBRAIN_ALLOW_SYNC_ON_MAIN=1` forces it, for the rare case where you know why.
+`GREYMATTER_ALLOW_SYNC_ON_MAIN=1` forces it, for the rare case where you know why.
 
 ## What the sync does NOT take
 
@@ -69,16 +69,16 @@ a working copy of its own, where the guard is already satisfied — satisfied, n
 bypassed:
 
 ```bash
-git worktree add ~/c-brain-fr fr     # once
+git worktree add ~/greymatter-fr fr     # once
 ```
 
 ```bash
-cd ~/c-brain-fr
+cd ~/greymatter-fr
 ./sync.sh                  # copy + generalize, French
 python3 leakcheck.py       # must be green
 git commit -am "sync: <what moved>"
 
-cd ~/c-brain            # the `main` working copy — no branch switching
+cd ~/greymatter            # the `main` working copy — no branch switching
 git diff fr@{1} fr -- .    # what actually changed
 # port those changes, translated, onto main
 python3 leakcheck.py --history
@@ -114,7 +114,7 @@ Two costs decided it, both measured the same day:
   author's living Brain to match the package. Unfinished work on that machine
   therefore blocks a release that has nothing to do with it.
 
-`publish.sh` now refuses to tag from `fr` (`CBRAIN_ALLOW_TAG_ON_FR=1` forces it,
+`publish.sh` now refuses to tag from `fr` (`GREYMATTER_ALLOW_TAG_ON_FR=1` forces it,
 for the rare case where you know why). Published tags stay published — moving one
 breaks the fetch of anyone still on it — so the `-fr` family simply stops growing
 at `v1.27.0-fr`.

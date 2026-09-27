@@ -1,5 +1,5 @@
 ---
-description: Check the health of the C Brain installation and trunk — dead links, unindexed notes, broken hooks, stale state. Use when recall seems to return nothing, when notes are not being saved, when the user says C Brain "is not working", or before trusting the trunk for something important.
+description: Check the health of the GreyMatter installation and trunk — dead links, unindexed notes, broken hooks, stale state. Use when recall seems to return nothing, when notes are not being saved, when the user says GreyMatter "is not working", or before trusting the trunk for something important.
 ---
 
 # Check the trunk and the wiring

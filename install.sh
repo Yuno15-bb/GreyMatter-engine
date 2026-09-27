@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
-# install.sh — installs C Brain. The SINGLE entry point.
+# install.sh — installs GreyMatter. The SINGLE entry point.
 #
 # Three promises, kept by construction:
 #   · IDEMPOTENT — re-running breaks nothing and duplicates nothing.
@@ -9,11 +9,11 @@
 #   · REVERSIBLE — every action is logged; ./uninstall.sh undoes them.
 #
 # Installed layout:
-#   ~/.c-brain/versions/<id>/  an ENGINE: an immutable export of the source
-#   ~/.c-brain/engine          → link to the ACTIVE version. Switching is one symlink.
-#   ~/.c-brain/source.git      the mirror updates are fetched into
-#   ~/.c-brain/runtime/        the Electron runtime, installed once and shared
-#   ~/.c-brain/trunk           YOUR trunk (your notes). Never overwritten, never updated.
+#   ~/.greymatter/versions/<id>/  an ENGINE: an immutable export of the source
+#   ~/.greymatter/engine          → link to the ACTIVE version. Switching is one symlink.
+#   ~/.greymatter/source.git      the mirror updates are fetched into
+#   ~/.greymatter/runtime/        the Electron runtime, installed once and shared
+#   ~/.greymatter/trunk           YOUR trunk (your notes). Never overwritten, never updated.
 #
 # THIS REPOSITORY IS THE SOURCE, NOT THE ENGINE. The installer reads it to build
 # a version and never writes to it again — see docs/install-model.md.
@@ -24,7 +24,7 @@
 #   --core-only  the memory alone: trunk, recall, agents, hooks, `brain`.
 #                No capsule, no planet launcher, no scheduled jobs.
 #   --dev        link the engine to THIS checkout instead of building a version,
-#                and switch automatic updates off for it. For working on C Brain.
+#                and switch automatic updates off for it. For working on GreyMatter.
 set -euo pipefail
 
 # WHERE THIS SCRIPT WAS RUN FROM — the SOURCE. It is read to build an engine and
@@ -39,25 +39,25 @@ SOURCE="$(cd "$(dirname "$0")" && pwd -P)"
 # its first run, which is precisely the kind of gap no component test can see.
 # ⚠ AND IT CREATES NOTHING. Canonicalising by `mkdir -p` then `cd` ran BEFORE
 # the flags were parsed, so `--dry-run` — whose whole contract is to be inert —
-# left a `~/.c-brain` behind on a machine that had never installed anything, and
+# left a `~/.greymatter` behind on a machine that had never installed anything, and
 # the CI step that checks exactly that went red. Resolving $HOME and appending
 # the name gives the same canonical path without writing: the symlink that has
 # to be resolved on macOS (`/var` → `/private/var`) is in $HOME, not in the last
-# component. The `cd "$CB"` branch is kept for the case the plain concatenation
-# cannot cover — a `~/.c-brain` that is itself a link somewhere else.
-CB="$HOME/.c-brain"
-if [ -d "$CB" ]; then
-  CB="$(cd "$CB" && pwd -P)"
+# component. The `cd "$GM"` branch is kept for the case the plain concatenation
+# cannot cover — a `~/.greymatter` that is itself a link somewhere else.
+GM="$HOME/.greymatter"
+if [ -d "$GM" ]; then
+  GM="$(cd "$GM" && pwd -P)"
 else
-  CB="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")/.c-brain"
+  GM="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")/.greymatter"
 fi
-TRUNK="$CB/trunk"
-VERSIONS="$CB/versions"
-RUNTIME="$CB/runtime"
-MIRROR="$CB/source.git"
+TRUNK="$GM/trunk"
+VERSIONS="$GM/versions"
+RUNTIME="$GM/runtime"
+MIRROR="$GM/source.git"
 TS="$(date +%Y%m%d-%H%M%S)"
-BACKUPS="$CB/backups/$TS"
-MANIFEST="$CB/manifest.txt"
+BACKUPS="$GM/backups/$TS"
+MANIFEST="$GM/manifest.txt"
 
 DO_LAUNCHD=1; DO_CAPSULE=1; DO_SHORTCUT=1; DO_PLANET=1; DRY=0; DEV=0
 for a in "$@"; do
@@ -86,13 +86,43 @@ step() { echo; echo "▸ $*"; }
 warn() { echo "  ⚠️  $*"; }
 die()  { echo; echo "❌ $*"; exit 1; }
 
-# Building, verifying and mounting a version — shared with cbrain/update.sh so
+# Building, verifying and mounting a version — shared with greymatter/update.sh so
 # that the installer and the updater cannot disagree on what a version is.
-. "$SOURCE/cbrain/engine-lib.sh"
-. "$SOURCE/cbrain/launchd-lib.sh"
+. "$SOURCE/greymatter/engine-lib.sh"
+. "$SOURCE/greymatter/launchd-lib.sh"
+
+# ─── 0. The root's old name ──────────────────────────────────────────────────
+# Until v2.1.0 the root was `~/.c-brain`. It moves to `~/.greymatter` HERE, before  (pre-rename)
+# anything is written, and leaves a permanent link at the old place — the same
+# script an update runs (greymatter/migrations/002). Run from install.sh too,
+# because an update from before the rename reaches this installer without ever
+# having looked in greymatter/migrations/. Idempotent: on any other machine it
+# says "nothing to move" and returns.
+OLD_ROOT="$HOME/.c-brain"   # pre-rename
+if [ -e "$OLD_ROOT" ] || [ -L "$OLD_ROOT" ]; then
+  if [ "$DRY" = "1" ]; then
+    [ -L "$OLD_ROOT" ] && [ -e "$HOME/.greymatter" ] \
+      || echo "  (dry-run) would move ~/.c-brain to ~/.greymatter, and leave a link at the old place"  # pre-rename
+  else
+    bash "$SOURCE/greymatter/migrations/002-rename-root.sh" \
+      || die "the root could not be renamed — nothing else was changed (see the line above)"
+    [ -d "$HOME/.greymatter" ] && GM="$(cd "$HOME/.greymatter" && pwd -P)"
+    TRUNK="$GM/trunk"; VERSIONS="$GM/versions"; RUNTIME="$GM/runtime"
+    MIRROR="$GM/source.git"; BACKUPS="$GM/backups/$TS"; MANIFEST="$GM/manifest.txt"
+    # The managed-engine marker holds the versions root as written at install
+    # time, so it still names the old one; `brain update` compares it with the
+    # RESOLVED engine and refused every update and rollback after the move.
+    # Rewritten only when it resolves to exactly the same folder.
+    m="$GM/state/engine-managed"
+    if [ -f "$m" ] && [ "$(cat "$m")" != "$VERSIONS" ] \
+       && [ "$(cd "$(cat "$m")" 2>/dev/null && pwd -P)" = "$VERSIONS" ]; then
+      printf '%s\n' "$VERSIONS" > "$m"
+    fi
+  fi
+fi
 
 # Logs what we create, so uninstall knows what to undo.
-note() { [ "$DRY" = "1" ] || { mkdir -p "$CB"; echo "$1|$2" >> "$MANIFEST"; }; }
+note() { [ "$DRY" = "1" ] || { mkdir -p "$GM"; echo "$1|$2" >> "$MANIFEST"; }; }
 
 # Back up before overwriting. User content never disappears.
 save() {
@@ -116,16 +146,16 @@ run() { [ "$DRY" = "1" ] && { say "(dry-run) $*"; return 0; }; "$@"; }
 # taken. The timestamped backup WAS made, and it is what allowed the repair. The
 # defect is the SILENT TAKEOVER, not a missing backup.
 #
-# THE RULE, and it is the one cbrain/launchd-lib.sh already applies to a Label.
+# THE RULE, and it is the one greymatter/launchd-lib.sh already applies to a Label.
 # Ownership is a RECORDED FACT, never inferred — not from the name of the file,
-# not from "it looks like something C Brain writes", not from "an older C Brain
+# not from "it looks like something GreyMatter writes", not from "an older GreyMatter
 # probably put it there". And the record already existed: `manifest.txt`, which
 # every run appends to AFTER a placement has succeeded. It was written for the
 # uninstaller and never read by the installer. The absence of a record is not a
 # proof of ownership either, so an unrecorded surface is refused BY NAME and
 # nothing is changed.
 #
-# WHERE THE GATE APPLIES — and where it must NOT. Inside `$CB` this installation
+# WHERE THE GATE APPLIES — and where it must NOT. Inside `$GM` this installation
 # is the owner by definition: that directory IS the installation, and gating it
 # would make a legitimate re-install refuse its own engine. The gate is for the
 # surfaces on which two installations can collide because they are SHARED with
@@ -154,30 +184,30 @@ surface_what() {    # <path> → one line, no newline
 }
 
 # One voice for every surface. It names the path, says what occupies it, states
-# that nothing was changed, spells out what C Brain loses by not taking it, and
+# that nothing was changed, spells out what GreyMatter loses by not taking it, and
 # ends on the one gesture that resolves it — because a refusal with no next step
 # is just an obstacle.
-surface_refuse() {  # <path> <what C Brain wanted to put there> [consequence]
+surface_refuse() {  # <path> <what GreyMatter wanted to put there> [consequence]
   warn "OCCUPIED, and not by this installation: $1"
   warn "  There is already $(surface_what "$1")."
   warn "  This installation has no record of putting it there, so NOTHING was"
   warn "  changed: whatever uses it keeps working."
-  if [ -n "${3:-}" ]; then warn "  What C Brain loses: $3"; fi
+  if [ -n "${3:-}" ]; then warn "  What GreyMatter loses: $3"; fi
   warn "  It wanted to put $2 here. To hand it over, move the current one aside:"
-  warn "    mv \"$1\" \"$1.before-c-brain\"     then re-run ./install.sh"
+  warn "    mv \"$1\" \"$1.before-greymatter\"     then re-run ./install.sh"
   REFUSED_SURFACES=$((REFUSED_SURFACES + 1))
   return 3
 }
 
 # Places a symlink idempotently: already correct → nothing is touched.
-link() {  # link <target> <link> [what C Brain loses if the surface is refused]
+link() {  # link <target> <link> [what GreyMatter loses if the surface is refused]
   local target="$1" path="$2"
   if [ -L "$path" ] && [ "$(readlink "$path")" = "$target" ]; then
     say "= $path (already linked)"; return 0
   fi
   if [ -e "$path" ] || [ -L "$path" ]; then
     case "$path" in
-      "$CB"/*) : ;;   # inside our own root — ours by definition, see above
+      "$GM"/*) : ;;   # inside our own root — ours by definition, see above
       *) surface_owned "$path" \
            || { surface_refuse "$path" "a link to $target" "${3:-}"; return 3; } ;;
     esac
@@ -190,14 +220,14 @@ link() {  # link <target> <link> [what C Brain loses if the surface is refused]
   say "+ $path → $target"
 }
 
-echo "🧠 C Brain — installation"
+echo "🧠 GreyMatter — installation"
 echo "   source : $SOURCE"
 echo "   trunk  : $TRUNK"
 [ "$DRY" = "1" ] && echo "   (DRY-RUN: nothing will be written)"
 
 # ─── 0. Prerequisites ────────────────────────────────────────────────────────
 step "Prerequisites"
-[ "$(uname)" = "Darwin" ] || die "C Brain targets macOS (launchd, Electron, \`open\`)."
+[ "$(uname)" = "Darwin" ] || die "GreyMatter targets macOS (launchd, Electron, \`open\`)."
 command -v python3 >/dev/null || die "python3 is required (it runs every hook)."
 say "python3 $(python3 -c 'import sys;print(".".join(map(str,sys.version_info[:3])))')"
 command -v git >/dev/null || warn "git missing — \`brain update\` will not be able to pull updates."
@@ -206,14 +236,14 @@ HAS_CLAUDE_CODE=0
 [ -d "$HOME/.claude" ] && HAS_CLAUDE_CODE=1
 if [ "$HAS_CLAUDE_CODE" = "0" ]; then
   warn "~/.claude missing: Claude Code does not appear to be installed."
-  warn "C Brain will still install, but WITHOUT the closed loop:"
+  warn "GreyMatter will still install, but WITHOUT the closed loop:"
   warn "the hooks (recall, archiving, maintenance) are specific to Claude Code."
   warn "You keep the \`brain\` CLI, the agents, the planet and the capsule."
 fi
 
-# ─── 1. C Brain root, and the ENGINE this install will own ───────────────────
+# ─── 1. GreyMatter root, and the ENGINE this install will own ───────────────────
 #
-# A SOURCE IS NOT AN ENGINE. Until 2026-08-17 `~/.c-brain/engine` was a link to
+# A SOURCE IS NOT AN ENGINE. Until 2026-08-17 `~/.greymatter/engine` was a link to
 # the very clone the user had just made, and ownership was INFERRED from that
 # clone's git state: clean, detached, exactly on a release tag. The trouble is
 # that `git clone` never produces that state — it lands on a branch — so the
@@ -226,11 +256,11 @@ fi
 # `engine` at it. What it created, it owns; what the user created, it never
 # touches again. The engine can be replaced, rolled back and thrown away without
 # a single git command ever naming a directory somebody works in.
-step "C Brain root (~/.c-brain)"
-run mkdir -p "$CB" "$CB/state"
+step "GreyMatter root (~/.greymatter)"
+run mkdir -p "$GM" "$GM/state"
 # What the engine pointed at BEFORE this run — read now, because we are about to
 # repoint it. Used only to tell a converting installation what just happened.
-PREVIOUS_ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P || true)"
+PREVIOUS_ENGINE="$(cd "$GM/engine" 2>/dev/null && pwd -P || true)"
 
 # The version identity, read off the source. A tagged checkout gives `v1.29.0`;
 # a plain clone of `main` gives `v1.28.1-24-g6f28312`. Both are legitimate names
@@ -244,7 +274,7 @@ if git -C "$SOURCE" rev-parse --git-dir >/dev/null 2>&1; then
   #   `build_version()` exports with `git archive HEAD`: the engine IS the commit,
   #   and the source's uncommitted work is deliberately left out of it. Suffixing
   #   the version therefore labelled the ENGINE with a property of the SOURCE.
-  #   Measured on this machine: `~/.c-brain/versions/` held TWO directories for
+  #   Measured on this machine: `~/.greymatter/versions/` held TWO directories for
   #   the same commit 686f2ac, one named `…-dirty`, and the two exports were
   #   BYTE-IDENTICAL. The suffix bought a redundant ~11.6 MB engine per dirty
   #   install and made the `already installed and intact` branch below unreachable
@@ -285,9 +315,9 @@ elif [ "$DEV" = "1" ]; then
   # different from an install for it to be protected.
   ENGINE="$SOURCE"
   if [ "$DRY" != "1" ]; then
-    printf '%s\n' "$SOURCE" > "$CB/state/engine-dev"
-    rm -f "$CB/state/engine-managed"          # the two are mutually exclusive
-    note "file" "$CB/state/engine-dev"
+    printf '%s\n' "$SOURCE" > "$GM/state/engine-dev"
+    rm -f "$GM/state/engine-managed"          # the two are mutually exclusive
+    note "file" "$GM/state/engine-dev"
   fi
   say "DEVELOPMENT engine — $SOURCE"
   say "automatic engine updates are OFF for this install (\`brain update\` will say so)"
@@ -306,11 +336,11 @@ else
       warn "your source has uncommitted changes, and they are NOT in this engine"
       warn "the engine is built from the commit $VERSION_ID — commit, then re-run"
     fi
-    if [ -f "$ENGINE/.cbrain-manifest" ] && verify_manifest "$ENGINE" >/dev/null 2>&1; then
+    if [ -n "$(manifest_of "$ENGINE")" ] && verify_manifest "$ENGINE" >/dev/null 2>&1; then
       say "= $VERSION_ID already installed and intact"
     else
       build_version "$SOURCE" "$ENGINE" || die "could not build the engine $VERSION_ID from $SOURCE"
-      say "+ engine built: versions/$VERSION_ID ($(find "$ENGINE" -type f ! -name .cbrain-manifest | wc -l | tr -d ' ') files)"
+      say "+ engine built: versions/$VERSION_ID ($(find "$ENGINE" -type f ! -name .greymatter-manifest | wc -l | tr -d ' ') files)"
     fi
     # The mirror the updater fetches into. It exists so that NO git command in
     # the update path ever names a directory the user created.
@@ -328,7 +358,7 @@ else
         "$VERSIONS"/*) : ;;   # already a managed install, nothing to announce
         *)
           say "converted: your checkout is now a SOURCE, not the engine"
-          say "  was:  $PREVIOUS_ENGINE (a git checkout C Brain used directly)"
+          say "  was:  $PREVIOUS_ENGINE (a git checkout GreyMatter used directly)"
           say "  now:  $ENGINE (built here, replaceable, never your repository)"
           say "  \`brain update\` will not touch $PREVIOUS_ENGINE again — see docs/UPGRADING.md"
           ;;
@@ -338,18 +368,18 @@ else
     # "the installer built the tree under versions/ and may replace it". It names
     # the versions root rather than one version, because the whole point is that
     # the active version changes.
-    printf '%s\n' "$VERSIONS" > "$CB/state/engine-managed"
-    rm -f "$CB/state/engine-dev"
-    note "file" "$CB/state/engine-managed"
+    printf '%s\n' "$VERSIONS" > "$GM/state/engine-managed"
+    rm -f "$GM/state/engine-dev"
+    note "file" "$GM/state/engine-managed"
   fi
 fi
 
-link "$ENGINE" "$CB/engine"
-[ "$DRY" = "1" ] || printf '%s\n' "$VERSION_ID" > "$CB/VERSION"
-say "version: $(cat "$CB/VERSION" 2>/dev/null || echo '?')"
+link "$ENGINE" "$GM/engine"
+[ "$DRY" = "1" ] || printf '%s\n' "$VERSION_ID" > "$GM/VERSION"
+say "version: $(cat "$GM/VERSION" 2>/dev/null || echo '?')"
 
 # ─── 2. The trunk ──────────────────────────────────────────────────────────
-step "Trunk (~/.c-brain/trunk)"
+step "Trunk (~/.greymatter/trunk)"
 if [ -d "$TRUNK" ]; then
   # A trunk exists. If it holds a REAL hooks/ folder (not a link), it is
   # a previous standalone install: we refuse to demolish it silently.
@@ -357,7 +387,7 @@ if [ -d "$TRUNK" ]; then
     die "$TRUNK/hooks is a REAL folder, not a link.
    There is already an old-style Brain installed here. I will not replace it on my own:
    its files might be yours. Back it up, then re-run:
-     mv $TRUNK $TRUNK.before-c-brain && ./install.sh"
+     mv $TRUNK $TRUNK.before-greymatter && ./install.sh"
   fi
   say "= existing trunk kept (your notes are untouched)"
 else
@@ -402,7 +432,7 @@ if [ "$DRY" != "1" ] && [ ! -e "$TRUNK/.git" ]; then
     warn "Install git, then re-run this installer to turn it on."
   elif git -C "$TRUNK" init -q >/dev/null 2>&1 \
        && git -C "$TRUNK" add -A >/dev/null 2>&1 \
-       && git -C "$TRUNK" -c user.email=c-brain@localhost -c user.name="C Brain" \
+       && git -C "$TRUNK" -c user.email=greymatter@localhost -c user.name="GreyMatter" \
               commit -qm "the trunk, as installed" >/dev/null 2>&1; then
     note dir "$TRUNK/.git"
     say "+ local version history ON — every session end records what changed"
@@ -415,7 +445,7 @@ if [ "$DRY" != "1" ] && [ ! -e "$TRUNK/.git" ]; then
 fi
 
 # ─── 3. The engine, linked into the trunk ────────────────────────────────────
-# The list is NOT inline here any more: cbrain/engine-paths.txt is the single
+# The list is NOT inline here any more: greymatter/engine-paths.txt is the single
 # definition, also read by update.sh (to tell engine dirt from user work) and by
 # brain_doctor (to report it). Three consumers, one list — see that file for why.
 step "Engine linked into the trunk"
@@ -428,18 +458,18 @@ step "Engine linked into the trunk"
 # The SOURCE is the second read rather than the hardcoded list, because that is
 # where a real install would take the list from: a dry run that described a
 # different set of links than the install it previews is worse than no preview.
-ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$ENGINE/cbrain/engine-paths.txt" 2>/dev/null || true)
-[ -n "$ENGINE_PATHS" ] || ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$SOURCE/cbrain/engine-paths.txt" 2>/dev/null || true)
+ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$ENGINE/greymatter/engine-paths.txt" 2>/dev/null || true)
+[ -n "$ENGINE_PATHS" ] || ENGINE_PATHS=$(grep -vE '^\s*(#|$)' "$SOURCE/greymatter/engine-paths.txt" 2>/dev/null || true)
 [ -n "$ENGINE_PATHS" ] || ENGINE_PATHS="hooks agents capsule planet companion tests"
 for d in $ENGINE_PATHS; do
-  link "$CB/engine/$d" "$TRUNK/$d"
+  link "$GM/engine/$d" "$TRUNK/$d"
 done
 
 # ─── 4. The `brain` command ───────────────────────────────────────────────
 step "The \`brain\` command"
 # `|| :` because a refusal (exit 3) is a REPORTED OUTCOME, not a crash: the rest
-# of C Brain installs, and the closing screen counts what was left alone.
-link "$CB/engine/brain" "$HOME/.local/bin/brain" \
+# of GreyMatter installs, and the closing screen counts what was left alone.
+link "$GM/engine/brain" "$HOME/.local/bin/brain" \
      "the \`brain\` command will keep starting the installation already on PATH" || :
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) PATH_OK=1; say "~/.local/bin is on PATH" ;;
@@ -458,7 +488,7 @@ esac
 step "Agents visible to the CLI agent"
 if [ "$HAS_CLAUDE_CODE" = "1" ]; then
   link "$TRUNK/agents" "$HOME/.claude/agents" \
-       "Claude Code will not see C Brain's agents — but it keeps seeing the ones already there" || :
+       "Claude Code will not see GreyMatter's agents — but it keeps seeing the ones already there" || :
 else
   say "(skipped — ~/.claude missing)"
 fi
@@ -489,7 +519,7 @@ if [ "$HAS_CLAUDE_CODE" = "1" ]; then
     fi
   fi
 else
-  say "(skipped — no Claude Code: C Brain will work on demand)"
+  say "(skipped — no Claude Code: GreyMatter will work on demand)"
 fi
 
 # ─── 7. Capsule ───────────────────────────────────────────────────────────
@@ -644,18 +674,40 @@ if [ "$DO_LAUNCHD" = "0" ]; then say "(skipped — --no-launchd)"
 else
   run mkdir -p "$HOME/Library/LaunchAgents"
   refused=0
+  # Jobs this installation registered under the pre-rename label: retired here,
+  # through the same ownership rule as everything else — only the ones on
+  # record as ours. Kept, each job would run twice, once under each name.
+  # One running under the old label that is NOT on record (a machine that never
+  # adopted its legacy jobs) is left alone, and its new twin is not installed:
+  # it still does the job, through the ~/.c-brain link, and two of them would not. (pre-rename)
+  kept_old=""
+  for t in resume machiniste etat; do
+    old_label="com.claudebrain.$t"   # pre-rename
+    [ "$DRY" = "1" ] && continue
+    if gm_launchd_owned "$old_label"; then
+      gm_launchd_uninstall "$old_label" "$HOME/Library/LaunchAgents/$old_label.plist" \
+        && say "- $old_label retired (now com.greymatter.$t)" || :
+    elif gm_launchd_registered "$old_label"; then
+      kept_old="$kept_old $t"
+      warn "$old_label is running and this installation holds no proof it is its own."
+      warn "  Left running; com.greymatter.$t is NOT installed, so the job does not run twice."
+      warn "  If it is an old GreyMatter job, docs/UPGRADING.md says how to stop it;"
+      warn "  then re-run this installer."
+    fi
+  done
   for t in resume machiniste; do
-    tpl="$ENGINE/hooks/com.claudebrain.$t.plist.template"
+    case " $kept_old " in *" $t "*) continue ;; esac
+    tpl="$ENGINE/hooks/com.greymatter.$t.plist.template"
     [ -f "$tpl" ] || continue
-    label="com.claudebrain.$t"
+    label="com.greymatter.$t"
     out="$HOME/Library/LaunchAgents/$label.plist"
     if [ "$DRY" = "1" ]; then say "(dry-run) would generate $out"; continue; fi
     # OWNERSHIP IS ASKED BEFORE THE FILE IS WRITTEN, not before the unload. On a
     # machine where another installation already holds this identity, its plist
     # sits at exactly this path: writing first and asking after would have
     # overwritten it, and "nothing was changed" would be a lie.
-    if cb_launchd_registered "$label" && ! cb_launchd_owned "$label"; then
-      cb_launchd_refuse "$label" || :
+    if gm_launchd_registered "$label" && ! gm_launchd_owned "$label"; then
+      gm_launchd_refuse "$label" || :
       refused=$((refused + 1))
       continue
     fi
@@ -663,11 +715,11 @@ else
     # silently breaks an install on another machine.
     sed "s|__HOME__|$HOME|g" "$tpl" > "$out"
     note file "$out"
-    cb_launchd_install "$label" "$out" \
+    gm_launchd_install "$label" "$out" \
       || warn "$label generated but not registered — see the line above"
   done
   if [ "$refused" -gt 0 ]; then
-    warn "$refused scheduled job(s) left untouched. C Brain is installed and works;"
+    warn "$refused scheduled job(s) left untouched. GreyMatter is installed and works;"
     warn "  those jobs keep running whatever they were already running."
   fi
 fi
@@ -685,8 +737,8 @@ fi
 # (#07070b ground, #5ad7e6 accent) — see tools/icone-planete.py in the author's
 # trunk, which redraws it with the standard library alone.
 step "Planet launcher (Desktop)"
-APP="$HOME/Desktop/C Brain Planet.app"
-OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"
+APP="$HOME/Desktop/GreyMatter Planet.app"
+OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
 if [ "$DO_PLANET" = "0" ]; then say "(skipped — --core-only)"
 elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
 elif [ -d "$HOME/Desktop" ]; then
@@ -701,9 +753,9 @@ elif [ -d "$HOME/Desktop" ]; then
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>C Brain Planet</string>
-  <key>CFBundleDisplayName</key><string>C Brain Planet</string>
-  <key>CFBundleIdentifier</key><string>org.cbrain.planet</string>
+  <key>CFBundleName</key><string>GreyMatter Planet</string>
+  <key>CFBundleDisplayName</key><string>GreyMatter Planet</string>
+  <key>CFBundleIdentifier</key><string>org.greymatter.planet</string>
   <key>CFBundleExecutable</key><string>planet</string>
   <key>CFBundleIconFile</key><string>planete</string>
   <key>CFBundlePackageType</key><string>APPL</string>
@@ -723,9 +775,14 @@ PLIST
   say "+ $APP (double-click → globe on localhost:8765)"
   # An installer that leaves the previous version's shortcut behind hands the
   # user two icons for one action, and lets them pick the stale one.
+  OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
+  if [ -d "$OLD_APP" ] && grep -q "org.cbrain.planet" "$OLD_APP/Contents/Info.plist" 2>/dev/null; then  # pre-rename
+    run rm -rf "$OLD_APP"
+    say "- the launcher under the old name removed (replaced by the app above)"
+  fi
   if [ -f "$OLD_CMD" ]; then
     run rm -f "$OLD_CMD"
-    say "- Planete-C-Brain.command removed (replaced by the app above)"
+    say "- the old .command launcher removed (replaced by the app above)"
   fi
 else
   warn "~/Desktop not found — launcher not created. The planet stays reachable at:"
@@ -733,7 +790,7 @@ else
 fi
 
 # ─── 10. Making the trunk findable ────────────────────────────────────────
-# The trunk lives at ~/.c-brain/trunk. The leading dot keeps the plumbing out
+# The trunk lives at ~/.greymatter/trunk. The leading dot keeps the plumbing out
 # of the way — and hides the one part of this that is YOURS. A new user gets a
 # memory they cannot see, in a folder Finder refuses to show. So we put a
 # visible door on it.
@@ -743,10 +800,17 @@ fi
 # dependency to place an icon is not a trade worth making — dragging the folder
 # into Favourites takes the user two seconds, and we say so below.
 step "Making your memory findable"
-SHORTCUT="$HOME/C Brain"
+SHORTCUT="$HOME/GreyMatter"
 if [ "$DO_SHORTCUT" = "0" ]; then say "(skipped — --no-shortcut)"
 elif [ "$DRY" = "1" ]; then say "(dry-run) would create $SHORTCUT and tag the trunk"
 else
+  # The shortcut under the pre-rename name goes — only if it is ours: a link that
+  # leads to this very trunk. Anything else by that name is someone's, left alone.
+  OLD_SHORTCUT="$HOME/C Brain"   # pre-rename
+  if [ -L "$OLD_SHORTCUT" ] && [ "$(cd "$OLD_SHORTCUT" 2>/dev/null && pwd -P)" = "$(cd "$TRUNK" && pwd -P)" ]; then
+    rm "$OLD_SHORTCUT"
+    say "- the shortcut under the old name removed"
+  fi
   if [ -L "$SHORTCUT" ] && [ "$(readlink "$SHORTCUT")" = "$TRUNK" ]; then
     say "= $SHORTCUT (already there)"
   elif [ -e "$SHORTCUT" ]; then
@@ -759,7 +823,7 @@ else
   # A Finder tag, so the folder is recognisable at a glance among thirty others.
   python3 - "$TRUNK" <<'PY' 2>/dev/null || true
 import plistlib, subprocess, sys
-blob = plistlib.dumps(["C Brain\n6"], fmt=plistlib.FMT_BINARY)   # 6 = red
+blob = plistlib.dumps(["GreyMatter\n6"], fmt=plistlib.FMT_BINARY)   # 6 = red
 subprocess.run(["xattr", "-w", "-x", "com.apple.metadata:_kMDItemUserTags",
                 blob.hex(), sys.argv[1]], check=True)
 PY
@@ -774,24 +838,24 @@ else
   # selftest reaches the CLI through `$TRUNK/brain` — which install.sh does not
   # create, the command being linked into ~/.local/bin — and then falls back to
   # whatever `brain` sits on PATH. On a fresh machine that is nothing, so four
-  # checks went red on a healthy install; on a machine that already had C Brain
+  # checks went red on a healthy install; on a machine that already had GreyMatter
   # it was WORSE: the freshly installed engine reported green or red on somebody
   # else's version, run against this HOME. Naming the engine is the case the
   # selftest already documents — "when an engine is named, its OWN brain is the
   # only one allowed" — and it is exactly what an installer knows.
-  if bash "$TRUNK/hooks/selftest.sh" "$CB/engine" >/tmp/c-brain-selftest.log 2>&1; then
+  if bash "$TRUNK/hooks/selftest.sh" "$GM/engine" >/tmp/greymatter-selftest.log 2>&1; then
     SELFTEST_OK=1; say "✅ selftest OK — every hook healthy"
   else
     SELFTEST_OK=0
-    warn "selftest failed — details: /tmp/c-brain-selftest.log"
-    tail -5 /tmp/c-brain-selftest.log | sed 's/^/     /'
+    warn "selftest failed — details: /tmp/greymatter-selftest.log"
+    tail -5 /tmp/greymatter-selftest.log | sed 's/^/     /'
   fi
   python3 "$TRUNK/hooks/brain_doctor.py" --quiet >/dev/null 2>&1 \
     && say "✅ doctor — tree consistent" || say "ℹ️  doctor flags a few things to look at (\`brain doctor\`)"
 fi
 
 echo
-# THE CLOSING VERDICT IS NOT A CONSTANT. It used to print "✅ C Brain installed."
+# THE CLOSING VERDICT IS NOT A CONSTANT. It used to print "✅ GreyMatter installed."
 # whatever had happened above — including right after "❌ hooks broken" — and then
 # offer four commands that could not run. A closing screen that cannot go red is a
 # decoration, not a report: it is the same defect as a test that never fails.
@@ -803,18 +867,18 @@ if [ "${REFUSED_SURFACES:-0}" -gt 0 ]; then
   echo "⚠️  $REFUSED_SURFACES surface(s) were left to their current owner."
   # "And works" only when the verification agrees. A surface left alone can cost
   # something the selftest checks — an agents folder that is someone else's means
-  # Claude Code cannot reach C Brain's agents — and the line below then says red.
+  # Claude Code cannot reach GreyMatter's agents — and the line below then says red.
   if [ "${SELFTEST_OK:-1}" = "1" ]; then
-    echo "   C Brain installed everything else and works. Scroll up: each one is"
+    echo "   GreyMatter installed everything else and works. Scroll up: each one is"
   else
-    echo "   C Brain installed everything else; what it could not take may be why"
+    echo "   GreyMatter installed everything else; what it could not take may be why"
     echo "   the verification below is red. Scroll up: each one is"
   fi
   echo "   named, with what it costs and the one command that hands it over."
   echo
 fi
 if [ "${PATH_OK:-1}" = "0" ]; then
-  echo "⚠️  C Brain is installed — but the \`brain\` command is not reachable yet."
+  echo "⚠️  GreyMatter is installed — but the \`brain\` command is not reachable yet."
   echo
   echo "   ~/.local/bin is not on your PATH, so every command below answers"
   echo "   \"command not found\" until that is fixed. One line, once:"
@@ -828,12 +892,12 @@ fi
 # install is not healthy" said something else. Both are spoken when both are true.
 if [ "${SELFTEST_OK:-1}" = "0" ]; then
   [ "${PATH_OK:-1}" = "0" ] && echo
-  echo "❌ C Brain is installed, but its own verification did not pass."
-  echo "   Details: /tmp/c-brain-selftest.log — re-run it with \`brain selftest\`."
+  echo "❌ GreyMatter is installed, but its own verification did not pass."
+  echo "   Details: /tmp/greymatter-selftest.log — re-run it with \`brain selftest\`."
   echo "   This installer exits with an error, so whatever ran it sees the failure too."
 fi
 if [ "${PATH_OK:-1}" = "1" ] && [ "${SELFTEST_OK:-1}" = "1" ]; then
-  echo "✅ C Brain installed."
+  echo "✅ GreyMatter installed."
 fi
 echo
 # Offered FIRST, not as a footnote: an empty trunk on first launch shows nothing

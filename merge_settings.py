@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
-"""C Brain — wiring the hooks into ~/.claude/settings.json.
+"""GreyMatter — wiring the hooks into ~/.claude/settings.json.
 
 NON-DESTRUCTIVE, and that is the whole point: this file belongs to the user.
 It may already hold their model, theme, permissions and their own hooks.
@@ -23,14 +23,14 @@ import time
 
 HOME = os.path.expanduser("~")
 DEFAULT_SETTINGS = os.path.join(HOME, ".claude", "settings.json")
-BRAIN = os.path.join(HOME, ".c-brain", "trunk")
-CB = os.path.join(HOME, ".c-brain")
+BRAIN = os.path.join(HOME, ".greymatter", "trunk")
+GM = os.path.join(HOME, ".greymatter")
 
 # (event, matcher or None, script path, timeout, status message)
 HOOKS = [
     ("SessionStart", None, "hooks/brain_anticipate.py --hook", 10, None),
     # Reports a new version, installs nothing. Throttled to 1×/24 h in the script.
-    ("SessionStart", None, "@cbrain/check_update.py", 20, None),
+    ("SessionStart", None, "@greymatter/check_update.py", 20, None),
     ("UserPromptSubmit", None, "hooks/inject_recall.py", 10, None),
     ("PostToolUse", "Write|Edit", "hooks/on_fiche_write.py", 15, None),
     ("PostToolUse", "Read", "hooks/track_read.py", 10, None),
@@ -46,14 +46,17 @@ HOOKS = [
 ]
 
 # What identifies OUR commands at uninstall time. Two roots:
-# the trunk (~/.c-brain/trunk/...) and the engine (~/.c-brain/engine/...).
+# the trunk (~/.greymatter/trunk/...) and the engine (~/.greymatter/engine/...).
 #
 # `claude-brain` is kept ON PURPOSE, even though no path uses it any more: an
 # installation predating migration 001 wrote commands that still carry it.
 # Dropping the marker would leave those lines in settings.json forever — an
 # uninstall that calls itself complete while forgetting half of what it put
 # there. This marker is never coming out.
-MARKERS = ("claude-brain", ".c-brain")
+#
+# `.c-brain` likewise, for the same reason: the root carried that name until  (pre-rename)
+# v2.1.0 (migration 002), and every command written before still spells it.
+MARKERS = ("claude-brain", ".greymatter", ".c-brain")   # pre-rename marker kept
 
 # The status line is COPIED into ~/.claude, but it only shows if it is DECLARED
 # here. Copying the file without writing this key produced a status line that
@@ -63,10 +66,10 @@ STATUSLINE_CMD = f"python3 {os.path.join(HOME, '.claude', 'statusline.py')}"
 
 def command_for(script):
     """Two possible origins. A script prefixed with `@` lives in the ENGINE
-    (specific to C Brain, absent from the original Brain); the others live in
+    (specific to GreyMatter, absent from the original Brain); the others live in
     the trunk, where the symlinks make them visible."""
     if script.startswith("@"):
-        return f"python3 {os.path.join(CB, 'engine', script[1:])}"
+        return f"python3 {os.path.join(GM, 'engine', script[1:])}"
     return f"python3 {os.path.join(BRAIN, script)}"
 
 
@@ -84,7 +87,7 @@ def load(path):
 def backup(path, tag):
     if not os.path.exists(path):
         return None
-    dest = f"{path}.bak-c-brain-{tag}"
+    dest = f"{path}.bak-greymatter-{tag}"
     shutil.copy2(path, dest)
     return dest
 
@@ -93,8 +96,25 @@ def entries_of(settings, event):
     return settings.setdefault("hooks", {}).setdefault(event, [])
 
 
+def drop_pre_rename(settings):
+    """Commands written under the root's old name run the same scripts as the ones
+    install() is about to write — through the compatibility link. Kept, every hook
+    would run twice. Returns how many were dropped."""
+    dropped = 0
+    for event, groups in list(settings.get("hooks", {}).items()):
+        for g in groups:
+            before = len(g.get("hooks", []))
+            g["hooks"] = [h for h in g.get("hooks", [])
+                          if ".c-brain" not in h.get("command", "")]   # pre-rename
+            dropped += before - len(g["hooks"])
+        settings["hooks"][event] = [g for g in groups if g.get("hooks")]
+        if not settings["hooks"][event]:
+            del settings["hooks"][event]
+    return dropped
+
+
 def install(settings):
-    added = 0
+    added = drop_pre_rename(settings)
     for event, matcher, script, timeout, status in HOOKS:
         cmd = command_for(script)
         groups = entries_of(settings, event)

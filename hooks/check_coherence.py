@@ -22,7 +22,7 @@ try:
 except Exception:
     recall = None
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 FLAGS = os.path.join(BRAIN, "state", "coherence.json")
 SIM_MIN = 0.45   # TF-IDF cosine (0–1): above this = real heavy overlap → check duplicate/contradiction
 

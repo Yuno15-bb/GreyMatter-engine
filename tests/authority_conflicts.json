@@ -7,13 +7,13 @@
     {
       "id": "C1-project-decision-vs-world-doc-normative",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "normative"
       },
       "contradiction": true,
       "A": {
         "kind": "user_decision",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": true,
         "at": "2026-08-15"
@@ -37,7 +37,7 @@
       "contradiction": true,
       "A": {
         "kind": "user_decision",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": true,
         "at": "2026-08-15"
@@ -55,20 +55,20 @@
     {
       "id": "C3-project-decision-vs-web-advice",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "normative"
       },
       "contradiction": true,
       "A": {
         "kind": "user_decision",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": true,
         "at": "2026-08-15"
       },
       "B": {
         "kind": "web",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": false,
         "at": "2026-08-16"
@@ -104,20 +104,20 @@
     {
       "id": "C5-validated-experience-vs-inference",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "factual"
       },
       "contradiction": true,
       "A": {
         "kind": "internal_experience",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": true,
         "at": "2026-08-16"
       },
       "B": {
         "kind": "agent_inference",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": false,
         "at": "2026-08-16"
@@ -128,7 +128,7 @@
     {
       "id": "C6-web-basis-cites-decision",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "normative"
       },
       "contradiction": true,
@@ -143,14 +143,14 @@
             "role": "illustration"
           }
         ],
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": false,
         "at": "2026-08-16"
       },
       "B": {
         "kind": "user_decision",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": true,
         "at": "2026-08-15"
@@ -209,19 +209,19 @@
     {
       "id": "C9-unknown-vs-inference",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "factual"
       },
       "contradiction": true,
       "A": {
         "kind": "unknown",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": false
       },
       "B": {
         "kind": "agent_inference",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": false,
         "at": "2026-08-16"
@@ -232,13 +232,13 @@
     {
       "id": "C10-no-contradiction",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "normative"
       },
       "contradiction": false,
       "A": {
         "kind": "user_decision",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": true,
         "at": "2026-08-15"
@@ -256,20 +256,20 @@
     {
       "id": "C11-inference-only-in-domain",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "factual"
       },
       "contradiction": true,
       "A": {
         "kind": "agent_inference",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": false,
         "at": "2026-08-16"
       },
       "B": {
         "kind": "agent_inference",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "repository",
         "validated": false,
         "at": "2026-08-10"
@@ -304,7 +304,7 @@
     {
       "id": "C13-scope-only-experience-elsewhere",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "factual"
       },
       "contradiction": true,
@@ -317,7 +317,7 @@
       },
       "B": {
         "kind": "web",
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": false,
         "at": "2026-08-16"
@@ -328,7 +328,7 @@
     {
       "id": "C14-role-only-reversed-bases",
       "question": {
-        "domain": "c-brain",
+        "domain": "greymatter",
         "nature": "normative"
       },
       "contradiction": true,
@@ -343,7 +343,7 @@
             "role": "illustration"
           }
         ],
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": false,
         "at": "2026-08-16"
@@ -359,7 +359,7 @@
             "role": "illustration"
           }
         ],
-        "domain": "c-brain",
+        "domain": "greymatter",
         "scope": "project",
         "validated": false,
         "at": "2026-08-16"

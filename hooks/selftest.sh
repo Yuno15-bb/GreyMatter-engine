@@ -9,7 +9,7 @@
 #
 # WITH AN ENGINE PATH it tests THAT engine, active or not. This is what lets an
 # update check a candidate version BEFORE anything points at it — a version may
-# only become `~/.c-brain/engine` after passing its own controls, so there is no
+# only become `~/.greymatter/engine` after passing its own controls, so there is no
 # window, however short, in which the active version is one nobody has checked.
 #
 # ⚠ THE POINT IS THAT IT MUST NOT MIX THE TWO. Handing the candidate's path to a
@@ -18,7 +18,7 @@
 # every script under test is read from $SRC, never from the trunk's symlinks.
 # The trunk stays what it is: the DATA the hooks run against.
 set -u
-BRAIN="$HOME/.c-brain/trunk"
+BRAIN="$HOME/.greymatter/trunk"
 ENGINE="${1:-}"
 cd "$BRAIN"
 # The code under test. Empty argument → the trunk's mounts → the active engine,
@@ -32,7 +32,7 @@ fail=0
 ok()   { echo "  ✅ $1"; }
 ko()   { echo "  ❌ $1"; fail=1; }
 
-echo "== C Brain — hook selftest =="
+echo "== GreyMatter — hook selftest =="
 
 # 1. compilation Python
 for f in "$SRC"/hooks/*.py; do
@@ -72,7 +72,7 @@ python3 "$SRC/hooks/brain_guard.py" interpret "$tmp" "selftest-sid"; [ $? -eq 7 
 # We remove the test sid from the queue AND reset the quota to 0 (unblocked).
 python3 - <<'PY' 2>/dev/null
 import json,os
-B=os.path.expanduser("~/.c-brain/trunk/")
+B=os.path.expanduser("~/.greymatter/trunk/")
 p=B+"state/pending-distill.json"
 if os.path.exists(p):
     try:
@@ -105,7 +105,7 @@ python3 "$SRC/tests/invariants_brain.py" >/dev/null 2>&1 \
 #    ⚠ TWO FAULTS IN THIS BLOCK, PAID FOR IN CI ON 2026-08-13:
 #      · it assumed `./brain` inside the trunk. That is true FOR THE AUTHOR, whose trunk IS
 #        the repository. After a real install there is no `trunk/brain`: install.sh links
-#        `~/.c-brain/engine/brain` to `~/.local/bin/brain`. So the CLI is RESOLVED, never
+#        `~/.greymatter/engine/brain` to `~/.local/bin/brain`. So the CLI is RESOLVED, never
 #        guessed.
 #      · `$(./brain 2>&1)` captured the shell's "No such file or directory" — so the
 #        assertion "it produces output" went GREEN on a MISSING command. That is exactly

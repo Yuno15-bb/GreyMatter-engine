@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """Prove that the synthetic fixture exception has not opened a leak path.
 
@@ -61,12 +61,12 @@ CAS = [
     ("declared decoy passes under tests/",
      "tests/fiche_write_contract.py", _affectation(LEURRE_CLE), None),
     ("path decoy passes under tests/",
-     "tests/a1_pixel_lib.py", f'p = "{LEURRE_CHEMIN}.c-brain"', None),
+     "tests/a1_pixel_lib.py", f'p = "{LEURRE_CHEMIN}.greymatter"', None),
 
     ("same decoy is blocked outside tests/",
-     "cbrain/engine-lib.sh", _affectation(LEURRE_CLE), "Anthropic key"),
+     "greymatter/engine-lib.sh", _affectation(LEURRE_CLE), "Anthropic key"),
     ("same path decoy is blocked outside tests/",
-     "install.sh", f'p = "{LEURRE_CHEMIN}.c-brain"', "personal path"),
+     "install.sh", f'p = "{LEURRE_CHEMIN}.greymatter"', "personal path"),
 
     ("nearby undeclared value is blocked",
      "tests/fiche_write_contract.py", _affectation(VOISIN), "Anthropic key"),
@@ -74,9 +74,9 @@ CAS = [
     ("real key is blocked under tests/",
      "tests/fiche_write_contract.py", _affectation(VRAIE_CLE), "Anthropic key"),
     ("real personal path is blocked under tests/",
-     "tests/a1_pixel_lib.py", f'p = "{VRAI_CHEMIN}.c-brain"', "personal path"),
+     "tests/a1_pixel_lib.py", f'p = "{VRAI_CHEMIN}.greymatter"', "personal path"),
     ("another invented user path is blocked under tests/",
-     "tests/a1_pixel_lib.py", f'p = "{AUTRE_CHEMIN}.c-brain"', "personal path"),
+     "tests/a1_pixel_lib.py", f'p = "{AUTRE_CHEMIN}.greymatter"', "personal path"),
 
     ("test history gets the same narrow exception",
      "history:tests/fiche_write_contract.py", _affectation(LEURRE_CLE), None),

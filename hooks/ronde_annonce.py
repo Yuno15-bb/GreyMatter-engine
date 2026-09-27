@@ -26,7 +26,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # CODE_ROOT, legitimate
 from brain_racine import brain_root
 
-# I-1 (2026-08-21). Before: `os.path.expanduser("~/.c-brain/trunk")` — a literal NO
+# I-1 (2026-08-21). Before: `os.path.expanduser("~/.greymatter/trunk")` — a literal NO
 # variable could redirect. This module was the last I1-FAIL keeping an orchestrator that was
 # ALREADY compliant in E0*: its SessionStart hook has carried BRAIN_HOME since L1.0, and the child
 # ignored it. A parent that correctly passes on an identity the child throws away produces

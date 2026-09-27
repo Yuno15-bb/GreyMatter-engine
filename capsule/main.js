@@ -1,4 +1,4 @@
-// C Brain — the capsule: the ORB.
+// GreyMatter — the capsule: the ORB.
 //
 // A pane of living glass in the bottom-right corner of the screen. Its fluid
 // mechanic says WHAT KIND of work is happening, its speed the INTENSITY, its
@@ -105,7 +105,7 @@ function explainRefusal() {
   //   `userData`, whose folder is named after this package — so two capsules whose
   //   package.json carry different names each take their OWN lock and run side by
   //   side. MEASURED that day: the author's trunk (`claude-brain-capsule`) and the
-  //   shipped package (`c-brain-capsule`) had two orbs on screen at once.
+  //   shipped package (`greymatter-capsule`) had two orbs on screen at once.
   //   test_lock_speaks.sh proved the same thing without noticing: every launch it
   //   makes is forced onto one throwaway `--user-data-dir` PRECISELY so it cannot
   //   disturb a capsule already running. Section D now asserts it out loud.
@@ -142,7 +142,7 @@ const EDGE = 26;
 // DERIVED FROM $HOME, never from __dirname: the engine may live somewhere other
 // than the trunk (symlink install), and it is the USER's state we watch. Same
 // path orbe.html uses.
-const STATUS = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
+const STATUS = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'status.json');
 
 // PROOF OF LIFE of the window, ported by hand on 2026-08-13.
 //
@@ -159,7 +159,7 @@ const STATUS = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.jso
 // ⚠ Only while the window exists — that is the entire point: a process without
 //   a window stops beating, and becomes visible from the outside.
 // Same $HOME-derived path as STATUS: it is the TRUNK's state, not the engine's.
-const ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');
+const ALIVE = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'capsule-alive');
 const HEARTBEAT = 5000;
 function heartbeat() {
   try {
@@ -178,7 +178,7 @@ const IDLE_BEFORE_HIDE = 60000;
 // held a second literal, and `brain status` a third at 120 s. Three copies of one
 // question, already 4x apart. The number now comes from the file the Python side
 // reads too; the literal below is a fallback for a broken install, not a rival.
-const FRESHNESS = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+const FRESHNESS = path.join(os.homedir(), '.greymatter', 'trunk', 'hooks', 'status_freshness.json');
 function freshnessWindows() {
   try {
     const j = JSON.parse(fs.readFileSync(FRESHNESS, 'utf8'));
@@ -355,8 +355,8 @@ app.whenReady().then(() => {
   // the other, which is exactly why both are collected.
   //
   // Opt-in by environment variable, so nothing is written in normal use.
-  if (process.env.CBRAIN_PROBE_OUT) {
-    const OUT = process.env.CBRAIN_PROBE_OUT;
+  if (process.env.GREYMATTER_PROBE_OUT) {
+    const OUT = process.env.GREYMATTER_PROBE_OUT;
     const probe = () => {
       if (!win || win.isDestroyed()) return;
       // Read from the DOM, in the renderer. Not from main's own idea of the

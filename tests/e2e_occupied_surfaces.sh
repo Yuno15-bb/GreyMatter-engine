@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # e2e_occupied_surfaces.sh — INSTALLING OVER SOMEBODY ELSE'S INSTALLATION.
 #
 # WHY IT EXISTS. On 2026-08-19 this installer ran on a machine that already had
-# an author's installation of C Brain. It repointed `~/.claude/agents` at its own
+# an author's installation of GreyMatter. It repointed `~/.claude/agents` at its own
 # trunk and overwrote `~/.claude/statusline.py`, printed "backed up:" and "+",
 # and exited 0. The other installation kept calling agents that were no longer
 # where it had left them: 118 `agent not found` in 39 hours, its distillation
@@ -51,7 +51,7 @@ if [ -n "$SABOTAGE" ]; then
 fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd -P)"
-LAB="$(cd "$(mktemp -d "${TMPDIR:-/tmp}/cbrain-surfaces.XXXXXX")" && pwd -P)"
+LAB="$(cd "$(mktemp -d "${TMPDIR:-/tmp}/greymatter-surfaces.XXXXXX")" && pwd -P)"
 trap '[ "$KEEP" = "1" ] || rm -rf "$LAB"' EXIT
 
 fails=0
@@ -59,7 +59,7 @@ ok()   { echo "  ✅ $1"; }
 ko()   { echo "  ❌ $1"; fails=$((fails + 1)); }
 info() { echo "     $1"; }
 
-echo "== C Brain — installing over an installation that is already there =="
+echo "== GreyMatter — installing over an installation that is already there =="
 [ -n "$SABOTAGE" ] && echo "   SABOTAGE: $SABOTAGE"
 echo "   lab: $LAB"
 
@@ -108,9 +108,9 @@ case "$SABOTAGE" in
   works-over-red)
     sabotage_patch install.sh \
       '  if [ "${SELFTEST_OK:-1}" = "1" ]; then
-    echo "   C Brain installed everything else and works.' \
+    echo "   GreyMatter installed everything else and works.' \
       '  if true; then
-    echo "   C Brain installed everything else and works.' ;;
+    echo "   GreyMatter installed everything else and works.' ;;
 esac
 
 # The installer builds its engine with `git archive`, so the source has to be a
@@ -185,10 +185,10 @@ else
   info "last lines: $(tail -3 "$OUT" | tr '\n' ' ')"
 fi
 
-# D — AND C BRAIN IS STILL INSTALLED. A refusal is a reported outcome, not a
+# D — AND GREYMATTER IS STILL INSTALLED. A refusal is a reported outcome, not a
 # crash: refusing to take a surface must not cost the user the whole product.
 # The exit code follows the verification, as it does on any install: the agents
-# folder left to its owner means Claude Code cannot reach C Brain's agents, the
+# folder left to its owner means Claude Code cannot reach GreyMatter's agents, the
 # selftest says so, and a script running the installer must hear it. What must
 # NOT happen is the refusal itself ending the run: the screen above got to its
 # count, and the disk below has the trunk and the engine.
@@ -202,7 +202,7 @@ else
   [ "$OVER_EXIT" = "0" ] && ok "the verification is green, and the installer exits 0" \
                          || ko "the installer exited $OVER_EXIT over a green verification"
 fi
-[ -d "$HOME/.c-brain/trunk" ] && [ -d "$HOME/.c-brain/engine/hooks" ] \
+[ -d "$HOME/.greymatter/trunk" ] && [ -d "$HOME/.greymatter/engine/hooks" ] \
   && ok "the trunk and the engine were installed anyway" \
   || ko "the install did not complete"
 
@@ -211,11 +211,11 @@ echo
 echo "▸ 2. the gesture the refusal prints actually works"
 # ═══════════════════════════════════════════════════════════════════════════
 # A refusal that names no next step is an obstacle. The next step it names is
-# `mv <path> <path>.before-c-brain`, so we run exactly that and nothing else.
-mv "$HOME/.claude/agents" "$HOME/.claude/agents.before-c-brain"
+# `mv <path> <path>.before-greymatter`, so we run exactly that and nothing else.
+mv "$HOME/.claude/agents" "$HOME/.claude/agents.before-greymatter"
 install_run "handover.log"
-if [ "$(readlink "$HOME/.claude/agents")" = "$HOME/.c-brain/trunk/agents" ]; then
-  ok "after the printed gesture, C Brain takes the surface"
+if [ "$(readlink "$HOME/.claude/agents")" = "$HOME/.greymatter/trunk/agents" ]; then
+  ok "after the printed gesture, GreyMatter takes the surface"
 else
   ko "the printed gesture did not hand the surface over"
 fi
@@ -224,7 +224,7 @@ if grep -q "2 surface(s) were left to their current owner" "$LAB/handover.log"; 
 else
   ko "the count did not follow"
 fi
-[ "$(readlink "$HOME/.claude/agents.before-c-brain")" = "$HOME/other-trunk/agents" ] \
+[ "$(readlink "$HOME/.claude/agents.before-greymatter")" = "$HOME/other-trunk/agents" ] \
   && ok "what was moved aside is untouched" \
   || ko "what was moved aside was damaged"
 

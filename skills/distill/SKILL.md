@@ -1,5 +1,5 @@
 ---
-description: Turn what was just worked out into a C Brain note — filed in the right zone, linked to what it relates to, indexed. Use when the user says "remember this", "save that", "note it down", "distill this session", or when a non-obvious problem has just been solved and the reasoning would otherwise be lost.
+description: Turn what was just worked out into a GreyMatter note — filed in the right zone, linked to what it relates to, indexed. Use when the user says "remember this", "save that", "note it down", "distill this session", or when a non-obvious problem has just been solved and the reasoning would otherwise be lost.
 ---
 
 # Distill into a note
@@ -20,7 +20,7 @@ conversation, or a summary of work anyone could read from the diff.
 
 ## Shape
 
-One fact per file, in `~/.c-brain/trunk/<zone>/<slug>.md` where zone is
+One fact per file, in `~/.greymatter/trunk/<zone>/<slug>.md` where zone is
 `lessons` (cross-project), `projects/<name>`, `meta` (ways of working) or
 `life`.
 

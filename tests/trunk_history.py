@@ -140,10 +140,10 @@ def main():
 
     # ---------- 3. `brain backup` must explain, not print `fatal:` ----------
     with tempfile.TemporaryDirectory() as home:
-        # `brain` resolves its trunk as $HOME/.c-brain/trunk and ignores BRAIN_HOME
+        # `brain` resolves its trunk as $HOME/.greymatter/trunk and ignores BRAIN_HOME
         # (the hooks honour it; the CLI does not). The sandbox has to match that,
         # or the test would exercise a path the command never takes.
-        trunk = make_trunk(os.path.join(home, ".c-brain", "trunk"), versioned=False)
+        trunk = make_trunk(os.path.join(home, ".greymatter", "trunk"), versioned=False)
         r = subprocess.run(["bash", BRAIN_CLI, "backup"], capture_output=True, text=True,
                            timeout=60, cwd=trunk, env=dict(os.environ, HOME=home))
         out = r.stdout + r.stderr
@@ -175,8 +175,8 @@ def main():
                        "exactly how a protection becomes invisibly inactive")
 
     # ---------- 5. trunk git is NOT engine git ----------
-    upd = open(os.path.join(ROOT, "cbrain", "update.sh"), encoding="utf-8").read()
-    looks_at_trunk = 'git -C "$TRUNK"' in upd or 'git -C "$CB/trunk"' in upd
+    upd = open(os.path.join(ROOT, "greymatter", "update.sh"), encoding="utf-8").read()
+    looks_at_trunk = 'git -C "$TRUNK"' in upd or 'git -C "$GM/trunk"' in upd
     print(f"  update.sh looks at the trunk    {'YES' if looks_at_trunk else 'no'}")
     if looks_at_trunk:
         trouble.append("update.sh runs git against the TRUNK: the engine's ownership gate "

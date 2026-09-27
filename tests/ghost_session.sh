@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # ghost_session.sh — a command is not a session.
@@ -36,7 +36,7 @@ check() {  # check <exit-code> <label> [detail]
 
 H="$(mktemp -d)"
 trap 'rm -rf "$H"' EXIT
-P="$H/plugin-cache/c-brain"
+P="$H/plugin-cache/greymatter"
 mkdir -p "$(dirname "$P")"
 rsync -a --exclude .git --exclude node_modules "$ROOT/" "$P/"
 
@@ -65,8 +65,8 @@ fi
 
 # The trunk as a plugin user has it; its hooks/ is a link into the copy above.
 env -i HOME="$H" CLAUDE_PLUGIN_ROOT="$P" PATH="$APPLE_PATH" \
-  python3 "$P/cbrain/plugin_bootstrap.py" >/dev/null 2>&1
-T="$H/.c-brain/trunk"
+  python3 "$P/greymatter/plugin_bootstrap.py" >/dev/null 2>&1
+T="$H/.greymatter/trunk"
 [ -L "$T/hooks" ] || { echo "  ❌ no trunk to run the hooks against"; exit 1; }
 QUEUE="$T/state/pending-distill.json"
 # Where Claude Code puts a transcript for a session run from /tmp.

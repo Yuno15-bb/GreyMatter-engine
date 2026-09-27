@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-C Brain SessionEnd hook.
+GreyMatter SessionEnd hook.
 At the end of every session:
   1. refreshes the index sessions/TIMELINE.md (incremental cache, fast)
   2. captures the git diff of the project worked on (cwd) into sessions/archive/
@@ -28,7 +28,7 @@ def _transcripts_key() -> str:
     return os.path.expanduser("~").replace("/", "-").replace(".", "-")
 
 
-BRAIN = (os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = (os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 # Transcripts folder name = $HOME with "/" and "." -> "-" (Claude Code convention).
 # NEVER hardcode the user name here (it silently broke distillation during a
 # migration from one user account to another; see a machine restore in July 2026).

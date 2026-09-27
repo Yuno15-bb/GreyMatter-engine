@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """launchd_refusal.py — the named refusal, proved on a synthetic domain.
 
-WHAT IT PROVES. `cbrain/launchd-lib.sh` refuses to touch a launchd identity it
+WHAT IT PROVES. `greymatter/launchd-lib.sh` refuses to touch a launchd identity it
 cannot prove it owns, and refuses BEFORE the mutation rather than apologising
 after. The proof is the invocation log of a launchctl we wrote ourselves: on a
 refusal it must contain no `unload`, no `load`, nothing at all.
@@ -29,7 +29,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LIB = os.path.join(ROOT, "cbrain", "launchd-lib.sh")
+LIB = os.path.join(ROOT, "greymatter", "launchd-lib.sh")
 
 fails = []
 
@@ -51,7 +51,7 @@ class Bench:
     """One synthetic machine: a domain, a record, a log, and no real launchctl."""
 
     def __init__(self, registry=(), recorded=None, lib=None):
-        self.tmp = os.path.realpath(tempfile.mkdtemp(prefix="cbrain-launchd."))
+        self.tmp = os.path.realpath(tempfile.mkdtemp(prefix="greymatter-launchd."))
         self.bin = os.path.join(self.tmp, "bin")
         self.state = os.path.join(self.tmp, "cb", "state")
         os.makedirs(self.bin)
@@ -83,7 +83,7 @@ class Bench:
         e = dict(os.environ)
         e.update({"PATH": self.bin + os.pathsep + e["PATH"],
                   "FAKE_LOG": self.log, "FAKE_REG": self.reg,
-                  "CB_LAUNCHD_RECORD": self.record})
+                  "GM_LAUNCHD_RECORD": self.record})
         e.update({k: str(v) for k, v in env.items()})
         r = subprocess.run(["bash", "-c", script], capture_output=True,
                            text=True, env=e)
@@ -118,8 +118,8 @@ def claimed(b):
 def case_absent_no_record():
     b = Bench(registry=[], recorded=None)
     try:
-        label = "com.claudebrain.resume"
-        rc, out = b.call("cb_launchd_install", label, b.plist(label))
+        label = "com.greymatter.resume"
+        rc, out = b.call("gm_launchd_install", label, b.plist(label))
         if rc == 0 and claimed(b) and not mutated(b):
             ok("Label absent, no record: created, and nothing was unloaded")
         else:
@@ -135,10 +135,10 @@ def case_absent_no_record():
 
 
 def case_present_and_recorded():
-    label = "com.claudebrain.resume"
+    label = "com.greymatter.resume"
     b = Bench(registry=[label], recorded=[label])
     try:
-        rc, out = b.call("cb_launchd_install", label, b.plist(label))
+        rc, out = b.call("gm_launchd_install", label, b.plist(label))
         if rc == 0 and mutated(b) and claimed(b):
             ok("Label present AND recorded: mutation allowed")
         else:
@@ -153,7 +153,7 @@ def case_present_and_recorded():
 
 
 def refusal_case(name, registry, recorded, label, plist_on_disk=True,
-                 func="cb_launchd_install"):
+                 func="gm_launchd_install"):
     b = Bench(registry=registry, recorded=recorded)
     try:
         before = b.recorded()
@@ -177,10 +177,10 @@ def refusal_case(name, registry, recorded, label, plist_on_disk=True,
 
 
 def case_load_fails():
-    label = "com.claudebrain.resume"
+    label = "com.greymatter.resume"
     b = Bench(registry=[], recorded=None)
     try:
-        rc, out = b.call("cb_launchd_install", label, b.plist(label),
+        rc, out = b.call("gm_launchd_install", label, b.plist(label),
                          FAKE_FAIL_LOAD=1)
         if rc == 4:
             ok("load fails: reported as a failure, not swallowed")
@@ -199,11 +199,11 @@ def case_load_fails():
 
 
 def case_uninstall_owned():
-    label = "com.claudebrain.machiniste"
+    label = "com.greymatter.machiniste"
     b = Bench(registry=[label], recorded=[label])
     try:
         p = b.plist(label)
-        rc, out = b.call("cb_launchd_uninstall", label, p)
+        rc, out = b.call("gm_launchd_uninstall", label, p)
         if rc == 0 and mutated(b) and not os.path.exists(p) and b.recorded() == []:
             ok("uninstall of an owned Label: unloaded, removed, forgotten")
         else:
@@ -215,11 +215,11 @@ def case_uninstall_owned():
 
 
 def case_uninstall_not_owned():
-    label = "com.claudebrain.resume"
+    label = "com.greymatter.resume"
     b = Bench(registry=[label], recorded=[])
     try:
         p = b.plist(label)
-        rc, out = b.call("cb_launchd_uninstall", label, p)
+        rc, out = b.call("gm_launchd_uninstall", label, p)
         if rc == 3 and not mutated(b) and os.path.exists(p):
             ok("uninstall of a Label we never registered: skipped, plist kept")
         else:
@@ -243,7 +243,7 @@ def case_sabotage_detects():
     The doctored guard says "mine" to everything; the refusal case must then
     fail, and the log must show the unload it was supposed to prevent.
     """
-    tmp = tempfile.mkdtemp(prefix="cbrain-sabotage.")
+    tmp = tempfile.mkdtemp(prefix="greymatter-sabotage.")
     try:
         doctored = os.path.join(tmp, "launchd-lib.sh")
         with open(LIB) as f:
@@ -252,10 +252,10 @@ def case_sabotage_detects():
                           '  return 0   # SABOTAGE: everything looks like ours\n')
         with open(doctored, "w") as f:
             f.write(src)
-        label = "com.claudebrain.resume"
+        label = "com.greymatter.resume"
         b = Bench(registry=[label], recorded=[], lib=doctored)
         try:
-            rc, out = b.call("cb_launchd_install", label, b.plist(label))
+            rc, out = b.call("gm_launchd_install", label, b.plist(label))
             if rc != 3 and mutated(b):
                 ok("sabotage: with the check neutralised the bench goes RED "
                    "(the unload happens)")
@@ -279,18 +279,18 @@ def main():
 
     print("\n> what is refused, and refused BEFORE the mutation")
     refusal_case("Label present, no record at all",
-                 registry=["com.claudebrain.resume"], recorded=None,
-                 label="com.claudebrain.resume")
+                 registry=["com.greymatter.resume"], recorded=None,
+                 label="com.greymatter.resume")
     refusal_case("ownership claimed by the plist on disk",
-                 registry=["com.claudebrain.resume"], recorded=[],
-                 label="com.claudebrain.resume", plist_on_disk=True)
-    refusal_case("ownership claimed by the com.claudebrain.* prefix",
-                 registry=["com.claudebrain.machiniste"], recorded=[],
-                 label="com.claudebrain.machiniste")
+                 registry=["com.greymatter.resume"], recorded=[],
+                 label="com.greymatter.resume", plist_on_disk=True)
+    refusal_case("ownership claimed by the com.greymatter.* prefix",
+                 registry=["com.greymatter.machiniste"], recorded=[],
+                 label="com.greymatter.machiniste")
     refusal_case("record holds a DIFFERENT Label",
-                 registry=["com.claudebrain.resume"],
-                 recorded=["com.claudebrain.machiniste"],
-                 label="com.claudebrain.resume")
+                 registry=["com.greymatter.resume"],
+                 recorded=["com.greymatter.machiniste"],
+                 label="com.greymatter.resume")
     case_uninstall_not_owned()
 
     print("\n> what must not be claimed")

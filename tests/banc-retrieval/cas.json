@@ -23,11 +23,11 @@
 {"c":"C5 ambiguite lexicale","t":"backtick-dans-commentaire-html-ferme-un-template-literal-js","q":"mon commentaire ferme la chaine trop tot"},
 {"c":"C5 ambiguite lexicale","t":"pkill-motif-approximatif-mesure-une-instance-perimee","q":"mon motif ne matche pas ce que je crois"},
 
-{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"j aimerais visiter la planete Saturne un jour"},
-{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"ma capsule Nespresso fuit comment la reparer"},
-{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"quel est le meilleur jardinier pres de chez moi"},
-{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"combien pese un tronc de chene abattu"},
-{"c":"C6 hors sujet vocabulaire C Brain","t":null,"q":"recette de pain au levain maison"},
+{"c":"C6 hors sujet vocabulaire GreyMatter","t":null,"q":"j aimerais visiter la planete Saturne un jour"},
+{"c":"C6 hors sujet vocabulaire GreyMatter","t":null,"q":"ma capsule Nespresso fuit comment la reparer"},
+{"c":"C6 hors sujet vocabulaire GreyMatter","t":null,"q":"quel est le meilleur jardinier pres de chez moi"},
+{"c":"C6 hors sujet vocabulaire GreyMatter","t":null,"q":"combien pese un tronc de chene abattu"},
+{"c":"C6 hors sujet vocabulaire GreyMatter","t":null,"q":"recette de pain au levain maison"},
 
 {"c":"C7 deux fiches legitimes","t":["un-message-de-succes-explicite-peut-couvrir-un-mecanisme-en-echec","deux-gardes-redondants-ne-prouvent-que-leur-message"],"q":"un controle qui reste vert alors que le mecanisme a echoue"},
 {"c":"C7 deux fiches legitimes","t":["home-isole-n-est-pas-un-environnement-isole","verrou-macos-session-electron-ignore-home"],"q":"changer HOME ne suffit pas a isoler ce que je teste"},

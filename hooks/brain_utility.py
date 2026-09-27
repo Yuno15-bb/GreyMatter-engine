@@ -19,7 +19,7 @@ Usage : brain_utility.py [--json]   (exit 0)
 import os, sys, json, glob, time
 from collections import defaultdict
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 RECALL = os.path.join(BRAIN, "state", "recall_log.jsonl")
 READ = os.path.join(BRAIN, "state", "read_log.jsonl")
 DEAD_AGE_DAYS = 30      # a note is only "dead weight" once it is at least this old

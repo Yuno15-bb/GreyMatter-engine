@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 # Copy an allowlisted subset of the living Brain into this public package.
 # The source is read only. --check compares source fingerprints without copying.
 set -euo pipefail
 
-SRC="${CBRAIN_SRC:-$HOME/claude-brain}"
+SRC="${GREYMATTER_SRC:-$HOME/claude-brain}"
 DEST="$(cd "$(dirname "$0")" && pwd)"
-CLAUDE_DIR="${CBRAIN_CLAUDE_DIR:-$HOME/.claude}"
+CLAUDE_DIR="${GREYMATTER_CLAUDE_DIR:-$HOME/.claude}"
 
 MODE="copy"
 [ "${1:-}" = "--check" ] && MODE="check"
@@ -17,10 +17,10 @@ RSYNC_FLAGS=(-a --delete --itemize-changes --exclude '*.bak')
 
 # A sync on main would overwrite the English translation with French sources.
 BRANCHE="$(git -C "$DEST" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
-if [ "$BRANCHE" = "main" ] && [ "${CBRAIN_ALLOW_SYNC_ON_MAIN:-}" != "1" ]; then
+if [ "$BRANCHE" = "main" ] && [ "${GREYMATTER_ALLOW_SYNC_ON_MAIN:-}" != "1" ]; then
   echo "❌ Run ./sync.sh on the fr branch, not main."
   echo "   main is the translation; a sync would overwrite it with French source files."
-  echo "   → git checkout fr    (or set CBRAIN_ALLOW_SYNC_ON_MAIN=1 deliberately)"
+  echo "   → git checkout fr    (or set GREYMATTER_ALLOW_SYNC_ON_MAIN=1 deliberately)"
   exit 1
 fi
 
@@ -43,7 +43,7 @@ empreinte_source() {
          ! -name "capteur_fraicheur.py" \
          ! -name "com.dgc.fraicheur.plist.template" \
          ! -name "com.*.desktop-sync.plist.template" \
-         ! -name "com.claudebrain.resume.plist" \
+         ! -name "com.greymatter.resume.plist" \
          ! -path "*/tests/golden_recall.py" \
          ! -path "*/tests/golden_recall.json" \
          ! -path "*/tests/heldout/*" \
@@ -73,7 +73,7 @@ empreinte_source() {
 }
 
 if [ "$MODE" = "check" ]; then
-  echo "🔄 C Brain — has the living Brain changed since the last copy?"
+  echo "🔄 GreyMatter — has the living Brain changed since the last copy?"
   if [ ! -f "$MANIFEST" ]; then
     echo "  ⚠️  no fingerprint recorded — run ./sync.sh once."
     exit 1
@@ -134,7 +134,7 @@ sync_file() {  # sync_file <absolute source> <relative destination>
   return 0
 }
 
-echo "🔄 C Brain — syncing from $SRC"
+echo "🔄 GreyMatter — syncing from $SRC"
 [ "$MODE" = "check" ] && echo "   (--check mode: no files are written)"
 echo
 
@@ -147,7 +147,7 @@ sync_dir hooks \
   'capteur_fraicheur.py' \
   'com.dgc.fraicheur.plist.template' \
   'com.*.desktop-sync.plist.template' \
-  'com.claudebrain.resume.plist' \
+  'com.greymatter.resume.plist' \
   'hooks.json' \
   '__pycache__' '*.pyc'
 

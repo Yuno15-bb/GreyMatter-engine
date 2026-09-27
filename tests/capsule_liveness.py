@@ -62,13 +62,13 @@ def run(sandbox, *args):
 
 
 def read_status(sandbox):
-    p = os.path.join(sandbox, ".c-brain", "trunk", "state", "status.json")
+    p = os.path.join(sandbox, ".greymatter", "trunk", "state", "status.json")
     with open(p, encoding="utf-8") as f:
         return json.load(f)
 
 
 def write_status_file(sandbox, payload):
-    p = os.path.join(sandbox, ".c-brain", "trunk", "state", "status.json")
+    p = os.path.join(sandbox, ".greymatter", "trunk", "state", "status.json")
     with open(p, "w", encoding="utf-8") as f:
         json.dump(payload, f)
 

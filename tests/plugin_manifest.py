@@ -119,7 +119,7 @@ def main():
 
     if errors:
         return 1
-    print(f"✅ plugin manifests consistent — c-brain {plugin.get('version')}, "
+    print(f"✅ plugin manifests consistent — greymatter {plugin.get('version')}, "
           f"{len(set(PATH_RE.findall(HOOKS.read_text(encoding='utf-8'))))} hook script(s), "
           f"{len(skills)} skill(s) that can trigger")
     return 0

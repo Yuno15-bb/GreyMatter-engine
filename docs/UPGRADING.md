@@ -1,8 +1,55 @@
 # Upgrading
 
+## Upgrading to v2.1.0 — one name
+
+Until v2.1.0 the product was called GreyMatter while the machine still said
+C Brain: the root `~/.c-brain`, the Home shortcut `~/C Brain`, the launchd <!-- pre-rename -->
+jobs `com.claudebrain.*`, the Desktop app and the plugin `c-brain`. From v2.1.0 <!-- pre-rename -->
+every one of them says GreyMatter. **Your notes are not touched.**
+
+### If you installed with `install.sh`
+
+Nothing to do. `brain update` (or `git pull && ./install.sh`) moves the root to
+`~/.greymatter` and leaves a permanent link at the old path, so a script or an
+alias that still names it keeps working. Then it replaces what it provably owns:
+the scheduled jobs (by label), the hook commands in `~/.claude/settings.json`
+(by path), the Desktop app (by bundle id) and the Home shortcut (by where it
+points). Anything with the old name that it cannot prove is its own is left
+alone.
+
+**A job left under the old name.** If the installer says an old-label job is
+"left running", it found one it has no record of installing — so it did not
+touch it, and did not start the new one beside it. If you know it is an old
+GreyMatter job, stop it and run the installer again:
+
+```bash
+launchctl bootout gui/$(id -u)/com.claudebrain.resume   # pre-rename; same for .machiniste
+./install.sh
+```
+
+`brain update --rollback` to a v2.0.x version works: it switches the engine
+back, removes the v2.1.0 hooks and jobs, and the older installer puts its own
+back. The root stays at `~/.greymatter`; the old path reaches it through the link.
+
+### If you installed the Claude Code plugin
+
+The commands become `/greymatter:recall`, `/greymatter:distill`,
+`/greymatter:doctor`. What we measured with Claude Code 2.1.283:
+
+1. `claude plugin marketplace update c-brain` fetches v2.1.0 and renames the <!-- pre-rename -->
+   enabled plugin to `greymatter`, thanks to the `renames` map in the
+   marketplace manifest.
+2. The marketplace keeps the name you added it under, so the plugin is listed as
+   `greymatter@c-brain`. That is cosmetic. To get the new name there too, <!-- pre-rename -->
+   remove the marketplace and add it again.
+3. `claude plugin list` kept showing the old version until
+   `claude plugin install greymatter@c-brain` was run once. Run it. <!-- pre-rename -->
+
+The plugin's first session moves `~/.c-brain` exactly as the installer does. <!-- pre-rename -->
+
 ## ⚠️ IMPORTANT — one-time warning, before upgrading from v1.28.1 or earlier
 
-**If your current C Brain engine is a Git checkout that contains uncommitted
+**If your current GreyMatter engine is a Git checkout that contains uncommitted
 changes, commit or stash them before upgrading to v2.0.0.**
 
 The updater bundled with older releases predates the managed-engine architecture
@@ -12,7 +59,7 @@ prevent it — the older updater runs first, and it is what fetches and installs
 the new version.
 
 Reviewed after the September 2026 cleanup of comments in `install.sh` and
-`cbrain/update.sh`: those edits changed attribution only. The upgrade behavior
+`greymatter/update.sh`: those edits changed attribution only. The upgrade behavior
 and this warning remain the same.
 
 This is not a formality. `git checkout -- .` discards uncommitted changes to
@@ -26,7 +73,7 @@ checkout that are not committed, **they are not recoverable afterwards.**
 | Uncommitted changes to **tracked engine files** in your checkout — `hooks/`, `capsule/`, `planet/`, `agents/`, `tests/`, and the rest of the code | **YES** |
 | Committed work, on any branch | No — commits are not touched |
 | Untracked files, and anything in `.gitignore` (`node_modules/`, local scratch files) | No — `git checkout -- .` only touches tracked files |
-| **Your trunk — `~/.c-brain/trunk`, all of your notes** | **No.** The trunk is a separate directory with its own history. No update path has ever written to it, and none does now. |
+| **Your trunk — `~/.greymatter/trunk`, all of your notes** | **No.** The trunk is a separate directory with its own history. No update path has ever written to it, and none does now. |
 
 The risk is confined to the *code* checkout, and only to changes you have not
 committed there.
@@ -34,7 +81,7 @@ committed there.
 ### How to check, in one command
 
 ```bash
-git -C ~/.c-brain/engine status --short
+git -C ~/.greymatter/engine status --short
 ```
 
 Read the output like this:
@@ -44,7 +91,7 @@ Read the output like this:
   the changes at risk. Put them away first:
 
   ```bash
-  git -C ~/.c-brain/engine stash          # or: git -C ~/.c-brain/engine commit -a
+  git -C ~/.greymatter/engine stash          # or: git -C ~/.greymatter/engine commit -a
   ```
 
 - **`fatal: not a git repository`** — good news, and the clearest signal there is:
@@ -106,17 +153,17 @@ automatic end-of-session pass already launches them this way. See [agents/README
 ## What changes in how the engine is installed
 
 This part was written for a v1.29.0 that was never tagged; it ships in v2.0.0
-unchanged. After v2.0.0, C Brain no longer uses your checkout as the installed
+unchanged. After v2.0.0, GreyMatter no longer uses your checkout as the installed
 engine.
 
 - **Source checkouts are left untouched.** The repository you cloned is a SOURCE.
   The installer reads it to build an engine and never writes to it again. Update
   it with `git`, like any other repository — `brain update` has nothing to do
   with it and cannot move, reset or overwrite it.
-- **Installed engines live under `~/.c-brain/versions/`.** Each one is an
-  immutable export: no `.git`, no history, code only, with a `.cbrain-manifest`
+- **Installed engines live under `~/.greymatter/versions/`.** Each one is an
+  immutable export: no `.git`, no history, code only, with a `.greymatter-manifest`
   recording a checksum per file.
-- **`~/.c-brain/engine` points to the active managed version.** Switching version
+- **`~/.greymatter/engine` points to the active managed version.** Switching version
   is a single atomic symlink rename — nothing is copied over anything.
 - **Updates test a candidate before switching.** The new version is built,
   verified against its manifest, migrated and selftested *while it is still
@@ -129,12 +176,12 @@ engine.
   in the update path names the trunk.
 - **`install.sh --dry-run` is inert, and reaches the end.** Reviewed 2026-08-26,
   because this release is the one people will want to preview before running it:
-  until then the preview created `~/.c-brain` before it had read its own flag,
+  until then the preview created `~/.greymatter` before it had read its own flag,
   and then died at "Engine linked into the trunk" with no message and exit 2.
 - **The installer's closing verification tests the version it just built.** It
   used to fall back to whichever `brain` was on PATH — nothing at all on a clean
   machine, so a healthy install ended on "some hooks are broken"; the other
-  installation's engine on a machine that already had C Brain. Nothing else in
+  installation's engine on a machine that already had GreyMatter. Nothing else in
   the upgrade path changes: the warning above still applies exactly as written.
 - **Older trunks receive ranking defaults only if missing.** The installer copies
   `config/ranking.json` into an existing trunk only when it has no copy. A user
@@ -147,7 +194,7 @@ engine.
   is there too, and the installer exits 1, so a script, a CI job or an agent
   running it sees the failure (`tests/install_exit_code.sh`). That includes an
   install over another installation's agents folder: Claude Code cannot reach
-  C Brain's agents there, the verification was already red in v2.0.2 behind an
+  GreyMatter's agents there, the verification was already red in v2.0.2 behind an
   exit 0, and the closing screen no longer calls that install "working"
   (`tests/e2e_occupied_surfaces.sh`). An update that replays `install.sh` still
   treats that exit as a warning: the candidate's own selftest is what decides
@@ -158,7 +205,7 @@ engine.
   longer builds a second `…-dirty` copy of the same version: those edits are not
   in the engine, and the installer says so instead of renaming it.
 
-### If you work ON C Brain
+### If you work ON GreyMatter
 
 Run the installer once with `--dev`:
 
@@ -167,7 +214,7 @@ Run the installer once with `--dev`:
 ```
 
 This is the only mode in which the engine may be a working checkout. It links the
-engine to your checkout, records the choice in `~/.c-brain/state/engine-dev`, and
+engine to your checkout, records the choice in `~/.greymatter/state/engine-dev`, and
 `brain update` then refuses by name:
 
 ```
@@ -183,7 +230,7 @@ An update replays `install.sh`. From now on the installer refuses to unload a
 launchd Label it holds no record of owning — and an installation made before
 that record existed has none. So on the first update you will see, by name:
 
-    ! The service com.claudebrain.resume already exists, and this installation
+    ! The service com.greymatter.resume already exists, and this installation
       holds no proof that it owns it. NOTHING was changed [...]
 
 **Nothing is broken**: the jobs keep running exactly what they were running. The
@@ -219,12 +266,12 @@ If your engine is a Git checkout with uncommitted changes, commit or stash them
 BEFORE upgrading. The updater in older releases predates this architecture and
 resets tracked engine files once during the upgrade; it runs before v2.0.0
 exists on your machine, so this release cannot prevent it.
-Check with:  git -C ~/.c-brain/engine status --short
+Check with:  git -C ~/.greymatter/engine status --short
 Your notes are NOT affected: the trunk is untouched by every update path.
 Full note: docs/UPGRADING.md
 
-Installed engines are now immutable versions under ~/.c-brain/versions/, and
-~/.c-brain/engine points at the active one. Your clone is a source and is never
+Installed engines are now immutable versions under ~/.greymatter/versions/, and
+~/.greymatter/engine points at the active one. Your clone is a source and is never
 written to again. An update builds a candidate, selftests it while it is still
 inactive, and switches only if it is green. Rollback repoints the link at a
 version already known good. install.sh --dev is the one mode where the engine

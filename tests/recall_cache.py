@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """
 recall_cache.py — a stale index is worse than a slow one.
@@ -48,7 +48,7 @@ def load_recall(trunk):
 
 
 def main():
-    tmp = Path(tempfile.mkdtemp(prefix="cbrain-cache-"))
+    tmp = Path(tempfile.mkdtemp(prefix="greymatter-cache-"))
     try:
         trunk = tmp / "trunk"
         (trunk / "lessons").mkdir(parents=True)

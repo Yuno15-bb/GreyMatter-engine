@@ -15,23 +15,23 @@
      template: a real path written here would ship as-is in the public package.
 
      Install:
-       sed -e "s|__HOME__|$HOME|g" -e "s|__BRAIN__|$(python3 -c 'import os;print(os.path.realpath(os.path.expanduser("~/.c-brain/trunk")))')|g" \
-         hooks/com.claudebrain.etat.plist.template \
-         > ~/Library/LaunchAgents/com.claudebrain.etat.plist
-       launchctl load -w ~/Library/LaunchAgents/com.claudebrain.etat.plist
+       sed -e "s|__HOME__|$HOME|g" -e "s|__BRAIN__|$(python3 -c 'import os;print(os.path.realpath(os.path.expanduser("~/.greymatter/trunk")))')|g" \
+         hooks/com.greymatter.etat.plist.template \
+         > ~/Library/LaunchAgents/com.greymatter.etat.plist
+       launchctl load -w ~/Library/LaunchAgents/com.greymatter.etat.plist
      Check (the observable, not the return code):
-       launchctl kickstart -k gui/$(id -u)/com.claudebrain.etat
-       tail -5 ~/.c-brain/trunk/sessions/status.log          → the announcement must be there
-       head -8 ~/.c-brain/trunk/projects/project-status.md   → timestamp of the pass
+       launchctl kickstart -k gui/$(id -u)/com.greymatter.etat
+       tail -5 ~/.greymatter/trunk/sessions/status.log          → the announcement must be there
+       head -8 ~/.greymatter/trunk/projects/project-status.md   → timestamp of the pass
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.claudebrain.etat</string>
+    <string>com.greymatter.etat</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>__HOME__/.c-brain/trunk/hooks/etat_projets.py</string>
+        <string>__HOME__/.greymatter/trunk/hooks/etat_projets.py</string>
         <string>--notify</string>
     </array>
     <key>EnvironmentVariables</key>
@@ -43,7 +43,7 @@
              never the Brain to measure: measured on 2026-08-20 on 18 session hooks,
              all invoked by absolute path, none anchored anything.
              `__BRAIN__` is rendered as the CANONICAL root (realpath) at install time,
-             not as `__HOME__/.c-brain/trunk`: the ~/.claude/projects/…/memory symlink
+             not as `__HOME__/.greymatter/trunk`: the ~/.claude/projects/…/memory symlink
              gives two paths for a single tree. -->
         <key>BRAIN_HOME</key>
         <string>__BRAIN__</string>
@@ -69,8 +69,8 @@
     <key>ProcessType</key>
     <string>Background</string>
     <key>StandardOutPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/status.log</string>
+    <string>__HOME__/.greymatter/trunk/sessions/status.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/status.log</string>
+    <string>__HOME__/.greymatter/trunk/sessions/status.log</string>
 </dict>
 </plist>

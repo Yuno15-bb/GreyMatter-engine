@@ -29,7 +29,7 @@ def _transcripts_key() -> str:
     return os.path.expanduser("~").replace("/", "-").replace(".", "-")
 
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 STATE = os.path.join(BRAIN, "state")
 TDIR = os.path.join(os.path.expanduser("~/.claude/projects"), _transcripts_key())   # couche brute (transcripts)
 DISTILLED = os.path.join(BRAIN, "sessions", ".distilled.json")

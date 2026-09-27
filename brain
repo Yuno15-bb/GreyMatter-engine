@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# brain — the single entry point of C Brain.
+# brain — the single entry point of GreyMatter.
 # Usage : brain <status|doctor|audit|push|metrics|selftest|backup>
 set -euo pipefail
 
@@ -12,7 +12,7 @@ set -euo pipefail
 # mixture of the two. A selftest aimed at a candidate version would go green
 # having tested the active one.
 #
-# `$0` may be a symlink (`~/.local/bin/brain` → `~/.c-brain/engine/brain`, itself
+# `$0` may be a symlink (`~/.local/bin/brain` → `~/.greymatter/engine/brain`, itself
 # a symlink into `versions/`), so it is followed to the end before taking the
 # directory. The trunk stays the working directory: it is the DATA.
 src="$0"
@@ -24,7 +24,7 @@ done
 SELF="$(cd -P "$(dirname "$src")" && pwd)"
 export SELF          # one inline python block reads it from the environment
 
-BRAIN="$HOME/.c-brain/trunk"
+BRAIN="$HOME/.greymatter/trunk"
 cd "$BRAIN"
 
 cmd="${1:-status}"
@@ -131,12 +131,12 @@ if b and time.time() < b:
     ;;
   update)
     # Updates the ENGINE only. The trunk — your notes — is never touched.
-    bash "$SELF"/cbrain/update.sh "${@:2}"
+    bash "$SELF"/greymatter/update.sh "${@:2}"
     ;;
   demo)
     # Three example notes, placed and taken away on demand. An empty trunk on
     # first launch shows nothing of what the tool can do.
-    bash "$SELF"/cbrain/demo.sh "${@:2}"
+    bash "$SELF"/greymatter/demo.sh "${@:2}"
     ;;
   capsule)
     # The only verb that puts a WINDOW on screen. It existed nowhere: the
@@ -146,10 +146,10 @@ if b and time.time() < b:
     # entry B3: a CLI verb rather than a second Desktop bundle, because the
     # capsule's reader is already in a terminal, and because install.sh's own
     # note says the capsule's future is not more Electron plumbing.
-    bash "$SELF"/cbrain/capsule.sh "${@:2}"
+    bash "$SELF"/greymatter/capsule.sh "${@:2}"
     ;;
   version)
-    cat "$HOME/.c-brain/VERSION" 2>/dev/null || echo "(unknown version)"
+    cat "$HOME/.greymatter/VERSION" 2>/dev/null || echo "(unknown version)"
     ;;
   *)
     echo "Usage: brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|capsule|version>"

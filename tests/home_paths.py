@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # Each allowed root has a product or migration reason. Narrower checks for
 # Desktop and the Finder shortcut follow below.
 ALLOWED = {
-    ".c-brain": "product engine, trunk, state, and runtime",
-    ".c-brain-a1": "isolated work directory for the A1 test",
+    ".greymatter": "product engine, trunk, state, and runtime",
+    ".greymatter-a1": "isolated work directory for the A1 test",
     ".claude": "Claude Code integration and test surfaces",
     ".claude.json": "Claude Code's own installation metadata",
     ".local": "user-level command installation",
@@ -20,7 +20,9 @@ ALLOWED = {
     "claude-brain": "legacy trunk migration and maintainer source",
     "other-trunk": "temporary occupied-surface test fixture",
     "Desktop": "product launcher and generic import examples",
-    "C": "Finder shortcut named C Brain",
+    "GreyMatter": "Finder shortcut to the trunk",
+    ".c-brain": "root before v2.1.0, kept as a compatibility link",  # pre-rename
+    "C": "Finder shortcut before v2.1.0, removed by install.sh",  # pre-rename
 }
 PATH = re.compile(r'(?:~|\$HOME|\$\{HOME\})/([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)'
                   r'|os\.path\.join\(HOME,\s*["\']([^"\']+)')
@@ -28,15 +30,18 @@ EXTENSIONS = {".py", ".sh", ".js", ".cjs", ".html", ".json", ".yml", ".yaml", ".
 
 
 def allowed(value, line):
-    root = value.split("/", 1)[0]
+    root = value.split("/", 1)[0].rstrip(".")   # a path that ends a sentence
     if root not in ALLOWED:
         return False
     if root == "Desktop":
-        return (value == "Desktop" or value.startswith("Desktop/Planete-C-Brain.command")
+        return (value == "Desktop" or value.startswith("Desktop/Planete-C-Brain.command")   # pre-rename launcher
                 or value.startswith("Desktop/chatgpt-export.zip")
-                or (value == "Desktop/C" and "Desktop/C Brain Planet.app" in line))
+                or (value == "Desktop/GreyMatter" and "GreyMatter Planet.app" in line)
+                or (value == "Desktop/C" and "C Brain Planet.app" in line))   # pre-rename
+    if root == "GreyMatter":
+        return value == "GreyMatter"
     if root == "C":
-        return "C Brain" in line
+        return "C Brain" in line   # pre-rename
     return True
 
 

@@ -2,7 +2,7 @@
 # closing_verdict — the last screen of install.sh must say what actually happened.
 #
 # WHY THIS BENCH EXISTS
-# The installer used to end on `echo "✅ C Brain installed."`, unconditionally. On a
+# The installer used to end on `echo "✅ GreyMatter installed."`, unconditionally. On a
 # fresh macOS where ~/.local/bin is not on PATH, that line arrived right after a red
 # "hooks broken", and was followed by four commands starting with `brain` — none of
 # which resolve. The PATH warning was three hundred lines earlier and had scrolled
@@ -51,7 +51,7 @@ case "$a" in
   *) ko "bare PATH — the closing screen never mentions PATH" ;;
 esac
 case "$a" in
-  *"✅ C Brain installed."*) ko "bare PATH — it still claims a clean install" ;;
+  *"✅ GreyMatter installed."*) ko "bare PATH — it still claims a clean install" ;;
   *) ok "bare PATH — it does not claim a clean install" ;;
 esac
 case "$a" in
@@ -62,7 +62,7 @@ esac
 # ─── B. control: with the directory on PATH, nothing must be dramatised ───
 b="$(closing_screen "$HERE/install.sh" 1)"
 case "$b" in
-  *"✅ C Brain installed."*) ok "PATH present — the closing screen is plain success" ;;
+  *"✅ GreyMatter installed."*) ok "PATH present — the closing screen is plain success" ;;
   *) ko "PATH present — success is no longer announced" ;;
 esac
 case "$b" in

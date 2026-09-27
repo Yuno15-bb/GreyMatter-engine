@@ -394,10 +394,10 @@ const THREE    = await import('./orbe/vendor/three.module.js');
 const { creerOrbe } = await import('./orbe/orbe.js');
 const { reglage }   = await import('./orbe/palettes.js');
 
-const STATUT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
+const STATUT = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'status.json');
 // The canonical windows, same file as main.js and brain_status.py. Read on each poll
 // rather than cached: the orb runs for days, and a value edited in between should take.
-const FRAICHEUR = path.join(os.homedir(), '.c-brain', 'trunk', 'hooks', 'status_freshness.json');
+const FRAICHEUR = path.join(os.homedir(), '.greymatter', 'trunk', 'hooks', 'status_freshness.json');
 function fenetresFraicheur() {
   try {
     const j = JSON.parse(fs.readFileSync(FRAICHEUR, 'utf8'));
@@ -632,7 +632,7 @@ let fluxFichier = null, fluxTaille = 0, lignes = [], dernierFichier = null;
    when one looks, exactly the defect already fixed on the pad.
    ⚠ Everything is cached, failures included: resolution opens folders,
      and `lire()` runs every 700 ms. */
-const TRONC = path.join(os.homedir(), '.c-brain', 'trunk');
+const TRONC = path.join(os.homedir(), '.greymatter', 'trunk');
 const RACINES = ['lessons', 'meta', 'life', 'projects', 'agents', 'sessions'];
 const cacheTitre = {};
 
@@ -737,7 +737,7 @@ function lignesAgent(etat) {
   if (!rel) return [];
   if (cacheAgent[rel]) return cacheAgent[rel];
   try {
-    const brut = fs.readFileSync(path.join(os.homedir(), '.c-brain', 'trunk', rel), 'utf8');
+    const brut = fs.readFileSync(path.join(os.homedir(), '.greymatter', 'trunk', rel), 'utf8');
     return cacheAgent[rel] = brut.split('\n')
       .map(l => l.replace(/\t/g, '  ').trim())
       // ⚠ Agent files are Markdown: without this filter, one slot in
@@ -1030,7 +1030,7 @@ lire();
    minute would cost without teaching anything. 20 s is enough, plus a call at
    launch so the badge is right from the first frame. */
 const RESTANT_EL = document.getElementById('restant');
-const A_CLASSER = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'a-classer.md');
+const A_CLASSER = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'a-classer.md');
 
 function compterEnAttente() {
   let t;
@@ -1046,7 +1046,7 @@ function compterEnAttente() {
    also lets the batch survive a restart of the orb (otherwise "3/4" would
    fall back to "1/2" at the next start, and the progress would lie).
    The batch closes on its own when the Inbox empties. */
-const LOT = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'orbe-lot.json');
+const LOT = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'orbe-lot.json');
 
 function lireLot() {
   try { return JSON.parse(fs.readFileSync(LOT, 'utf8')).total | 0; } catch (e) { return 0; }

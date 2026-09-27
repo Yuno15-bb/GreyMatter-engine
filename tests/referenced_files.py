@@ -16,7 +16,7 @@ COMMAND = re.compile(r'\b(?:python3?|bash|node)\b')
 
 def inputs(selftest):
     paths = [selftest, ROOT / "brain", ROOT / "install.sh", ROOT / "hooks/hooks.json"]
-    paths.extend((ROOT / "cbrain").glob("*.sh"))
+    paths.extend((ROOT / "greymatter").glob("*.sh"))
     paths.extend((ROOT / ".github/workflows").glob("*.yml"))
     return paths
 
@@ -39,7 +39,7 @@ def script_paths(path):
         rest = re.split(r'&&|\|\||;', line[command.end():], maxsplit=1)[0]
         for match in SCRIPT.finditer(rest):
             name = PREFIX.sub("", match.group())
-            if name.startswith(("tests/", "hooks/", "cbrain/", "companion/", "capsule/", "planet/")) or "/" not in name:
+            if name.startswith(("tests/", "hooks/", "greymatter/", "companion/", "capsule/", "planet/")) or "/" not in name:
                 yield number, name
 
 

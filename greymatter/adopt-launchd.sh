@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # adopt-launchd.sh — take responsibility for a launchd job installed before
-# C Brain kept a record of what it owns.
+# GreyMatter kept a record of what it owns.
 #
 # WHAT THIS IS NOT. It is not a discovery of ownership. launchd records no
 # provenance: it knows which program runs, never who called `load`. Nothing
@@ -29,12 +29,12 @@
 # adoption would be a mutation performed to justify the right to mutate. The
 # record is written; the next ordinary operation is then allowed by the guard.
 #
-# Usage: bash cbrain/adopt-launchd.sh <label>
+# Usage: bash greymatter/adopt-launchd.sh <label>
 # Exit:  0 adopted · 1 declined by the user · 2 usage · 3 refused, proof missing
 set -euo pipefail
 
 SELF="$(cd "$(dirname "$0")" && pwd -P)"
-CB="${CB:-$HOME/.c-brain}"
+GM="${GM:-$HOME/.greymatter}"
 . "$SELF/launchd-lib.sh"
 
 LABEL="${1:-}"
@@ -51,10 +51,10 @@ refuse() {
 }
 
 # ─── the job this installation would ship under that name ────────────────────
-suffix="${LABEL#com.claudebrain.}"
+suffix="${LABEL#com.greymatter.}"
 [ "$suffix" != "$LABEL" ] || refuse "$LABEL is not a name this installation uses"
-TPL="$SELF/../hooks/com.claudebrain.$suffix.plist.template"
-# The com.claudebrain.* prefix earns NOTHING on its own. Without a template of
+TPL="$SELF/../hooks/com.greymatter.$suffix.plist.template"
+# The com.greymatter.* prefix earns NOTHING on its own. Without a template of
 # that name, this installation has no job to compare against and no business
 # claiming the identity.
 [ -f "$TPL" ] || refuse "this installation ships no job called $LABEL"
@@ -110,7 +110,7 @@ if ! diff -q <(python3 "$NORM" < "$PLIST") \
   printf '  The live service matches this installation, but its launchd file does\n' >&2
   printf '  not match the template this installation currently recognises. It may\n' >&2
   printf '  come from an earlier version. Automatic adoption is refused.\n\n' >&2
-  printf '  What differs (normal form, cbrain/plist_normalise.py):\n' >&2
+  printf '  What differs (normal form, greymatter/plist_normalise.py):\n' >&2
   diff <(python3 "$NORM" < "$PLIST") \
        <(printf '%s\n' "$RENDERED" | python3 "$NORM") 2>/dev/null \
     | head -20 | sed 's|^|    |' >&2 || :
@@ -129,15 +129,15 @@ TXT
   exit 3
 fi
 echo "  ── plist ................ $PLIST"
-echo "  ── template match ....... equivalent under cbrain/plist_normalise.py"
-echo "  ── adopting installation. $CB  (HOME=$HOME)"
+echo "  ── template match ....... equivalent under greymatter/plist_normalise.py"
+echo "  ── adopting installation. $GM  (HOME=$HOME)"
 
 # ─── THE HUMAN HALF ──────────────────────────────────────────────────────────
 cat <<'TXT'
 
   These two facts say that the live service and its plist match THIS
   installation TODAY. They do not say who loaded the job. Adopting it is your
-  decision, and from now on C Brain will treat the identity as its own.
+  decision, and from now on GreyMatter will treat the identity as its own.
 
 TXT
 printf "  Adopt %s? [y/N] " "$LABEL"
@@ -152,8 +152,8 @@ esac
 # state/launchd-owned keeps ONE Label per line — the format the ownership guard
 # reads, unchanged, so what A6.2 proved about it still holds. The provenance of
 # an adoption goes to a log beside it: an audit trail is not an authority.
-cb_launchd_remember "$LABEL"
-AUDIT="$CB/state/launchd-adoptions.log"
+gm_launchd_remember "$LABEL"
+AUDIT="$GM/state/launchd-adoptions.log"
 mkdir -p "$(dirname "$AUDIT")"
 printf '%s\tadopted\t%s\tprogram=%s\tplist=%s\thome=%s\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$LABEL" "$PROGRAM" "$PLIST" "$HOME" >> "$AUDIT"

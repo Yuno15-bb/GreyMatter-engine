@@ -65,7 +65,7 @@ import subprocess
 import sys
 import time
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 
 TTL = 300.0          # seconds — justified in the docstring, NOT a theft threshold
 SONDAGE = 0.05       # polling step when a caller agrees to wait

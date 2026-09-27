@@ -1,13 +1,16 @@
 {
-  "name": "c-brain",
+  "name": "greymatter",
   "description": "GreyMatter — a persistent, growing knowledge trunk for command-line agents.",
   "owner": {
     "name": "GreyMatter",
     "url": "https://github.com/Yuno15-bb"
   },
+  "renames": {
+    "c-brain": "greymatter"
+  },
   "plugins": [
     {
-      "name": "c-brain",
+      "name": "greymatter",
       "source": "./",
       "description": "A memory that grows. What you work out once is distilled into a note, filed, linked, and handed back when you ask for it — from any project. Your notes stay on your machine and nothing is sent anywhere."
     }

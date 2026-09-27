@@ -24,7 +24,7 @@ THE RULE. No engine redefines this list. It imports it.
 import glob
 import os
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 
 # Excluded from the corpus: the RAW and infrastructure layers. Recall must surface
 # DISTILLED knowledge (projects/lessons/meta/life), not agent catalogues, state, or
@@ -55,7 +55,7 @@ SKIP_DIRS = {
     #     sense if it keeps competing with the present in search. Kept on disk and in
     #     git, kept out of recall.
     "archive",
-    # `vision/` = SOURCE documents about vision and continuity (the C Brain/GMatter
+    # `vision/` = SOURCE documents about vision and continuity (the GreyMatter/GMatter
     # MASTER, 2026-08-19). They are not knowledge notes: they are long narratives
     # that explain WHY the system exists. A single one of them weighs more than 20
     # notes and touches the project's whole vocabulary — indexed, it would surface on

@@ -46,7 +46,7 @@ try:
 except Exception:
     guard = None
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 HOOKS = os.path.dirname(os.path.abspath(__file__))
 STATE = os.path.join(BRAIN, "state")
 CADENCE = os.path.join(STATE, "upkeep.json")   # memory of the last wake-ups

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """
 a1_pixel_lib.py — the MEASUREMENTS behind A1, and nothing else.
@@ -242,11 +242,11 @@ def judge_engine_path(real, home):
     Fabricating one to make a check green would be the exact move this harness
     exists to refuse.
     """
-    versions = os.path.join(home, ".c-brain", "versions") + os.sep
+    versions = os.path.join(home, ".greymatter", "versions") + os.sep
     if "/claude-brain" in real:
         return False, "the engine resolves into ~/claude-brain — the author's layout"
     if not (real.rstrip(os.sep) + os.sep).startswith(versions):
-        return False, ("the engine is %s, which is NOT under ~/.c-brain/versions/. A1 "
+        return False, ("the engine is %s, which is NOT under ~/.greymatter/versions/. A1 "
                        "certifies the capsule of an INSTALLED engine" % real)
     return True, "the engine is an installed version: %s" % os.path.basename(real.rstrip(os.sep))
 
@@ -659,21 +659,21 @@ def _sab_engine_outside():
 
 @sabotage("4", "a capsule killed by the single-instance lock is not a launch")
 def _sab_launch_silent_death():
-    ok, why = judge_launch(None, "/Users/x/.c-brain/versions/abc/capsule")
+    ok, why = judge_launch(None, "/Users/x/.greymatter/versions/abc/capsule")
     return (not ok and "single-instance lock" in why), why
 
 
 @sabotage("4", "a probe from another capsule is not this capsule")
 def _sab_launch_wrong_reporter():
     probe = {"engine_dir": "/Users/x/claude-brain/capsule"}
-    ok, why = judge_launch(probe, "/Users/x/.c-brain/versions/abc/capsule")
+    ok, why = judge_launch(probe, "/Users/x/.greymatter/versions/abc/capsule")
     return (not ok and "not from the capsule under test" in why), why
 
 
 @sabotage("5", "driving a state file the capsule does not read is caught")
 def _sab_drive_wrong_home():
-    ok, why = judge_drive("/Users/them/.c-brain/trunk/state/status.json",
-                          "/Users/us/.c-brain/trunk/state/status.json",
+    ok, why = judge_drive("/Users/them/.greymatter/trunk/state/status.json",
+                          "/Users/us/.greymatter/trunk/state/status.json",
                           {"state": "busy", "ts": time.time()}, 30, time.time())
     return (not ok and any("would never see" in b for b in why)), "; ".join(why)
 
@@ -689,8 +689,8 @@ def _sab_drive_stale():
 def _sab_dom_constant():
     same = {"renderer_ready": "complete", "state_text": "DISTILLING...",
             "state_visible": True, "detail_text": "a1", "window_visible": True,
-            "engine_dir": "/Users/x/.c-brain/versions/abc/capsule"}
-    ok, why = judge_dom(same, dict(same), "/.c-brain/versions/")
+            "engine_dir": "/Users/x/.greymatter/versions/abc/capsule"}
+    ok, why = judge_dom(same, dict(same), "/.greymatter/versions/")
     return (not ok and any("constant" in b for b in why)), "; ".join(why)
 
 
@@ -698,10 +698,10 @@ def _sab_dom_constant():
 def _sab_dom_hidden():
     busy = {"renderer_ready": "complete", "state_text": "DISTILLING...",
             "state_visible": True, "detail_text": "a1", "window_visible": False,
-            "engine_dir": "/Users/x/.c-brain/versions/abc/capsule"}
+            "engine_dir": "/Users/x/.greymatter/versions/abc/capsule"}
     idle = {"renderer_ready": "complete", "state_text": "", "state_visible": False,
             "detail_visible": False, "window_visible": False, "engine_dir": busy["engine_dir"]}
-    ok, why = judge_dom(busy, idle, "/.c-brain/versions/")
+    ok, why = judge_dom(busy, idle, "/.greymatter/versions/")
     return (not ok and any("not visible to the system" in b for b in why)), "; ".join(why)
 
 
@@ -712,7 +712,7 @@ def _sab_dom_wrong_engine():
             "engine_dir": "/Users/x/claude-brain/capsule"}
     idle = {"renderer_ready": "complete", "state_text": "", "state_visible": False,
             "detail_visible": False, "window_visible": True, "engine_dir": busy["engine_dir"]}
-    ok, why = judge_dom(busy, idle, "/.c-brain/versions/")
+    ok, why = judge_dom(busy, idle, "/.greymatter/versions/")
     return (not ok and any("not under" in b for b in why)), "; ".join(why)
 
 
@@ -803,7 +803,7 @@ def positive(step, name):
 _GOOD_BUSY = {"renderer_ready": "complete", "state_text": "DISTILLING...",
               "state_visible": True, "detail_text": "a1 capsule pixel proof",
               "detail_visible": True, "window_visible": True,
-              "engine_dir": "/Users/x/.c-brain/versions/abc123/capsule"}
+              "engine_dir": "/Users/x/.greymatter/versions/abc123/capsule"}
 # ⚠ This is the REAL idle payload of the 2026-08-17 run, not an invented one.
 # It used to be a fiction — empty texts and window_visible True — and the fiction
 # was what let the idle half be written against the product's internals instead
@@ -843,7 +843,7 @@ def _pos_rect():
 
 @positive("3", "an installed version IS accepted — the judge is not a constant no")
 def _pos_engine():
-    return judge_engine_path("/Users/x/.c-brain/versions/7bb6e9f", "/Users/x")
+    return judge_engine_path("/Users/x/.greymatter/versions/7bb6e9f", "/Users/x")
 
 
 @positive("4", "the capsule under test reporting is accepted")
@@ -860,7 +860,7 @@ def _pos_drive():
 
 @positive("6", "a renderer reporting both states correctly is accepted")
 def _pos_dom():
-    ok, why = judge_dom(_GOOD_BUSY, _GOOD_IDLE, "/.c-brain/versions/")
+    ok, why = judge_dom(_GOOD_BUSY, _GOOD_IDLE, "/.greymatter/versions/")
     return ok, "; ".join(why)
 
 
@@ -944,7 +944,7 @@ def _emit(**kw):
 
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else ""
-    work = os.environ.get("A1_WORK", os.path.expanduser("~/.c-brain-a1"))
+    work = os.environ.get("A1_WORK", os.path.expanduser("~/.greymatter-a1"))
     os.makedirs(work, exist_ok=True)
 
     if cmd == "screen-points":

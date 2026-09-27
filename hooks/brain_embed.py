@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """brain_embed — local embeddings backend (the "true semantic" upgrade).
 
-Tourne dans le venv ~/.c-brain/trunk/.venv (model2vec + numpy, SANS PyTorch).
+Tourne dans le venv ~/.greymatter/trunk/.venv (model2vec + numpy, SANS PyTorch).
 STATIC embeddings: ~30 MB model, instant encoding (0.001 s), no API, fully offline.
 
 INCREMENTAL on-disk index (state/embeddings.npz + .json): only the modified notes

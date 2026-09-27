@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # fresh_mac_path.sh — a Mac that has only what Apple ships.
@@ -116,9 +116,9 @@ echo "▸ after a first session"
 # Every session regenerates the planet's graph (track_read after a read, the
 # session-end maintenance). The selftest reads that file, so its verdict before
 # the first session proves nothing about the days after.
-fresh python3 "$H/.c-brain/trunk/hooks/graph_export.py" >/dev/null 2>&1
+fresh python3 "$H/.greymatter/trunk/hooks/graph_export.py" >/dev/null 2>&1
 fresh python3 -c 'import json,sys; g=json.load(open(sys.argv[1])); sys.exit(0 if "head" in g else 1)' \
-  "$H/.c-brain/trunk/planet/graph.json"
+  "$H/.greymatter/trunk/planet/graph.json"
 check $? "the planet's graph exists and names the HEAD it describes"
 ST="$(fresh brain selftest 2>&1)"; rc=$?
 check "$rc" "brain selftest is still green once the graph exists" \
@@ -127,7 +127,7 @@ check "$rc" "brain selftest is still green once the graph exists" \
 echo "▸ while the maintenance is running"
 # What the session-end maintenance does, reduced to the part that matters here:
 # it holds the lock, and its heartbeat rewrites status.json until it is done.
-T="$H/.c-brain/trunk"
+T="$H/.greymatter/trunk"
 fresh python3 "$T/hooks/brain_status.py" idle >/dev/null 2>&1
 : > "$T/state/maintenance.lock"
 ( while [ -e "$T/state/maintenance.lock" ]; do

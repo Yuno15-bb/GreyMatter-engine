@@ -40,7 +40,7 @@ try:
 except Exception:
     guard = None
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 MEMORY = os.path.join(BRAIN, "MEMORY.md")
 SESS = os.path.join(BRAIN, "sessions")
 INDEX = os.path.join(SESS, ".index.json")          # written by archive_session.py
@@ -51,7 +51,7 @@ A_CLASSER = os.path.join(BRAIN, "state", "a-classer.md")   # notes not yet in th
 #   and the nuance is not theoretical: measured on 2026-09-20, `~/.claude/projects/` held
 #   EIGHT folders, and the one this line builds held only 155 transcripts out of 733.
 #   "$HOME with / -> -" is true as long as the author opens their sessions from their home
-#   folder, and false the day they open one from ~/.c-brain/trunk. NEVER hard-code the
+#   folder, and false the day they open one from ~/.greymatter/trunk. NEVER hard-code the
 #   user name either (cf. a machine restore, July 2026). This path stays the FIRST
 #   place to look, because it answers the common case without listing anything;
 #   `transcript_for` takes over when it does not answer.
@@ -140,8 +140,8 @@ def manual_saves_for(sid):
 # blocked its own replacement at every session start — silently, since writing
 # the status still worked perfectly.
 # ⚠️ ANCHORED ON BRAIN — fixed on 2026-09-20 (C bis, C3). This pattern used to be a path
-#   fragment WRITTEN IN HARD ("c-brain/trunk/capsule/…"), so right in one tree only: it
-#   aims at the INSTALLED trunk (~/.c-brain/trunk) and matches no other checkout — there,
+#   fragment WRITTEN IN HARD ("greymatter/trunk/capsule/…"), so right in one tree only: it
+#   aims at the INSTALLED trunk (~/.greymatter/trunk) and matches no other checkout — there,
 #   pgrep returns nothing on a capsule that is very much alive, we conclude "nothing is
 #   running" and start another one on top. Calibrated on 2026-09-20 IN BOTH DIRECTIONS
 #   (cf. pkill-motif-approximatif-mesure-une-instance-perimee): 4 pids when THIS trunk's
@@ -257,7 +257,7 @@ def session_msg_count(sid, transcript_path=None):
 
     C7 (2026-08-19): this counter rebuilt the path from expanduser("~") and ignored the
     `transcript_path` Claude Code provides in the hook's payload. A session opened from
-    ANOTHER folder — typically ~/.c-brain/trunk itself — then fell back to 0, so under
+    ANOTHER folder — typically ~/.greymatter/trunk itself — then fell back to 0, so under
     MIN_MSG, so never distilled, silently. Retrospective sweep: 87 sessions of 20 to 221
     messages lost that way.
 
@@ -570,7 +570,7 @@ def main():
     # The queue itself keeps filling up (capture-only): nothing is lost,
     # everything will be distilled after the switch-over.
     #
-    # To lift the freeze: delete ~/.c-brain/trunk/state/FREEZE
+    # To lift the freeze: delete ~/.greymatter/trunk/state/FREEZE
     freeze = os.path.join(BRAIN, "state", "FREEZE")
     if os.path.exists(freeze):
         try:

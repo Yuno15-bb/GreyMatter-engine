@@ -15,7 +15,7 @@ was refused for ever, while a developer's clean checkout parked on a tag was
 adopted as though the installer had put it there.
 
 There is nothing left to infer. `install.sh` BUILDS the engine under
-`~/.c-brain/versions/`, and ownership is the fact that it did — recorded in
+`~/.greymatter/versions/`, and ownership is the fact that it did — recorded in
 `state/engine-managed`, which names the versions root. A development engine says
 so in `state/engine-dev`, written only by `install.sh --dev`. The two are
 mutually exclusive and neither can be mistaken for the other.
@@ -70,13 +70,13 @@ def build_remote(path):
     git(path, "init", "-q", "-b", "main")
     subprocess.run(["git", "-C", path, "config", "user.email", "t@t"], check=True)
     subprocess.run(["git", "-C", path, "config", "user.name", "t"], check=True)
-    os.makedirs(os.path.join(path, "cbrain"))
+    os.makedirs(os.path.join(path, "greymatter"))
     os.makedirs(os.path.join(path, "hooks"))
-    shutil.copy(os.path.join(ROOT, "cbrain", "update.sh"),
-                os.path.join(path, "cbrain", "update.sh"))
-    shutil.copy(os.path.join(ROOT, "cbrain", "engine-lib.sh"),
-                os.path.join(path, "cbrain", "engine-lib.sh"))
-    with open(os.path.join(path, "cbrain", "engine-paths.txt"), "w") as f:
+    shutil.copy(os.path.join(ROOT, "greymatter", "update.sh"),
+                os.path.join(path, "greymatter", "update.sh"))
+    shutil.copy(os.path.join(ROOT, "greymatter", "engine-lib.sh"),
+                os.path.join(path, "greymatter", "engine-lib.sh"))
+    with open(os.path.join(path, "greymatter", "engine-paths.txt"), "w") as f:
         f.write("hooks\n")
     # A selftest that passes, and an installer that does nothing: this contract is
     # about the GATE, and a real install would drown it in unrelated work.
@@ -101,13 +101,13 @@ def manifest_of(d):
     lines = []
     for root, _dirs, files in os.walk(d):
         for fn in sorted(files):
-            if fn == ".cbrain-manifest":
+            if fn == ".greymatter-manifest":
                 continue
             full = os.path.join(root, fn)
             rel = "./" + os.path.relpath(full, d)
             with open(full, "rb") as f:
                 lines.append("%s  %s" % (hashlib.sha256(f.read()).hexdigest(), rel))
-    with open(os.path.join(d, ".cbrain-manifest"), "w") as f:
+    with open(os.path.join(d, ".greymatter-manifest"), "w") as f:
         f.write("\n".join(sorted(lines, key=lambda l: l.split("  ", 1)[1])) + "\n")
 
 
@@ -115,7 +115,7 @@ def make_install(home, remote, version="v1.0.0"):
     """An installation in the shape install.sh leaves behind — built, not faked
     in its SHAPE: the version really is an export of the remote at that tag, with
     a real manifest, so the immutability check has something true to check."""
-    cb = os.path.join(home, ".c-brain")
+    cb = os.path.join(home, ".greymatter")
     versions = os.path.join(cb, "versions")
     os.makedirs(os.path.join(cb, "state"), exist_ok=True)
     os.makedirs(versions, exist_ok=True)
@@ -132,15 +132,15 @@ def make_install(home, remote, version="v1.0.0"):
 
 
 def run_update(home, args=()):
-    engine = os.path.join(home, ".c-brain", "engine")
+    engine = os.path.join(home, ".greymatter", "engine")
     env = dict(os.environ, HOME=home)
     return subprocess.run(
-        ["bash", os.path.join(engine, "cbrain", "update.sh")] + list(args),
+        ["bash", os.path.join(engine, "greymatter", "update.sh")] + list(args),
         capture_output=True, text=True, env=env)
 
 
 def engine_target(home):
-    link = os.path.join(home, ".c-brain", "engine")
+    link = os.path.join(home, ".greymatter", "engine")
     try:
         return os.path.realpath(link) if os.path.exists(link) else "<dangling>"
     except OSError:
@@ -153,7 +153,7 @@ def case(name, setup, expect_update, extra=None):
     # and update.sh resolves the engine with `pwd -P`. A fixture that recorded the
     # unresolved path made a legitimate install look like somebody else's
     # directory — the same trap the installer canonicalises against.
-    tmp = os.path.realpath(tempfile.mkdtemp(prefix="cbrain-own."))
+    tmp = os.path.realpath(tempfile.mkdtemp(prefix="greymatter-own."))
     try:
         remote = os.path.join(tmp, "remote")
         build_remote(remote)

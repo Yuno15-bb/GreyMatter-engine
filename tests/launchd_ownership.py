@@ -17,7 +17,7 @@ per-user domain (gui/<uid>), not by $HOME and not by the path of the plist, so
 INSIDE that file — including a job another installation loaded from a different
 directory. The plists on the author's disk never changed: the substitution was
 invisible to ls, cat and shasum, and visible only through the live registry.
-About 28 hours of the author's `com.claudebrain.resume` and `.machiniste` ran
+About 28 hours of the author's `com.greymatter.resume` and `.machiniste` ran
 somebody else's code, and nothing said so.
 
 THE MECHANISM IS STILL IN THE PRODUCT: install.sh unloads unconditionally, and
@@ -55,7 +55,7 @@ for _i, _a in enumerate(sys.argv):
 
 # The name this contract nominates for the guard. It does not exist yet; naming
 # it is what makes the check falsifiable rather than a matter of taste.
-GUARD = "cb_launchd_owned"
+GUARD = "gm_launchd_owned"
 
 # Verbs that take an identity AWAY from whoever currently holds it. These are
 # the ones that require proof of ownership.
@@ -76,7 +76,7 @@ OWNERSHIP_FACTS = ("launchd-owned", "engine-managed", "MANIFEST", "manifest.txt"
 EXISTENCE_ONLY = re.compile(r"^\s*(\[\[?|test)\s+-[efLrsd]\s")
 
 SHELL_SOURCES = ["install.sh", "uninstall.sh", "sync.sh", "publish.sh",
-                 "cbrain/launchd-lib.sh"]
+                 "greymatter/launchd-lib.sh"]
 
 fails = []
 calibration_fails = []
@@ -139,8 +139,8 @@ def _refuses_before(lines, target_line):
     """A guard that BAILS OUT before the mutation, not one that is merely named.
 
     Two legitimate early-exit shapes the block reader cannot see on its own:
-        cb_launchd_owned "$l" || { refuse; return 3; }
-        if ! cb_launchd_owned "$l"; then ...; return 3; fi
+        gm_launchd_owned "$l" || { refuse; return 3; }
+        if ! gm_launchd_owned "$l"; then ...; return 3; fi
     In both, the guard CONTROLS a branch whose body leaves. Mentioning the guard
     and carrying on is not a guard, and a fixture below pins that down.
     """
@@ -236,14 +236,14 @@ def guard_is_real(body, whole_file=""):
 FIXTURES = [
     ("bare unload", True, '''
 for t in resume machiniste; do
-  out="$HOME/Library/LaunchAgents/com.claudebrain.$t.plist"
+  out="$HOME/Library/LaunchAgents/com.greymatter.$t.plist"
   launchctl unload "$out" 2>/dev/null || true
   launchctl load "$out"
 done
 '''),
     ("guard placed AFTER the unload", True, '''
 launchctl unload "$out" 2>/dev/null || true
-if cb_launchd_owned "$label"; then
+if gm_launchd_owned "$label"; then
   :
 fi
 '''),
@@ -253,29 +253,29 @@ if [ -f "$out" ]; then
 fi
 '''),
     ("a second mutation path, unguarded", True, '''
-if cb_launchd_owned "$label"; then
+if gm_launchd_owned "$label"; then
   launchctl unload "$out"
 fi
-launchctl bootout "gui/$(id -u)/com.claudebrain.machiniste"
+launchctl bootout "gui/$(id -u)/com.greymatter.machiniste"
 '''),
     ("guard mentioned but nothing bails out", True, '''
-cb_launchd_owned "$label"
+gm_launchd_owned "$label"
 launchctl unload "$out"
 '''),
     ("early-return guard", False, '''
-cb_launchd_install() {
-  if ! cb_launchd_owned "$label"; then
-    cb_launchd_refuse "$label"
+gm_launchd_install() {
+  if ! gm_launchd_owned "$label"; then
+    gm_launchd_refuse "$label"
     return 3
   fi
   launchctl unload "$plist"
 }
 '''),
     ("guard on the same line", False, '''
-cb_launchd_owned "$label" && launchctl unload "$out"
+gm_launchd_owned "$label" && launchctl unload "$out"
 '''),
     ("guard enclosing the mutation", False, '''
-if cb_launchd_owned "$label"; then
+if gm_launchd_owned "$label"; then
   launchctl unload "$out"
   launchctl load "$out"
 fi
@@ -290,18 +290,18 @@ note file "$out"
 
 GUARD_FIXTURES = [
     ("guard reading the ownership record", True, '''
-cb_launchd_owned() {
-  grep -qxF "$1" "$CB/state/launchd-owned" 2>/dev/null
+gm_launchd_owned() {
+  grep -qxF "$1" "$GM/state/launchd-owned" 2>/dev/null
 }
 '''),
     ("guard that is a file test in disguise", False, '''
-cb_launchd_owned() {
+gm_launchd_owned() {
   [ -f "$HOME/Library/LaunchAgents/$1.plist" ]
 }
 '''),
     ("guard that trusts $HOME", False, '''
-cb_launchd_owned() {
-  case "$1" in com.claudebrain.*) return 0 ;; esac
+gm_launchd_owned() {
+  case "$1" in com.greymatter.*) return 0 ;; esac
   return 1
 }
 '''),

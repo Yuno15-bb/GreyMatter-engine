@@ -9,7 +9,7 @@ import json, os, sys, unittest
 
 
 CODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-BRAIN = os.path.expanduser("~/.c-brain/trunk")
+BRAIN = os.path.expanduser("~/.greymatter/trunk")
 
 
 
@@ -311,8 +311,8 @@ class WritingAgentsKnowTheEngineIsOffLimits(unittest.TestCase):
 
     def test_the_rule_matches_the_canonical_path_list(self):
         """Check invariants across Brain hooks and public interfaces."""
-        liste = os.path.join(CODE, "cbrain", "engine-paths.txt")
-        self.assertTrue(os.path.exists(liste), "cbrain/engine-paths.txt is missing")
+        liste = os.path.join(CODE, "greymatter", "engine-paths.txt")
+        self.assertTrue(os.path.exists(liste), "greymatter/engine-paths.txt is missing")
         with open(liste, encoding="utf-8") as f:
             attendus = [l.strip() for l in f
                         if l.strip() and not l.lstrip().startswith("#")]

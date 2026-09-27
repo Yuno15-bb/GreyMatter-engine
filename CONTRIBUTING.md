@@ -8,7 +8,7 @@ here before anything else.
 
 **`main` is a translation. `fr` is the source.**
 
-C Brain is extracted from a real, personal, French knowledge trunk. The chain
+GreyMatter is extracted from a real, personal, French knowledge trunk. The chain
 runs one way:
 
 ```

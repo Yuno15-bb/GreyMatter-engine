@@ -14,7 +14,7 @@ NOTHING ELSE. No reordering of keys, no case folding, no collapsing of
 whitespace inside a value, no ignoring of a key we find inconvenient. A
 difference that survives this is a REAL difference, and it must refuse.
 
-Used by cbrain/adopt-launchd.sh on both sides of the comparison, so the two
+Used by greymatter/adopt-launchd.sh on both sides of the comparison, so the two
 sides can never drift apart into two definitions of the same word.
 """
 import re

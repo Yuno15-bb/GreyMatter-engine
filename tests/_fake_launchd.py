@@ -14,7 +14,7 @@ domain therefore answered "no such service" to EVERY lookup on Linux, and the
 adoption bench came back with 14 failures that had nothing to do with adoption —
 green on the author's machine, red on the CI runner, for 30 platform-dependent
 characters. `awk` also compares the label EXACTLY: in the regex, every `.` of
-`com.claudebrain.etat` matched any character at all.
+`com.greymatter.etat` matched any character at all.
 
 WHAT IS FAITHFUL, AND WHAT IS ASSUMED. The exit codes follow launchctl(1): a
 `print` of an unknown service fails, and `load` of a Label the domain already

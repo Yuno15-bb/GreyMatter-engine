@@ -88,7 +88,7 @@ After a substantial session:
 ```bash
 mkdir -p ~/.claude/agents
 # Link all four ships; README.md is a guide, not an agent.
-for a in ~/.c-brain/trunk/agents/*.md; do
+for a in ~/.greymatter/trunk/agents/*.md; do
   [ "$(basename "$a")" = "README.md" ] && continue
   ln -sf "$a" ~/.claude/agents/"$(basename "$a")"
 done

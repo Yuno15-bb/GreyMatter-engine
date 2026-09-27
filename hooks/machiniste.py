@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Machiniste — le 8e agent du C Brain, couche MACHINE PHYSIQUE.
+Machiniste — le 8e agent du GreyMatter, couche MACHINE PHYSIQUE.
 
 The other agents maintain the knowledge; the mechanic maintains the software infrastructure.
 The machinist maintains **the machine that runs all of it**: RAM, CPU, heat.
@@ -23,7 +23,7 @@ Usage :
 import json, os, re, subprocess, sys, time
 from datetime import datetime, timezone
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 STATE = os.path.join(BRAIN, "state")
 SNAPSHOT = os.path.join(STATE, "machiniste.json")       # the last state, overwritten
 JOURNAL = os.path.join(STATE, "machiniste.jsonl")       # historique, append-only
@@ -37,7 +37,7 @@ PAGE = 16384  # memory page size on Apple Silicon
 #
 #     ⚠️ Lesson from testing: an early version matched the word "claude"
 #     anywhere in the command line. As a result, EVERY process whose path
-#     contenait « claude » (donc tout ~/.c-brain/trunk/, tout /tmp/claude-501/) devenait
+#     contenait « claude » (donc tout ~/.greymatter/trunk/, tout /tmp/claude-501/) devenait
 #     intouchable — le filet attrapait tout et ne prouvait plus rien. On ancre donc les
 #     patterns anchored on the executable, not on a path fragment.
 NEVER_KILL = re.compile(
@@ -279,7 +279,7 @@ def find_reportable(procs, mem, cpu):
                               "compressed memory keeps accumulating"})
 
     # Doublons de capsule (cf. lesson electron-zombie-process-cleanup)
-    caps = [p for p in procs if "c-brain/trunk/capsule/node_modules/electron/dist" in p["cmd"]
+    caps = [p for p in procs if "greymatter/trunk/capsule/node_modules/electron/dist" in p["cmd"]
             and "--type=" not in p["cmd"]]
     if len(caps) > 1:
         alerts.append({"niveau": "warn", "sujet": "capsule-doublon",

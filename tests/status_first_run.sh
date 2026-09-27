@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # status_first_run.sh — `brain status` before the first session.
@@ -31,7 +31,7 @@ check() {  # check <exit-code> <label> [detail]
 
 H="$(mktemp -d)"
 trap 'rm -rf "$H"' EXIT
-P="$H/plugin-cache/c-brain"
+P="$H/plugin-cache/greymatter"
 mkdir -p "$(dirname "$P")"
 rsync -a --exclude .git --exclude node_modules "$ROOT/" "$P/"
 
@@ -51,8 +51,8 @@ elif [ -n "$SABOTAGE" ]; then
 fi
 
 export HOME="$H" CLAUDE_PLUGIN_ROOT="$P"
-python3 "$P/cbrain/plugin_bootstrap.py" >/dev/null 2>&1
-STATUS_FILE="$H/.c-brain/trunk/state/status.json"
+python3 "$P/greymatter/plugin_bootstrap.py" >/dev/null 2>&1
+STATUS_FILE="$H/.greymatter/trunk/state/status.json"
 
 echo "▸ before the first session"
 [ ! -e "$STATUS_FILE" ]
@@ -67,7 +67,7 @@ check $? "it says why there is nothing yet"
 check $? "asking wrote nothing (brain status only reads)"
 
 echo "▸ once a hook has written a status"
-python3 "$H/.c-brain/trunk/hooks/brain_status.py" heartbeat >/dev/null 2>&1
+python3 "$H/.greymatter/trunk/hooks/brain_status.py" heartbeat >/dev/null 2>&1
 [ -e "$STATUS_FILE" ]; check $? "the heartbeat wrote the status, as it does during a session"
 OUT="$("$P/bin/brain" status 2>&1)"
 printf '%s' "$OUT" | grep -qE "^state +: (busy|idle)"

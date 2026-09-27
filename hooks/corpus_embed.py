@@ -13,7 +13,7 @@ Outputs (all under corpus/, gitignored, local only):
   • state/corpus_clusters.json           → assignation cluster par conversation
   • corpus/CLUSTERS.md                    → a READABLE report: per cluster = size, source mix, key terms, sample titles.
 
-Usage (dans le venv ~/.c-brain/trunk/.venv) :
+Usage (dans le venv ~/.greymatter/trunk/.venv) :
   corpus_embed.py [--k N] [--body-cap N]   # build : embeddings + clusters + rapport (k auto ≈ sqrt(n/2))
   corpus_embed.py query [-k N] "..."       # semantic search over the corpus (a channel separate from the notes)
 """
@@ -21,7 +21,7 @@ import os, re, sys, json, glob, argparse, datetime
 import numpy as np
 from model2vec import StaticModel
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 COLD = os.path.join(BRAIN, "corpus", "cold")
 NPZ = os.path.join(BRAIN, "state", "corpus_embeddings.npz")
 META = os.path.join(BRAIN, "state", "corpus_embeddings.json")

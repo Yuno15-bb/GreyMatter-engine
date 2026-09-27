@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# bin/brain — makes `brain` a bare command inside the Bash tool when C Brain is
+# bin/brain — makes `brain` a bare command inside the Bash tool when GreyMatter is
 # installed as a plugin. Files in bin/ are put on the PATH while the plugin is
 # enabled, so this is the only way a plugin user gets the CLI without running
 # install.sh.
 #
 # It does not reimplement anything: the real script sits at the plugin root and
-# works off ~/.c-brain/trunk, whose engine links plugin_bootstrap.py re-points
+# works off ~/.greymatter/trunk, whose engine links plugin_bootstrap.py re-points
 # on every SessionStart.
 set -euo pipefail
 exec "$(cd "$(dirname "$0")/.." && pwd -P)/brain" "$@"

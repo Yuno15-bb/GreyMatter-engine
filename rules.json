@@ -18,7 +18,7 @@
     {
       "id": "racines-code-vs-donnees",
       "file": "tests/invariants_brain.py",
-      "pattern": "# BRAIN_HOME rend la suite HERMÉTIQUE \\(Phase 1 du RFC Brain V3, 2026-08-03\\)\\.\\n# Sans elle, SensorNeverStuck écrit dans le VRAI state/coherence\\.json et le\\n# restaure ensuite depuis une copie mémoire : un crash entre les deux laisse\\n# l'état de production écrasé par une valeur de test\\. Le défaut par défaut reste\\n# la racine du dépôt, donc `python3 tests/invariants_brain\\.py` ne change pas\\.\\nBRAIN = os\\.path\\.realpath\\(\\n    os\\.environ\\.get\\(\"BRAIN_HOME\"\\)\\n    or os\\.path\\.join\\(os\\.path\\.dirname\\(os\\.path\\.abspath\\(__file__\\)\\), \"\\.\\.\"\\)\\n\\)\\nsys\\.path\\.insert\\(0, os\\.path\\.join\\(BRAIN, \"hooks\"\\)\\)\\n",
+      "pattern": "# BRAIN_HOME rend la suite HERMÉTIQUE \\(Phase 1 du RFGreyMatter V3, 2026-08-03\\)\\.\\n# Sans elle, SensorNeverStuck écrit dans le VRAI state/coherence\\.json et le\\n# restaure ensuite depuis une copie mémoire : un crash entre les deux laisse\\n# l'état de production écrasé par une valeur de test\\. Le défaut par défaut reste\\n# la racine du dépôt, donc `python3 tests/invariants_brain\\.py` ne change pas\\.\\nBRAIN = os\\.path\\.realpath\\(\\n    os\\.environ\\.get\\(\"BRAIN_HOME\"\\)\\n    or os\\.path\\.join\\(os\\.path\\.dirname\\(os\\.path\\.abspath\\(__file__\\)\\), \"\\.\\.\"\\)\\n\\)\\nsys\\.path\\.insert\\(0, os\\.path\\.join\\(BRAIN, \"hooks\"\\)\\)\\n",
       "why": "Keep imported code separate from the user data trunk in the invariant suite.",
       "replace": "# Deux racines DISTINCTES, et c'est volontaire :\n#  · CODE  — d'où viennent les hooks à importer. Suit le fichier, car le moteur\n#    peut vivre ailleurs que le tronc (installation par symlinks).\n#  · BRAIN — le tronc de l'utilisateur, d'où viennent les DONNÉES (state/).\n#    Toujours dérivé de $HOME : écrire dans le moteur casserait l'installation\n#    et serait écrasé à la première mise à jour.\nCODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), \"..\"))\nBRAIN = os.path.expanduser(\"~/claude-brain\")\nsys.path.insert(0, os.path.join(CODE, \"hooks\"))\n"
     },
@@ -41,7 +41,7 @@
       "file": "brain",
       "pattern": "  \\*\\)\\n    echo \"Usage : brain <status\\|doctor\\|audit\\|review\\|recall\\|next\\|coherence\\|utility\\|credit\\|embed\\|push\\|metrics\\|selftest\\|backup>\"",
       "why": "Add package-only CLI commands without modifying the living source by hand.",
-      "replace": "  update)\n    # Mise à jour du MOTEUR uniquement. Le tronc — tes fiches — n'est jamais touché.\n    bash \"$HOME/.c-brain/engine/cbrain/update.sh\" \"${@:2}\"\n    ;;\n  demo)\n    # Trois fiches d'exemple, posées puis retirées à la demande. Un tronc\n    # vide au premier lancement ne montre rien de ce que l'outil sait faire.\n    bash \"$HOME/.c-brain/engine/cbrain/demo.sh\" \"${@:2}\"\n    ;;\n  version)\n    cat \"$HOME/.c-brain/VERSION\" 2>/dev/null || echo \"(version inconnue)\"\n    ;;\n  *)\n    echo \"Usage : brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|version>\""
+      "replace": "  update)\n    # Mise à jour du MOTEUR uniquement. Le tronc — tes fiches — n'est jamais touché.\n    bash \"$HOME/.greymatter/engine/greymatter/update.sh\" \"${@:2}\"\n    ;;\n  demo)\n    # Trois fiches d'exemple, posées puis retirées à la demande. Un tronc\n    # vide au premier lancement ne montre rien de ce que l'outil sait faire.\n    bash \"$HOME/.greymatter/engine/greymatter/demo.sh\" \"${@:2}\"\n    ;;\n  version)\n    cat \"$HOME/.greymatter/VERSION\" 2>/dev/null || echo \"(version inconnue)\"\n    ;;\n  *)\n    echo \"Usage : brain <status|doctor|audit|review|recall|next|coherence|utility|credit|embed|push|metrics|selftest|backup|update|demo|version>\""
     },
     {
       "id": "detecteur-home-perime",
@@ -76,7 +76,7 @@
       "id": "ilot-battement-tronc",
       "file": "capsule/ilot.js",
       "pattern": "const ALIVE = path\\.join\\(__dirname, '\\.\\.', 'state', 'capsule-alive'\\);",
-      "replace": "// The capsule runs in the engine; the hook reads state from the user trunk.\nconst ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');",
+      "replace": "// The capsule runs in the engine; the hook reads state from the user trunk.\nconst ALIVE = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'capsule-alive');",
       "why": "The capsule lives in the engine but its heartbeat state lives in the user trunk."
     },
     {
@@ -109,7 +109,7 @@
         "brain"
       ],
       "pattern": "Claude Brain",
-      "replace": "C Brain",
+      "replace": "GreyMatter",
       "expect": 35,
       "why": "Use the public product name in copied material."
     },
@@ -119,7 +119,7 @@
         "hooks/*.template"
       ],
       "pattern": "__HOME__/claude-brain",
-      "replace": "__HOME__/.c-brain/trunk",
+      "replace": "__HOME__/.greymatter/trunk",
       "expect": 6,
       "why": "Make launchd templates point at the installed user trunk."
     },
@@ -129,7 +129,7 @@
         "**/*.py"
       ],
       "pattern": "expanduser\\(\"~/claude-brain",
-      "replace": "expanduser(\"~/.c-brain/trunk",
+      "replace": "expanduser(\"~/.greymatter/trunk",
       "expect": 25,
       "why": "Make Python files point at the installed user trunk."
     },
@@ -139,7 +139,7 @@
         "**/*.py"
       ],
       "pattern": "expanduser\\('~'\\), 'claude-brain'",
-      "replace": "expanduser('~'), '.c-brain', 'trunk'",
+      "replace": "expanduser('~'), '.greymatter', 'trunk'",
       "expect": 1,
       "why": "Preserve path components when translating a segmented Python trunk path."
     },
@@ -150,7 +150,7 @@
         "capsule/*.html"
       ],
       "pattern": "os\\.homedir\\(\\),\\s*'claude-brain'",
-      "replace": "os.homedir(), '.c-brain', 'trunk'",
+      "replace": "os.homedir(), '.greymatter', 'trunk'",
       "expect": 2,
       "why": "Make capsule JavaScript point at the installed user trunk."
     },
@@ -161,8 +161,8 @@
       ],
       "pattern": "(?:\\$HOME/claude-brain/hooks|claude-brain/capsule)",
       "replace_map": {
-        "$HOME/claude-brain/hooks": "$HOME/.c-brain/trunk/hooks",
-        "claude-brain/capsule": "c-brain/trunk/capsule"
+        "$HOME/claude-brain/hooks": "$HOME/.greymatter/trunk/hooks",
+        "claude-brain/capsule": "greymatter/trunk/capsule"
       },
       "expect": 2,
       "why": "Fix package shell bench paths that would otherwise point at the private source."
@@ -174,7 +174,7 @@
         "brain"
       ],
       "pattern": "\\$HOME/claude-brain",
-      "replace": "$HOME/.c-brain/trunk",
+      "replace": "$HOME/.greymatter/trunk",
       "expect": 2,
       "why": "Make shell scripts point at the installed user trunk."
     },
@@ -192,7 +192,7 @@
         "brain"
       ],
       "pattern": "~/claude-brain",
-      "replace": "~/.c-brain/trunk",
+      "replace": "~/.greymatter/trunk",
       "expect": 36,
       "why": "Update prose examples of the user trunk path."
     },
@@ -202,7 +202,7 @@
         "hooks/*.py"
       ],
       "pattern": "claude-brain/capsule/node_modules/electron",
-      "replace": "c-brain/trunk/capsule/node_modules/electron",
+      "replace": "greymatter/trunk/capsule/node_modules/electron",
       "expect": 2,
       "why": "Find the installed capsule process without the private source path."
     },
@@ -213,7 +213,7 @@
         "capsule/package-lock.json"
       ],
       "pattern": "claude-brain-capsule",
-      "replace": "c-brain-capsule",
+      "replace": "greymatter-capsule",
       "expect": 3,
       "why": "Use the public package name in capsule metadata."
     },

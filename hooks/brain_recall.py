@@ -691,7 +691,9 @@ def main():
         usage = f"   · already opened {r['hits']}x{when}" if r["hits"] else ""
         print(f"  [{r['score']:5.2f}] {d['name']}  ({d['path']}){usage}")
         if d["desc"]:
-            print(f"          {d['desc'][:110]}")
+            # Cut on a word, not inside one: "neve" read as a bug.
+            desc = d["desc"] if len(d["desc"]) <= 110 else d["desc"][:109].rsplit(" ", 1)[0].rstrip(",;:—-") + "…"
+            print(f"          {desc}")
 
 
 if __name__ == "__main__":

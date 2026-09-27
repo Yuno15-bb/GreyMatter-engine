@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 # publish.sh — publish a version. The ONLY sanctioned path to a `git push`.
 #
@@ -38,10 +38,10 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 # read by nobody but the translation step. Published tags stay published — a moved
 # tag breaks the fetch of anyone still on it — so the `-fr` family simply stops
 # growing at v1.27.0-fr.
-if [ "$BRANCH" = "fr" ] && [ "${CBRAIN_ALLOW_TAG_ON_FR:-}" != "1" ]; then
+if [ "$BRANCH" = "fr" ] && [ "${GREYMATTER_ALLOW_TAG_ON_FR:-}" != "1" ]; then
   echo "❌ \`fr\` is a staging buffer, not a product — nothing is published from it."
   echo "   The engine ships from \`main\`, which is the translated, public branch."
-  echo "   → git checkout main    (or CBRAIN_ALLOW_TAG_ON_FR=1 if you know why)"
+  echo "   → git checkout main    (or GREYMATTER_ALLOW_TAG_ON_FR=1 if you know why)"
   exit 1
 fi
 

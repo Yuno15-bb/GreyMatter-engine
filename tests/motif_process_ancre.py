@@ -18,7 +18,7 @@ import sys
 
 ROOT = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), ".."))
-ZONES = ("hooks", "tools", "tests", "capsule", "companion", "cbrain")
+ZONES = ("hooks", "tools", "tests", "capsule", "companion", "greymatter")
 IGNORED = ("/node_modules/", "/__pycache__/", "/.git/", "/projection/bac/",
            "/captures/", "/heldout/")
 PROCESS_CALL = re.compile(r"\b(?:pgrep|pkill)\b")

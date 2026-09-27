@@ -20,7 +20,7 @@ TWO PROPERTIES BEYOND "it reports something":
     fail — and a guard that goes quiet when its reference disappears reports a clean trunk
     for ever. It must announce the skip instead.
 
-No dependency on the real ~/.c-brain/trunk: everything runs against a temporary trunk
+No dependency on the real ~/.greymatter/trunk: everything runs against a temporary trunk
 through BRAIN_HOME.
 
 Run:

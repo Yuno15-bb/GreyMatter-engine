@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # update_auto.sh — does the automatic update really do what it says?
@@ -36,12 +36,12 @@ H="$(mktemp -d)"
 # Cleanup waits for the detached work to finish: deleting under a process that
 # is still writing leaves "Directory not empty" and an orphan HOME.
 cleanup() { local n=0
-  while [ -d "$H/.c-brain/state/auto-update.lock" ] && [ "$n" -lt 60 ]; do sleep 1; n=$((n+1)); done
+  while [ -d "$H/.greymatter/state/auto-update.lock" ] && [ "$n" -lt 60 ]; do sleep 1; n=$((n+1)); done
   rm -rf "$H" 2>/dev/null || true; }
-# CBRAIN_TEST_KEEP=1 keeps the test HOME for an autopsy. Without it, diagnosing
+# GREYMATTER_TEST_KEEP=1 keeps the test HOME for an autopsy. Without it, diagnosing
 # a failure means re-running the harness blind.
-[ -n "${CBRAIN_TEST_KEEP:-}" ] || trap cleanup EXIT
-[ -n "${CBRAIN_TEST_KEEP:-}" ] && echo "test HOME kept: $H"
+[ -n "${GREYMATTER_TEST_KEEP:-}" ] || trap cleanup EXIT
+[ -n "${GREYMATTER_TEST_KEEP:-}" ] && echo "test HOME kept: $H"
 export HOME="$H"
 
 # The hook leaves DETACHED: it returns before the work is done. Everything below
@@ -55,20 +55,20 @@ export HOME="$H"
 # Waiting for it to appear THEN disappear is waiting for a piece of work;
 # waiting for absence alone confuses "not started yet" with "already done".
 wait_done() {  # wait_done [seconds]
-  local n=0 max="${1:-180}" lock="$H/.c-brain/state/auto-update.lock"
+  local n=0 max="${1:-180}" lock="$H/.greymatter/state/auto-update.lock"
   while [ ! -d "$lock" ] && [ "$n" -lt 15 ]; do sleep 1; n=$((n + 1)); done
   n=0
   while [ -d "$lock" ] && [ "$n" -lt "$max" ]; do sleep 1; n=$((n + 1)); done
   sleep 1   # let the report land after the lock is released
 }
 
-hook() { python3 "$H/.c-brain/engine/cbrain/check_update.py" 2>&1; }
+hook() { python3 "$H/.greymatter/engine/greymatter/check_update.py" 2>&1; }
 
 echo "▸ local upstream: one old version, one new"
 git clone -q "$ROOT" "$H/upstream"
 cd "$H/upstream"
-git config user.email cbrain-test
-git config user.name cbrain-test
+git config user.email greymatter-test
+git config user.name greymatter-test
 git checkout -q -B main
 # We overlay the WORKING TREE: without this the test exercises the last commit
 # instead of the code just written (cf. update_rollback.sh, same trap).
@@ -98,7 +98,7 @@ printf '{"model": "opus"}\n' > "$H/.claude/settings.json"
   || { echo "❌ install failed:"; tail -20 "$H/install.log"; exit 1; }
 export PATH="$H/.local/bin:$PATH"
 
-TRUNK="$H/.c-brain/trunk"
+TRUNK="$H/.greymatter/trunk"
 mkdir -p "$TRUNK/lessons"
 printf -- "---\nname: mine\ndescription: \"a note of my own\"\n---\nwork I cannot afford to lose\n" \
   > "$TRUNK/lessons/mine.md"
@@ -117,10 +117,10 @@ check $? "it announces nothing on the first pass" "got: $OUT1"
 echo
 echo "▸ 2. and yet the update REALLY applies, on its own"
 wait_done
-[ -f "$H/.c-brain/engine/UPDATE_MARKER" ]
+[ -f "$H/.greymatter/engine/UPDATE_MARKER" ]
 check $? "the new version is on disk, without anyone typing anything" \
-  "$(tail -5 "$H/.c-brain/state/auto-update.log" 2>/dev/null)"
-[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
+  "$(tail -5 "$H/.greymatter/state/auto-update.log" 2>/dev/null)"
+[ "$(basename "$(cd "$H/.greymatter/engine" && pwd -P)")" = "v9.9.1" ]
 check $? "the engine is on v9.9.1"
 
 echo
@@ -143,7 +143,7 @@ brain update --auto-off >/dev/null 2>&1
   && git add OTHER_MARKER && git commit -q -m "test: newer" && git tag -a v9.9.2 -m "test: newer" )
 OUT4="$(hook)"
 sleep 3
-[ ! -f "$H/.c-brain/engine/OTHER_MARKER" ]
+[ ! -f "$H/.greymatter/engine/OTHER_MARKER" ]
 check $? "switched off, it installs nothing"
 printf '%s' "$OUT4" | grep -q "v9.9.2"
 check $? "but it still REPORTS the available version" "got: $OUT4"
@@ -151,7 +151,7 @@ check $? "but it still REPORTS the available version" "got: $OUT4"
 echo
 echo "▸ 5. a version that breaks the tool is NEVER ACTIVATED"
 brain update --auto-on >/dev/null 2>&1
-rm -f "$H/.c-brain/state/last-auto-update"
+rm -f "$H/.greymatter/state/last-auto-update"
 # The BROKEN version: its selftest exits red. That is the only way to prove the
 # refusal — faking it with a flag would only prove the flag.
 #
@@ -169,11 +169,11 @@ rm -f "$H/.c-brain/state/last-auto-update"
   && git tag -a v9.9.3 -m "test: broken" )
 hook >/dev/null
 wait_done
-[ "$(basename "$(cd "$H/.c-brain/engine" && pwd -P)")" = "v9.9.1" ]
+[ "$(basename "$(cd "$H/.greymatter/engine" && pwd -P)")" = "v9.9.1" ]
 check $? "the engine STAYED on v9.9.1 — the broken version was never activated"
 # And the broken candidate must not be left lying about: a half-installed version
 # on disk is a rollback target that would break the tool if anyone reached it.
-[ ! -d "$H/.c-brain/versions/v9.9.3" ]
+[ ! -d "$H/.greymatter/versions/v9.9.3" ]
 check $? "the broken candidate was deleted, not kept beside the good one"
 OUT5="$(hook)"
 printf '%s' "$OUT5" | grep -qi "was NOT applied"

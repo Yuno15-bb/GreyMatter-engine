@@ -16,7 +16,7 @@ checker.
 ## 0. The extraction chain (on the `fr` branch)
 
 ```bash
-cd ~/c-brain-fr        # the `fr` working copy — `git worktree add ~/c-brain-fr fr`
+cd ~/greymatter-fr        # the `fr` working copy — `git worktree add ~/greymatter-fr fr`
 ./sync.sh --check      # rc=0 → the package matches the living Brain
 ./sync.sh              # copy + generalization, chained
 python3 leakcheck.py --history
@@ -108,12 +108,12 @@ swallows — an unanchored pattern once made the whole trunk skeleton disappear,
 which was invisible when copying.
 
 ```bash
-T=/tmp/iso-c-brain; rm -rf $T; mkdir -p $T/.claude $T/Desktop
-git clone https://github.com/Yuno15-bb/GreyMatter-engine $T/dev-c-brain
-HOME=$T bash $T/dev-c-brain/install.sh --no-launchd
+T=/tmp/iso-greymatter; rm -rf $T; mkdir -p $T/.claude $T/Desktop
+git clone https://github.com/Yuno15-bb/GreyMatter-engine $T/dev-greymatter
+HOME=$T bash $T/dev-greymatter/install.sh --no-launchd
 ```
 
-**Expected**: `✅ selftest OK`, `✅ doctor — tree consistent`, `✅ C Brain installed.`
+**Expected**: `✅ selftest OK`, `✅ doctor — tree consistent`, `✅ GreyMatter installed.`
 followed by `▸ Your trunk is empty.` — and *only* on a genuinely empty trunk. On a
 re-install over notes it must read `▸ Your trunk is already growing.` instead. That
 line had no test at all until 2026-08-16: it announced an empty trunk to somebody
@@ -124,9 +124,9 @@ the engine it has just built. Until 2026-08-26 it called it with no argument, so
 the selftest looked for the CLI at `$TRUNK/brain` — which the installer does not
 create — and then fell back to whatever `brain` sat on PATH. On a clean machine
 that is nothing, and a healthy install ended on "some hooks are broken"; on a
-machine that already had C Brain, the line above was reporting on the OTHER
+machine that already had GreyMatter, the line above was reporting on the OTHER
 installation's engine. Read this expectation on a machine that has never had
-C Brain, and once on a machine that has.
+GreyMatter, and once on a machine that has.
 
 Read the exit code too (`echo $?` right after). Since v2.0.3 it is `0` only when
 the selftest is green; a red selftest ends the install with `1`. Until then the
@@ -140,7 +140,7 @@ surfaces left alone counted on the closing screen.
 ```bash
 T=/tmp/iso-dry; rm -rf $T; mkdir -p $T
 HOME=$T bash ./install.sh --dry-run --no-launchd --no-capsule; echo "rc=$?"
-[ -e $T/.c-brain ] || [ -e $T/.claude ] && { echo "WROTE:"; find $T; } || echo "inert"
+[ -e $T/.greymatter ] || [ -e $T/.claude ] && { echo "WROTE:"; find $T; } || echo "inert"
 ```
 
 **Expected**: it runs to the end, `rc=0`, `inert`.
@@ -150,10 +150,10 @@ is written this way. The Python interpreter drops its own bytecode cache under
 `$T/Library/Caches` the first time the installer calls it, so a `find $T` comes
 back with a few dozen lines that install.sh never wrote. An expectation stated as
 "nothing at all" is one a reader learns to wave through. What is asserted is what
-the installer OWNS: `~/.c-brain` and `~/.claude`.
+the installer OWNS: `~/.greymatter` and `~/.claude`.
 
 This is the first thing a careful reader runs, before deciding whether to run the
-real one, and it failed both halves at once: it created `~/.c-brain` before it had
+real one, and it failed both halves at once: it created `~/.greymatter` before it had
 even parsed the flag, then stopped dead at "Engine linked into the trunk" — no
 message, exit 2, because a `VAR=$(grep …)` on a file the dry run never builds
 takes the whole shell down under `set -e`.
@@ -166,23 +166,23 @@ about an install nobody previewed.
 Write a `settings.json` holding a model, a theme and a personal hook, then:
 
 ```bash
-HOME=$T bash $T/dev-c-brain/install.sh      # second pass
+HOME=$T bash $T/dev-greymatter/install.sh      # second pass
 ```
 
 **Expected**: "already linked" everywhere, `settings.json — nothing to do`. The
 personal hook, the model and the theme are all still there.
 
-Then edit one tracked file in `$T/dev-c-brain` without committing, and run the
+Then edit one tracked file in `$T/dev-greymatter` without committing, and run the
 second pass again. **Expected**: `= <version> already installed and intact`, the
 same version name as before (no `-dirty` suffix since 2026-09-20), still one
-directory under `~/.c-brain/versions/`, and the warning "your source has
+directory under `~/.greymatter/versions/`, and the warning "your source has
 uncommitted changes, and they are NOT in this engine".
 
 ## 3. The full life cycle
 
 ```bash
-echo "test note" > $T/.c-brain/trunk/lessons/test.md
-HOME=$T bash $T/dev-c-brain/uninstall.sh --yes
+echo "test note" > $T/.greymatter/trunk/lessons/test.md
+HOME=$T bash $T/dev-greymatter/uninstall.sh --yes
 ```
 
 **Expected**: the note still exists, `settings.json` is **identical to its
@@ -219,16 +219,16 @@ where. What follows is the VERIFICATION, which asks a harder question than "is
 there an orb": does the renderer hold the text the hooks just wrote.
 
 ```bash
-export CBRAIN_PROBE_OUT=$T/probe.json      # opt-in; nothing is written without it
+export GREYMATTER_PROBE_OUT=$T/probe.json      # opt-in; nothing is written without it
 HOME=$T "$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
   "$ENGINE/capsule" --user-data-dir=$T/electron-data &
-HOME=$T python3 $T/.c-brain/trunk/hooks/brain_status.py busy distilling "test"
+HOME=$T python3 $T/.greymatter/trunk/hooks/brain_status.py busy distilling "test"
 sleep 6; cat $T/probe.json
 ```
 
 **Expected**: `state_text: "DISTILLING..."`, `detail_text: "test"`,
 `state_visible: true`, `renderer_ready: "complete"`, and `engine_dir` pointing
-under `~/.c-brain/versions/`. Set `idle` and both texts go empty with
+under `~/.greymatter/versions/`. Set `idle` and both texts go empty with
 `state_visible: false` — measured, and that difference is what makes the probe a
 sensor rather than a constant.
 
@@ -277,7 +277,7 @@ The chain to check, in order:
 ## 6. Planet
 
 ```bash
-HOME=$T bash $T/.c-brain/trunk/planet/launch.sh 8799 &
+HOME=$T bash $T/.greymatter/trunk/planet/launch.sh 8799 &
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8799/
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8799/graph.json
 ```
@@ -291,9 +291,9 @@ survived every grep and were only caught on a rendered screenshot.
 
 ```bash
 J='{"session_id":"t","tool_input":{"file_path":"'$T'/demo.py"}}'
-echo "$J" | HOME=$T python3 $T/.c-brain/trunk/companion/hooks/pre_snapshot.py
+echo "$J" | HOME=$T python3 $T/.greymatter/trunk/companion/hooks/pre_snapshot.py
 # … modify the file …
-echo "$J" | HOME=$T python3 $T/.c-brain/trunk/companion/hooks/post_diff.py
+echo "$J" | HOME=$T python3 $T/.greymatter/trunk/companion/hooks/post_diff.py
 echo '{"session_id":"t","model":{"display_name":"X"},"workspace":{"current_dir":"/tmp"}}' \
   | HOME=$T python3 $T/.claude/statusline.py
 ```
@@ -309,9 +309,9 @@ a note you wrote can be read back.
 
 ```bash
 HOME=$T bash install.sh --no-launchd --no-capsule | grep "history"
-# write a note in $T/.c-brain/trunk/lessons/, then:
-python3 $T/.c-brain/trunk/hooks/commit_par_zone.py
-git -C $T/.c-brain/trunk show HEAD:lessons/<your-note>.md
+# write a note in $T/.greymatter/trunk/lessons/, then:
+python3 $T/.greymatter/trunk/hooks/commit_par_zone.py
+git -C $T/.greymatter/trunk show HEAD:lessons/<your-note>.md
 ```
 
 - [ ] the installer states the history is **ON** (or **OFF**, with the reason);
@@ -356,14 +356,14 @@ rolled every upgrade back. Two checks now stand in front of it:
 
 ```bash
 python3 tests/referenced_files.py   # every file the selftest, brain, install.sh,
-                                    # cbrain/*.sh, hooks.json and the CI invoke exists
+                                    # greymatter/*.sh, hooks.json and the CI invoke exists
 python3 tests/home_paths.py         # no home path that exists on one machine only
 ```
 
 ### What it must REFUSE — the other half of the test
 
 An updater replaces the engine. It is allowed to do that **only** on an engine
-the installer BUILT — a directory under `~/.c-brain/versions/`, recorded in
+the installer BUILT — a directory under `~/.greymatter/versions/`, recorded in
 `state/engine-managed`. Anywhere else it must refuse and change nothing at all.
 
 ⚠️ This used to read "it checks out a release tag over your engine", and the
@@ -373,7 +373,7 @@ documented install permanently un-updatable (chantier #9, 2026-08-17). There is
 no longer any git command in the update path that names a directory a user made.
 See [install-model.md](install-model.md).
 
-Point `~/.c-brain/engine` at a repository you work in, and check each refusal:
+Point `~/.greymatter/engine` at a repository you work in, and check each refusal:
 
 - [ ] **no marker** → refuses; there is no adoption path any more;
 - [ ] **engine outside `versions/`** → refuses, even with a valid marker;
@@ -381,7 +381,7 @@ Point `~/.c-brain/engine` at a repository you work in, and check each refusal:
 - [ ] **`state/engine-dev` present** → refuses **by name**: "Development engine
       detected", not a generic ownership error — a developer sent looking for a
       marker to create is being handed the wrong problem;
-- [ ] **the active version no longer matches its `.cbrain-manifest`** → refuses,
+- [ ] **the active version no longer matches its `.greymatter-manifest`** → refuses,
       and does **not** repair it: something wrote to a frozen tree, and
       overwriting it would destroy whatever that was.
 
@@ -392,13 +392,13 @@ outage, not a fix:
 
 ### The conversion, on an installation that predates versions/
 
-An installation from v1.28.1 or earlier arrives with `~/.c-brain/engine` pointing
+An installation from v1.28.1 or earlier arrives with `~/.greymatter/engine` pointing
 at the user's own clone and leaves with it pointing at a built version — inside
 an automatic update nobody watched. Point `engine` at a checkout, run the
 installer, and check that it **says so**:
 
 ```bash
-ln -s /path/to/a/checkout ~/.c-brain/engine     # in a THROWAWAY $HOME
+ln -s /path/to/a/checkout ~/.greymatter/engine     # in a THROWAWAY $HOME
 HOME=$T bash install.sh --core-only | grep -A3 converted
 ```
 
@@ -412,7 +412,7 @@ And the warning that goes with it: [UPGRADING.md](UPGRADING.md) is the one-time
 notice about what the OLDER updater does on its last run. Check the detection
 line it gives actually discriminates:
 
-- [ ] `git -C ~/.c-brain/engine status --short` **lists files** on a checkout
+- [ ] `git -C ~/.greymatter/engine status --short` **lists files** on a checkout
       engine with uncommitted changes;
 - [ ] the same command answers `fatal: not a git repository` on a managed engine
       — there, the error is the good news, and the note must say so.

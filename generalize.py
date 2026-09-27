@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
-"""C Brain — declarative generalization, run AFTER sync.sh has copied.
+"""GreyMatter — declarative generalization, run AFTER sync.sh has copied.
 
 Why a script rather than hand edits: sync.sh re-copies the engine from the
 living Brain on every pass. A manual fix would be silently overwritten, and the
@@ -33,7 +33,7 @@ RULES = ROOT / "rules.json"
 # patterns that a broad JSON glob would otherwise replace inside the rule
 # definition, leaving the rule apparently intact but unable to match later.
 SKIP_NAMES = {"rules.json", "generalize.py", "leakcheck.py"}
-PRIVATE_SALT = b"cbrain-private-markers-v1:"
+PRIVATE_SALT = b"greymatter-private-markers-v1:"
 WORD = re.compile(r"[^\W_]+(?:[-_][^\W_]+)*", re.UNICODE)
 
 

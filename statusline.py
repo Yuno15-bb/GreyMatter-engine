@@ -13,7 +13,7 @@ CTX_LIMIT = 1_000_000
 # A single implementation of the transcript read, shared with the
 # UserPromptSubmit hook. If the Brain is unavailable, the status line stays
 # fail-open.
-BRAIN_HOOKS = os.path.expanduser("~/.c-brain/trunk/hooks")
+BRAIN_HOOKS = os.path.expanduser("~/.greymatter/trunk/hooks")
 if BRAIN_HOOKS not in sys.path:
     sys.path.insert(0, BRAIN_HOOKS)
 try:
@@ -194,7 +194,7 @@ def main():
     # --- Ligne 2 : modifications de code de CETTE session (Companion) ---------
     # Integrated into the session, at the very bottom, permanently — no floating window.
     try:
-        sys.path.insert(0, os.path.expanduser("~/.c-brain/trunk/companion"))
+        sys.path.insert(0, os.path.expanduser("~/.greymatter/trunk/companion"))
         import status_part
         second = status_part.line(data.get("session_id"))
         if second:

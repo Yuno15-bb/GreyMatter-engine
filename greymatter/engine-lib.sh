@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # engine-lib.sh — building, verifying and mounting an ENGINE VERSION.
 #
-# Sourced by install.sh and cbrain/update.sh. One definition, two consumers: the
+# Sourced by install.sh and greymatter/update.sh. One definition, two consumers: the
 # installer builds the first version, the updater builds every one after it, and
 # they must agree byte for byte on what a version IS — or `doctor` would report
 # an anomaly on a tree the updater had just written correctly.
 #
 # A VERSION IS IMMUTABLE. It is an export: no `.git`, no history, no remote —
 # code and nothing else. Two things are added to it, both by us, both known:
-# `.cbrain-manifest` (the integrity oracle) and `capsule/node_modules` (a link
+# `.greymatter-manifest` (the integrity oracle) and `capsule/node_modules` (a link
 # into the shared runtime). Anything else that differs from the manifest is an
 # anomaly, and it is REPORTED, never silently repaired.
 
@@ -25,15 +25,25 @@ write_manifest() {   # write_manifest <version-dir>
     # -type f only, and the manifest itself excluded: it cannot contain its own
     # hash. `capsule/node_modules` is pruned because it is a link into the shared
     # runtime — 250 MB that belong to no version in particular.
-    find . -type f ! -name .cbrain-manifest -not -path './capsule/node_modules/*' -print0 \
+    find . -type f ! -name .greymatter-manifest -not -path './capsule/node_modules/*' -print0 \
       | LC_ALL=C sort -z \
-      | xargs -0 shasum -a 256 > .cbrain-manifest ) || return 1
+      | xargs -0 shasum -a 256 > .greymatter-manifest ) || return 1
+}
+
+manifest_of() {      # manifest_of <version-dir> → the manifest's file name, or nothing
+  # A version built by an updater from before the rename carries its manifest
+  # under the old name — it is still that version's own, honest oracle.
+  local dir="$1"
+  if [ -f "$dir/.greymatter-manifest" ]; then echo .greymatter-manifest
+  elif [ -f "$dir/.cbrain-manifest" ]; then echo .cbrain-manifest   # pre-rename
+  fi
 }
 
 verify_manifest() {  # verify_manifest <version-dir> → 0 intact, 1 changed/missing
-  local dir="$1"
-  [ -f "$dir/.cbrain-manifest" ] || return 1
-  ( cd "$dir" && shasum -a 256 -c --status .cbrain-manifest ) 2>/dev/null
+  local dir="$1" m
+  m="$(manifest_of "$dir")"
+  [ -n "$m" ] || return 1
+  ( cd "$dir" && shasum -a 256 -c --status "$m" ) 2>/dev/null
 }
 
 # ─── Building a version ──────────────────────────────────────────────────────

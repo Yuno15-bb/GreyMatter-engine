@@ -37,7 +37,7 @@ Usage:
 """
 import os, sys, json, collections, datetime
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 STATE = os.path.join(BRAIN, "state")
 UTILITY = os.path.join(STATE, "recall-utility.json")
 OFTEN_NEVER = os.path.join(STATE, "often-suggested-never-opened.json")

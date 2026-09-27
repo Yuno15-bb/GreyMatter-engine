@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # changelog.sh — rewrites CHANGELOG.md from the annotated tags.
@@ -13,7 +13,7 @@
 # The `-fr` tags are left out: they are the same releases in the other
 # language, and listing both would double every line for no reader.
 #
-# Usage: ./cbrain/changelog.sh        (writes CHANGELOG.md at the repo root)
+# Usage: ./greymatter/changelog.sh        (writes CHANGELOG.md at the repo root)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -23,7 +23,7 @@ OUT="CHANGELOG.md"
 {
   echo "# Changelog"
   echo
-  echo "Generated from the annotated git tags by \`cbrain/changelog.sh\` — do not edit by hand."
+  echo "Generated from the annotated git tags by \`greymatter/changelog.sh\` — do not edit by hand."
   echo "Every entry is the message that was attached to the tag when the version was published."
   echo
   echo "The \`fr\` branch stopped being a released product on 2026-08-13 — it is the staging"

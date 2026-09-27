@@ -1,5 +1,5 @@
 ---
-description: Search the C Brain trunk for notes relevant to a subject, and read the ones that matter. Use when the user asks what they already know about something, wants past decisions on a topic, says "did we solve this before", "what do I have on X", "check my notes", or when a task smells like something already worked out once.
+description: Search the GreyMatter trunk for notes relevant to a subject, and read the ones that matter. Use when the user asks what they already know about something, wants past decisions on a topic, says "did we solve this before", "what do I have on X", "check my notes", or when a task smells like something already worked out once.
 ---
 
 # Recall from the trunk
@@ -18,7 +18,7 @@ If `brain` is not on the PATH, the plugin ships it — call it directly:
 `"${CLAUDE_PLUGIN_ROOT}/bin/brain" recall "$ARGUMENTS"`.
 
 Each result gives a score, a note name and a path relative to the trunk
-(`~/.c-brain/trunk`). **Open the ones above the noise floor and actually read
+(`~/.greymatter/trunk`). **Open the ones above the noise floor and actually read
 them** — the ranking is lexical, so it tells you where to look, never what is
 true.
 

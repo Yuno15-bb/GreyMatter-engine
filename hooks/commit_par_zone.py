@@ -29,7 +29,7 @@ Usage:
 """
 import os, sys, subprocess
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 
 # ── THE PRIMITIVE IS MANDATORY — ADR-0017 phase 3 ───────────────────────────
 # If `git_guard` cannot be found, this producer DOES NOT COMMIT. There is no fallback
@@ -54,7 +54,7 @@ ATTENTE = 60.0
 # this module is Python. A declaration does not make a copy unique.
 # As long as both exist, tests/zones_de_commit.py goes red as soon as they drift apart.
 ZONES = (("hooks/", "engine"), ("tests/", "engine"), ("companion/", "engine"),
-         ("cbrain/", "engine"), ("capsule/", "engine"),
+         ("greymatter/", "engine"), ("capsule/", "engine"),
          ("projects/", "knowledge"), ("lessons/", "knowledge"), ("meta/", "knowledge"),
          ("life/", "knowledge"), ("agents/", "knowledge"), ("skills/", "knowledge"),
          ("sessions/", "archives"))
@@ -198,11 +198,11 @@ def commit_by_zone(cwd, msg_prefix="auto: ", dry=False, sid=None):
                    f"Automatic commit, one zone at a time ({len(sel)} file(s)).\n"
                    f"One zone per commit: work in progress stays identifiable in the "
                    f"history instead of being buried by a `git add -A`.\n")
-            # Author "C Brain": a commit made by the machine must not carry the
+            # Author "GreyMatter": a commit made by the machine must not carry the
             # human's signature.
             # `-- ` + sel: THE SCOPE IS CARRIED BY THE COMMAND. Even if the index
             # changed under our feet, this commit can only contain `sel`.
-            r = subprocess.run(["git", "-c", "user.name=C Brain",
+            r = subprocess.run(["git", "-c", "user.name=GreyMatter",
                                 "-c", "user.email=brain@local",
                                 "commit", "-q", "-F", "-", "--"] + sel, cwd=cwd,
                                input=msg, text=True, capture_output=True)

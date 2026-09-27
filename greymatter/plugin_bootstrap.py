@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-plugin_bootstrap.py — makes the trunk exist when C Brain arrives as a PLUGIN.
+plugin_bootstrap.py — makes the trunk exist when GreyMatter arrives as a PLUGIN.
 
-Installing the plugin is not running install.sh. Nobody created ~/.c-brain,
+Installing the plugin is not running install.sh. Nobody created ~/.greymatter,
 nobody linked the engine into the trunk, and nobody put the `brain` command
 anywhere. This runs first on every SessionStart and makes the layout true —
 including the trunk's local git history, which install.sh starts and the
@@ -28,8 +28,8 @@ import subprocess
 import sys
 
 HOME = os.path.expanduser("~")
-CB = os.path.join(HOME, ".c-brain")
-TRUNK = os.path.join(CB, "trunk")
+GM = os.path.join(HOME, ".greymatter")
+TRUNK = os.path.join(GM, "trunk")
 LINKED = ("hooks", "agents", "capsule", "planet", "companion", "tests")
 
 # The plugin's own directory. Claude Code sets this; when it is absent we are
@@ -77,7 +77,7 @@ def start_history():
             ["/usr/bin/xcode-select", "-p"], capture_output=True).returncode != 0:
         return
     for args in (["init", "-q"], ["add", "-A"],
-                 ["-c", "user.email=c-brain@localhost", "-c", "user.name=C Brain",
+                 ["-c", "user.email=greymatter@localhost", "-c", "user.name=GreyMatter",
                   "commit", "-qm", "the trunk, as installed"]):
         if subprocess.run([git, "-C", TRUNK] + args, capture_output=True,
                           timeout=8).returncode != 0:
@@ -93,6 +93,19 @@ def main():
     # welcome line never appeared, and `brain selftest` stayed red for good.
     # A trunk with no index and no history has never been set up, whatever
     # created its folder.
+    # The root was `~/.c-brain` until v2.1.0. A plugin user who had it arrives  (pre-rename)
+    # here after Claude Code renamed the plugin: move it BEFORE anything below
+    # creates an empty `~/.greymatter` beside it. Same script as an update runs;
+    # it says "nothing to move" everywhere else.
+    old_root = os.path.join(HOME, ".c-brain")   # pre-rename
+    if os.path.lexists(old_root):
+        r = subprocess.run(["bash", os.path.join(ROOT, "greymatter", "migrations",
+                                                 "002-rename-root.sh")],
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode != 0:
+            print("🧠 GreyMatter: " + (r.stderr.strip() or "the root could not be renamed"),
+                  file=sys.stderr)
+            return                 # two roots: creating a third thing would help nobody
     fresh = not os.path.exists(os.path.join(TRUNK, "MEMORY.md")) \
         and not os.path.exists(os.path.join(TRUNK, ".git"))
     os.makedirs(TRUNK, exist_ok=True)
@@ -107,7 +120,7 @@ def main():
     except Exception:
         pass                       # never worth failing a session over
 
-    relink(ROOT, os.path.join(CB, "engine"))
+    relink(ROOT, os.path.join(GM, "engine"))
     for d in LINKED:
         src = os.path.join(ROOT, d)
         if os.path.isdir(src):
@@ -122,7 +135,7 @@ def main():
         with open(manifest, encoding="utf-8") as f:
             version = json.load(f).get("version")
         if version:
-            with open(os.path.join(CB, "VERSION"), "w", encoding="utf-8") as f:
+            with open(os.path.join(GM, "VERSION"), "w", encoding="utf-8") as f:
                 f.write(f"{version} (plugin)\n")
     except Exception:
         pass                       # never worth failing a session over
@@ -132,7 +145,7 @@ def main():
         # first-time user is actually looking, not in a README they have not
         # opened. An empty trunk that explains nothing is where people give up.
         #
-        # ⚠ It does NOT promise the `C Brain` shortcut. That folder is created
+        # ⚠ It does NOT promise the `GreyMatter` shortcut. That folder is created
         # by install.sh, which a plugin install never runs — so the first
         # sentence a marketplace user ever read pointed at something that was
         # not there. The path is given instead, because it is true.
@@ -141,7 +154,7 @@ def main():
         # goes on the PATH of Claude Code's own shell, never on the user's
         # terminal: typed there, the three commands answered "command not found"
         # (blank-Mac test, 2026-09-26). They are offered where they run.
-        print("🧠 C Brain: your trunk is ready at ~/.c-brain/trunk — plain "
+        print("🧠 GreyMatter: your trunk is ready at ~/.greymatter/trunk — plain "
               "markdown files, yours.\n"
               "   To see it work, ask Claude to run: brain demo · brain recall cache "
               "· brain demo --remove\n"
@@ -153,5 +166,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:                       # never break a session
-        print(f"c-brain bootstrap skipped: {e}", file=sys.stderr)
+        print(f"greymatter bootstrap skipped: {e}", file=sys.stderr)
     sys.exit(0)

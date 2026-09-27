@@ -5,7 +5,7 @@ RELEASE DECISION, not a diff.
 WHY THIS GUARD EXISTS. Fixing the ownership hole (A6.1-A6.3) opened a window
 nobody chose. A machine installed before `state/launchd-owned` existed can only
 be adopted while its plist still matches the template this installation renders.
-The comparison uses the normal form in `cbrain/plist_normalise.py`, so prose and
+The comparison uses the normal form in `greymatter/plist_normalise.py`, so prose and
 indentation drift freely — MEASURED on 2026-08-20: rewording a comment, deleting
 a whole comment, and retabbing the file all still adopt. A real configuration
 change does not: `StartInterval` 300 -> 600 refuses, and so does removing a key.
@@ -22,7 +22,7 @@ it, and it would cost a compatibility surface, a template versioning policy, an
 artefact to maintain per release, and its own proofs. This guard only makes sure
 the decision cannot be forgotten at the moment it becomes necessary.
 
-HOW A CHANGE IS DECLARED. `cbrain/launchd-template-baseline.json` holds, per
+HOW A CHANGE IS DECLARED. `greymatter/launchd-template-baseline.json` holds, per
 template, the sha256 of its normal form and the migration decision that was
 taken when that form last changed. Publishing a semantic change means updating
 BOTH: the hash, and the decision text saying what happens to machines that have
@@ -40,10 +40,10 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "cbrain"))
+sys.path.insert(0, os.path.join(ROOT, "greymatter"))
 from plist_normalise import normalise   # ONE definition of "the same plist"
 
-BASELINE = os.path.join(ROOT, "cbrain", "launchd-template-baseline.json")
+BASELINE = os.path.join(ROOT, "greymatter", "launchd-template-baseline.json")
 
 fails = []
 calibration_fails = []
@@ -96,10 +96,10 @@ def check(templates, baseline, previous):
 
 TPL = ("<plist><dict>\n"
        "  <!-- a long explanation of why this job exists -->\n"
-       "  <key>Label</key><string>com.claudebrain.demo</string>\n"
+       "  <key>Label</key><string>com.greymatter.demo</string>\n"
        "  <key>StartInterval</key><integer>300</integer>\n"
        "</dict></plist>\n")
-NAME = "com.claudebrain.demo.plist.template"
+NAME = "com.greymatter.demo.plist.template"
 
 
 def base(text, decision="none needed"):
@@ -130,7 +130,7 @@ def calibrate():
               "refusal names the manual procedure"),
          base(TPL), 0),
         ("a new template with no baseline entry",
-         {NAME: TPL, "com.claudebrain.other.plist.template": TPL},
+         {NAME: TPL, "com.greymatter.other.plist.template": TPL},
          base(TPL), base(TPL), 1),
         ("a baseline entry whose template is gone", {}, base(TPL), base(TPL), 1),
     ]
@@ -147,7 +147,7 @@ def calibrate():
 
 def previous_baseline():
     r = subprocess.run(["git", "-C", ROOT, "show",
-                        "HEAD:cbrain/launchd-template-baseline.json"],
+                        "HEAD:greymatter/launchd-template-baseline.json"],
                        capture_output=True, text=True)
     if r.returncode != 0:
         return None            # first commit of the baseline: nothing to compare
@@ -164,7 +164,7 @@ def audit():
         with open(p, encoding="utf-8", errors="replace") as f:
             templates[os.path.basename(p)] = f.read()
     if not os.path.exists(BASELINE):
-        ko("cbrain/launchd-template-baseline.json is missing")
+        ko("greymatter/launchd-template-baseline.json is missing")
         return
     with open(BASELINE) as f:
         baseline = {k: v for k, v in json.load(f).items()

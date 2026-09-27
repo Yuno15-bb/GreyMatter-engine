@@ -40,7 +40,7 @@ function poserVerre(w, rayon, teinte) {
   } catch (e) { return false; }
 }
 
-const STATUT = path.join(process.env.CAPSULE_STATUT_HOME || os.homedir(), '.c-brain', 'trunk', 'state', 'status.json');
+const STATUT = path.join(process.env.CAPSULE_STATUT_HOME || os.homedir(), '.greymatter', 'trunk', 'state', 'status.json');
 // Pill: measured on the author's reference (inDrive captures, 24/09), 85 × 26 pt.
 // Panel: Apple's dimensions, which macOS takes from the iPhone (HIG Live
 // Activities, "macOS dimensions — use the provided iOS dimensions"): 408
@@ -358,7 +358,7 @@ function tic() {
 // jobs, showing nothing is the intended behaviour — so the heartbeat proves
 // that the reading loop is running.
 // Derived from $HOME, not __dirname: the hook reads the TRUNK's state, the pill lives in the engine.
-const ALIVE = path.join(os.homedir(), '.c-brain', 'trunk', 'state', 'capsule-alive');
+const ALIVE = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'capsule-alive');
 function battement() { try { fs.writeFileSync(ALIVE, String(Date.now())); } catch (e) {} }
 
 // ⚠ A SINGLE PILL. the author, 24/09: "there are 2 capsules open" — a

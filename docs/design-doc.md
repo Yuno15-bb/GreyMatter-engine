@@ -1,6 +1,6 @@
-# Design doc — C Brain (an installable, self-updating knowledge trunk)
+# Design doc — GreyMatter (an installable, self-updating knowledge trunk)
 
-**TL;DR** — Extract, from a living `~/claude-brain`, a package called **C Brain**
+**TL;DR** — Extract, from a living `~/claude-brain`, a package called **GreyMatter**
 that installs in one command on another macOS machine, behaves **identically** to
 the original with everything around it (hooks, agents, capsule, planet,
 companion, status line, CLI, launchd), and **updates itself** on each user's
@@ -32,7 +32,7 @@ the shortest possible manual, and it matches how this audience already works.
 the planet and the capsule are portable everywhere. The **automatic wiring**
 (`SessionStart` / `SessionEnd` / `PostToolUse` hooks, the status line) goes
 through `~/.claude/settings.json` and exists only in Claude Code. On another CLI,
-C Brain works **on demand** (`brain recall`, `brain status`, agents invoked
+GreyMatter works **on demand** (`brain recall`, `brain status`, agents invoked
 explicitly) but **not as a closed loop**. The installer detects this and says so;
 it never lets anyone believe in an autonomy that is not there.
 
@@ -168,31 +168,31 @@ A single `~/claude-brain` mixes code (hooks, agents, capsule, planet) and conten
 in conflict — or in loss.
 
 ```
-~/.c-brain/versions/   ← the installed versions. Immutable exports, code ONLY.
-~/.c-brain/engine/     ← a link to the ACTIVE version. Updating switches this link.
-~/.c-brain/trunk/        ← the user's trunk. Their notes, their own git. NEVER touched.
-    hooks/  → symlink to ~/.c-brain/engine/hooks
-    agents/ → symlink to ~/.c-brain/engine/agents
+~/.greymatter/versions/   ← the installed versions. Immutable exports, code ONLY.
+~/.greymatter/engine/     ← a link to the ACTIVE version. Updating switches this link.
+~/.greymatter/trunk/        ← the user's trunk. Their notes, their own git. NEVER touched.
+    hooks/  → symlink to ~/.greymatter/engine/hooks
+    agents/ → symlink to ~/.greymatter/engine/agents
     capsule/ planet/ companion/ → symlinks
     lessons/ projects/ meta/ life/ sessions/ state/ → REAL, the user's own
 ```
 
-The paths become `~/.c-brain/trunk/hooks/...`: **no hook, no agent and no path
+The paths become `~/.greymatter/trunk/hooks/...`: **no hook, no agent and no path
 changes shape**. Behaviour is identical; only where the files come from changes.
 
 ### 2. Automatic updates
 
-- `brain update`: `git pull` inside `~/.c-brain/engine`, then **replays `install.sh`** (idempotent by construction — it already knows not to overwrite anything). The symlinks make propagation immediate.
+- `brain update`: `git pull` inside `~/.greymatter/engine`, then **replays `install.sh`** (idempotent by construction — it already knows not to overwrite anything). The symlinks make propagation immediate.
 - **Automatic trigger (v1.28.0)**: a `SessionStart` hook launches the update **detached** and returns immediately, on **every** session. It does not merely report any more — it **installs**. The report of the run is shown at the *next* session start, which is the price of never blocking: better news one session late than a session waiting on a `git fetch` and a selftest.
   - Until v1.28.0 the same hook only *announced*, throttled to once every 24 h. That throttle existed because a notice repeated too often stops being read; it made no sense once the thing applies itself. **Nobody typed `brain update`** — the published engine sat weeks behind the author's, and a fix nobody installs fixes nothing.
   - A lock directory (`state/auto-update.lock`, `mkdir` being the shell's atomic test-and-set) keeps several sessions starting at once from updating in parallel; it is reclaimed after 30 minutes so a sleeping machine cannot wedge updates forever.
 - **The selftest decides, and rolls back by itself.** In automatic mode nobody reads the screen, so *advising* a rollback would leave the tool broken until the user noticed — with no way to connect it to an update they never asked for. A red selftest restores the previous tag immediately, and the next session says so.
-- **It can be turned off**: `brain update --auto-off` (or `CBRAIN_NO_AUTO_UPDATE=1`) restores the pre-v1.28.0 behaviour — report, do not apply. The way out is written before the way in.
+- **It can be turned off**: `brain update --auto-off` (or `GREYMATTER_NO_AUTO_UPDATE=1`) restores the pre-v1.28.0 behaviour — report, do not apply. The way out is written before the way in.
 - **Tagged versions, never `main`**: users follow `vX.Y.Z` tags, not the working branch. A draft commit reaches nobody.
-- **Migrations**: a numbered `migrations/` folder, each script idempotent and **never destructive** to `lessons|projects|meta|life|sessions`. The log lives in `~/.c-brain/state`.
+- **Migrations**: a numbered `migrations/` folder, each script idempotent and **never destructive** to `lessons|projects|meta|life|sessions`. The log lives in `~/.greymatter/state`.
 - **Rollback by hand**: `brain update --rollback` checks out the previous tag and re-runs `install.sh`.
 - **The engine has to come back clean after the installer.** `install.sh` runs `npm install` in the capsule, and npm rewrote `capsule/package-lock.json` — which left the engine with an uncommitted change, and `update.sh` *refuses* a dirty engine rather than overwrite somebody's work. So `brain update` worked once and never again, on a machine where nobody suspected having touched anything. Root cause fixed (the lock declared a dependency `package.json` no longer had); `update.sh` also restores tracked files after the installer, which is safe precisely because the pre-check demanded a clean tree first.
-- **And the same trap had a second mouth, found on somebody else's machine (2026-08-16).** The engine directories are mounted *inside* the trunk as symlinks, so the gardening agents walk into them and edit agent briefs — correct work, wrong repository. Each pass dirtied the engine, `update.sh` refused, and the install fell behind for ever without a signal. Two halves to the fix, because repairing the cause rescues nobody already stuck: the writing agents are now told the engine is off limits (`cbrain/engine-paths.txt` is the one list, read by the installer, the updater and the doctor), and `update.sh` **tolerates dirt confined to those paths** — it discarded them after updating anyway, so the refusal only ever cost people their updates. Anything outside still blocks, and is now named in the error.
+- **And the same trap had a second mouth, found on somebody else's machine (2026-08-16).** The engine directories are mounted *inside* the trunk as symlinks, so the gardening agents walk into them and edit agent briefs — correct work, wrong repository. Each pass dirtied the engine, `update.sh` refused, and the install fell behind for ever without a signal. Two halves to the fix, because repairing the cause rescues nobody already stuck: the writing agents are now told the engine is off limits (`greymatter/engine-paths.txt` is the one list, read by the installer, the updater and the doctor), and `update.sh` **tolerates dirt confined to those paths** — it discarded them after updating anyway, so the refusal only ever cost people their updates. Anything outside still blocks, and is now named in the error.
 - **`brain doctor` looks at the engine too.** It used to read only the trunk, so it came back fully green while the engine was dirty and updates were refusing to run — the diagnostic a user is asked to paste was blind to precisely this. It now reports the engine's own worktree, and prints the one-line repair.
 - **A link inside an agent brief is a link in the trunk.** The briefs are mounted in the trunk, so `brain doctor` checks every `[[…]]` they hold. v2.0.0 turned eight agents into four ships but left ten mentions of the old jobs wrapped as links: a fresh install reported four dead links and `brain doctor` exited 1, which the CI install job caught only after the tag was out. In v2.0.1 the jobs are named as plain words, as on the French branch; a brief links only to a ship or a note that exists.
 - **The update gate judged the machine, not the code (found on a blank Mac, 2026-09-26).** `update.sh` switches only on a green selftest, so a false red in the selftest is a lock, not a warning. A test on a blank macOS virtual machine found three. `node --check` ran unconditionally, so a Mac without Node — which the installer supports — was red from the first day. The planet's ↻ badge kept a regex detector of its own, which lit `agents/narcissus.md` for merely describing resume points, so the first session turned every Mac red. And the maintenance heartbeat rewrites `status.json` while the selftest checks that `brain status` leaves it untouched. In v2.0.2 the capsule check runs only where Node exists; the badge reads `brain_anticipate`, as the author's engine had since 2026-08-14 and this port had not; a graph written by an older exporter, or at another HEAD, is a named skip; and the status comparison is skipped while the maintenance holds its lock. Because the updater runs the *candidate's* selftest, a Mac stuck on v2.0.1 takes v2.0.2 on its own — verified on that virtual machine. `tests/fresh_mac_path.sh` replays the blank Mac on Apple's tools alone, with one sabotage per fault.
@@ -226,7 +226,7 @@ Under a symlink it then points into the **engine** instead of the **trunk**.
 | Alternative | Why not |
 |---|---|
 | **One repo for code and content, `git pull` on it** | The user commits their notes into the same repo → guaranteed conflict on the first update, lost notes at worst. That is the heart of the problem, not a detail. |
-| **Reusing the previous extraction repo** | Its history had carried personal content; `git log -p` brings it back even after cleaning. → a new repo, and the old one deleted once C Brain was verified. |
+| **Reusing the previous extraction repo** | Its history had carried personal content; `git log -p` brings it back even after cleaning. → a new repo, and the old one deleted once GreyMatter was verified. |
 | **Publishing the trunk itself behind a `.gitignore`** | A denylist lets things through by default. One forgotten file is a personal-data leak. An allowlist refuses by default. |
 | **Copying files instead of symlinking** | Every update would have to re-copy and guess what the user changed locally. The symlink makes the code/content boundary **physical**, which is non-negotiable. |
 | **Silent updates from `main`** | Unreviewed code would install on somebody else's machine. Tags force an explicit decision to publish. |
@@ -236,7 +236,7 @@ Under a symlink it then points into the **engine** instead of the **trunk**.
 ## Contract (what everything else rests on)
 
 ```
-c-brain/
+greymatter/
   install.sh          # the single entry point, idempotent, backs up before overwriting
   uninstall.sh        # back to the previous state, in one command
   publish.sh          # the only sanctioned path to a git push
@@ -253,7 +253,7 @@ c-brain/
   planet/             # index.html, launch.sh, media/  (graph.json EXCLUDED)
   companion/          # live change tracking
   statusline.py       # the CLI status line
-  cbrain/             # update.sh, check_update.py, migrations/ — C Brain specific
+  greymatter/             # update.sh, check_update.py, migrations/ — GreyMatter specific
   skeleton/           # the EMPTY trunk created on the user's machine
   skills/             # EMPTY + README.md = the house standard (no skill shipped)
   demo/               # a throwaway trunk `brain demo` places and removes (open question 3)
@@ -289,7 +289,7 @@ c-brain/
 - **Risk #1 — leaking third parties' personal data.** `planet/graph.json` holds the **full text of the notes**, real names included, and is regenerated on every launch. Excluded by the allowlist *and* by `.gitignore` *and* caught by leakcheck. Three nets.
 - **Risk #2 — auto-update is a code-execution channel into somebody else's machine.** Live since v1.28.0, and it is the heaviest trade-off in the package. Mitigations: tags only, never `main`; migrations non-destructive by construction; a red selftest rolls the version back automatically; rollback in one command by hand; `--auto-off` restores report-only; the hook never blocks a session, and never takes one down when it fails. What is *not* mitigated, and is written in `SECURITY.md` rather than glossed over: **the tags are not signed**, so this trusts whoever can write to the repo. Signing is a decision deferred until there are installs to protect (see `SECURITY.md`).
 - **Risk #3 — the engine still named its author and their clients.** Measured after the first pass: **50 occurrences across 16 files**, and not confined to the agents. That was the real content of the generalization work.
-- **The source machine stays the source of truth** and does **not** migrate to the engine/trunk layout for now: it runs in production with ten active hooks, and it is not refactored just to ship. `sync.sh` pushes its state into C Brain. A migration can follow once C Brain is proven elsewhere.
+- **The source machine stays the source of truth** and does **not** migrate to the engine/trunk layout for now: it runs in production with ten active hooks, and it is not refactored just to ship. `sync.sh` pushes its state into GreyMatter. A migration can follow once GreyMatter is proven elsewhere.
 - **Confirmed dead weight**: `capsule/assets/` (7.4 MB) is **entirely dead** — the creature sprite is inline in `index.html` (the `BODY` grid), and no file under `assets/` is referenced by the code. Excluded by the allowlist.
 - **Tooling trap**: macOS 27 ships **openrsync**, not GNU rsync. On a *single* file, `--dry-run --itemize-changes` always reports a transfer → a permanent false drift. `sync.sh` compares standalone files with `cmp`, never with rsync.
 - **macOS TCC**: anything going through launchd and reading `~/Desktop` is refused without Full Disk Access — a GUI action that cannot be scripted, so it belongs in the install procedure.

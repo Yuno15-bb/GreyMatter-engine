@@ -18,7 +18,7 @@ while being the only honest way to judge a change to the orb.
 All of them run with the Electron in the parent folder:
 
 ```sh
-cd ~/.c-brain/trunk/capsule
+cd ~/.greymatter/trunk/capsule
 ./node_modules/.bin/electron banc/planche.cjs
 ```
 
@@ -37,7 +37,7 @@ cd ~/.c-brain/trunk/capsule
   intervals: `setTimeout` followed by `requestAnimationFrame` adds both waits,
   which once turned a requested 60 fps into an actual 32.
 - **Kill by full path AND check the count** before any measurement:
-  `pgrep -f "c-brain/trunk/capsule" | xargs kill -9`, then count again. A loose
+  `pgrep -f "greymatter/trunk/capsule" | xargs kill -9`, then count again. A loose
   pattern fails silently and you end up measuring a stale instance.
 
 ## The 20/09 trap — the state is SHARED by every Claude session

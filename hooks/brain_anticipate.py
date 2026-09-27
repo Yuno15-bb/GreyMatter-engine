@@ -10,7 +10,7 @@ The brain that hands you the note BEFORE you look for it. Always exits 0.
 """
 import os, re, sys, glob, subprocess
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 SKIP_PARTS = (".git", "node_modules", "capsule", "sessions/archive", "corpus", "audits")
 # Notes NEVER candidates, whatever the file system's case sensitivity.
 # PROJECT-STATUS.md is a generated DASHBOARD, not a working note: it contains

@@ -39,7 +39,7 @@ import os
 import sys
 import time
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 ZONES = ("projects", "lessons", "meta", "life", "skills")
 REGISTRE = os.path.join(BRAIN, "state", "note-writes.jsonl")
 JALON = os.path.join(BRAIN, "state", "note-writes.mark")

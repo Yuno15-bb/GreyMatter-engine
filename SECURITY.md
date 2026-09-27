@@ -4,9 +4,9 @@
 
 Worth stating plainly, because it is the honest basis for judging risk:
 
-- **It writes inside `$HOME`.** `~/.c-brain/` (engine and trunk), `~/.claude/`
-  (settings merge, status line), `~/Library/LaunchAgents/com.claudebrain.*`
-  (scheduled jobs), a launcher on the Desktop, and a `C Brain` shortcut in your
+- **It writes inside `$HOME`.** `~/.greymatter/` (engine and trunk), `~/.claude/`
+  (settings merge, status line), `~/Library/LaunchAgents/com.greymatter.*`
+  (scheduled jobs), a launcher on the Desktop, and a `GreyMatter` shortcut in your
   home folder pointing at your trunk (`--no-shortcut` skips it). `install.sh` records every
   one of them in a manifest, and `uninstall.sh` undoes them.
 - **It runs code on your machine automatically.** That is the point: hooks fire
@@ -22,7 +22,7 @@ Worth stating plainly, because it is the honest basis for judging risk:
   - updates follow **published tags**, never a working branch;
   - the **selftest decides**: on red, the previous version is restored
     automatically and the next session tells you so;
-  - the **trunk is never touched** — only `~/.c-brain/engine` is replaced;
+  - the **trunk is never touched** — only `~/.greymatter/engine` is replaced;
   - `brain update --auto-off` restores the old behaviour (report, do not
     install). `--auto-on` brings it back.
 
@@ -35,7 +35,7 @@ Worth stating plainly, because it is the honest basis for judging risk:
 - **What leaves your machine is what any prompt carries.** The recall hook adds
   the **name, one-line description and path** of the two or three most relevant
   notes to the prompt you are about to send — not the file bodies. That prompt
-  goes to your model provider, exactly like the rest of your message. C Brain
+  goes to your model provider, exactly like the rest of your message. GreyMatter
   makes no request of its own, but it is not true that nothing of your trunk
   ever travels: what it puts in a prompt travels with the prompt.
   `brain doctor` shows what the hook would inject; remove the
@@ -78,6 +78,6 @@ staffed product — that number is what one maintainer can honestly promise.
 
 - The fact that the engine executes on your machine by design — see above.
 - Anything requiring an attacker who already has write access to your `$HOME`;
-  at that point they do not need C Brain.
+  at that point they do not need GreyMatter.
 - Reports against the `fr` branch that do not also apply to `main`, unless the
   bug is specifically in the French version.

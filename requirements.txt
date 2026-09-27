@@ -1,5 +1,5 @@
 # Semantic recall backend (OPTIONAL).
-# Without these packages, C Brain automatically falls back to BM25 (lexical),
+# Without these packages, GreyMatter automatically falls back to BM25 (lexical),
 # which works very well. Install them only if you want embeddings-based recall.
 # Deliberately light: model2vec = static embeddings, with NO PyTorch.
 model2vec

@@ -3,9 +3,9 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/cbrain/plugin_bootstrap.py\"", "timeout": 15 },
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/greymatter/plugin_bootstrap.py\"", "timeout": 15 },
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/brain_anticipate.py\" --hook", "timeout": 10 },
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/cbrain/check_update.py\"", "timeout": 20 }
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/greymatter/check_update.py\"", "timeout": 20 }
         ]
       }
     ],

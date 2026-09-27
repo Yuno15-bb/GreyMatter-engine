@@ -26,7 +26,7 @@ the installer **creates** what it owns, and owns nothing else.
 ## The layout
 
 ```
-~/.c-brain/
+~/.greymatter/
 ├── source.git/                bare mirror the installer owns — where updates come from
 ├── versions/
 │   ├── v1.28.1/               an immutable engine: no .git, no history, code only
@@ -45,21 +45,21 @@ the installer **creates** what it owns, and owns nothing else.
 └── VERSION, manifest.txt
 ```
 
-`~/c-brain` — the user's clone — is a **source**. It is read to build a version
+`~/greymatter` — the user's clone — is a **source**. It is read to build a version
 and never written to again.
 
 ### Why the switch is one symlink
 
 Measured on the current tree: everything already resolves *through*
-`~/.c-brain/engine`, so nothing has to be rewritten when the active version
+`~/.greymatter/engine`, so nothing has to be rewritten when the active version
 changes.
 
 | What | Points at | Where |
 |---|---|---|
-| trunk mounts (`hooks`, `agents`, `capsule`, `planet`, `companion`, `tests`) | `$CB/engine/<dir>` | `install.sh:193` |
-| the `brain` CLI | `$CB/engine/brain` | `install.sh:198` |
-| Claude Code hooks in `settings.json` | `~/.c-brain/engine/...` | `merge_settings.py:69` |
-| launchd jobs | `~/.c-brain/trunk/hooks/...` → engine | plist templates, **guarded** — see below |
+| trunk mounts (`hooks`, `agents`, `capsule`, `planet`, `companion`, `tests`) | `$GM/engine/<dir>` | `install.sh:193` |
+| the `brain` CLI | `$GM/engine/brain` | `install.sh:198` |
+| Claude Code hooks in `settings.json` | `~/.greymatter/engine/...` | `merge_settings.py:69` |
+| launchd jobs | `~/.greymatter/trunk/hooks/...` → engine | plist templates, **guarded** — see below |
 | the Desktop planet launcher | `$TRUNK/planet/launch.sh` → engine | `install.sh:398` |
 
 One exception: `~/.claude/statusline.py` is a **copy** (`install.sh:227`), not a
@@ -71,12 +71,12 @@ link. It is refreshed by the `install.sh` replay that follows every switch.
 the path of the plist. `launchctl unload <path>` therefore frees whatever the
 domain holds under the Label written *inside* that file — including a job a
 different installation loaded from somewhere else. On 2026-08-18 that took the
-author's `com.claudebrain.resume` and `.machiniste` over for about 28 hours, and
+author's `com.greymatter.resume` and `.machiniste` over for about 28 hours, and
 the plists on disk never changed: it was invisible to `ls`, `cat` and `shasum`.
 
 So ownership of a Label is a **recorded fact**, `state/launchd-owned`, written
 only after a successful `load` — the same shape as `state/engine-managed` for
-the engine. It is never inferred from the Label, the `com.claudebrain.*` prefix,
+the engine. It is never inferred from the Label, the `com.greymatter.*` prefix,
 the plist on disk, `$HOME`, or `ProgramArguments`.
 
 | Situation | What the installer does |
@@ -86,11 +86,11 @@ the plist on disk, `$HOME`, or `ProgramArguments`.
 | it is there and **not** recorded | refuses by name, writes nothing, touches nothing — not even the plist file |
 
 A job installed before that record existed is adopted by a separate, deliberate
-command, `cbrain/adopt-launchd.sh <label>`. No automatic path calls it. It
+command, `greymatter/adopt-launchd.sh <label>`. No automatic path calls it. It
 requires two concordances **before** it asks anything — the live service must
 run this installation's program from the expected plist, and that plist must be
 equivalent to the template this installation would render, under the normal form
-in `cbrain/plist_normalise.py` — and then an explicit human confirmation. The
+in `greymatter/plist_normalise.py` — and then an explicit human confirmation. The
 two together do not discover who loaded the job; nothing can. They say the
 service matches this installation today, and the person decides.
 
@@ -99,7 +99,7 @@ So a version switch is `ln -sfn` + **`mv -hf`** on a single symlink — one
 new version.
 
 ⚠️ `-h` is not a detail, and leaving it out does not fail — it does something
-else. `~/.c-brain/engine` is a symlink to a DIRECTORY, so plain `mv -f` follows
+else. `~/.greymatter/engine` is a symlink to a DIRECTORY, so plain `mv -f` follows
 it and moves the new link *inside* the old version: the engine never switches,
 and an immutable version quietly gains a stray file that breaks its own manifest.
 Written that way first, and it still looked like it worked — the `install.sh`
@@ -110,8 +110,8 @@ it on its second run; no component test could have.
 ### Nor the surfaces it shares with the rest of the machine
 
 Three paths do not belong to the installation that writes them: `~/.claude/agents`,
-`~/.claude/statusline.py` and `~/.local/bin/brain`. They live outside `~/.c-brain`,
-one machine can hold several C Brains, and the first one there is using them.
+`~/.claude/statusline.py` and `~/.local/bin/brain`. They live outside `~/.greymatter`,
+one machine can hold several GreyMatters, and the first one there is using them.
 
 On 2026-08-19 an install ran on a machine that already had the author's. It
 repointed the agents link at its own trunk and overwrote the status line, printed
@@ -123,7 +123,7 @@ defect is the silent takeover, not a missing backup.
 
 The answer is the launchd answer, one surface over. Ownership is a **recorded
 fact** and never inferred — not from the name of the file, not from "it looks
-like something C Brain writes". The record already existed and was simply never
+like something GreyMatter writes". The record already existed and was simply never
 read: `manifest.txt`, appended to after every successful placement, written for
 the uninstaller.
 
@@ -131,22 +131,22 @@ the uninstaller.
 |---|---|
 | nothing is there | places it, then records it |
 | it is there **and** recorded | backs it up and replaces it, silently — a re-install must not become a wall |
-| it is there and **not** recorded | names it, says what occupies it and what C Brain loses, changes nothing |
+| it is there and **not** recorded | names it, says what occupies it and what GreyMatter loses, changes nothing |
 
 A refusal is a reported outcome, not a crash: everything else installs, and the
 closing screen counts what was left alone — a message printed three screens up
 has scrolled away, which is the defect C bis A4 named for the PATH warning. The
-next step is the one the refusal prints, `mv <path> <path>.before-c-brain`
+next step is the one the refusal prints, `mv <path> <path>.before-greymatter`
 followed by a re-run, and `tests/e2e_occupied_surfaces.sh` runs that gesture
 rather than describing it.
 
 Not a crash, and not a clean install either. A surface left alone can cost
 something the verification checks: an agents folder that belongs to someone else
-means Claude Code cannot reach C Brain's agents, the selftest says so, and the
+means Claude Code cannot reach GreyMatter's agents, the selftest says so, and the
 installer then exits 1 like any install whose verification is red. The closing
 screen says "works" only when the verification agrees.
 
-Inside `~/.c-brain` there is no gate. That directory **is** the installation, and
+Inside `~/.greymatter` there is no gate. That directory **is** the installation, and
 gating it would make a legitimate re-install refuse its own engine.
 
 ## Behaviour, command by command
@@ -165,7 +165,7 @@ gating it would make a legitimate re-install refuse its own engine.
    produces an updatable install. That is the whole point of the chantier.
 2. Build `versions/<id>/` with `git archive <HEAD> | tar -x`. 162 files, 11.6 MB
    measured. The source is read, never written.
-3. Write `versions/<id>/.cbrain-manifest`: sha256 of every file. This is the
+3. Write `versions/<id>/.greymatter-manifest`: sha256 of every file. This is the
    immutability oracle, and it replaces the git-based dirt check, since a
    version has no `.git`.
 4. Mirror the source into `source.git`, so updates have an origin that does not
@@ -186,7 +186,7 @@ gating it would make a legitimate re-install refuse its own engine.
    installer exited 0 on a red selftest (`tests/install_exit_code.sh`).
 
 Idempotent: re-running with the same source rebuilds nothing if
-`.cbrain-manifest` already matches.
+`.greymatter-manifest` already matches.
 
 ### `install.sh --dev`
 
@@ -244,7 +244,7 @@ pruned at the end of a successful update.
 source clone stays on disk, untouched — it was never ours to delete. Without the
 flag, nothing changes.
 
-**It resolves `~/.c-brain` exactly the way the installer does** (2026-08-26). The
+**It resolves `~/.greymatter` exactly the way the installer does** (2026-08-26). The
 two scripts decide ownership by comparing PATHS — is this shortcut the one we
 made, is this engine the one we built — and a comparison is only as good as the
 spelling on both sides. The installer canonicalises with `pwd -P`; uninstall did
@@ -258,8 +258,8 @@ already warns about, one file further on.
 
 - It used to run `git -C engine status` to detect a dirty engine. A versioned
   engine has no `.git`, so doctor now checks every file against
-  `.cbrain-manifest` with `shasum -a 256 -c` (`hooks/brain_doctor.py`, the
-  `.cbrain-manifest` branch).
+  `.greymatter-manifest` with `shasum -a 256 -c` (`hooks/brain_doctor.py`, the
+  `.greymatter-manifest` branch).
 - Any difference is reported as an **anomaly, never repaired**. An immutable
   version that changed is a fact the user needs to see, not a mess to tidy away
   behind their back.
@@ -274,7 +274,7 @@ Gains an optional engine path. Called with none, it behaves exactly as today.
 selftest resolves the CLI through the trunk, then through PATH — neither of which
 belongs to the version being installed. A fresh machine has no `brain` on PATH at
 that moment, so the installer's own verification went red on a healthy tree; a
-machine that already had C Brain gave it the OTHER installation's engine to test.
+machine that already had GreyMatter gave it the OTHER installation's engine to test.
 The rule the header states — when an engine is named, its own `brain` is the only
 one allowed — is exactly what an installer is in a position to guarantee, so it
 does. `brain update` already named the candidate it was about to switch to.
@@ -312,14 +312,23 @@ migration script for the user to run.
 for a user with uncommitted work in their clone, step 2 runs `git checkout -- .`
 one final time and discards it. We cannot fix that from here — it is the code
 already installed. The release note must say, plainly: *commit or stash anything
-in your c-brain clone before updating to v1.29.0.*
+in your greymatter clone before updating to v1.29.0.*
 
 Developers convert by running `./install.sh --dev` once.
+
+### The v2.1.0 rename, replayed the same way
+
+An updater from v2.0.x builds the v2.1.0 candidate with its **own** code: it
+writes the manifest under the old file name, runs migrations from the old
+folder only, then replays the new `install.sh`. Each of those is met on the new
+side: `verify_manifest` reads either manifest name, the old migrations folder
+keeps forwarding stubs, and `install.sh` runs migration 002 before it resolves
+a single path. Details in [the migrations README](../greymatter/migrations/README.md).
 
 ## Two consequences we are choosing, not hiding
 
 **Agent briefs.** `agents/` is mounted into the trunk from the engine
-(`cbrain/engine-paths.txt`), and the gardening agents edit `agents/*.md` through
+(`greymatter/engine-paths.txt`), and the gardening agents edit `agents/*.md` through
 those links — the incident reported by a tester on 2026-08-16. Under an
 immutable engine those edits land in a version that is not supposed to change:
 doctor will flag them, and a version switch will drop them. That is the correct

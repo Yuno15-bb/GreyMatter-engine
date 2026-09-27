@@ -27,7 +27,7 @@ Usage :
 """
 import os, re, sys, json, time, glob, subprocess
 
-BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk")))
+BRAIN = os.path.realpath((os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk")))
 STATE = os.path.join(BRAIN, "state")
 HOOKS = os.path.join(BRAIN, "hooks")
 STALE_DAYS = 90                                     # « plus de trois mois »

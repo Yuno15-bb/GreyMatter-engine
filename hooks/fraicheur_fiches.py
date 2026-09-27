@@ -34,7 +34,7 @@ Usage:
 """
 import os, re, sys, json, time, glob, subprocess
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 OUTPUT = os.path.join(BRAIN, "state", "to-revalidate.json")
 FOLDERS = ("projects", "lessons", "meta", "life")
 

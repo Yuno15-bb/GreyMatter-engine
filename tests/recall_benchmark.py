@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 """
 recall_benchmark.py — how good is the recall, actually?
@@ -235,7 +235,7 @@ def build_queries(notes, rng: random.Random, n_queries=200):
 
 def measure(n_notes: int, seed: int = 7):
     rng = random.Random(seed)
-    tmp = Path(tempfile.mkdtemp(prefix="cbrain-bench-"))
+    tmp = Path(tempfile.mkdtemp(prefix="greymatter-bench-"))
     try:
         trunk = tmp / "trunk"
         trunk.mkdir()

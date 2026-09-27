@@ -52,7 +52,7 @@ import os
 import subprocess
 import sys
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 HOME = os.path.expanduser("~")
 FICHE = os.path.join(BRAIN, "projects", "project-status.md")
 # In projects/ and not state/: state/ is ignored by git, the list of decisions
@@ -320,7 +320,7 @@ def notifier(texte: str) -> None:
     next Claude Code session will display: the only place where we are certain the user
     is looking is where they work.
     """
-    titre = "C Brain — project status"
+    titre = "GreyMatter — project status"
     corps = texte.split("\n")[1] if "\n" in texte else texte
     corps = corps.replace('"', "'").replace("**", "")
     try:

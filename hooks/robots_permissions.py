@@ -48,7 +48,7 @@ import json
 import os
 import re
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 AGENTS = os.path.expanduser("~/.claude/agents")
 SETTINGS = os.path.expanduser("~/.claude/settings.json")
 # Same key as archive_session._transcripts_key(): BOTH "/" and "." become "-", or a
@@ -68,7 +68,7 @@ TRANSCRIPTS = os.path.join(os.path.expanduser("~/.claude/projects"),
 SAVOIR = ["projects/**", "lessons/**", "life/**", "state/a-valider.md"]
 
 # The capsule's pulses: agent definitions write them in two forms.
-PULSES = ["python3 hooks/brain_status.py *", "python3 ~/.c-brain/trunk/hooks/brain_status.py *"]
+PULSES = ["python3 hooks/brain_status.py *", "python3 ~/.greymatter/trunk/hooks/brain_status.py *"]
 
 # THE SHIP IS WHAT YOU CALL; THE MISSION IS WHAT IT DOES (2026-09-20).
 # The eight original roles have not gone away: each keeps its tools, its write zone and
@@ -125,7 +125,7 @@ def definition(mission):
 def hooks_rendus(brain=BRAIN):
     """The only hook given back to the robots: on_fiche_write (secret masking), taken as is
     from the user's settings, with the Brain's path rewritten when running on a copy."""
-    reel = os.path.realpath(os.path.expanduser("~/.c-brain/trunk"))
+    reel = os.path.realpath(os.path.expanduser("~/.greymatter/trunk"))
     try:
         groupes = json.load(open(SETTINGS, encoding="utf-8")).get("hooks", {}).get("PostToolUse", [])
     except Exception:

@@ -38,7 +38,7 @@ import json
 import os
 import re
 
-BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.c-brain/trunk"))
+BRAIN = os.path.realpath(os.environ.get("BRAIN_HOME") or os.path.expanduser("~/.greymatter/trunk"))
 SOURCE = os.path.join(BRAIN, "meta", "topics.json")
 
 RE_TOPIC = re.compile(r"^topic:[ \t]*(.*?)[ \t]*$", re.M)

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 # update.sh — updates the ENGINE. Never touches the TRUNK.
 #
 # What it does:
-#   1. fetches the published tags INTO ITS OWN MIRROR (~/.c-brain/source.git),
+#   1. fetches the published tags INTO ITS OWN MIRROR (~/.greymatter/source.git),
 #   2. BUILDS the newest one as a new immutable version under versions/,
 #   3. runs migrations that have not been applied yet,
 #   4. selftests THAT VERSION while it is still inactive,
@@ -23,13 +23,18 @@ set -euo pipefail
 # Canonical — see the same note in install.sh. The ownership check compares the
 # engine's resolved path against the recorded one, and the two must be resolved
 # the same way or a legitimate install is refused on a symlinked $HOME.
-CB="$HOME/.c-brain"
-CB="$(cd "$CB" 2>/dev/null && pwd -P || echo "$HOME/.c-brain")"
-ENGINE="$(cd "$CB/engine" 2>/dev/null && pwd -P)" || { echo "❌ Engine not found ($CB/engine)."; exit 1; }
-STATE="$CB/state"
-VERSIONS="$CB/versions"
-RUNTIME="$CB/runtime"
-MIRROR="$CB/source.git"
+# A root still under its pre-rename name (the installer's replay failed after an
+# update from v2.0.x) is renamed first: this script only knows the new one.
+if [ ! -e "$HOME/.greymatter" ] && [ -e "$HOME/.c-brain" ]; then   # pre-rename
+  bash "$(cd "$(dirname "$0")" && pwd -P)/migrations/002-rename-root.sh" || exit 1
+fi
+GM="$HOME/.greymatter"
+GM="$(cd "$GM" 2>/dev/null && pwd -P || echo "$HOME/.greymatter")"
+ENGINE="$(cd "$GM/engine" 2>/dev/null && pwd -P)" || { echo "❌ Engine not found ($GM/engine)."; exit 1; }
+STATE="$GM/state"
+VERSIONS="$GM/versions"
+RUNTIME="$GM/runtime"
+MIRROR="$GM/source.git"
 APPLIED="$STATE/applied-migrations.txt"
 PREVIOUS="$STATE/previous-version"
 MANAGED="$STATE/engine-managed"
@@ -37,10 +42,10 @@ DEVMARK="$STATE/engine-dev"
 mkdir -p "$STATE"
 
 # Building and verifying a version — the same definitions the installer uses.
-. "$ENGINE/cbrain/engine-lib.sh"
+. "$ENGINE/greymatter/engine-lib.sh"
 
 # ─── Automatic updates ────────────────────────────────────────────────────
-# State files shared with `cbrain/check_update.py`, which triggers `--auto` at
+# State files shared with `greymatter/check_update.py`, which triggers `--auto` at
 # session start.
 AUTO=0
 LOCK="$STATE/auto-update.lock"            # a directory: `mkdir` is atomic
@@ -89,7 +94,7 @@ fi
 # What it costs, said plainly: code from the remote repo now installs itself
 # WITHOUT being asked. That is an execution channel. Three counterweights, none
 # of them optional:
-#   · `$AUTO_OFF` (or CBRAIN_NO_AUTO_UPDATE=1) restores the previous behaviour —
+#   · `$AUTO_OFF` (or GREYMATTER_NO_AUTO_UPDATE=1) restores the previous behaviour —
 #     report, do not apply. The way out exists before the way in.
 #   · the selftest decides. In automatic mode nobody is watching the screen: an
 #     update that breaks the tool and LEAVES it broken would be worse than no
@@ -97,7 +102,7 @@ fi
 #   · nothing ever blocks a session — the hook is what detaches; here we only
 #     work quietly into a log.
 if [ "$AUTO" = "1" ]; then
-  if [ -e "$AUTO_OFF" ] || [ -n "${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi
+  if [ -e "$AUTO_OFF" ] || [ -n "${GREYMATTER_NO_AUTO_UPDATE:-}${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi   # pre-rename name still honoured
 
   # A lock, because several sessions start at the same time. `mkdir` fails when
   # the directory exists: that is the shell's atomic test-and-set, where
@@ -129,7 +134,7 @@ say()  { echo "  $*"; }
 warn() { echo "  ⚠️  $*"; }
 
 # ─── The switch itself ───────────────────────────────────────────────────────
-# ATOMIC, and it has to be. `~/.c-brain/engine` is what the trunk's mounts, the
+# ATOMIC, and it has to be. `~/.greymatter/engine` is what the trunk's mounts, the
 # `brain` CLI, the Claude Code hooks and the launchd jobs all resolve through, so
 # for the instant it does not exist, every one of them is broken — and sessions
 # start at moments we do not choose. `ln -s` onto an existing path fails, and
@@ -137,7 +142,7 @@ warn() { echo "  ⚠️  $*"; }
 # name and `mv`-ing it over is a single rename(2): readers see the old target or
 # the new one, never nothing.
 # ⚠ `-h` IS NOT OPTIONAL, and leaving it out does not fail — it does something
-# else entirely. `~/.c-brain/engine` is a symlink to a DIRECTORY, and `mv -f`
+# else entirely. `~/.greymatter/engine` is a symlink to a DIRECTORY, and `mv -f`
 # stats its destination, follows it, and moves the new link INSIDE the old
 # version. The engine never switches, and an immutable version quietly gains a
 # stray file that breaks its own manifest. Measured on 2026-08-17: with `-f` the
@@ -147,13 +152,13 @@ warn() { echo "  ⚠️  $*"; }
 # happening non-atomically, in a different file, by accident.
 # `-h` renames the LINK itself: one rename(2), no window, nothing followed.
 switch_to() {   # switch_to <version-name>
-  local name="$1" tmp="$CB/.engine.switching.$$"
+  local name="$1" tmp="$GM/.engine.switching.$$"
   [ -d "$VERSIONS/$name" ] || return 1
   ln -sfn "$VERSIONS/$name" "$tmp" || return 1
-  mv -hf "$tmp" "$CB/engine" || { rm -f "$tmp"; return 1; }
+  mv -hf "$tmp" "$GM/engine" || { rm -f "$tmp"; return 1; }
   # And CHECK. A switch that silently did not happen is what this comment is
   # about; asserting the result costs one readlink.
-  [ "$(readlink "$CB/engine")" = "$VERSIONS/$name" ]
+  [ "$(readlink "$GM/engine")" = "$VERSIONS/$name" ]
 }
 
 # Keep the active version, the one to roll back to, and one spare. Anything older
@@ -162,7 +167,7 @@ switch_to() {   # switch_to <version-name>
 # need must not be removed on the strength of an update that has not landed.
 prune_versions() {
   local keep_active keep_prev n
-  keep_active="$(basename "$(cd "$CB/engine" && pwd -P)")"
+  keep_active="$(basename "$(cd "$GM/engine" && pwd -P)")"
   keep_prev="$(cat "$PREVIOUS" 2>/dev/null || true)"
   n=0
   # Newest first, so the survivors are the recent ones.
@@ -178,7 +183,7 @@ prune_versions() {
 command -v git >/dev/null || { echo "❌ git is required for updates."; exit 1; }
 
 # The version this installation is running, by name. It is the directory name
-# under `versions/`, which is also what `$CB/VERSION` records — no git call, and
+# under `versions/`, which is also what `$GM/VERSION` records — no git call, and
 # nothing to derive: an engine has no history to ask.
 # ⚠ MULTI-LINE ON PURPOSE. tests/update_tag_family.sh lifts these functions out of
 # this file with `sed '/^current() {/,/^}/p'` rather than re-implementing them, so
@@ -289,7 +294,7 @@ gate_ownership() {   # every replacing path goes through here, rollback included
   fi
 
   # 3. The marker names the versions root this installation owns. The engine must
-  #    live INSIDE it: `~/.c-brain/engine` may have been repointed at somebody's
+  #    live INSIDE it: `~/.greymatter/engine` may have been repointed at somebody's
   #    repository since, and a stale marker must not vouch for it.
   OWNED_ROOT="$(cat "$MANAGED" 2>/dev/null)"
   case "$ENGINE/" in
@@ -344,6 +349,19 @@ if [ "$MODE" = "rollback" ]; then
     exit 1
   fi
   echo "⏪ Rolling back to $target"
+  # BACK ACROSS THE RENAME. A version from before v2.1.0 re-wires itself under the
+  # old names — hooks spelled `.c-brain`, jobs labelled `com.claudebrain.*` — and  (pre-rename)
+  # knows nothing of the new ones. Left in place, every hook and every job would
+  # run twice. So the new-name wiring is taken down first; the old installer then
+  # puts back its own. The root keeps its new name: the old one is a link to it.
+  if [ ! -d "$VERSIONS/$target/greymatter" ]; then
+    . "$ENGINE/greymatter/launchd-lib.sh"
+    python3 "$ENGINE/merge_settings.py" remove >/dev/null 2>&1 || warn "could not unwire the hooks"
+    for t in resume machiniste; do
+      gm_launchd_owned "com.greymatter.$t" && gm_launchd_uninstall "com.greymatter.$t" \
+        "$HOME/Library/LaunchAgents/com.greymatter.$t.plist" >/dev/null 2>&1 || :
+    done
+  fi
   switch_to "$target" || { echo "❌ could not switch the engine link."; exit 1; }
   bash "$VERSIONS/$target/install.sh" >/dev/null 2>&1 || warn "install.sh reported a problem"
   echo "✅ Back on $target. Your notes did not move."
@@ -352,7 +370,7 @@ fi
 
 # ─── Remote state ─────────────────────────────────────────────────────────
 CUR="$(current)"
-echo "🔄 C Brain — installed version: $CUR"
+echo "🔄 GreyMatter — installed version: $CUR"
 
 # --force: the remote is authoritative on tags. The user never creates any —
 # without this, a single tag republished by the author makes the fetch fail
@@ -462,7 +480,7 @@ gate_ownership
 #
 # Versions living side by side remove the need to accept any of that. The
 # candidate is built, verified and selftested while it is INACTIVE, and it
-# becomes `~/.c-brain/engine` only after passing. Red means the candidate is
+# becomes `~/.greymatter/engine` only after passing. Red means the candidate is
 # deleted and the active version was never involved.
 CANDIDATE="$VERSIONS/$NEW"
 
@@ -486,7 +504,7 @@ fi
 # CANDIDATE — they are what the new version needs done — and they run before the
 # switch so that a failing one leaves the active engine where it was.
 touch "$APPLIED"
-for m in "$CANDIDATE"/cbrain/migrations/*.sh; do
+for m in "$CANDIDATE"/greymatter/migrations/*.sh; do
   [ -e "$m" ] || continue
   name="$(basename "$m")"
   grep -qxF "$name" "$APPLIED" && continue
@@ -509,11 +527,11 @@ done
 # scripts through the trunk's mounts — which point at the ACTIVE engine — and it
 # would go green having tested the version we are trying to replace.
 say "selftest on $NEW (still inactive)…"
-if bash "$CANDIDATE/hooks/selftest.sh" "$CANDIDATE" >/tmp/c-brain-update-selftest.log 2>&1; then
+if bash "$CANDIDATE/hooks/selftest.sh" "$CANDIDATE" >/tmp/greymatter-update-selftest.log 2>&1; then
   say "selftest green — switching"
 else
   echo
-  warn "selftest FAILED on $NEW (/tmp/c-brain-update-selftest.log)"
+  warn "selftest FAILED on $NEW (/tmp/greymatter-update-selftest.log)"
   warn "the candidate was DELETED. The engine is still $CUR — it was never switched."
   rm -rf "$CANDIDATE"
   result "blocked" "$NEW"
@@ -529,7 +547,7 @@ say "engine now on $NEW"
 # COPY in ~/.claude, the launchd jobs and the settings hooks are generated files.
 # Everything else was switched by the link itself.
 say "reinstalling (idempotent)…"
-bash "$CANDIDATE/install.sh" >/tmp/c-brain-update.log 2>&1 || warn "install.sh reported a problem (/tmp/c-brain-update.log)"
+bash "$CANDIDATE/install.sh" >/tmp/greymatter-update.log 2>&1 || warn "install.sh reported a problem (/tmp/greymatter-update.log)"
 
 # The installer must not have dirtied the version it just mounted. npm used to do
 # exactly that (it rewrites package-lock.json where it runs), which is why it now

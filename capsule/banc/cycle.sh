@@ -15,7 +15,7 @@
 # Usage:  ./banc/cycle.sh [seconds per state]     (default 4)
 set -u
 PAUSE="${1:-4}"
-BRAIN="${BRAIN_HOME:-$HOME/.c-brain/trunk}"
+BRAIN="${BRAIN_HOME:-$HOME/.greymatter/trunk}"
 STATUS="$BRAIN/hooks/brain_status.py"
 
 # The order follows the FAMILIES, not the alphabet: you see each mechanic climb

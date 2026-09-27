@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # update_tag_family.sh — the update path must never change the user's language.
@@ -32,8 +32,8 @@ cd "$T/engine"
 # NOT a plausible-looking address: leakcheck scans this repository for e-mail
 # patterns, and a placeholder that matches one turns the guard red on a file
 # that leaks nothing. git accepts any string here.
-git config user.email cbrain-test
-git config user.name cbrain-test
+git config user.email greymatter-test
+git config user.name greymatter-test
 
 echo base > f && git add f && git commit -qm base
 git checkout -q -b fr && echo fr1 > f && git commit -qam fr1 && git tag -a v1.17.0-fr -m x
@@ -66,7 +66,7 @@ mkdir -p "$VERSIONS"
 # re-implemented `current()` is precisely the drift this avoids.
 STATE="$T/state"
 mkdir -p "$STATE"
-eval "$(sed -n '/^FAMILY_FILE=/p;/^current() {/,/^}/p;/^family() {/,/^}/p;/^latest_tag() {/,/^}/p' "$ROOT/cbrain/update.sh")"
+eval "$(sed -n '/^FAMILY_FILE=/p;/^current() {/,/^}/p;/^family() {/,/^}/p;/^latest_tag() {/,/^}/p' "$ROOT/greymatter/update.sh")"
 
 check() {  # check <label> <installed-version-name> <expected>
   ENGINE="$VERSIONS/$2"

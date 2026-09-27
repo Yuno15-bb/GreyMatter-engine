@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# C Brain — Copyright (c) 2026 Dylan Peellaert.
+# GreyMatter — Copyright (c) 2026 Dylan Peellaert.
 # Licensed under the Apache License, Version 2.0. See LICENSE and NOTICE.
 #
 # e2e_install_update.sh — THE FIRST END-TO-END CONTRACT.
@@ -51,7 +51,7 @@ if [ -n "$SABOTAGE" ]; then
 fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd -P)"
-LAB="$(cd "$(mktemp -d "${TMPDIR:-/tmp}/cbrain-e2e.XXXXXX")" && pwd -P)"
+LAB="$(cd "$(mktemp -d "${TMPDIR:-/tmp}/greymatter-e2e.XXXXXX")" && pwd -P)"
 trap '[ "$KEEP" = "1" ] || rm -rf "$LAB"' EXIT
 
 # macOS ships no `readlink -f`; this follows a chain of symlinks to the end.
@@ -64,14 +64,14 @@ readlink_f() {
   printf '%s\n' "$p"
 }
 
-# ⚠ NEVER RETURNS AN EMPTY STRING SILENTLY. `basename "$(cd "$CB/engine" && pwd -P)"`
+# ⚠ NEVER RETURNS AN EMPTY STRING SILENTLY. `basename "$(cd "$GM/engine" && pwd -P)"`
 # yields "" when the link dangles — and comparing "" to "" then reports the
 # engine as unchanged. That is a green produced by being unable to look, and it
 # hid a sabotage that had in fact switched the engine to a deleted directory.
 # A name that could not be read is reported as such, and never matches anything.
 active_version() {
   local p
-  p="$(cd "$CB/engine" 2>/dev/null && pwd -P)" || { echo "<UNREADABLE:dangling-or-missing-engine-link>"; return 0; }
+  p="$(cd "$GM/engine" 2>/dev/null && pwd -P)" || { echo "<UNREADABLE:dangling-or-missing-engine-link>"; return 0; }
   [ -n "$p" ] && basename "$p" || echo "<UNREADABLE:empty>"
 }
 
@@ -80,7 +80,7 @@ ok()   { echo "  ✅ $1"; }
 ko()   { echo "  ❌ $1"; fails=$((fails + 1)); }
 info() { echo "     $1"; }
 
-echo "== C Brain — end-to-end: install → update → rollback =="
+echo "== GreyMatter — end-to-end: install → update → rollback =="
 [ -n "$SABOTAGE" ] && echo "   SABOTAGE: $SABOTAGE"
 echo "   lab: $LAB"
 
@@ -123,19 +123,19 @@ PY
 case "$SABOTAGE" in
   # The installer stops recording that it owns what it built. One line.
   no-ownership)
-    sabotage_patch install.sh 's.replace(chr(39)+chr(37)+"s\\n"+chr(39)+" \"$VERSIONS\" > \"$CB/state/engine-managed\"", ": # SABOTAGE")' ;;
+    sabotage_patch install.sh 's.replace(chr(39)+chr(37)+"s\\n"+chr(39)+" \"$VERSIONS\" > \"$GM/state/engine-managed\"", ": # SABOTAGE")' ;;
   # The updater forgets that a --dev engine is off limits — both refusals.
   dev-updated)
-    sabotage_patch cbrain/update.sh 's.replace("if [ -f \"$DEVMARK\" ] && [ \"$MODE\" != \"auto-off\" ] && [ \"$MODE\" != \"auto-on\" ]; then", "if false; then").replace("if [ -f \"$DEVMARK\" ]; then", "if false; then")' ;;
+    sabotage_patch greymatter/update.sh 's.replace("if [ -f \"$DEVMARK\" ] && [ \"$MODE\" != \"auto-off\" ] && [ \"$MODE\" != \"auto-on\" ]; then", "if false; then").replace("if [ -f \"$DEVMARK\" ]; then", "if false; then")' ;;
   # The switch happens before the check — the ordering this chantier replaced.
   switch-before-selftest)
-    sabotage_patch cbrain/update.sh 's.replace("if bash \"$CANDIDATE/hooks/selftest.sh\"", "switch_to \"$NEW\"\nif bash \"$CANDIDATE/hooks/selftest.sh\"", 1)' ;;
+    sabotage_patch greymatter/update.sh 's.replace("if bash \"$CANDIDATE/hooks/selftest.sh\"", "switch_to \"$NEW\"\nif bash \"$CANDIDATE/hooks/selftest.sh\"", 1)' ;;
   # Rolling back to a version that is not on disk is no longer checked for.
   rollback-missing)
-    sabotage_patch cbrain/update.sh 's.replace("if [ ! -d \"$VERSIONS/$target\" ]; then", "if false; then")' ;;
+    sabotage_patch greymatter/update.sh 's.replace("if [ ! -d \"$VERSIONS/$target\" ]; then", "if false; then")' ;;
   # The updater writes into the user's notes.
   update-touches-trunk)
-    sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\nrm -rf \"$HOME/.c-brain/trunk/lessons\"\n", 1)' ;;
+    sabotage_patch greymatter/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\nrm -rf \"$HOME/.greymatter/trunk/lessons\"\n", 1)' ;;
   # The version id takes the source's working-tree state into its NAME again —
   # the literal code this file's section 1bis was written to retire. `git archive
   # HEAD` is untouched, so the engine built under the new name is byte-identical
@@ -158,7 +158,7 @@ case "$SABOTAGE" in
   #   git configuration, and `git status --porcelain` sees the append on every
   #   machine. No `|| true` either: a sabotage that cannot be applied must be loud.
   source-mutated)
-    sabotage_patch cbrain/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\necho \"the updater wrote here\" >> \"'"$LAB"'/user-clone/README.md\"\n", 1)' ;;
+    sabotage_patch greymatter/update.sh 's.replace("\ngate_ownership\n", "\ngate_ownership\necho \"the updater wrote here\" >> \"'"$LAB"'/user-clone/README.md\"\n", 1)' ;;
 esac
 
 # A published history: v1.0.0, then v1.1.0 differing by one tracked file. Both
@@ -177,7 +177,7 @@ git clone --quiet --bare "$LAB/src" "$LAB/origin.git"
 # ─── The isolated environment ────────────────────────────────────────────────
 export HOME="$LAB/home"
 mkdir -p "$HOME"
-CB="$HOME/.c-brain"
+GM="$HOME/.greymatter"
 # PATH BUILT FROM NOTHING. The host's ~/.local/bin is deliberately absent: that
 # is where the developer's own `brain` lives, and inheriting it is how a test
 # ends up measuring the wrong installation. /opt/homebrew/bin is included only
@@ -192,7 +192,7 @@ export PATH="$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
 # own. Point this at node, never at a directory carrying a `brain`.
 [ -n "${E2E_EXTRA_PATH:-}" ] && export PATH="$PATH:$E2E_EXTRA_PATH"
 # The trunk's auto-save and the agents must not reach the real machine.
-export CBRAIN_NO_AUTO_UPDATE=""
+export GREYMATTER_NO_AUTO_UPDATE=""
 unset CLAUDE_BRAIN_GARDENING 2>/dev/null || true
 
 # SABOTAGE `host-brain-leak`: put a decoy `brain` ahead on PATH, exactly as an
@@ -230,28 +230,28 @@ else
   ko "install.sh failed"; tail -5 "$LAB/install.log" | sed 's/^/       /'
 fi
 
-ENGINE_LINK="$(readlink "$CB/engine" 2>/dev/null || echo "")"
+ENGINE_LINK="$(readlink "$GM/engine" 2>/dev/null || echo "")"
 case "$ENGINE_LINK" in
-  "$CB/versions/"*) ok "engine points into versions/ ($(basename "$ENGINE_LINK"))" ;;
+  "$GM/versions/"*) ok "engine points into versions/ ($(basename "$ENGINE_LINK"))" ;;
   "") ko "no engine link at all" ;;
   *)  ko "engine points OUTSIDE versions/: $ENGINE_LINK" ;;
 esac
 
-[ -d "$CB/engine/.git" ] \
+[ -d "$GM/engine/.git" ] \
   && ko "the engine carries a .git — it is a checkout, not an immutable version" \
   || ok "the engine has no .git (an export, not a repository)"
 
 # THE MARKER IS READ, NEVER WRITTEN. The contract this replaces built its own
 # fixture marker, so it could not have noticed that install.sh never wrote one.
-if [ -f "$CB/state/engine-managed" ]; then
+if [ -f "$GM/state/engine-managed" ]; then
   ok "install.sh wrote the ownership marker itself"
-  info "owns: $(cat "$CB/state/engine-managed")"
+  info "owns: $(cat "$GM/state/engine-managed")"
 else
   ko "install.sh did NOT write state/engine-managed — the install owns nothing"
 fi
 
-if [ -d "$CB/source.git" ]; then ok "source mirror created"; else ko "no source mirror — updates have nowhere to fetch from"; fi
-if [ -f "$CB/engine/.cbrain-manifest" ]; then ok "the version carries an integrity manifest"; else ko "no manifest — immutability cannot be checked"; fi
+if [ -d "$GM/source.git" ]; then ok "source mirror created"; else ko "no source mirror — updates have nowhere to fetch from"; fi
+if [ -f "$GM/engine/.greymatter-manifest" ]; then ok "the version carries an integrity manifest"; else ko "no manifest — immutability cannot be checked"; fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 echo
@@ -262,7 +262,7 @@ echo "▸ 1bis. installing again from a DIRTY source — the engine is the COMMI
 # changes. But `build_version()` exports with `git archive HEAD`: the engine is
 # the COMMIT, and the working tree is deliberately left out of it. So the suffix
 # named the engine after a property of the SOURCE, and this machine's own
-# `~/.c-brain/versions/` ended up holding two directories for the same commit
+# `~/.greymatter/versions/` ended up holding two directories for the same commit
 # 686f2ac, whose exports were byte-identical.
 #
 # The cost was not cosmetic. Two names for one content means the branch that
@@ -274,7 +274,7 @@ echo "▸ 1bis. installing again from a DIRTY source — the engine is the COMMI
 # uncommitted work is not in the engine. The last part matters most — dropping
 # the suffix must not drop the information. It moved from a name nobody reads
 # into a sentence the user is shown.
-VERSIONS_BEFORE_DIRTY="$(find "$CB/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+VERSIONS_BEFORE_DIRTY="$(find "$GM/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 ENGINE_BEFORE_DIRTY="$(active_version)"
 
 echo "a change that was never committed" >> "$LAB/user-clone/README.md"
@@ -284,7 +284,7 @@ else
   ( cd "$LAB/user-clone" && ./install.sh --core-only ) >"$LAB/install-dirty.log" 2>&1
 
   ENGINE_AFTER_DIRTY="$(active_version)"
-  VERSIONS_AFTER_DIRTY="$(find "$CB/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+  VERSIONS_AFTER_DIRTY="$(find "$GM/versions" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 
   if [ "$ENGINE_AFTER_DIRTY" = "$ENGINE_BEFORE_DIRTY" ]; then
     ok "a dirty source resolves to the same version ($ENGINE_AFTER_DIRTY)"
@@ -328,13 +328,13 @@ if [ -z "$BRAIN_BIN" ]; then
   ko "no \`brain\` on PATH after installing"
 else
   # FULLY resolved, directory components included. Following only the trailing
-  # symlink stops at `~/.c-brain/engine/brain` — a real file inside a symlinked
+  # symlink stops at `~/.greymatter/engine/brain` — a real file inside a symlinked
   # DIRECTORY — and the assertion then compares a path that still contains the
   # link it was supposed to see through. That mistake made this very check fail
   # on a correct install the first time it ran.
   RESOLVED="$(cd -P "$(dirname "$(readlink_f "$BRAIN_BIN")")" && pwd)/$(basename "$BRAIN_BIN")"
   case "$RESOLVED" in
-    "$CB/versions/"*)
+    "$GM/versions/"*)
       ok "the \`brain\` on PATH resolves into this test's own versions/" ;;
     *)
       ko "PATH LEAK — \`brain\` resolves to $RESOLVED, outside this test's install"
@@ -346,8 +346,8 @@ fi
 echo
 echo "▸ 3. a note in the trunk, to prove the update never touches it"
 # ═══════════════════════════════════════════════════════════════════════════
-mkdir -p "$HOME/.c-brain/trunk/lessons"
-NOTE="$HOME/.c-brain/trunk/lessons/e2e-witness.md"
+mkdir -p "$HOME/.greymatter/trunk/lessons"
+NOTE="$HOME/.greymatter/trunk/lessons/e2e-witness.md"
 printf -- '---\nname: e2e-witness\n---\n\nthe user knowledge that must survive an update\n' > "$NOTE"
 NOTE_BEFORE="$(shasum -a 256 "$NOTE" | cut -d' ' -f1)"
 ok "witness note written"
@@ -385,7 +385,7 @@ elif [ "$SABOTAGE" = "switch-before-selftest" ]; then
   else
     ko "THE ENGINE WAS SWITCHED TO A VERSION THAT FAILS ITS OWN SELFTEST ($VERSION_BEFORE → $VERSION_AFTER)"
   fi
-  [ -d "$CB/versions/v1.1.0" ] \
+  [ -d "$GM/versions/v1.1.0" ] \
     && ko "the failed candidate was left on disk" \
     || ok "the failed candidate was deleted"
 else
@@ -397,7 +397,7 @@ else
   fi
   # The update is only real if the NEW CODE is what is mounted. A symlink that
   # points at a directory proves nothing about what is inside it.
-  [ -f "$CB/engine/VERSION-MARKER" ] \
+  [ -f "$GM/engine/VERSION-MARKER" ] \
     && ok "the new version's files are the ones mounted (VERSION-MARKER present)" \
     || ko "the engine link moved but the new version's content is not there"
   # Selftest before switch: the log must show the check happening on the
@@ -444,8 +444,8 @@ if [ "$SABOTAGE" = "" ] || [ "$SABOTAGE" = "host-brain-leak" ] || [ "$SABOTAGE" 
   # This runs in the normal pass too: a refusal nobody exercises is a refusal
   # nobody knows still works.
   SAVED="$LAB/saved-version"
-  rm -rf "$SAVED"; cp -R "$CB/versions/$VERSION_BEFORE" "$SAVED"
-  rm -rf "$CB/versions/$VERSION_BEFORE"
+  rm -rf "$SAVED"; cp -R "$GM/versions/$VERSION_BEFORE" "$SAVED"
+  rm -rf "$GM/versions/$VERSION_BEFORE"
   set +e; brain update --rollback >"$LAB/rollback-missing.log" 2>&1; RBM_RC=$?; set -e
   NOW="$(active_version)"
   if [ "$RBM_RC" -ne 0 ] && [ "$NOW" = "$VERSION_AFTER" ]; then
@@ -468,7 +468,7 @@ if [ "$SABOTAGE" = "" ] || [ "$SABOTAGE" = "host-brain-leak" ] || [ "$SABOTAGE" 
     tail -3 "$LAB/rollback-missing.log" | sed 's/^/       /'
   fi
   # put it back, so the real rollback below has something to return to
-  cp -R "$SAVED" "$CB/versions/$VERSION_BEFORE"
+  cp -R "$SAVED" "$GM/versions/$VERSION_BEFORE"
 fi
 
 if [ "$SABOTAGE" = "" ] || [ "$SABOTAGE" = "host-brain-leak" ] || [ "$SABOTAGE" = "rollback-missing" ]; then
@@ -480,7 +480,7 @@ if [ "$SABOTAGE" = "" ] || [ "$SABOTAGE" = "host-brain-leak" ] || [ "$SABOTAGE" 
     ko "rollback did not restore $VERSION_BEFORE (rc=$RB_RC, engine on $NOW)"
     tail -5 "$LAB/rollback.log" | sed 's/^/       /'
   fi
-  [ -f "$CB/engine/VERSION-MARKER" ] \
+  [ -f "$GM/engine/VERSION-MARKER" ] \
     && ko "rolled back, but v1.1.0's file is still mounted" \
     || ok "the rolled-back version's content is the one mounted"
 else
@@ -492,7 +492,7 @@ echo
 echo "▸ 7. the two refusals — an unowned engine, and a --dev engine"
 # ═══════════════════════════════════════════════════════════════════════════
 if [ "$SABOTAGE" = "no-ownership" ]; then
-  if [ ! -f "$CB/state/engine-managed" ]; then
+  if [ ! -f "$GM/state/engine-managed" ]; then
     ok "sabotage in place: no ownership marker was written"
   else
     ko "the sabotage did not take — the marker is still there, this run proves nothing"
@@ -509,23 +509,23 @@ fi
 # the updater has everything it needs to go ahead. That is what makes the guard
 # load-bearing rather than decorative — in a fresh home the update would stop at
 # "no source mirror" and a disabled guard would look harmless.
-# It is also the realistic path: somebody installs C Brain, then re-runs the
+# It is also the realistic path: somebody installs GreyMatter, then re-runs the
 # installer with --dev from their checkout.
 ( cd "$LAB/user-clone" && ./install.sh --core-only --dev ) >"$LAB/dev-install.log" 2>&1
 
-DEV_ENGINE="$(readlink "$CB/engine" 2>/dev/null || echo "")"
+DEV_ENGINE="$(readlink "$GM/engine" 2>/dev/null || echo "")"
 if [ "$(cd "$DEV_ENGINE" 2>/dev/null && pwd -P)" = "$LAB/user-clone" ]; then
   ok "--dev linked the engine to the checkout"
 else
   ko "--dev did not link the checkout (engine → $DEV_ENGINE)"
 fi
-[ -f "$CB/state/engine-dev" ] && ok "--dev wrote its own marker" || ko "--dev wrote no marker"
-[ -f "$CB/state/engine-managed" ] && ko "--dev ALSO claims to be a managed install" || ok "--dev is not marked as managed (the two are exclusive)"
+[ -f "$GM/state/engine-dev" ] && ok "--dev wrote its own marker" || ko "--dev wrote no marker"
+[ -f "$GM/state/engine-managed" ] && ko "--dev ALSO claims to be a managed install" || ok "--dev is not marked as managed (the two are exclusive)"
 
 DEV_HEAD_BEFORE="$(git -C "$LAB/user-clone" rev-parse HEAD)"
 set +e; brain update >"$LAB/dev-update.log" 2>&1; DEV_RC=$?; set -e
 DEV_HEAD_AFTER="$(git -C "$LAB/user-clone" rev-parse HEAD)"
-DEV_ENGINE_AFTER="$(cd "$CB/engine" 2>/dev/null && pwd -P || echo "")"
+DEV_ENGINE_AFTER="$(cd "$GM/engine" 2>/dev/null && pwd -P || echo "")"
 
 # THE PROPERTY: a --dev engine is never updated. Not "the clone survives" — the
 # new model makes that true even without the guard, since nothing writes to a

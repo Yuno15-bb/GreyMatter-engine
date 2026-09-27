@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Machinist — the C Brain's machine round (RAM / CPU / heat).
+<!-- Machinist — the GreyMatter's machine round (RAM / CPU / heat).
      Every 10 minutes, no LLM: measures, kills orphaned dev servers,
      reports the rest. Quota cost: zero.
 
      TEMPLATE — __HOME__ must be substituted with the real $HOME at install time
-     (the same trap as com.claudebrain.resume: a hardcoded home path silently broke
+     (the same trap as com.greymatter.resume: a hardcoded home path silently broke
      resume on a fresh machine on 2026-07-22). -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.claudebrain.machiniste</string>
+    <string>com.greymatter.machiniste</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>__HOME__/.c-brain/trunk/hooks/machiniste.py</string>
+        <string>__HOME__/.greymatter/trunk/hooks/machiniste.py</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <!-- No BRAIN_HOME here: install.sh and adopt-launchd.sh render only
              `__HOME__`, and the child resolves the default trunk itself
-             (hooks/brain_racine.py: BRAIN_HOME, else ~/.c-brain/trunk). -->
+             (hooks/brain_racine.py: BRAIN_HOME, else ~/.greymatter/trunk). -->
         <key>PATH</key>
         <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
@@ -34,8 +34,8 @@
     <key>ProcessType</key>
     <string>Background</string>
     <key>StandardOutPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/machiniste.log</string>
+    <string>__HOME__/.greymatter/trunk/sessions/machiniste.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.c-brain/trunk/sessions/machiniste.log</string>
+    <string>__HOME__/.greymatter/trunk/sessions/machiniste.log</string>
 </dict>
 </plist>
