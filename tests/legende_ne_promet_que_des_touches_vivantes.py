@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Check that each visible GMTR keyboard hint has a listener on that page."""
 from pathlib import Path
-import importlib.util
 import re
 import sys
 
@@ -38,10 +37,6 @@ def hidden_ids(styles):
 
 
 def main():
-    spec = importlib.util.spec_from_file_location("gmtr_builder", ZONE / "carte" / "fabriquer.py")
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
-    builder.fabriquer()
     failures, checked, pages = [], 0, 0
     for page in sorted(ZONE.rglob("*.html")):
         html = page.read_text(encoding="utf-8")

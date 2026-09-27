@@ -334,7 +334,7 @@ def main():
         print("SKIPPED — Playwright not found (set GREYMATTER_PLAYWRIGHT)")
         return 0
     if not (MAP / "index.html").is_file():
-        print("RED — build the GMTR map with gmtr/carte/fabriquer.py first")
+        print("RED — committed GMTR map missing at gmtr/carte/index.html")
         return 1
     port, token = free_port(), secrets.token_urlsafe(24)
     with tempfile.TemporaryDirectory() as temp:
