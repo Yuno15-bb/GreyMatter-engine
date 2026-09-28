@@ -13,8 +13,13 @@
 # blank Mac on 2026-09-26.
 #
 # The bench installs for real, from a clone, in throwaway HOMEs. It makes the
-# selftest fail the honest way — a Node on PATH that cannot parse the capsule,
-# which is a thing a machine can have — and never by editing the product.
+# selftest fail the honest way — a pill build left in the shared runtime that no
+# longer runs (an interrupted build, a cleaner that truncated it), which is a
+# thing a machine can have — and never by editing the product. Until 2.2 the
+# broken thing was a Node on PATH that could not parse the Electron capsule; the
+# selftest no longer calls Node, so that case turned green and this bench red.
+# The case needs Swift: without it the installer skips the pill, the selftest
+# skips its check, and there is nothing honest left to break — it says so.
 #
 # Run: bash tests/install_exit_code.sh [--sabotage exit-zero|path-hides-selftest]
 #   exit-zero           — the installer exits 0 again after a red selftest; must go RED.
@@ -61,22 +66,35 @@ case "$SABOTAGE" in
   *) echo "unknown sabotage: $SABOTAGE"; exit 2 ;;
 esac
 
-# A Node that exists and cannot parse anything: the selftest checks the capsule
-# with it and goes red, exactly as it would on a broken Node.
-BAD="$H/broken-node"
-mkdir -p "$BAD"
-printf '#!/bin/sh\necho "node: broken on purpose" >&2\nexit 1\n' > "$BAD/node"
-chmod +x "$BAD/node"
+if ! { PATH="$APPLE_PATH" command -v swift >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1; }; then
+  echo "Install exit code — skipped (no Swift: the pill, the only honest way to fail the selftest from outside, is not built here)"
+  exit 0
+fi
+# seed_broken_pill <home>: the build install.sh would reuse for these sources
+# (same key, see capsule_dir), already there and unable to answer --check.
+seed_broken_pill() {
+  local rt
+  rt="$(source "$SRC/greymatter/engine-lib.sh" && capsule_dir "$SRC" "$1/.greymatter/runtime")" || return 1
+  mkdir -p "$rt/release"
+  printf '#!/bin/sh\necho "Capsule: broken on purpose" >&2\nexit 1\n' > "$rt/release/Capsule"
+  chmod +x "$rt/release/Capsule"
+}
 
 N=0
-install_in() {  # install_in <extra-PATH-before-apple> <1 if ~/.local/bin on PATH> → sets OUT, RC
-  N=$((N + 1)); local home="$H/home-$N" p="${1:+$1:}$APPLE_PATH"
+install_in() {  # install_in <1 if a broken pill waits> <1 if ~/.local/bin on PATH> → sets OUT, RC
+  N=$((N + 1)); local home="$H/home-$N" p="$APPLE_PATH" mode=(--core-only)
   mkdir -p "$home"
   [ "$2" = "1" ] && p="$home/.local/bin:$p"
   # --core-only: no launchd job, no capsule, no planet — a bench registers nothing
-  # on the machine running it. stdin is not a terminal, so it asks nothing.
+  # on the machine running it. The broken case keeps the capsule step so the
+  # selftest meets the pill; the installer starts it once, it exits at once.
+  # stdin is not a terminal, so it asks nothing.
+  if [ "$1" = "1" ]; then
+    seed_broken_pill "$home" || { echo "  ❌ could not seed the broken pill"; exit 1; }
+    mode=(--no-launchd --no-planet)
+  fi
   OUT="$(cd "$SRC" && env -i HOME="$home" USER="${USER:-tester}" LANG=en_US.UTF-8 \
-           TERM=dumb PATH="$p" ./install.sh --core-only </dev/null 2>&1)"
+           TERM=dumb PATH="$p" ./install.sh "${mode[@]}" </dev/null 2>&1)"
   RC=$?
   LAST="$(printf '%s' "$OUT" | tail -40)"
 }
@@ -86,7 +104,7 @@ install_in() {  # install_in <extra-PATH-before-apple> <1 if ~/.local/bin on PAT
 last_screen_has() { grep -q "$1" <<<"$LAST"; }
 
 echo "▸ the selftest fails, ~/.local/bin on PATH"
-install_in "$BAD" 1
+install_in 1 1
 printf '%s' "$OUT" | grep -q "selftest failed"
 check $? "the selftest really is red (the bench is aimed at the right case)"
 [ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
@@ -96,7 +114,7 @@ last_screen_has "✅ GreyMatter installed."
 [ $? -ne 0 ]; check $? "it does not claim a clean install"
 
 echo "▸ the selftest fails AND ~/.local/bin is not on PATH (a new Mac)"
-install_in "$BAD" 0
+install_in 1 0
 [ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
 last_screen_has "not reachable yet"
 check $? "the last screen still gives the PATH advice"
@@ -104,11 +122,11 @@ last_screen_has "own verification did not pass"
 check $? "and the PATH advice no longer hides the failed verification"
 
 echo "▸ control: a healthy install, PATH or not"
-install_in "" 1
+install_in 0 1
 [ "$RC" -eq 0 ]; check $? "a green selftest exits 0" "exit code $RC — $(grep -E '❌|failed' <<<"$LAST" | head -2 | tr '\n' ' ')"
 last_screen_has "✅ GreyMatter installed."
 check $? "and says so plainly"
-install_in "" 0
+install_in 0 0
 [ "$RC" -eq 0 ]; check $? "a PATH still to fix is a working install: exit 0" "exit code $RC"
 
 if [ "$FAILS" -eq 0 ]; then
