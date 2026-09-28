@@ -227,6 +227,13 @@ rewritten. What changes and how to go back: [docs/UPGRADING.md](docs/UPGRADING.m
 
 ## The extensions
 
+This repository provides two desktop interfaces, and only these two: the
+**capsule** and the **planet**. The installer puts `GreyMatter.app` on your
+Desktop; it opens the planet in your browser (`http://localhost:8765`). The
+capsule opens on its own when the agents start working, or with `brain capsule`.
+No release ships any other desktop app. When one does, it will be in this
+repository and its release notes will say so.
+
 Neither of the two below is the product. They are how you *watch* it — pleasant,
 optional, and skipped entirely by `./install.sh --core-only`. The plugin install
 never sets them up at all, because a plugin cannot install a background service.
