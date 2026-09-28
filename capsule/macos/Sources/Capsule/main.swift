@@ -320,7 +320,10 @@ final class Pastille: NSObject, NSApplicationDelegate {
     /// The code block only makes sense while something works (orbe.html: `if (occupe) pave.vu`).
     func lirePave() {
         guard panneau.visible else { return }
-        panneau.pave.montrer(occupe && panneau.pave.lireFlux(dernierEtatOrbe))
+        // lireFlux answers "the lines CHANGED", not "there are lines": passed to montrer, it hid
+        // the block on the second tick of an unchanged diff (orbe.html shows it while busy).
+        panneau.pave.lireFlux(dernierEtatOrbe)
+        panneau.pave.montrer(occupe)
     }
 
     // ── THE CURRENT RUN (ilot.js: tic, commencer, auRepos) ───────────────────
@@ -463,7 +466,7 @@ final class DemoPanneau: NSObject, NSApplicationDelegate {
         p.ouvrir(place: .zero)
         p.orbe.tempo = etat == "idle" ? TEMPO_REPOS : 1
         p.orbe.setCadence(etat == "idle" ? CADENCE.repos : CADENCE.travail, vue: p.fen.contentView!)
-        if etat != "idle" { p.pave.montrer(p.pave.lireFlux(etat)) }
+        if etat != "idle" { p.pave.lireFlux(etat); p.pave.montrer(true) }
         Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in guard let s = self else { return }; s.p.peindre(s.course()) }
         print("ready", p.fen.frame)
         DispatchQueue.main.asyncAfter(deadline: .now() + duree) { exit(0) }
