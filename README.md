@@ -9,7 +9,9 @@
 distilled into a note, filed, linked, and handed back the moment you ask for
 it. From any project, and without leaving your machine.**
 
-<!-- The map visual is to be filmed from the native GreyMatter.app for v2.2 (the Electron-era planet capture was removed). -->
+<p align="center">
+  <img src="docs/media/map.webp" alt="GreyMatter.app on a Mac at night, filmed on a test trunk of 792 made-up notes. The start square assembles the logo and asks for the access code; the map opens with its 21 regions. We enter a region, point at notes, search for a word, then click the logo to come back to the whole map. The graph view spreads every note in volume by meaning; the cloud turns and a hovered note lights up its links. Along the bottom, the regions, the session log and the lines being written." width="880">
+</p>
 
 <p align="center">
   <img src="docs/media/recall.png" alt="Terminal: brain demo places three notes, brain recall ranks them by relevance, brain demo --remove takes them away" width="760">
