@@ -1,12 +1,16 @@
 # Changelog
 
-Generated from the annotated git tags by `cbrain/changelog.sh` — do not edit by hand.
+Generated from the annotated git tags by `greymatter/changelog.sh` — do not edit by hand.
 Every entry is the message that was attached to the tag when the version was published.
 
 The `fr` branch stopped being a released product on 2026-08-13 — it is the staging
 buffer the engine is synced onto, and `publish.sh` refuses to tag from it. The `-fr`
 tags up to v1.27.0-fr stay published (moving a tag breaks the fetch of anyone still on
 it), and are not listed here.
+
+## v2.1.0 — 2026-09-28
+
+One name everywhere: the root, the jobs, the hooks, the Desktop app and the plugin say GreyMatter
 
 ## v2.0.4 — 2026-09-27
 
