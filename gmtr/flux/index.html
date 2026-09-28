@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-palette="vert" data-effets="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMTR — stream</title>
+<link rel="stylesheet" href="/grammaire.css">
+<link rel="stylesheet" href="/flux/flux.css">
+</head>
+<body>
+
+<header class="entete">
+  <span class="marque">GMTR · STREAM</span>
+  <span class="etat" id="etat">reading journals…</span>
+  <nav class="nav"><a href="/carte/">map</a><span class="courant">stream</span></nav>
+</header>
+
+<main class="flux-ecran" id="ecran">
+  <aside class="filtres" id="filtres" aria-label="Filters"></aside>
+  <section class="table-zone">
+    <div class="regle" aria-hidden="true">//&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;------------------------------------------------------------------------------------------------</div>
+    <div class="entetes" aria-hidden="true">
+      <span>[ ]</span><span>time</span><span>type</span><span>session</span><span>target</span><span class="d">detail</span><span>note</span>
+    </div>
+    <ol class="lignes" id="lignes" aria-live="polite"></ol>
+    <div class="regle" aria-hidden="true">//------------------------------------------------------------------------------------------------------------------------</div>
+    <div class="fiche" id="fiche"></div> <!-- i18n-ok -->
+  </section>
+</main>
+
+<footer class="pied micro">
+  <span><span class="touche">↑ ↓</span> select · <span class="touche">1–5</span> filter · <span class="touche">Esc</span> map</span>
+  <span id="sources"></span>
+</footer>
+
+<div class="tube" aria-hidden="true"></div>
+<script src="/commun.js"></script>
+<script src="/flux/flux.js"></script>
+</body>
+</html>

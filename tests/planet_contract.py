@@ -4,6 +4,8 @@
 THE INVARIANT:
 
     Every node field the viewer READS is a field the exporter WRITES.
+    Full note text and the complete plain-language block reach the viewer through
+    textes.json, while graph.json carries only the preview.
 
 THE FAILURE THIS EXISTS TO PREVENT. `hooks/graph_export.py` and `planet/index.html` are a
 producer and a consumer that never call each other: one writes `planet/graph.json`, the
@@ -151,6 +153,8 @@ def main():
 
     with tempfile.TemporaryDirectory() as trunk:
         graph = export_into(trunk)
+        with open(os.path.join(trunk, "planet", "textes.json"), encoding="utf-8") as f:
+            texts = json.load(f)
 
     nodes = graph["nodes"]
     written = set().union(*(set(n) for n in nodes)) if nodes else set()
@@ -190,6 +194,18 @@ def main():
     if without and without[0].get("en_clair") is not None:
         trouble.append("a note with no register must expose en_clair = null, so the "
                        "viewer falls back on desc")
+
+    # The expanded panel must recover both full texts from the second artifact.
+    note = next(n for n in nodes if n["id"] == "with-en-clair")
+    plain = texts.get("with-en-clair::clair", "")
+    body = texts.get("with-en-clair", "")
+    print(f"  full texts in textes.json   {bool(plain and body)}")
+    if "long" in note or "second paragraph" in (note.get("en_clair") or ""):
+        trouble.append("graph.json still carries a full note body or plain-language block")
+    if "The second paragraph" not in plain or "Dense body" not in body:
+        trouble.append("textes.json lacks the full plain-language block or note body")
+    if "Direct body" not in texts.get("without-en-clair", ""):
+        trouble.append("textes.json loses the body of a note without a plain-language block")
 
     # A TYPED relation qualifies an existing edge rather than adding one. The fixture
     # declares `relations: based_on:` alongside the [[link]] the convention requires,
@@ -241,6 +257,9 @@ def main():
     # see it: without this, deleting the warning would keep the whole contract green.
     with open(VIEWER, encoding="utf-8") as f:
         viewer_src = f.read()
+    if ("fetch('textes.json'" not in viewer_src or "TEXTES[n.id+'::clair']" not in viewer_src
+            or "TEXTES[n.id]" not in viewer_src):
+        trouble.append("the viewer no longer loads both complete texts from textes.json")
     shows = "counts.unknown_relations" in viewer_src
     print(f"  viewer renders the warning {'yes' if shows else 'NO'}")
     if not shows:

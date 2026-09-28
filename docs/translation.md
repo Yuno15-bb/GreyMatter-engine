@@ -267,3 +267,8 @@ remain benchmark input. Private corpus measurements and the dated sabotage
 register have been removed from the public package because no public test reads
 them. The three provenance and authority fixtures remain public test inputs;
 their schemas and readers use the English names above.
+
+Planet topic capsule: French `graph.json` node `tags[0]` → engine node `topic`;
+topic labels come from the engine's `graph.json` `topics` object.
+
+GMTR state readers: `state/ecritures-fiches.jsonl` → `state/note-writes.jsonl`; journal key `outil` → `tool`. `state/agents.jsonl` mission names `architecte/distillateur/synthetiseur/archiviste/jardinier/machiniste/mecanicien` → `architect/distiller/synthesizer/archivist/gardener/machinist/mechanic`; phase value `debut` → `start`; payload keys `activite/raison/duree_s/cout_usd` → `activity/reason/duration_s/cost_usd`. `state/git-journal.jsonl` event `libere` → `released`; keys `evenement/head_a_bouge/fichiers_commites/perimetre/head_apres` → `event/head_moved/committed_files/scope/head_after`. GMTR's code root `planet/index.html` comes from the engine; graph and text JSON come from the trunk. GMTR uses `BRAIN_HOME` through `hooks/brain_racine.py` in place of the source's `BRAIN_RACINE`.

@@ -35,7 +35,7 @@ def seed(parent):
     os.makedirs(os.path.join(root, "projects"))
     os.makedirs(os.path.join(root, "planet"))
     with open(os.path.join(root, ".gitignore"), "w") as ignored:
-        ignored.write("planet/graph.json\n")
+        ignored.write("planet/*.json\n")
     for index in range(4):
         name = f"project-{index}.md"
         with open(os.path.join(root, "projects", name), "w") as note:

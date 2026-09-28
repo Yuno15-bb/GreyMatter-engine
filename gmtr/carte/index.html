@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>🗺️ 3D/2D Knowledge Map — GreyMatter</title>
+<title>GMTR — map</title>
 <style>
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ height:100%; background:#000; overflow:hidden;
@@ -132,7 +132,6 @@
 
   #hint{ position:fixed; bottom:14px; right:16px; font-size:10px; opacity:.5; text-align:right; line-height:1.6; }
 
-
   @media (max-width: 520px) {
     #hint  { display:none; }
     #legend{ font-size:9px; line-height:1.5; max-height:32vh; opacity:.7;
@@ -145,7 +144,6 @@
     #tip   { right:8px; left:8px; width:auto; max-width:none; top:auto; bottom:8px;
              transform:none; font-size:12px; }
   }
-
 
   #viewer{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
     background:radial-gradient(ellipse at center, rgba(16,20,30,0.96), rgba(3,4,7,0.985)); }
@@ -163,7 +161,7 @@
 <style id="mother">
 
 @font-face{font-family:"Departure Mono";
-  src:url(data:font/woff2;base64,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) format("woff2");font-display:block;}
+  src:url(data:font/woff2;base64,d09GMk9UVE8AAFfgAAwAAAABSgAAAFeQAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYPaEBqFYhuUbhyWFAZgAOpuATYCJAOSSAQGBYgeByBbJ0mRC/1P7u5tS4r6RRqA3GIAlX/Olb1lcIFt04l41nlDup6FdNjsYAwbJ4Dh+a2z
 :root{
   --ph-100:#FFC9B0; --ph-200:#FF6A2A; --ph-300:#FF4F0C; --ph-400:#E84503;
   --ph-500:#C23800; --ph-600:#9C2D00; --ph-700:#7A2200; --ph-800:#551700;
@@ -313,21 +311,92 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
   #hud #livenow, #hud #session, #hud #grow { animation:mArrive 40ms linear .92s both; }
   #legend   { animation:mArrive 40ms linear 1.06s both; }
 
-
 }
 </style>
+
+<style id="gmtr">
+
+@font-face{ font-family:"Geist Mono"; font-weight:400; src:url(/fonts/geist-mono-latin-400-normal.woff2) format("woff2"); }
+@font-face{ font-family:"Geist Mono"; font-weight:500; src:url(/fonts/geist-mono-latin-500-normal.woff2) format("woff2"); }
+:root{
+
+  --ph-100:#f2f2ee; --ph-200:#c9c9c9; --ph-300:#a9a6ad; --ph-400:#8a868f; --ph-500:#5e5b62;
+  --ph-600:#3a373f; --ph-700:#2a282e; --ph-800:#1d1c21; --ph-900:#151418; --ph-950:#0d0c10;
+  --glow:0,0,0;
+  --disp:"Geist Mono", ui-monospace, Menlo, monospace;
+  --gmtr-actif:#b6ff3b; --gmtr-alerte:#ff321e; --gmtr-fond:#09080b;
+
+  --fond:#09080b; --actif:#b6ff3b; --alerte:#ff321e;
+  --police-pixel:"Departure Mono", "Geist Mono", ui-monospace, monospace;
+  --police-texte:"Geist Mono", ui-monospace, Menlo, monospace;
+}
+html,body{ background:var(--gmtr-fond); }
+
+#title{ font-family:"Departure Mono", var(--disp); font-size:14px; letter-spacing:.14em; color:var(--ph-100); text-shadow:none; }
+#counts{ color:var(--ph-300); }
+#viewtag{ color:var(--ph-400); }
+#fil .ici{ color:var(--ph-500); }
+#fil .retour{ color:var(--gmtr-actif); }
+#livenow{ color:var(--gmtr-actif); }
+#livenow .off{ color:var(--ph-500); }
+#session{ color:var(--gmtr-actif); }
+#session b{ color:var(--gmtr-actif); }
+#counts, #fil, #viewtag, #grow, #livenow, #session, #hint{ text-shadow:0 0 3px #000, 0 0 8px rgba(0,0,0,.9); }
+
+#modes button{ border:1px solid var(--ph-600); border-radius:0; color:var(--ph-300); text-shadow:none;
+  text-transform:uppercase; letter-spacing:.12em; font-size:10px; padding:4px 10px; }
+#modes button:hover{ background:rgba(255,255,255,.04); border-color:var(--ph-400); color:var(--ph-100); }
+#modes button.on{ background:var(--gmtr-actif); border-color:var(--gmtr-actif); color:var(--gmtr-fond); box-shadow:none; }
+
+#legend .hd{ color:var(--ph-500); letter-spacing:.14em; }
+#legend .nom{ color:var(--ph-200); }
+#legend .nb{ color:var(--ph-400); }
+#legend .bar{ background:var(--ph-800); height:2px; }
+#legend .bar i{ box-shadow:none; }
+#legend .dot{ box-shadow:none; border-radius:0; }
+#legend .row:hover{ background:rgba(182,255,59,.07); }
+#legend .row:hover .nom{ color:var(--gmtr-actif); }
+#legend .mk{ color:var(--ph-500); }
+#legend .repli > summary{ color:var(--ph-500); }
+
+#pod{ background:none; border:1px solid var(--ph-700); border-radius:0; box-shadow:none; }
+#pod .hd{ color:var(--ph-500); }
+#pod .hd .bascule.on{ color:var(--gmtr-actif); text-decoration:none; }
+#pod .cap{ color:var(--ph-300); }
+#pod .cap b{ color:var(--gmtr-actif); }
+
+#tip{ background:rgba(17,16,20,.94); background-image:none; border:1px solid var(--ph-700); border-radius:0;
+  color:var(--ph-200); box-shadow:none; }
+#tip::before,#tip::after{ border-color:var(--ph-500); }
+#tip .src{ color:var(--ph-400); border-bottom:1px solid var(--ph-700); }
+#tip .n{ color:var(--ph-100); text-shadow:none; }
+#tip .ch, #tip .cv, #tip .rs{ border-left:0; padding-left:0; }
+#tip .lnk .c{ border-color:var(--ph-700); color:var(--ph-300); }
+#tip .lnk .c:hover{ border-color:var(--gmtr-actif); color:var(--gmtr-actif); }
+
+#gmtr-nav{ pointer-events:auto; display:flex; gap:6px; margin-top:10px; font-family:"Departure Mono", var(--disp);
+  font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+#gmtr-nav a{ color:var(--ph-300); text-decoration:none; padding:2px 6px; }
+#gmtr-nav a:hover, #gmtr-nav a:focus-visible{ color:var(--gmtr-fond); background:#c9c9c9; outline:none; }
+#gmtr-nav .courant{ color:var(--gmtr-fond); background:#c9c9c9; padding:2px 6px; }
+
+#grille{ opacity:.55; }
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/gmtr-motion.css">
+<link rel="stylesheet" href="/carte/gmtr-carte.css"> <!-- i18n-ok: legacy filename -->
 </head>
 <body>
   <canvas id="c"></canvas>
   <div id="hud">
-    <div id="title">[ TRUNK MAP — MEANING ]</div>
+    <div id="title">GMTR · GRAPH</div>
     <div id="counts">…</div>
     <div id="viewtag"></div>
 
     <div id="fil"><span class="ici">overview — click a region to enter</span></div>
     <div id="modes">
-      <button data-mode="sens">✦ meaning</button>
-      <button data-mode="struct">▦ structure</button>
+      <button data-mode="struct">panel</button>
+      <button data-mode="sens">graph</button>
     </div>
     <div id="grow"></div>
     <div id="livenow"></div>
@@ -336,7 +405,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
   <div id="legend"></div>
 
   <div id="pod">
-    <div class="hd">[ globe — <span class="bascule" data-mode="folders">folders</span> · <span class="bascule" data-mode="topics">topics</span> ]</div>
+    <div class="hd">globe — <span class="bascule" data-mode="dossiers">folders</span> · <span class="bascule" data-mode="sujets">topics</span></div>
     <canvas id="pc"></canvas>
     <div class="cap"></div>
   </div>
@@ -357,12 +426,12 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
       <div class="f"></div>
     </div>
   </div>
-  <div id="hint"><b>click</b> a region = enter · <b>Esc</b> = back out<br>drag = turn · wheel = zoom · hover = magnet ✦<br><b>V</b> = 3D ⇄ 2D · <b>S</b> = structure ⇄ meaning</div>
+  <div id="hint"><b>click</b> a region = enter · <b>Esc</b> = back<br>drag = rotate · wheel = zoom · hover = magnet<br><b>V</b> = 3D ⇄ 2D · <b>S</b> = panel ⇄ graph</div>
   <div id="viewer">
     <canvas id="vc"></canvas>
     <div class="vcap"></div>
-    <button class="vx" type="button" title="close (Esc)">✕ FERMER</button>
-    <div class="vhint">▷ 3D capture replayed · drag = turn · wheel = zoom · Esc</div>
+    <button class="vx" type="button" title="close (Esc)">✕ CLOSE</button>
+    <div class="vhint">▷ replayable 3D capture · drag = rotate · wheel = zoom · Esc</div>
   </div>
 
 <script type="importmap">
@@ -374,7 +443,7 @@ button:focus-visible{ outline:2px solid var(--ph-100); outline-offset:2px; }
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { capaciteSemantique, etiquetteSens, etiquette3d } from './semantic-label.js';
+
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -385,23 +454,30 @@ const R = 10;
 const S2 = 13;
 const SEM = 16;
 const UP = new THREE.Vector3(0,1,0), RIGHT = new THREE.Vector3(1,0,0);
+
 const DOM_REGION = { lessons:'principles', meta:'meta', life:'life', agents:'agents', projects:'projects' };
 const CENTER_REGION = 'principles';
+
 const FIXED_COLOR = { 'principles':0xd9bd63, 'meta':0x57b6c4, 'life':0x5cbf92, 'agents':0xa183d4, 'projects':0x9298a2 };
-const HOT = new THREE.Color(0xFFBCA2);
+const HOT = new THREE.Color(0xB6FF3B);
+
 const POINT_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'), g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
+
   g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.55,'rgba(255,255,255,1)');
   g.addColorStop(.74,'rgba(255,255,255,.42)'); g.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=g; x.fillRect(0,0,s,s); return new THREE.CanvasTexture(cv); })();
-const LINK_GREY = new THREE.Color(0x8A3A02);
+const LINK_GREY = new THREE.Color(0x34333A);
+
 const RING_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.strokeStyle='rgba(255,255,255,1)'; x.lineWidth=4;
   x.beginPath(); x.arc(s/2, s/2, s/2-4, 0, Math.PI*2); x.stroke(); return new THREE.CanvasTexture(cv); })();
+
 const PLAY_TEX = (function(){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.fillStyle='rgba(255,255,255,1)';
   x.beginPath(); x.moveTo(s*0.36,s*0.26); x.lineTo(s*0.36,s*0.74); x.lineTo(s*0.76,s*0.5); x.closePath(); x.fill();
   return new THREE.CanvasTexture(cv); })();
+
 function glyphTex(ch, font){ const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
   const x=cv.getContext('2d'); x.fillStyle='#fff'; x.font=(font||'bold 44px')+' sans-serif';
   x.textAlign='center'; x.textBaseline='middle'; x.fillText(ch, s/2, s/2+3); return new THREE.CanvasTexture(cv); }
@@ -409,7 +485,10 @@ const WARN_TEX=glyphTex('!','bold 50px'), CONV_TEX=glyphTex('✦','42px'), RESUM
 const REGLE_TEX=glyphTex('§','bold 44px');
 
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setClearColor(0x000000, 0);
+
 const DPR = Math.min(devicePixelRatio, 1.5);
 renderer.setPixelRatio(DPR);
 const scene = new THREE.Scene();
@@ -419,12 +498,115 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.minDistance = 16; controls.maxDistance = 120; controls.autoRotate = true;
 controls.autoRotateSpeed = 0.35;
-const CAM2D = new THREE.Vector3(0, 0, 42), ORIGIN = new THREE.Vector3(0,0,0);
-const CAM3D = new THREE.Vector3(0, 5, 34);
+
+const ORIGIN = new THREE.Vector3(0,0,0);
+
+const BARRE_HAUT = 84;
+const REMPLISSAGE = 0.88;
+
+function placeLibre(){
+
+  const cs = getComputedStyle(document.documentElement);
+  const px = (nom, def) => { const v = parseFloat(cs.getPropertyValue(nom)); return isFinite(v) ? v : def; };
+  const marge = px('--g-marge', 32), pad = px('--g-pad', 20), col = px('--g-colonne', 420);
+
+  const colG = px('--g-colonne-gauche', 224);
+  const gauche = marge + colG + 2*pad, droite = marge + col + 2*pad;
+  const largeur = Math.max(320, innerWidth - gauche - droite);
+  return { centre: gauche + largeur/2,
+           demi: Math.min(largeur/2, (innerHeight - 2*BARRE_HAUT)/2) * REMPLISSAGE };
+}
+function distancePour(rayon){
+
+  const parUnite = innerHeight / (2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2));
+  return THREE.MathUtils.clamp(rayon*parUnite/placeLibre().demi, controls.minDistance, controls.maxDistance);
+}
+const _ra = new THREE.Vector3(), _rb = new THREE.Vector3(), _rv = new THREE.Vector3();
+function rayonVise(){
+
+  const n2 = Math.max(focusTarget, semTarget);
+  let m = 0;
+  const prendre = (p) => { m = Math.max(m, Math.abs(p.x), Math.abs(p.y)); };
+
+  if(focusTarget>0.5 || semTarget>0.5){
+    for(const o of nodeObjs){
+      const u = o.userData; if(!u || !u.p2s) continue;
+      if(focusTarget>0.5 && !u.p3f) continue;
+      _ra.copy(u.p3).lerp(u.p3f||u.p3, n2);
+      _rb.copy(u.p2).lerp(u.p2f||u.p2, n2).lerp(u.p2s, semTarget);
+      prendre(_rv.copy(_ra).lerp(_rb, viewTarget));
+    }
+  } else {
+    for(const b of regionObjs){
+      const u = b.userData;
+      prendre(_rv.copy(u.pos3).lerp(u.pos2, viewTarget).lerp(u.posSens, semTarget));
+    }
+  }
+  return m > 0.5 ? m : S2;
+}
+let cadreDist = 0, cadrePlat = false, recadrant = false, cadreFait = false;
+function viserCadrage(immediat){
+  cadreDist = distancePour(rayonVise());
+  cadrePlat = viewTarget>0.5 && semTarget<0.5;
+  recadrant = true;
+  if(immediat) poserCadrage(1);
+}
+const _cv = new THREE.Vector3(), _cvFace = new THREE.Vector3();
+function poserCadrage(k){
+  controls.target.lerp(ORIGIN, k);
+  _cv.copy(camera.position).sub(controls.target);
+  const d = THREE.MathUtils.lerp(_cv.length(), cadreDist, k);
+
+  if(cadrePlat){ const L = _cv.length(); _cv.lerp(_cvFace.set(0, 0, L), k); }
+  if(_cv.lengthSq() < 1e-6) _cv.set(0, 0, 1);
+  camera.position.copy(controls.target).add(_cv.setLength(d));
+
+  if(Math.abs(d - cadreDist) < 0.05 && controls.target.lengthSq() < 1e-4
+     && (!cadrePlat || _cv.z/_cv.length() > 0.999)){
+    controls.target.copy(ORIGIN);
+    if(cadrePlat) _cv.set(0, 0, 1);
+    camera.position.copy(ORIGIN).add(_cv.setLength(cadreDist));
+    recadrant = false;
+  }
+}
+
+const _camFin = new THREE.PerspectiveCamera(), _p3a = new THREE.Vector3(), _p2a = new THREE.Vector3();
+function arrivee(){
+  _camFin.copy(camera);
+  if(recadrant){
+    _cv.copy(camera.position).sub(controls.target);
+    if(cadrePlat) _cv.set(0, 0, 1);
+    if(_cv.lengthSq() < 1e-6) _cv.set(0, 0, 1);
+    _camFin.position.copy(ORIGIN).add(_cv.setLength(cadreDist));
+    _camFin.lookAt(ORIGIN);
+  }
+  _camFin.updateMatrixWorld();
+  const n2 = Math.max(focusTarget, semTarget), points = [];
+  if(n2 > 0.01) for(const m of nodeObjs){
+    const u = m.userData;
+    if(!(semTarget > 0.01 || (focusRegion && regionOf(u.data)===focusRegion))) continue;
+    const k = u.p3f ? n2 : 0;
+    _p3a.copy(u.p3).lerp(u.p3f||u.p3, k);
+    _p2a.copy(u.p2).lerp(u.p2f||u.p2, k).lerp(u.p2s, semTarget);
+    points.push({ p: _p3a.clone().lerp(_p2a, viewTarget), rad: 0 });
+  }
+  const bulles = [];
+  if(n2 < 0.99) for(const b of regionObjs){
+    const u = b.userData;
+    bulles.push({ p: u.pos3.clone().lerp(u.pos2, viewTarget).lerp(u.posSens, semTarget), rad: u.rad || 0 });
+  }
+  return { camera: _camFin, objets: points.length >= 10 ? points : bulles,
+           mode: viewTarget<0.5 ? '3d' : (semTarget>0.5 ? 'sens' : 'struct') };
+}
+
+controls.addEventListener('start', () => { recadrant = false; });
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.12, 0.32, 0.72);
+
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.0, 0.32, 0.72);
+
+bloom.enabled = bloom.strength > 0;
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -438,14 +620,16 @@ addEventListener('resize', resize); resize();
   for(let i=0;i<N;i++){ const r=400+Math.random()*600, u=Math.random(), v=Math.random(), th=2*Math.PI*u, ph=Math.acos(2*v-1);
     pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.sin(ph)*Math.sin(th); pos[i*3+2]=r*Math.cos(ph); }
   const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos,3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color:0x5B1A00, size:1.1, sizeAttenuation:false, transparent:true, opacity:.7 })));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color:0x2A282E, size:1.1, sizeAttenuation:false, transparent:true, opacity:.7 })));
 })();
 const coreMat = new THREE.MeshBasicMaterial({ color:0x160600, transparent:true, opacity:0.14 });
+
 const core = new THREE.Mesh(new THREE.SphereGeometry(R*0.985, 48, 48), coreMat);
 const verre = new THREE.Mesh(new THREE.SphereGeometry(R*0.99, 48, 48),
   new THREE.MeshBasicMaterial({ color:0x350F00, transparent:true, opacity:0.13,
                                 side:THREE.BackSide, depthWrite:false }));
 scene.add(verre);
+
 const grille = (function(){
   const pts=[], MER=12, PAR=5, FIN=64;
   for(let m=0;m<MER;m++){ const lon=2*Math.PI*m/MER;
@@ -455,14 +639,14 @@ const grille = (function(){
     for(let i=0;i<FIN;i++){ for(const t of [i/FIN, (i+1)/FIN]){ const a2=2*Math.PI*t;
       pts.push(new THREE.Vector3(Math.cos(a2)*cr, cy, Math.sin(a2)*cr)); } } }
   const g=new THREE.BufferGeometry().setFromPoints(pts);
-  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color:0x872600,
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color:0x2C2B31,
     transparent:true, opacity:0.07, depthWrite:false }));
 })();
 scene.add(grille);
 
 function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967296; }
 
-const regionOf = n => n.primary_project || DOM_REGION[n.domain] || n.domain;
+const regionOf = n => (n.domain === 'agents' ? 'agents' : n.primary_project) || DOM_REGION[n.domain] || n.domain;
 let REGION_DIR={}, REGION_2D={}, REGION_COLOR={}, REGION_LIST=[], REGION_COUNT={}, REGION_AFF={}, REGION_NODES={};
 function layoutRegions(data){
   REGION_DIR={}; REGION_2D={}; REGION_COLOR={}; REGION_COUNT={}; REGION_AFF={}; REGION_NODES={};
@@ -471,11 +655,13 @@ function layoutRegions(data){
   for(const n of data.nodes){ const r=regionOf(n); REGION_COUNT[r]=(REGION_COUNT[r]||0)+1; nreg[n.id]=r;
     (REGION_NODES[r]=REGION_NODES[r]||[]).push(n.id);
     if(!seen.has(r)){ seen.add(r); present.push(r); } }
+
   const aff={}, deg={}; for(const r of present) deg[r]=0;
   for(const l of data.links){ const ra=nreg[l.source], rb=nreg[l.target]; if(!ra||!rb||ra===rb) continue;
     const k=ra<rb?ra+'|'+rb:rb+'|'+ra; aff[k]=(aff[k]||0)+1; deg[ra]++; deg[rb]++; }
   const affOf=(a,b)=> aff[a<b?a+'|'+b:b+'|'+a]||0;
   REGION_AFF=aff;
+
   const order=[], used=new Set();
   let cur=present.slice().sort((a,b)=>deg[b]-deg[a])[0]; order.push(cur); used.add(cur);
   while(order.length<present.length){
@@ -485,6 +671,7 @@ function layoutRegions(data){
     if(best===null) best=present.find(r=>!used.has(r));
     order.push(best); used.add(best); cur=best;
   }
+
   const vdc = k => { let d=0, b2=0.5; while(k>0){ d += (k&1)*b2; k>>=1; b2/=2; } return d; };
   const nreg2 = present.length;
   const parTaille = present.slice()
@@ -492,32 +679,44 @@ function layoutRegions(data){
   const placeDe = {}, pris = new Array(nreg2).fill(false);
   parTaille.forEach((r,k)=>{
     let j = Math.min(nreg2-1, Math.floor(vdc(k+1)*nreg2));
+
     for(let d=1; pris[j] && d<=nreg2; d++){
       if(j-d>=0 && !pris[j-d]) { j=j-d; break; }
       if(j+d<nreg2 && !pris[j+d]) { j=j+d; break; }
     }
     pris[j]=true; placeDe[r]=j;
   });
+
   const vdc3 = k => { let d=0, b3=1/3; while(k>0){ d += (k%3)*b3; k=Math.floor(k/3); b3/=3; } return d; };
   const lonDe = {};
   parTaille.forEach((r,k)=>{ lonDe[r] = 2*Math.PI*vdc3(k); });
   REGION_LIST = present.slice().sort((x,y)=>placeDe[x]-placeDe[y]);
+
   const n=REGION_LIST.length;
   REGION_LIST.forEach((r,i)=>{ const y = n>1 ? 1-2*i/(n-1) : 0, rad=Math.sqrt(Math.max(0,1-y*y));
+
     const lo = lonDe[r] ?? (Math.PI*(3-Math.sqrt(5))*i);
     REGION_DIR[r]=new THREE.Vector3(Math.cos(lo)*rad, y, Math.sin(lo)*rad).normalize(); });
+
   const ring=REGION_LIST.filter(r=>r!==CENTER_REGION);
-  ring.forEach((r,i)=>{ const a=2*Math.PI*i/Math.max(1,ring.length); REGION_2D[r]={x:Math.cos(a),y:Math.sin(a)}; });
+  const grandes=ring.filter(r=>(REGION_COUNT[r]||0)>2), petites=ring.filter(r=>(REGION_COUNT[r]||0)<=2);
+  const cercle=grandes.length>=3 ? grandes : ring, dedans=grandes.length>=3 ? petites : [];
+  cercle.forEach((r,i)=>{ const a=2*Math.PI*i/cercle.length; REGION_2D[r]={x:Math.cos(a),y:Math.sin(a)}; });
+  const R_DEDANS=0.58;
+  dedans.forEach((r,i)=>{ const a=2*Math.PI*(i+0.5)/dedans.length; REGION_2D[r]={x:R_DEDANS*Math.cos(a),y:R_DEDANS*Math.sin(a)}; });
   REGION_2D[CENTER_REGION]={x:0,y:0};
+
+  const GMTR_TEINTES=[215,35,275,190,330,250];
   const rang=[...REGION_LIST].sort((a2,b2)=>(REGION_COUNT[b2]||0)-(REGION_COUNT[a2]||0));
   const GRANDES=6;
   rang.forEach((r,i)=>{
     if(i<GRANDES){
+
       const t = GRANDES>1 ? i/(GRANDES-1) : 0;
-      REGION_COLOR[r]=new THREE.Color().setHSL((9+20*t)/360, 0.78, 0.44 - 0.04*t);
+      REGION_COLOR[r]=(new URLSearchParams(location.search).get('teintes')==='0') ? new THREE.Color().setHSL(0, 0, 0.86 - 0.07*i) : new THREE.Color().setHSL(GMTR_TEINTES[i]/360, 0.45, 0.62);
     } else {
       const t = (i-GRANDES)/Math.max(1,rang.length-GRANDES-1);
-      REGION_COLOR[r]=new THREE.Color().setHSL(17/360, 0.80, 0.29 - 0.10*t);
+      REGION_COLOR[r]=new THREE.Color().setHSL(260/360, 0.05, 0.46 - 0.12*t);
     } });
 }
 const colorOf = n => REGION_COLOR[regionOf(n)] || new THREE.Color(0xffffff);
@@ -537,6 +736,7 @@ function anchor2(n){
     if(tot>0) return {x:x/tot,y:y/tot}; }
   const b=REGION_2D[regionOf(n)]||{x:0,y:0}; return {x:b.x,y:b.y};
 }
+
 let posById={};
 function layoutNodes(data){
   posById={};
@@ -558,14 +758,29 @@ function layoutNodes(data){
       posById[n.id]={ p3:dir.multiplyScalar(R), p2:new THREE.Vector3(c2.x*S2+Math.cos(ang)*RR, c2.y*S2+Math.sin(ang)*RR, 0) };
     });
   }
+
   for(const n of data.nodes){ if(n.frontier){
     const d3=anchor3(n), b2=anchor2(n);
     posById[n.id]={ p3:d3.multiplyScalar(R*1.004), p2:new THREE.Vector3(b2.x*S2, b2.y*S2, 0) }; }}
 }
 
 let group=new THREE.Group(); scene.add(group);
-let nodeObjs=[], linkObjs=[], coactObjs=[], regionObjs=[], regionLinks=[];
+let nodeObjs=[], linkObjs=[], coactObjs=[], regionObjs=[], regionLinks=[], fichesInst=null;
+const FICHE_DESSIN = 0.55;
+const _mFiche=new THREE.Matrix4(), _tFiche=new THREE.Vector3();
+function syncFiches(){
+  if(!fichesInst) return; let k=0;
+  for(const m of nodeObjs){
+    if(!m.visible) continue;
+
+    _tFiche.copy(m.scale).multiplyScalar(m.userData.taille*FICHE_DESSIN);
+    _mFiche.compose(m.position, m.quaternion, _tFiche);
+    fichesInst.setMatrixAt(k, _mFiche); fichesInst.setColorAt(k, m.material.color); k++;
+  }
+  fichesInst.count = k; fichesInst.instanceMatrix.needsUpdate = true; fichesInst.instanceColor.needsUpdate = true;
+}
 let prevIds=new Set();
+
 let LIVE_WINDOW_S=600;
 const liveEl=document.getElementById('livenow');
 let _liveShown=-1;
@@ -574,36 +789,7 @@ const SEG=14;
 
 function clearGroup(){ group.removeFromParent(); group.traverse(o=>{ o.geometry?.dispose?.(); o.material?.dispose?.(); }); group=new THREE.Group(); scene.add(group); nodeObjs=[]; linkObjs=[]; coactObjs=[]; regionObjs=[]; regionLinks=[]; }
 
-const LABEL_W = 4.6, LABEL_H = 0.62;
-
-const _posEtiq = new THREE.Vector3(), _bordEtiq = new THREE.Vector3(), _droiteEtiq = new THREE.Vector3();
-function decollerEtiquettes(){
-  _droiteEtiq.setFromMatrixColumn(camera.matrixWorld, 0);
-  const vus = [];
-  for(const b of regionObjs){
-    const lab = b.userData.lab;
-    if(!lab.visible || lab.material.opacity <= 0.02) continue;
-    lab.getWorldPosition(_posEtiq);
-    const centre = toScreen(_posEtiq);
-    if(!centre) continue;
-    _bordEtiq.copy(_posEtiq).addScaledVector(_droiteEtiq, LABEL_W * 0.5);
-    const bord = toScreen(_bordEtiq);
-    const dx = bord ? Math.abs(bord.x - centre.x) || 6 : 6;
-    vus.push({ lab, x:centre.x, y:centre.y, dx, dy: dx * (LABEL_H / LABEL_W),
-               prof: _posEtiq.distanceTo(camera.position) });
-  }
-  vus.sort((a, b) => a.prof - b.prof);
-  const gardes = [];
-  for(const e of vus){
-    let couvert = false;
-    for(const g of gardes){
-      if(Math.abs(e.x - g.x) < (e.dx + g.dx) * 0.9 &&
-         Math.abs(e.y - g.y) < (e.dy + g.dy) * 1.6){ couvert = true; break; }
-    }
-    if(couvert) e.lab.material.opacity *= 0.12;
-    else gardes.push(e);
-  }
-}
+const LABEL_W = 13.0, LABEL_H = 1.755;
 function texteTex(txt){
   const dpr=2, w=320, h=44, cv=document.createElement('canvas');
   cv.width=w*dpr; cv.height=h*dpr;
@@ -611,11 +797,162 @@ function texteTex(txt){
   x.font='21px "Departure Mono", ui-monospace, Menlo, monospace';
   x.textAlign='center'; x.textBaseline='middle';
   x.shadowColor='rgba(0,0,0,0.95)'; x.shadowBlur=7;
-  x.fillStyle='rgba(255,188,162,0.97)'; x.fillText(txt, w/2, h/2, w-10);
-  const t=new THREE.CanvasTexture(cv); t.anisotropy=4; return t;
+  x.fillStyle='rgba(182,255,59,1)'; x.fillText(txt, w/2, h/2, w-10);
+  const t=new THREE.CanvasTexture(cv); t.anisotropy=4;
+
+  t.userData.encre = partEncree(x, w, h, dpr);
+  return t;
+}
+
+function partEncree(ctx, w, h, dpr){
+  const W=w*dpr, H=h*dpr, d=ctx.getImageData(0,0,W,H).data;
+  let x0=W, x1=0;
+  for(let j=0;j<H;j+=2) for(let i=0;i<W;i+=2){
+    if(d[(j*W+i)*4+3] > 40){ if(i<x0) x0=i; if(i>x1) x1=i; }
+  }
+  return x1>x0 ? Math.min(1, (x1-x0)/W) : 1;
+}
+
+const ETAGES = [0, 2.36, -2.36, 4.71, -4.71];
+const PENALITE = 2;
+
+const FIDELITE = 12;
+const GLISSADE_IMAGES = 18;
+const CASE = 16;
+const MARGE = 8;
+
+let DEMELAGE = true;
+let ROTATION = true;
+const _demB = [], _demPoses = [];
+const _demP = new THREE.Vector3(), _demQ = new THREE.Vector3(),
+      _demR = new THREE.Vector3(), _camRight = new THREE.Vector3(), _gp = new THREE.Vector3();
+let _gNx = 0, _gNy = 0, _grille = null;
+
+function grilleDesPoints(W, H){
+  const nx = Math.ceil(W/CASE), ny = Math.ceil(H/CASE);
+  if(!_grille || _gNx !== nx || _gNy !== ny){ _grille = new Uint16Array(nx*ny); _gNx = nx; _gNy = ny; }
+  else _grille.fill(0);
+  group.updateWorldMatrix(true, false);
+  for(const m of nodeObjs){
+    if(!m.visible) continue;
+    _gp.copy(m.position).applyMatrix4(group.matrixWorld).project(camera);
+    if(_gp.z > 1) continue;
+    const i = ((_gp.x*0.5+0.5)*W/CASE)|0, j = ((-_gp.y*0.5+0.5)*H/CASE)|0;
+    if(i >= 0 && i < nx && j >= 0 && j < ny) _grille[j*nx + i]++;
+  }
+}
+function encombrement(x0, x1, y0, y1){
+  const i0 = Math.max(0, (x0/CASE)|0), i1 = Math.min(_gNx-1, (x1/CASE)|0);
+  const j0 = Math.max(0, (y0/CASE)|0), j1 = Math.min(_gNy-1, (y1/CASE)|0);
+  let n = 0;
+  for(let j=j0; j<=j1; j++) for(let i=i0; i<=i1; i++) n += _grille[j*_gNx + i];
+  return n;
+}
+function demelerEtiquettes(){
+  const W = innerWidth, H = innerHeight;
+  _camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+  if(DEMELAGE) grilleDesPoints(W, H);
+  _demB.length = 0; _demPoses.length = 0;
+  for(const b of regionObjs){
+    const u = b.userData;
+    if(!(u.labBase > 0.01)){ u.labVu = 0; continue; }
+    u.lab.updateWorldMatrix(true, false);
+    _demP.setFromMatrixPosition(u.lab.matrixWorld);
+
+    _demQ.copy(_demP).addScaledVector(_camRight, u.lab.scale.x*b.scale.x*0.5);
+    _demR.copy(_demP); _demR.y += b.scale.y;
+    _demP.project(camera); _demQ.project(camera); _demR.project(camera);
+    if(_demP.z > 1){ u.labVu = 0; continue; }
+    const cx = (_demP.x*0.5+0.5)*W, cy = (-_demP.y*0.5+0.5)*H;
+    const demi = Math.abs((_demQ.x*0.5+0.5)*W - cx);
+    const ux = (_demR.x*0.5+0.5)*W - cx, uy = (-_demR.y*0.5+0.5)*H - cy;
+    const geo = { x: cx - ux*u.labDecal, y: cy - uy*u.labDecal, ux, uy,
+                  dl: demi*u.labEncre, dh: demi*(u.lab.scale.y/u.lab.scale.x) };
+
+    u.labGeo = geo;
+    _demB.push({ u, poids:u.labPoids, vise: u.labBase > 0.99 ? 1 : 0, ...geo });
+  }
+  _demB.sort((a,c) => (c.vise - a.vise) || (c.poids - a.poids));
+
+  const _demMi = MARGE/2;
+  const boiteDe = (e, etage) => ({ x0: e.x + e.ux*etage - e.dl - _demMi, x1: e.x + e.ux*etage + e.dl + _demMi,
+                                   y0: e.y + e.uy*etage - e.dh - _demMi, y1: e.y + e.uy*etage + e.dh + _demMi });
+  const demLibre = (b) => _demPoses.every(p => Math.min(b.x1,p.x1) <= Math.max(b.x0,p.x0)
+                                            || Math.min(b.y1,p.y1) <= Math.max(b.y0,p.y0));
+
+  const _bo = window.__gmtrBornes, _bH = _bo ? Math.max(0, _bo.haut) : 0, _bB = _bo ? Math.min(H, _bo.bas) : H;
+  // The sides too (2026-09-27): the frame only checked top and bottom, and at 440 px wide
+  // `data-pipeline` ran 9 px past the screen edge, cut like a name leaving through the top.
+  const demDansCadre = (e, etage) => (e.y + e.uy*etage - e.dh) >= _bH && (e.y + e.uy*etage + e.dh) <= _bB
+    && (e.x + e.ux*etage - e.dl) >= 0 && (e.x + e.ux*etage + e.dl) <= W;
+  const _demReste = [];
+  for(const e of _demB){
+    let garde = false;
+    if(DEMELAGE && ETAGES.indexOf(e.u.labVise) >= 0 && demDansCadre(e, e.u.labVise)){
+      const b = boiteDe(e, e.u.labVise);
+      if(demLibre(b)){ _demPoses.push(b); e.boite = b; e.u.labVu = 1; garde = true; }
+    }
+    if(!garde) _demReste.push(e);
+  }
+  for(const e of _demReste){
+
+    const etages = DEMELAGE ? ETAGES : [0];
+    let choisi = null, meilleur = Infinity, boite = null;
+    for(let k = 0; k < etages.length; k++){
+      const etage = etages[k];
+      const x0 = e.x + e.ux*etage - e.dl, x1 = e.x + e.ux*etage + e.dl;
+      const y0 = e.y + e.uy*etage - e.dh, y1 = e.y + e.uy*etage + e.dh;
+
+      if(DEMELAGE && !demDansCadre(e, etage)) continue;
+
+      const b = boiteDe(e, etage);
+      if(DEMELAGE && !demLibre(b)) continue;
+
+      const score = DEMELAGE ? encombrement(x0,x1,y0,y1) + k*PENALITE
+                               - (Math.abs(etage - e.u.labVise) < 1e-6 ? FIDELITE : 0) : 0;
+      if(score < meilleur){ meilleur = score; choisi = etage; boite = b; }
+      if(!DEMELAGE) break;
+    }
+    if(boite){ _demPoses.push(boite); e.boite = boite; }
+    e.u.labVu = choisi===null ? 0 : 1;
+    if(choisi!==null) e.u.labVise = choisi;
+  }
+
+  for(let tour = 0, rentre = true; DEMELAGE && rentre && tour < 4; tour++){ rentre = false; for(const e of _demB){
+    if(!e.boite || e.u.labVise === 0 || !demDansCadre(e, 0)) continue;
+    const b0 = boiteDe(e, 0), k = ETAGES.indexOf(e.u.labVise);
+    const libre = _demPoses.every(p => p === e.boite || Math.min(b0.x1,p.x1) <= Math.max(b0.x0,p.x0)
+                                                  || Math.min(b0.y1,p.y1) <= Math.max(b0.y0,p.y0));
+    if(!libre) continue;
+    const enc = (b) => encombrement(b.x0 + _demMi, b.x1 - _demMi, b.y0 + _demMi, b.y1 - _demMi);
+    if(enc(b0) > enc(e.boite) + Math.max(0, k)*PENALITE) continue;
+    _demPoses[_demPoses.indexOf(e.boite)] = b0; e.boite = b0; e.u.labVise = 0; rentre = true;
+  }}
+  for(const b of regionObjs){
+    const u = b.userData;
+
+    if(DEMELAGE){
+      if(Math.abs(u.labVise - u.labFin) > 1e-6){ u.labDe = u.labDecal; u.labFin = u.labVise; u.labT = 0; }
+      if(u.labT < 1){
+        u.labT = Math.min(1, u.labT + 1/GLISSADE_IMAGES);
+        const s = u.labT*u.labT*(3 - 2*u.labT);
+        u.labDecal = u.labDe + (u.labFin - u.labDe)*s;
+      } else u.labDecal = u.labFin;
+    } else { u.labDecal = u.labVise; u.labDe = u.labFin = u.labVise; u.labT = 1; }
+    u.labK = THREE.MathUtils.lerp(u.labK, u.labVu, 0.18);
+    u.labMat.opacity = u.labBase * u.labK;
+    u.lab.visible = u.labMat.opacity > 0.01;
+
+    const G = u.labGeo;
+    u.labBoite = (G && u.lab.visible)
+      ? [G.x + G.ux*u.labDecal - G.dl, G.y + G.uy*u.labDecal - G.dh,
+         G.x + G.ux*u.labDecal + G.dl, G.y + G.uy*u.labDecal + G.dh]
+      : null;
+  }
 }
 
 let SENS_FAMILLES = true;
+
 const SENS_TAILLE = 2.0;
 const SENS_MARGE  = 3.2;
 const SENS_RAYON  = SEM*1.35;
@@ -628,6 +965,7 @@ function positionSens(nd){
 function layoutSens(data){
   const brut={}, sortie={};
   for(const nd of data.nodes){ const p=positionSens(nd); if(p) brut[nd.id]=p; }
+
   const fam={};
   for(const nd of data.nodes){
     if(!brut[nd.id]) continue;
@@ -637,14 +975,17 @@ function layoutSens(data){
     for(const id of f.ids) f.c.add(brut[id]);
     f.c.multiplyScalar(1/f.ids.length);
     f.etendue = Math.max(0.6, f.ids.reduce((m,id)=>Math.max(m, brut[id].distanceTo(f.c)), 0));
+
     f.R = SENS_TAILLE*Math.cbrt(f.ids.length);
   }
   const liste=Object.values(fam);
+
   const volume = liste.reduce((s,f)=>s + f.R*f.R*f.R, 0);
   const rayonNecessaire = Math.cbrt(volume/0.30);
   const dispersion = Math.sqrt(liste.reduce((s,f)=>s + f.c.lengthSq(), 0)/liste.length);
   const ecart = dispersion>1e-3 ? (rayonNecessaire*0.62)/dispersion : 1;
   for(const f of liste) f.a = f.c.clone().multiplyScalar(ecart);
+
   for(let it=0; it<120; it++){
     let bouge=false;
     for(let i=0;i<liste.length;i++) for(let j=i+1;j<liste.length;j++){
@@ -658,18 +999,21 @@ function layoutSens(data){
     }
     if(!bouge) break;
   }
-  const centre=new THREE.Vector3();
-  for(const f of liste) centre.addScaledVector(f.a, f.ids.length);
-  centre.multiplyScalar(1/data.nodes.length);
+
+  const bmin=new THREE.Vector3( Infinity, Infinity, Infinity), bmax=new THREE.Vector3(-Infinity,-Infinity,-Infinity);
+  for(const f of liste){ bmin.min(f.a.clone().subScalar(f.R)); bmax.max(f.a.clone().addScalar(f.R)); }
+  const centre=bmin.add(bmax).multiplyScalar(0.5);
   let loin=0;
   for(const f of liste) loin = Math.max(loin, f.a.distanceTo(centre) + f.R);
   const echelle = loin>0 ? SENS_RAYON/loin : 1;
+
   for(const r in fam){ const f=fam[r];
     const k = (f.R/f.etendue)*echelle;
     const ancre = f.a.clone().sub(centre).multiplyScalar(echelle);
     for(const id of f.ids)
       sortie[id] = brut[id].clone().sub(f.c).multiplyScalar(k).add(ancre);
   }
+
   const ancres = {};
   for(const r in fam) ancres[r] = { pos: fam[r].a.clone().sub(centre).multiplyScalar(echelle),
                                     rayon: fam[r].R*echelle };
@@ -688,43 +1032,58 @@ function build(data){
   for(const nd of data.nodes){
     const pp=posById[nd.id]||{p3:new THREE.Vector3(0,R,0), p2:new THREE.Vector3()};
     const p3=pp.p3, p2=pp.p2, col=colorOf(nd);
+
     const p2sBrut = SENS.brut[nd.id] || p2.clone();
     const p2s = (SENS_FAMILLES ? (SENS.sens[nd.id] || p2sBrut) : p2sBrut).clone();
-    const m=new THREE.Mesh(new THREE.SphereGeometry(nd.frontier?0.16:0.125, 12, 12),
-      new THREE.MeshBasicMaterial({ color:col }));
+
+    const taille = nd.frontier?0.26:0.2;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(taille, taille),
+      new THREE.MeshBasicMaterial({ color:col, visible:false }));
     const start=p3.clone(); m.position.copy(start);
     const isNew = prevIds.size && !prevIds.has(nd.id);
-    m.userData={ data:nd, isNew, p3, p2, p2s, p2sBrut, col:col.clone(), base:start.clone(), hatching:isNew, _pull:0, links:[] };
+
+    m.userData={ data:nd, isNew, p3, p2, p2s, p2sBrut, col:col.clone(), base:start.clone(), hatching:isNew, _pull:0, links:[], taille };
     m.scale.setScalar(isNew?0.01:1);
+
     m.userData.heat=nd.heat||0; m.userData.pulse=hash(nd.id)*6.283;
+
     if(nd.active_ts){
-      const ring=new THREE.Sprite(new THREE.SpriteMaterial({ map:RING_TEX, color:0xFF4F0C,
+      const ring=new THREE.Sprite(new THREE.SpriteMaterial({ map:RING_TEX, color:0xB6FF3B,
         transparent:true, opacity:0.6, depthTest:false, depthWrite:false }));
       ring.scale.setScalar(0.95); m.add(ring);
       m.userData.activeRing=ring; m.userData.activeTs=nd.active_ts;
     }
+
     const badges=[];
     if(nd.challenge)  badges.push([WARN_TEX,   0xFF4F0C]);
     if(nd.conviction) badges.push([CONV_TEX,   0xFFBCA2]);
     if(nd.resume)     badges.push([RESUME_TEX, 0xFF9870]);
+
     if(nd.regle)      badges.push([REGLE_TEX,  0xDE3F00]);
     badges.forEach(([tex,col],i)=>{
       const b=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, color:col,
         transparent:true, opacity:0.95, depthTest:false, depthWrite:false }));
       b.scale.setScalar(0.34); b.position.set(0.3, 0.34 - i*0.27, 0); m.add(b);
     });
+
     if(nd.media){
-      const pl=new THREE.Sprite(new THREE.SpriteMaterial({ map:PLAY_TEX, color:0xFF6F36,
+      const pl=new THREE.Sprite(new THREE.SpriteMaterial({ map:PLAY_TEX, color:0x8FD52A,
         transparent:true, opacity:0.9, depthTest:false, depthWrite:false }));
       pl.scale.setScalar(0.42); pl.position.set(0,0.34,0); m.add(pl); m.userData.playMark=pl;
     }
     group.add(m); nodeObjs.push(m); meshById[nd.id]=m;
   }
+
+  fichesInst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color:0xffffff }), Math.max(1, nodeObjs.length));
+  fichesInst.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, nodeObjs.length)*3), 3);
+  fichesInst.frustumCulled = false; fichesInst.count = 0; group.add(fichesInst);
+
   let idx=0;
   for(const l of data.links){
     const a=meshById[l.source], b=meshById[l.target]; if(!a||!b) continue;
     const arr=new Float32Array((SEG+1)*3);
     const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr,3));
+
     const mat=new THREE.LineBasicMaterial({ color:LINK_GREY.clone(), transparent:true, opacity:0.16, depthTest:false, depthWrite:false });
     const ligne=new THREE.Line(g, mat); group.add(ligne);
     const L={ a, b, attr:g.getAttribute('position'), mat, ligne, hot:false, idx:idx++, regle:!!l.regle };
@@ -736,12 +1095,13 @@ function build(data){
     const a=meshById[e[0]], b=meshById[e[1]]; if(!a||!b) continue;
     const arr=new Float32Array((SEG+1)*3);
     const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr,3));
-    const mat=new THREE.LineBasicMaterial({ color:0xFF6F36, transparent:true, opacity:0, depthTest:false, depthWrite:false });
+    const mat=new THREE.LineBasicMaterial({ color:0x6E6B75, transparent:true, opacity:0, depthTest:false, depthWrite:false });
     const ligne=new THREE.Line(g, mat); group.add(ligne);
     coactObjs.push({ a, b, attr:g.getAttribute('position'), mat, ligne, w:e[2]/cmax });
   }
 
   const totalN = data.nodes.length || 1; totalNoeuds = totalN;
+
   const voisine = {};
   for(const a of REGION_LIST){
     const da = REGION_DIR[a]||UP; let m = Infinity;
@@ -752,14 +1112,17 @@ function build(data){
   }
   for(const r of REGION_LIST){
     const n = REGION_COUNT[r]||0, col = REGION_COLOR[r] || new THREE.Color(0xffffff);
+
     const voulu = 0.42 + 1.5*Math.sqrt(n/totalN);
     const rad = Math.min(voulu, 0.38*voisine[r]/1.8);
     const dir = (REGION_DIR[r]||UP).clone();
+
     const blob = new THREE.Object3D();
     blob.position.copy(dir).multiplyScalar(R);
     const grains = Math.min(n, 90);
     const pos = new Float32Array(grains*3);
     for(let i=0;i<grains;i++){
+
       const u=hash(r+':'+i), v=hash(i+':'+r), w=hash(r+i+'z');
       const th=2*Math.PI*u, ph=Math.acos(2*v-1), rr=rad*1.8*Math.cbrt(w);
       pos[i*3]  = rr*Math.sin(ph)*Math.cos(th);
@@ -767,15 +1130,14 @@ function build(data){
       pos[i*3+2]= rr*Math.cos(ph);
     }
     const gg=new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(pos,3));
-    const amas=new THREE.Points(gg, new THREE.PointsMaterial({ color:col, map:POINT_TEX, size:0.40,
+    const amas=new THREE.Points(gg, new THREE.PointsMaterial({ color:col, size:0.30,
       transparent:true, opacity:0.95, depthWrite:false, sizeAttenuation:true }));
     blob.add(amas);
+
     const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map:texteTex(`${r}  ${n}`),
-      transparent:true, depthTest:false, depthWrite:false, opacity:0.9 }));
+      transparent:true, depthTest:false, depthWrite:false, opacity:1 }));
     lab.scale.set(LABEL_W, LABEL_H, 1);
-    // `depthTest:false` alone is insufficient. Three.js sorts transparent objects by
-    // distance, so front cluster points can cover their own label. `renderOrder`
-    // makes the label draw last, as verified in the 2026-09-21 capture.
+
     lab.renderOrder = 6;
     lab.position.set(0, rad*1.8 + LABEL_H*0.45, 0);
     blob.add(lab);
@@ -786,9 +1148,14 @@ function build(data){
                       pos2: new THREE.Vector3(c2.x*S2, c2.y*S2, 0),
                       posSens: anc ? anc.pos.clone() : new THREE.Vector3(),
                       radSens: anc ? anc.rayon : rad,
-                      lab, blobMat:amas.material, labMat:lab.material };
+                      lab, blobMat:amas.material, labMat:lab.material,
+                      labEncre: lab.material.map.userData.encre ?? 1,
+
+                      labBase: 0, labK: 1, labVu: 1, labDecal: 0, labVise: 0,
+                      labDe: 0, labFin: 0, labT: 1 };
     group.add(blob); regionObjs.push(blob);
   }
+
   {
     const paires = Object.entries(REGION_AFF).filter(([,v])=>v>0);
     const vmax = paires.reduce((m,[,v])=>Math.max(m,v), 1);
@@ -806,9 +1173,9 @@ function build(data){
 
   prevIds=new Set(data.nodes.map(n=>n.id));
   document.getElementById('counts').innerHTML =
-    `${data.counts.nodes} notes · ${data.counts.links} links · ${REGION_LIST.length} regions · ${data.counts.frontier} border${data.counts.frontier>1?'s':''}`
-    + (data.counts.challenged ? ` · <span style="color:#e0a13a">⚠ ${data.counts.challenged} challenged</span>` : '')
-    + (data.counts.unknown_relations ? ` · <span style="color:#e0a13a">⚠ ${data.counts.unknown_relations} relation type${data.counts.unknown_relations>1?'s':''} were not recognized; links remain visible but untyped. Run brain doctor for details.</span>` : '');
+    `${data.counts.nodes} notes · ${data.counts.links} links · ${REGION_LIST.length} regions · ${data.counts.frontier} frontier`
+    + (data.counts.challenged ? ` · <span style="color:#ff321e">⚠ ${data.counts.challenged} contested</span>` : '');
+
   const act=data.nodes.filter(n=>n.active), sEl=document.getElementById('session');
   if(act.length){
     const rc={}; for(const n of act){ const r=regionOf(n); rc[r]=(rc[r]||0)+1; }
@@ -816,9 +1183,10 @@ function build(data){
     sEl.innerHTML=`◉ live in: ${top.join(' · ')}`;
   } else sEl.textContent='';
   buildLegend(data);
-  lireFamilles(data);                // load topics before the capsule uses them
+  lireFamilles(data);
   buildPod();
   majFil();
+
   if(focusRegion){
     if(REGION_NODES[focusRegion]) poserFiches(focusRegion);
     else sortirRegion();
@@ -833,6 +1201,7 @@ function buildLegend(data){
     return `<div class="row"><span class="dot" style="color:${c};background:${c}"></span>${r} (${REGION_COUNT[r]||0})</div>`; };
   const villes=order.filter(isProj).map(row).join('');
   const autres=order.filter(r=>!isProj(r)).map(row).join('');
+
   const maxN = Math.max(...REGION_LIST.map(r=>REGION_COUNT[r]||0), 1);
   const ligne = r => { const c='#'+(REGION_COLOR[r]||new THREE.Color(0xffffff)).getHexString();
     const n = REGION_COUNT[r]||0;
@@ -845,20 +1214,21 @@ function buildLegend(data){
                              .sort((a,b)=>(REGION_COUNT[b]||0)-(REGION_COUNT[a]||0));
   const nPetites = petites.reduce((t,r)=>t+(REGION_COUNT[r]||0),0);
   const mk = [];
-  if(data.counts.frontier)    mk.push(`<b style="color:#fff">◍</b> ${data.counts.frontier} borders`);
-  if(data.counts.challenged)  mk.push(`<b style="color:#e0a13a">⚠</b> ${data.counts.challenged} challenged`);
-  if(data.counts.convictions) mk.push(`<b style="color:#f5e2a0">✦</b> ${data.counts.convictions} convictions`);
-  if(data.counts.resume)      mk.push(`<b style="color:#7fd4a0">↻</b> ${data.counts.resume} to resume`);
-  if(data.counts.media)       mk.push(`<b style="color:#5ad7e6">▷</b> ${data.counts.media} replayable`);
-  if(data.counts.regles)      mk.push(`<b style="color:#b9c6ff">§</b> ${data.counts.regles} cross-cutting rules`);
+  if(data.counts.frontier)    mk.push(`<b style="color:#fff">◍</b> ${data.counts.frontier} frontier`);
+  if(data.counts.challenged)  mk.push(`<b style="color:#ff321e">⚠</b> ${data.counts.challenged} contested`);
+  if(data.counts.convictions) mk.push(`<b style="color:#f2f2ee">✦</b> ${data.counts.convictions} convictions`);
+  if(data.counts.resume)      mk.push(`<b style="color:#c9c9c9">↻</b> ${data.counts.resume} to resume`);
+  if(data.counts.media)       mk.push(`<b style="color:#8fd52a">▷</b> ${data.counts.media} replayable`);
+  if(data.counts.regles)      mk.push(`<b style="color:#c9c9c9">§</b> ${data.counts.regles} cross-cutting rules`);
   document.getElementById('legend').innerHTML =
     `<div class="hd">regions — click to enter</div>` + grosses.map(ligne).join('') +
     (petites.length
-      ? `<details class="repli"><summary>+ ${petites.length} regions with 1 to 2 notes `
+      ? `<details class="repli"><summary>+ ${petites.length} regions of 1 to 2 notes `
         + `<em>(${nPetites} in total)</em></summary>${petites.map(ligne).join('')}</details>`
       : '') +
     `<div class="hd">markers</div><div class="mk">${mk.join(' · ')}</div>` +
-    `<div class="mk" style="margin-top:5px"><b style="color:#7fe9ff">◯</b> ring = read less than ${Math.round(LIVE_WINDOW_S/60)} min ago</div>`;
+    `<div class="mk" style="margin-top:5px"><b style="color:#b6ff3b">◯</b> ring = read less than ${Math.round(LIVE_WINDOW_S/60)} min ago</div>`;
+
   document.querySelectorAll('#legend .row').forEach(el=>{
     el.addEventListener('click', ()=> entrerRegion(el.dataset.region));
     el.addEventListener('mouseenter', ()=> { hoveredRegion = el.dataset.region; podViser(el.dataset.region); });
@@ -867,26 +1237,26 @@ function buildLegend(data){
   });
 }
 
-let view=1, viewTarget=1, sem=1, semTarget=1, usage=1, usageTarget=1;
-// What the graph can actually show, refreshed on each graph.json. `sem` records the
-// requested view; the available vectors determine what that view can claim.
-// On 2026-09-19 a sample had zero vectors in ten notes.
-let semCap = { state:'absent', covered:0, total:0, detail:'' };
+let view=1, viewTarget=1, sem=0, semTarget=0, usage=1, usageTarget=1;
 addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V'){ viewTarget = viewTarget>0.5?0:1; if(viewTarget<0.5) semTarget=0; }
   if(e.key==='s'||e.key==='S'){ semTarget = semTarget>0.5?0:1; if(semTarget>0.5) viewTarget=1; }
   if('vVsS'.includes(e.key)) majFil();
 });
+
 function setMode(m){
+
   if(m==='3d'){ viewTarget=0; semTarget=0; }
   else if(m==='struct'){ viewTarget = focusRegion ? 0 : 1; semTarget=0; }
   else if(m==='sens'){ viewTarget=1; semTarget=1; }
   majFil();
+  viserCadrage();
 }
 document.querySelectorAll('#modes button').forEach(b=>
   b.addEventListener('click', ()=> setMode(b.dataset.mode)));
 
 let focusRegion=null, focus=0, focusTarget=0, regionVue=null, hoveredRegion=null;
+
 let niveau2Global=0, totalNoeuds=1;
 let _coupurePic=0;
 const filEl=document.getElementById('fil');
@@ -894,47 +1264,172 @@ const filEl=document.getElementById('fil');
 function majFil(){
   if(focusRegion){
     filEl.innerHTML = `<span class="retour">← overview</span>  ·  <b>${focusRegion}</b> `
-      + `<span class="ici">— ${REGION_COUNT[focusRegion]||0} notes · Esc to exit</span>`;
+      + `<span class="ici">— ${REGION_COUNT[focusRegion]||0} notes · Esc to leave</span>`;
     filEl.querySelector('.retour').onclick = sortirRegion;
   } else if(semTarget>0.5){
+
     if(podPin){
       filEl.innerHTML = `<span class="retour">✕ release</span>  ·  <b>${podPin}</b> `
-        + `<span class="ici">— ${REGION_COUNT[podPin]||0} notes lit up in the meaning map · Esc</span>`;
+        + `<span class="ici">— ${REGION_COUNT[podPin]||0} notes lit in the graph · Esc</span>`;
       filEl.querySelector('.retour').onclick = ()=>{ podPin=null; majPodCap(); majFil(); };
       return;
     }
-    filEl.innerHTML = `<span class="ici">meaning map — every note next to what it resembles · the globe (left) targets a family</span>`;
+
+    filEl.innerHTML = `<span class="ici">graph — each note sits next to what resembles it · the globe (left) targets a family</span>`;
   } else {
     filEl.innerHTML = `<span class="ici">overview — click a region to enter</span>`;
   }
+}
+
+const roleDe = f => { f = f||'';
+  if(f.startsWith('meta/decisions/')) return 'decision';
+  if(f.startsWith('meta/')) return 'regle';
+  if(f.startsWith('agents/')) return 'agent';
+  if(f.startsWith('lessons/')) return 'lecon';
+  if(f.includes('/REPRISE-')) return 'reprise';
+  if(f.startsWith('projects/')) return 'projet';
+  return 'autre'; };
+
+const ROLE_NOM = { decision:'ADR', regle:'RULES', agent:'AGENTS', lecon:'LESSONS',
+                   reprise:'CHECKPOINTS', projet:'NOTES', autre:'OTHER' };
+let sujetVise = null;
+let cadres = [];
+const CADRE_REMPLI = 0.55, CADRE_MIN = 0.014, CADRE_ECART = 0.10;
+
+function angleParSens(ids){
+  const par = new Map(nodeObjs.map(o=>[o.userData.data.id, o.userData.p2sBrut]));
+  const X = ids.map(id=>par.get(id)); if(ids.length < 3 || X.some(x=>!x)) return null;
+  const m = new THREE.Vector3(); for(const x of X) m.add(x); m.divideScalar(X.length);
+  const D = X.map(x=>x.clone().sub(m));
+  const cov = [0,0,0,0,0,0,0,0,0]; for(const d of D){ const a=[d.x,d.y,d.z];
+    for(let i=0;i<3;i++) for(let k=0;k<3;k++) cov[i*3+k]+=a[i]*a[k]; }
+  const axe = (sauf) => { let v=[1,0.7,0.3]; for(let t=0;t<60;t++){
+      let w=[0,1,2].map(i=>cov[i*3]*v[0]+cov[i*3+1]*v[1]+cov[i*3+2]*v[2]);
+      if(sauf){ const p=w[0]*sauf[0]+w[1]*sauf[1]+w[2]*sauf[2]; w=w.map((x,i)=>x-p*sauf[i]); }
+      const n=Math.hypot(...w)||1; v=w.map(x=>x/n); } return v; };
+  const e1 = axe(null), e2 = axe(e1);
+  const P = D.map(d=>[d.x*e1[0]+d.y*e1[1]+d.z*e1[2], d.x*e2[0]+d.y*e2[1]+d.z*e2[2]]);
+
+  const rang = new Map(ids.map((id,i)=>[id,i]));
+  const vois = ids.map(id=>{ const o = nodeObjs.find(o=>o.userData.data.id===id);
+    return (o?.userData.links||[]).map(L=>rang.get((L.a===o?L.b:L.a).userData.data.id)).filter(k=>k!==undefined); });
+  for(let t=0;t<1;t++){ const Q = P.map((p,i)=>{ const v=vois[i]; if(!v.length) return p;
+      let x=0,y=0; for(const k of v){ x+=P[k][0]; y+=P[k][1]; } return [(p[0]+x/v.length)/2, (p[1]+y/v.length)/2]; });
+    for(let i=0;i<P.length;i++) P[i]=Q[i]; }
+  const a = new Map(), r = new Map();
+  ids.forEach((id,i)=>{ a.set(id, Math.atan2(P[i][1],P[i][0])); r.set(id, Math.hypot(P[i][0],P[i][1])); });
+  return { a, r };
+}
+function poserCadres(ids){
+  for(const c of cadres) c.ligne?.removeFromParent();
+  cadres = [];
+  const par = new Map(), fiche = new Map(nodeObjs.map(o=>[o.userData.data.id, o.userData.data]));
+  for(const id of ids){ const r = roleDe(fiche.get(id)?.file); if(!par.has(r)) par.set(r, []); par.get(r).push(id); }
+
+  let axe = 'role';
+
+  const parFam = new Map();
+  for(const id of ids){ const f = fiche.get(id)?.famille; if(!f) continue;
+    if(!parFam.has(f)) parFam.set(f, []); parFam.get(f).push(id); }
+  if(parFam.size >= 2 && [...parFam.values()].reduce((s,l)=>s+l.length,0) === ids.length){
+    par.clear(); axe = 'famille'; for(const [f,l] of parFam) par.set(f, l); }
+  if(par.size < 2){
+    par.clear(); axe = 'sujet';
+    for(const id of ids){ const t = 'sujet:'+(fiche.get(id)?.topic||''); if(!par.has(t)) par.set(t, []); par.get(t).push(id); }
+  }
+  if(par.size < 2) return null;
+  const groupes = [...par].sort((a,b)=> b[1].length-a[1].length || a[0].localeCompare(b[0]));
+  const k = groupes.length, m = ids.length, ga = Math.PI*(3-Math.sqrt(5));
+  const cs = groupes.map((g,j)=>{ const y = 1-2*(j+0.5)/k, rad = Math.sqrt(1-y*y);
+    return new THREE.Vector3(Math.cos(ga*j)*rad, y, Math.sin(ga*j)*rad); });
+  const th = groupes.map(([,l])=> Math.acos(1-2*Math.max(CADRE_MIN, CADRE_REMPLI*l.length/m)));
+  for(let it=0; it<600; it++){ let bouge = false;
+    for(let i=0;i<k;i++) for(let j=i+1;j<k;j++){
+      const ang = cs[i].angleTo(cs[j]), besoin = th[i]+th[j]+CADRE_ECART;
+      if(ang >= besoin) continue; bouge = true;
+      const d = _cadreD.copy(cs[i]).sub(cs[j]).multiplyScalar(0.5*(besoin-ang));
+      cs[i].add(d).normalize(); cs[j].sub(d).normalize(); }
+    if(!bouge) break; }
+  const place = new Map();
+  groupes.forEach(([role,l],j)=>{
+    const c = cs[j], u = new THREE.Vector3(0,1,0).cross(c); if(u.lengthSq()<1e-6) u.set(1,0,0).cross(c);
+    u.normalize(); const v = new THREE.Vector3().crossVectors(c,u);
+
+    const ang = angleParSens(l), rang = new Map();
+    if (ang) [...l].sort((a,b)=>ang.r.get(a)-ang.r.get(b)).forEach((id,i)=>rang.set(id,i));
+    l.forEach((id,i)=>{ const rho = th[j]*0.9*Math.sqrt(((ang ? rang.get(id) : i)+0.5)/l.length), phi = ang ? ang.a.get(id) : i*ga;
+      place.set(id, c.clone().multiplyScalar(Math.cos(rho))
+        .addScaledVector(u, Math.cos(phi)*Math.sin(rho)).addScaledVector(v, Math.sin(phi)*Math.sin(rho))); });
+
+    const pts = []; for(let a=0; a<=64; a++){ const t = a/64*Math.PI*2;
+      pts.push(c.clone().multiplyScalar(Math.cos(th[j])).addScaledVector(u, Math.cos(t)*Math.sin(th[j]))
+        .addScaledVector(v, Math.sin(t)*Math.sin(th[j])).multiplyScalar(R*1.02)); }
+    const ligne = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color:0xD9D6CF, transparent:true, opacity:0, depthWrite:false }));
+    ligne.renderOrder = -1; group.add(ligne);
+    const nom = axe==='famille' ? (FAMILLES_CARTE[role]?.nom || role)
+      : axe==='role' ? ROLE_NOM[role]
+      : (role.slice(6) ? role.slice(6).split(/-(?:et|avec)-/)[0].replace(/-/g,' ').toUpperCase() : 'NO TOPIC'); // i18n-ok: legacy role slug
+    cadres.push({ role, axe, nom, n:l.length, c, th:th[j], ligne, ids:l });
+  });
+  return place;
+}
+const _cadreD = new THREE.Vector3(), _cadreV = new THREE.Vector3();
+
+function majCadres(){
+  const vu = focusRegion && !document.body.classList.contains('g-cherche-ouverte');
+  const niveau = niveau2Global*(1-view);
+  _cadreV.copy(camera.position).sub(group.position).normalize();
+  for(const c of cadres){
+    const face = c.c.dot(_cadreV);
+    c.face = face; c.ligne.material.opacity = vu ? 0.38*niveau*THREE.MathUtils.smoothstep(face, -0.15, 0.35) : 0;
+    c.ligne.visible = c.ligne.material.opacity > 0.005; }
 }
 
 function poserFiches(r){
   const ids = REGION_NODES[r]||[];
   const m = ids.length, ga = Math.PI*(3-Math.sqrt(5));
   const rang = new Map(ids.map((id,i)=>[id,i]));
+  const place = poserCadres(ids);
   for(const mesh of nodeObjs){
     const nd = mesh.userData.data;
     const i = rang.get(nd.id);
     if(i===undefined){ mesh.userData.p3f=null; mesh.userData.p2f=null; continue; }
+    if(place){
+
+      mesh.userData.p3f = place.get(nd.id).clone().multiplyScalar(R*(0.90 + 0.10*hash(nd.id+'r')));
+      const rr = S2*Math.sqrt((i+0.5)/m), aa = i*2.39996323;
+      mesh.userData.p2f = new THREE.Vector3(Math.cos(aa)*rr, Math.sin(aa)*rr, 0);
+      continue;
+    }
     const y = 1-2*(i+0.5)/m, rad = Math.sqrt(Math.max(0,1-y*y)), a = ga*i;
+
     const souffle = 0.70 + 0.32*hash(nd.id+'r');
     mesh.userData.p3f = new THREE.Vector3(Math.cos(a)*rad, y, Math.sin(a)*rad).multiplyScalar(R*souffle);
+
     const rr = S2*Math.sqrt((i+0.5)/m), aa = i*2.39996323;
     mesh.userData.p2f = new THREE.Vector3(Math.cos(aa)*rr, Math.sin(aa)*rr, 0);
   }
 }
 
+let modeAvantRegion=null;
 function entrerRegion(r){
   if(!r || !REGION_COUNT[r]) return;
+
+  if(!focusRegion) modeAvantRegion = semTarget>0.5 ? 'sens' : null;
+
+  if(sem>0.5) focus=1;
   focusRegion=r; focusTarget=1; poserFiches(r); majFil();
-  if(semTarget<0.5) viewTarget=0;
+  viewTarget=0; semTarget=0;
   hovered=null; pinned=null; tip.classList.remove('show','expanded');
+  viserCadrage();
 }
 function sortirRegion(){
   focusRegion=null; focusTarget=0; majFil();
-  if(semTarget<0.5) viewTarget=1;
+  viewTarget=1;
+  if(modeAvantRegion==='sens'){ semTarget=1; modeAvantRegion=null; }
   hovered=null; pinned=null; tip.classList.remove('show','expanded');
+  viserCadrage();
 }
 addEventListener('keydown', e=>{
   if(e.key!=='Escape' || pinned) return;
@@ -959,26 +1454,33 @@ podCam.position.set(0, 4.5, 30); podCam.lookAt(0,0,0);
 let podGroup = new THREE.Group(); podScene.add(podGroup);
 let podBlobs = [];
 let podHover = null, podPin = null;
-let podMode = 'folders';                          // note scope or topic
-// Select the group that a note belongs to in the current capsule mode.
-function groupeDe(nd){ return podMode==='topics' ? (FAM_DE[nd.id]||null) : regionOf(nd); }
+let podMode = 'dossiers';
+
+function groupeDe(nd){ return podMode==='sujets' ? (FAM_DE[nd.id]||null) : regionOf(nd); }
 const podPtr = { x:-1e4, y:-1e4, in:false };
 const _pw = new THREE.Vector3(), _podDir = new THREE.Vector3();
 
-// Topics are the second axis. Their IDs and names come from graph.json, whose
-// exporter reads the trunk's canonical meta/topics.json.
-let FAMILLES_TITRES = {};
+const FAMILLES_TITRES = {
+  'controle-qui-ment':"a misleading check I wrote", 'systeme-qui-ment':"a misleading system response", // i18n-ok: legacy topic IDs
+  'front-qui-ment':'a misleading interface', 'visuel-et-geste':'visuals and gestures', 'machine':'the machine', // i18n-ok: legacy topic IDs
+  'concurrence-et-pertes':'concurrency and losses', 'garde-fou-partiel':"a safeguard covering only one case", // i18n-ok: legacy topic IDs
+  'le-cerveau':'the brain itself', 'methode-et-principes':'methods and principles', // i18n-ok: legacy topic IDs
+  'mettre-en-ligne':'publish online', 'artefact-derive':'an artifact that drifts', 'service-tiers':'connect a third-party service',
+  'fabriquer-un-document':'create a document' };
 let FAM_INFO = {}, FAM_DE = {};
+let FAMILLES_CARTE = {};
 function lireFamilles(data){
-  FAM_INFO = {}; FAM_DE = {}; FAMILLES_TITRES = data.topics || {};
+  FAM_INFO = {}; FAM_DE = {}; FAMILLES_CARTE = data.familles || {};
+
+  const parSujet = !!data.topics;
+  if(parSujet) Object.assign(FAMILLES_TITRES, data.topics);
   for(const n of data.nodes){
-    const t = n.topic || null;
+    const t = parSujet ? (n.topic || null) : ((n.tags && n.tags[0]) || null);
     if(!t) continue;
     FAM_DE[n.id] = t;
     (FAM_INFO[t] = FAM_INFO[t] || { n:0 }).n++;
   }
-  // Fibonacci placement starts at 0.5; ordering by size keeps the largest
-  // topic from landing on the pole and obscuring the others.
+
   const noms = Object.keys(FAM_INFO).sort((a,b)=>FAM_INFO[a].n-FAM_INFO[b].n);
   const m = noms.length, ga = Math.PI*(3-Math.sqrt(5));
   noms.forEach((nom,i)=>{
@@ -992,9 +1494,11 @@ function buildPod(){
   podGroup.removeFromParent();
   podGroup.traverse(o=>{ o.geometry?.dispose?.(); o.material?.dispose?.(); });
   podGroup = new THREE.Group(); podScene.add(podGroup); podBlobs=[];
+
   podGroup.add(new THREE.Mesh(new THREE.SphereGeometry(R*0.99, 12, 8),
-    new THREE.MeshBasicMaterial({ color:0x7A2200, wireframe:true, transparent:true,
+    new THREE.MeshBasicMaterial({ color:0x3A383F, wireframe:true, transparent:true,
       opacity:0.30, depthWrite:false })));
+
   const amasPour = (graine, n, col, dir) => {
     const grains = Math.min(n, 90), rad = 0.42 + 1.05*Math.cbrt(n/60);
     const pos = new Float32Array(grains*3);
@@ -1009,7 +1513,7 @@ function buildPod(){
     pts.position.copy(dir).multiplyScalar(R);
     return pts;
   };
-  // Folder clusters reuse the large map's geometry and seed.
+
   for(const b of regionObjs){
     const src = b.children[0];
     if(!src || !src.geometry) continue;
@@ -1017,18 +1521,19 @@ function buildPod(){
       color:b.userData.colBase.clone(), map:POINT_TEX, size:1.15, transparent:true,
       opacity:1, depthWrite:false, sizeAttenuation:true }));
     pts.position.copy(b.userData.pos3);
-    pts.userData = { region:b.userData.region, col:b.userData.colBase.clone(), mode:'folders' };
+    pts.userData = { region:b.userData.region, col:b.userData.colBase.clone(), mode:'dossiers' };
     podGroup.add(pts); podBlobs.push(pts);
   }
-  // Topic clusters.
+
   for(const [nom, f] of Object.entries(FAM_INFO)){
     if(!f.dir) continue;
     const pts = amasPour(nom, f.n, f.col, f.dir);
-    pts.userData = { region:nom, col:f.col.clone(), mode:'topics', titre:(FAMILLES_TITRES[nom]||nom) };
+    pts.userData = { region:nom, col:f.col.clone(), mode:'sujets', titre:(FAMILLES_TITRES[nom]||nom) };
     pts.visible = false;
     podGroup.add(pts); podBlobs.push(pts);
   }
-  const connu = n => podMode==='topics' ? !!FAM_INFO[n] : !!REGION_COUNT[n];
+  const connu = n => podMode==='sujets' ? !!FAM_INFO[n] : !!REGION_COUNT[n];
+
   if(podPin && !connu(podPin)) podPin=null;
   if(podHover && !connu(podHover)) podHover=null;
   for(const p of podBlobs) p.visible = (p.userData.mode===podMode);
@@ -1042,6 +1547,7 @@ function placerPod(){
   const legEl = document.getElementById('legend');
   const h = document.getElementById('hud').getBoundingClientRect();
   const MARGE = 22, CHROME = 40;
+
   legEl.style.maxHeight = '';
   let l = legEl.getBoundingClientRect();
   const requis = MINI + CHROME + MARGE*2;
@@ -1058,18 +1564,19 @@ function placerPod(){
   podCam.aspect = 1; podCam.updateProjectionMatrix();
   const haut = (cote-16) + CHROME;
   podEl.style.top = Math.round(h.bottom + MARGE + Math.max(0, (libre - haut)/2)) + 'px';
+
   podEl.style.display = (libre < MINI) ? 'none' : '';
 }
 addEventListener('resize', placerPod);
 
 function majPodCap(){
   const r = podPin || podHover;
-  const combien = n => podMode==='topics' ? (FAM_INFO[n]||{n:0}).n : (REGION_COUNT[n]||0);
-  const nom = n => podMode==='topics' ? (FAMILLES_TITRES[n]||n) : n;
+  const combien = n => podMode==='sujets' ? (FAM_INFO[n]||{n:0}).n : (REGION_COUNT[n]||0);
+  const nom = n => podMode==='sujets' ? (FAMILLES_TITRES[n]||n) : n;
   const total = podBlobs.filter(p=>p.userData.mode===podMode).length;
   if(r) podCap.innerHTML = `<b>${nom(r)}</b> — ${combien(r)} notes`
-                         + (podPin===r ? ` <span class="off">· click = release</span>` : '');
-  else  podCap.innerHTML = `<span class="off">${total} ${podMode==='topics'?'topics':'folders'} · point to highlight</span>`;
+                         + (podPin===r ? ` <span class="off">· click to release</span>` : '');
+  else  podCap.innerHTML = `<span class="off">${total} ${podMode==='sujets'?'topics':'folders'} · aim to light up</span>`;
   document.querySelectorAll('#pod .bascule').forEach(b=>b.classList.toggle('on', b.dataset.mode===podMode));
 }
 document.querySelectorAll('#pod .bascule').forEach(b=> b.addEventListener('click', ()=>{
@@ -1088,6 +1595,7 @@ podCv.addEventListener('pointermove', e=>{
     const dx=e.clientX-podDrag.x, dy=e.clientY-podDrag.y;
     podDrag={x:e.clientX,y:e.clientY}; podBouge += Math.hypot(dx,dy);
     podGroup.rotation.y += dx*0.009;
+
     podGroup.rotation.x = THREE.MathUtils.clamp(podGroup.rotation.x + dy*0.009, -1.0, 1.0);
   }
 });
@@ -1102,6 +1610,7 @@ podCv.addEventListener('pointerdown', e=>{
 const podLache = ()=>{ if(podDrag){ podDrag=null; podCv.style.cursor = podHover?'pointer':'default'; } };
 addEventListener('pointerup', podLache);
 podCv.addEventListener('pointercancel', podLache);
+
 podCv.addEventListener('click', ()=>{
   if(podBouge>5) return;
   podPin = (podHover && podPin!==podHover) ? podHover : null; majPodCap(); majFil();
@@ -1109,6 +1618,7 @@ podCv.addEventListener('click', ()=>{
 
 let podVit = 1;
 function podTick(dt){
+
   podVit += ((podPtr.in ? 0 : 1) - podVit) * Math.min(1, dt*6);
   podGroup.rotation.y += dt*0.16*podVit;
   _podDir.copy(podCam.position).normalize();
@@ -1130,6 +1640,7 @@ function podTick(dt){
   const vise = podPin || podHover;
   for(const p of podBlobs){
     const on = p.userData.region===vise;
+
     const bat = (p.userData.region===podPin) ? 0.5+0.5*Math.sin(performance.now()/420) : 0;
     p.material.size    = THREE.MathUtils.lerp(p.material.size, on?1.42:1.15, 0.22);
     p.material.opacity = THREE.MathUtils.lerp(p.material.opacity, vise ? (on?1:0.5) : 1, 0.22);
@@ -1139,6 +1650,8 @@ function podTick(dt){
 }
 
 const MAGNET_RADIUS=95, MAGNET_PULL=0.45, MAGNET_SCALE=1.9;
+
+const VISEE_NOM=10;
 let hovered=null, hotMesh=null, pointerPx={x:-1e4,y:-1e4}, pointerIn=false;
 const camRight=new THREE.Vector3(), camUp=new THREE.Vector3(), _ndc=new THREE.Vector3();
 addEventListener('pointermove', e=>{ pointerPx.x=e.clientX; pointerPx.y=e.clientY; pointerIn=true; });
@@ -1153,6 +1666,7 @@ function applyHot(m){
 
 const esc=s=>String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let pinned=null;
+
 let TEXTES={}, TEXTES_PRETS=false, _texteEnVol=null;
 function chargerTextes(){
   if(TEXTES_PRETS) return Promise.resolve(TEXTES);
@@ -1165,7 +1679,7 @@ function chargerTextes(){
 function memLine(n){
   const m=n.membership||{}, ks=Object.keys(m);
   if(!n.primary_project) return `<b>${regionOf(n)}</b> · cross-cutting, no city`;
-  return (n.frontier?'border · ':'city · ')+ks.map(c=>`<b>${c}</b> ${m[c]}`).join('  ·  ');
+  return (n.frontier?'frontier · ':'city · ')+ks.map(c=>`<b>${c}</b> ${m[c]}`).join('  ·  ');
 }
 let _ficheAffichee=null;
 function showPanel(mesh, expanded){
@@ -1173,23 +1687,23 @@ function showPanel(mesh, expanded){
   _ficheAffichee=n.id;
   tip.style.setProperty('--accent', '#'+colorOf(n).getHexString());
   const title=n.title || (n.name||'').replace(/-/g,' ').replace(/^\w/, c=>c.toUpperCase());
-  tip.querySelector('.lbl').innerHTML=(n.primary_project||regionOf(n))+(n.frontier?' <span class="frontier">⟡ border</span>':'');
+  tip.querySelector('.lbl').innerHTML=(n.primary_project||regionOf(n))+(n.frontier?' <span class="frontier">⟡ frontier</span>':'');
   tip.querySelector('.n').textContent=title;
   tip.querySelector('.mem').innerHTML=memLine(n);
+
   const chEl=tip.querySelector('.ch');
-  if(n.challenge){ chEl.textContent='⚠ challenger verdict — '+n.challenge; chEl.classList.add('show'); }
+  if(n.challenge){ chEl.textContent='⚠ challenger feedback — '+n.challenge; chEl.classList.add('show'); }
   else { chEl.classList.remove('show'); chEl.textContent=''; }
   const cvEl=tip.querySelector('.cv');
-  if(n.conviction){ cvEl.textContent='✦ conviction — '+n.conviction; cvEl.classList.add('show'); }
+  if(n.conviction){ cvEl.textContent='✦ author conviction — '+n.conviction; cvEl.classList.add('show'); }
   else { cvEl.classList.remove('show'); cvEl.textContent=''; }
   const rsEl=tip.querySelector('.rs');
-  if(n.resume){ rsEl.textContent='↻ resume point — an open thread in this note'; rsEl.classList.add('show'); }
+  if(n.resume){ rsEl.textContent='↻ resume point — open thread in this note'; rsEl.classList.add('show'); }
   else { rsEl.classList.remove('show'); rsEl.textContent=''; }
   const mEl=tip.querySelector('.media');
   if(n.media){ mEl.textContent='▷ replayable 3D capture — double-click to open'; mEl.classList.add('show'); }
   else { mEl.classList.remove('show'); mEl.textContent=''; }
-  // Show connections only after a click. Hover shows a title and summary so the
-  // floating panel remains readable while the pointer moves (2026-08-15).
+
   const others=expanded ? (mesh.userData.links||[]).map(L=> L.a===mesh?L.b:L.a) : [];
   const CAP=16, rn=regionOf(n);
   let lh='';
@@ -1200,6 +1714,7 @@ function showPanel(mesh, expanded){
     lh=`<span class="hd">connections (${others.length})</span>${chips}`+(others.length>CAP?`<span class="c">+${others.length-CAP}</span>`:'');
   }
   tip.querySelector('.lnk').innerHTML=lh;
+
   const dEl=tip.querySelector('.d');
   if(expanded){
     if(!TEXTES_PRETS) chargerTextes().then(()=>{
@@ -1209,23 +1724,26 @@ function showPanel(mesh, expanded){
     const clair = TEXTES[n.id+'::clair'] || n.en_clair;
     if(n.en_clair) bloc.push(
       `<section class="bl clair"><header><span class="qui">for you</span>`
-      + `<span class="quoi">in plain words, no jargon</span></header>`
+      + `<span class="quoi">plain language, no jargon</span></header>`
       + `<div class="txt">${esc(clair)}</div></section>`);
+
     const corps = TEXTES[n.id];
     if(corps) bloc.push(
       `<details class="bl modele"${n.en_clair?'':' open'}>`
       + `<summary><span class="qui">for the model</span>`
-      + `<span class="quoi">the whole note, dense</span></summary>`
+      + `<span class="quoi">the complete, detailed note</span></summary>`
       + `<div class="txt">${esc(corps)}</div></details>`);
     else if(!TEXTES_PRETS) {
       bloc.push(`<details class="bl modele"${n.en_clair?'':' open'}><summary>`
         + `<span class="qui">for the model</span><span class="quoi">loading…</span></summary></details>`);
+
     }
-    if(!bloc.length) bloc.push(`<div class="txt">${esc(n.desc||'(pas de contenu)')}</div>`);
+    if(!bloc.length) bloc.push(`<div class="txt">${esc(n.desc||'(no content)')}</div>`);
     dEl.innerHTML = bloc.join('');
   } else {
+
     const court=n.en_clair?n.en_clair.split('\n\n')[0]:null;
-    dEl.textContent=court||n.desc||'(pas de description)';
+    dEl.textContent=court||n.desc||'(no description)';
   }
   tip.querySelector('.f').textContent=n.file;
   tip.classList.add('show'); tip.classList.toggle('expanded', !!expanded);
@@ -1260,7 +1778,21 @@ function magnet(){
     }
     return;
   }
-  hoveredRegion=null; document.body.style.cursor='';
+
+  hoveredRegion=null;
+  if(focus<0.5){
+    let br=null, bd=Infinity;
+    for(const b of regionObjs){
+      const bo=b.userData.labBoite; if(!bo) continue;
+      if(pointerPx.x < bo[0]-VISEE_NOM || pointerPx.x > bo[2]+VISEE_NOM) continue;
+      if(pointerPx.y < bo[1]-VISEE_NOM || pointerPx.y > bo[3]+VISEE_NOM) continue;
+      const d=Math.hypot(pointerPx.x-(bo[0]+bo[2])/2, pointerPx.y-(bo[1]+bo[3])/2);
+      if(pointerIn && d<bd){ bd=d; br=b.userData.region; }
+    }
+    hoveredRegion=br;
+  }
+  document.body.style.cursor = hoveredRegion ? 'pointer' : '';
+  if(hoveredRegion){ hovered=null; applyHot(null); tip.classList.remove('show'); return; }
 
   let best=null, bestD=MAGNET_RADIUS;
   for(const m of nodeObjs){
@@ -1284,12 +1816,14 @@ addEventListener('pointerup', e=>{
   const bouge = Math.hypot(e.clientX-_downXY[0], e.clientY-_downXY[1]);
   _downXY=null;
   if(bouge>5) return;
-  if(niveau2Global<0.5 && hoveredRegion) entrerRegion(hoveredRegion);
+
+  if(focus<0.5 && hoveredRegion) entrerRegion(hoveredRegion);
 });
 
 const _off=new THREE.Vector3(), _tgt=new THREE.Vector3(), _p2=new THREE.Vector3();
 const _p3f=new THREE.Vector3(), _p2f=new THREE.Vector3();
 function easeMagnet(m){
+
   const k = m.userData.p3f ? niveau2Global : 0;
   _p3f.copy(m.userData.p3).lerp(m.userData.p3f||m.userData.p3, k);
   _p2f.copy(m.userData.p2).lerp(m.userData.p2f||m.userData.p2, k);
@@ -1326,10 +1860,12 @@ function arcEntre(a, b, attr, flat){
 let OCCLUSION = true;
 function versNous(a, mid, b){
   if(!OCCLUSION) return 1;
+
   const aplat = view*(1-sem);
   _cd.copy(camera.position).normalize();
   const R0 = THREE.MathUtils.lerp(R, SEM, sem);
   const f = p => THREE.MathUtils.clamp((p.x*_cd.x+p.y*_cd.y+p.z*_cd.z)/R0, -1, 1);
+
   const coquille = THREE.MathUtils.smoothstep(Math.min(f(a), f(mid), f(b)), -0.15, 0.35);
   const volume   = THREE.MathUtils.smoothstep((f(a)+f(b)+2*f(mid))/4, -0.45, 0.20);
   return THREE.MathUtils.lerp(THREE.MathUtils.lerp(coquille, volume, sem), 1, aplat);
@@ -1339,100 +1875,120 @@ function updateLinks(time){
   _cd.copy(camera.position).normalize();
   const flat=view;
   for(const L of linkObjs){
+
     const vu = L.a.visible && L.b.visible;
     if(!vu){ L.mat.opacity=0; continue; }
     const a=L.a.position, b=L.b.position;
     const mid=arcEntre(a, b, L.attr, flat);
+
     const facing = versNous(a, mid, b);
-    if(L.hot){ L.mat.opacity=0.92*facing; L.mat.color.copy(colorOf(L.a.userData.data)).lerp(HOT,0.45); }
+    if(L.hot){ L.mat.opacity=0.92*facing; L.mat.color.copy(HOT); }
+
     else if(L.regle){ L.mat.opacity=0; }
-    else { L.mat.opacity=0.30*facing*niveau2Global*(1-0.80*sem);
-           L.mat.color.copy(LINK_GREY); }
+
+    else { L.mat.opacity=0; L.mat.color.copy(LINK_GREY); }
+
     L.ligne.visible = L.mat.opacity > 0.012;
   }
+
   for(const C of coactObjs){
     if(!(C.a.visible && C.b.visible) || usage<=0.001){ C.mat.opacity=0; C.ligne.visible=false; continue; }
     const a=C.a.position, b=C.b.position;
     const mid=arcEntre(a, b, C.attr, flat);
-    C.mat.opacity = usage*(0.22 + 0.75*C.w)*versNous(a, mid, b)*niveau2Global;
+
+    const chaud = hotMesh && (C.a===hotMesh || C.b===hotMesh);
+    C.mat.opacity = chaud ? usage*(0.22 + 0.75*C.w)*versNous(a, mid, b)*niveau2Global : 0;
     C.ligne.visible = C.mat.opacity > 0.012;
   }
 }
 
-// ---------- loading ----------
-let lastSig=null;
-// Update heat and live activity in place, without rebuilding the scene.
-function updateLive(data){
-  if(data.live_window_min) LIVE_WINDOW_S = data.live_window_min * 60;
-  const byId = new Map(data.nodes.map(node => [node.id, node]));
-  for(const mesh of nodeObjs){
-    const node = byId.get(mesh.userData.data.id);
-    if(!node) continue;
-    mesh.userData.heat = node.heat || 0;
-    mesh.userData.activeTs = node.active_ts || 0;
-    mesh.userData.data = node;
-    if(node.active_ts && !mesh.userData.activeRing){
-      const ring = new THREE.Sprite(new THREE.SpriteMaterial({ map:RING_TEX, color:0xFF4F0C,
-        transparent:true, opacity:0.6, depthTest:false, depthWrite:false }));
-      ring.scale.setScalar(0.95); mesh.add(ring);
-      mesh.userData.activeRing = ring;
-    }
-    if(mesh.userData.activeRing) mesh.userData.activeRing.visible = !!node.active_ts;
+let lastStamp='', lastSig=null;
+
+function majVivant(data){
+  const par = new Map(data.nodes.map(n => [n.id, n]));
+  for(const m of nodeObjs){
+    const n = par.get(m.userData.data.id);
+    if(!n) continue;
+    m.userData.heat = n.heat || 0;
+    if(n.active_ts) m.userData.activeTs = n.active_ts;
+    if(m.userData.activeRing) m.userData.activeRing.visible = !!n.active_ts;
   }
-}
-function sceneSignature(data){
-  const nodes = data.nodes.map(({heat, active, active_ts, ...node}) => node);
-  return JSON.stringify([nodes, data.links, data.coact, data.topics]);
 }
 async function poll(){
   try{
+
     const r=await fetch('graph.json', {cache:'no-cache'}); const data=await r.json();
-    // Do not rebuild on generated_at: track_read.py can update it after every
-    // read. Compare only graph structure and markers (2026-08-15).
-    semCap = capaciteSemantique(data);
-    const sig = sceneSignature(data);
-    if(sig === lastSig){ updateLive(data); return; }
+
+    const sig = data.nodes.map(n => n.id + ':' + (n.tags||[]).join('.') + ':' + (n.topic||'') + ':'
+                  + [n.challenge, n.conviction, n.resume, n.regle, n.media, n.frontier]
+                      .map(v => v ? 1 : 0).join('')).join('|')
+              + '#' + data.links.length + '#' + ((data.coact||[]).length);
+    lastStamp = data.generated_at;
+    if(sig === lastSig){ majVivant(data); return; }
     {
       lastSig = sig; const before=prevIds.size; build(data);
       const added=data.counts.nodes-before;
       if(before && added>0){ const g=document.getElementById('grow');
-        g.textContent=`✦ +${added} note${added>1?'s':''} — the planet is growing`;
+        g.textContent=`✦ +${added} note${added>1?'s':''} — the map grows`;
         g.style.opacity='1'; setTimeout(()=>g.style.opacity='0',4000); }
     }
   }catch(e){
+
     const reseau = (e instanceof TypeError) || /fetch|NetworkError|Failed to fetch/i.test(e?.message||'');
     document.getElementById('counts').textContent = reseau
       ? 'graph.json not found — run launch.sh'
       : 'display error: ' + (e?.message || e) + ' — see the console';
-    console.error('[planet] poll/build failed:', e);
+    console.error('[map] poll/build failed:', e);
   }
 }
 poll(); setInterval(poll, 3000);
 
-window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
+window.__planete = { showPanel, entrerRegion, sortirRegion, setMode, get camera_objet(){ return camera; },
+
+                     epingler(m){ const r=regionOf(m.userData.data);
+                                  if(focusRegion!==r) entrerRegion(r);
+                                  pinned=m; hovered=m; showPanel(m,true); applyHot(m); },
+                     lacher(){ if(pinned) unpin(); },
+
+                     accueil(){ hovered=null; pinned=null; tip.classList.remove('show','expanded');
+                                if(podPin){ podPin=null; majPodCap(); }
+                                if(focusRegion) sortirRegion();
+                                modeAvantRegion=null; setMode('struct'); },
+                     get epingle(){ return pinned; },
+                     get survol(){ return hovered; },
+                     regionDe: regionOf,
+                     textes: chargerTextes,
+
+                     get controls_objet(){ return controls; },
+
+                     get demelage(){ return DEMELAGE; }, set demelage(v){ DEMELAGE = !!v; },
+                     get rotation(){ return ROTATION; }, set rotation(v){ ROTATION = !!v; },
                      get noeuds(){ return nodeObjs; },
                      get regions(){ return regionObjs; },
-                     get camera(){ return camera; },
-                     get toScreen(){ return toScreen; },
-                     get liens(){ return linkObjs; },
+                     get liens(){ return linkObjs; }, get liens_usage(){ return coactObjs; },
+                     get cadres(){ return cadres; },
+                     viserSujet(t){ sujetVise = (t===undefined ? null : t); }, get sujet_vise(){ return sujetVise; },
+                     get sujet_allumees(){ return nodeObjs.filter(m=>m.visible && m.userData._fam>1).length; },
                      get niveau(){ return niveau2Global; },
                      get region_ouverte(){ return focusRegion; },
-                     get semantique(){ return semCap; },
+
                      get vue(){ return { view:+view.toFixed(2), sem:+sem.toFixed(2),
                                          mode: view<0.5 ? '3d' : (sem>0.5 ? 'sens' : 'struct') }; },
-                     // Count clusters in the current capsule mode only.
+
                      get capsule(){ return { mode:podMode,
                                              familles:podBlobs.filter(p=>p.userData.mode===podMode).length,
                                              vise:podHover, epingle:podPin,
                                              rotation:+podGroup.rotation.y.toFixed(3),
                                              legende: podCap.innerText.trim() }; },
                      region_de: m => regionOf(m.userData ? m.userData.data : m),
+
                      get rendu(){ return {
                        appels_de_dessin: renderer.info.render.calls,
                        traits_dessines: linkObjs.filter(L=>L.ligne.visible).length
                                       + coactObjs.filter(C=>C.ligne.visible).length
                                       + regionLinks.filter(L=>L.ligne&&L.ligne.visible).length,
                        traits_en_tout: linkObjs.length + coactObjs.length + regionLinks.length }; },
+
                      mesure_sens: (k=8) => {
                        const N = nodeObjs;
                        const pur = (champ) => {
@@ -1448,6 +2004,7 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                          }
                          return +(100*tot/N.length).toFixed(1);
                        };
+
                        const paires=[]; const P=N.length;
                        for(let i=0;i<P;i+=1) for(let j=i+7;j<P;j+=23) paires.push([N[i],N[j]]);
                        const X=paires.map(([a,b])=>a.userData.p2sBrut.distanceTo(b.userData.p2sBrut));
@@ -1462,10 +2019,14 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                                 paires_mesurees: paires.length };
                      },
                      get familles_groupees(){ return SENS_FAMILLES; },
+
                      get encre_des_liens(){
+
                        const f = t => t.reduce((s,L)=> s + L.mat.opacity, 0);
                        return +(f(linkObjs) + f(coactObjs) + f(regionLinks)).toFixed(2); },
+
                      get coupure(){ return +_coupurePic.toFixed(2); },
+                     arrivee,
                      remettre_coupure_a_zero(){ _coupurePic = 0; return true; },
                      get reconstructions(){ return _reconstructions; },
                      get occlusion(){ return OCCLUSION; },
@@ -1473,6 +2034,7 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                      get camera(){ return camera.position.toArray().map(v => +v.toFixed(2)); },
                      get capsule_angles(){ return [+podGroup.rotation.y.toFixed(3), +podGroup.rotation.x.toFixed(3)]; },
                      par_id: id => nodeObjs.find(m => m.userData.data.id === id),
+
                      separation: () => { let pire = {ecart: Infinity};
                        for(const a of regionObjs) for(const b of regionObjs){
                          if(a===b) continue;
@@ -1480,6 +2042,7 @@ window.__planete = { showPanel, entrerRegion, sortirRegion, setMode,
                                  - (a.userData.rad + b.userData.rad)*1.8;
                          if(e < pire.ecart) pire = {ecart:+e.toFixed(2), entre:[a.userData.region, b.userData.region]};
                        } return pire; },
+
                      visibles: () => ({
                        fiches: nodeObjs.filter(m => m.visible).length,
                        liens:  linkObjs.filter(L => L.mat.opacity > 0.01).length,
@@ -1497,6 +2060,7 @@ function openViewer(media){
     vS=new THREE.Scene(); vCam=new THREE.PerspectiveCamera(45,1,0.01,100); vCam.position.set(0,0,3.2);
     vCtrl=new OrbitControls(vCam,vc); vCtrl.enableDamping=true; vCtrl.dampingFactor=0.08;
     vCtrl.autoRotate=true; vCtrl.autoRotateSpeed=1.1; vCtrl.enablePan=false;
+
     vS.add(new THREE.AmbientLight(0xffffff,1.1));
     vS.add(new THREE.HemisphereLight(0xFFC0A0, 0x2E1300, 1.1));
     const dl=new THREE.DirectionalLight(0xffffff,2.4); dl.position.set(3,4,5); vS.add(dl);
@@ -1509,18 +2073,20 @@ function openViewer(media){
   if(media.type==='glb'){
     new GLTFLoader().load(media.src, g=>{
       const model=g.scene;
+
       model.traverse(o=>{ if(o.isMesh){
         if(!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
         const map = (o.material && o.material.map) || null;
         o.material = new THREE.MeshStandardMaterial({ color: map?0xffffff:0x9b9286, map, roughness:0.92, metalness:0.02, side:THREE.DoubleSide });
         o.frustumCulled=false;
       }});
+
       const wrap=new THREE.Group(); wrap.add(model);
       const box=new THREE.Box3().setFromObject(model), c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
       model.position.sub(c);
       const md=Math.max(s.x,s.y,s.z)||1; wrap.scale.setScalar(1.8/md);
       vS.add(wrap); vModel=wrap;
-    }, undefined, e=>{ vEl.querySelector('.vcap').textContent='⚠ failed to load '+media.src; console.log('GLB ERREUR', e&&e.message); });
+    }, undefined, e=>{ vEl.querySelector('.vcap').textContent='⚠ could not load '+media.src; console.log('GLB ERROR', e&&e.message); });
   }
   vLoop();
 }
@@ -1532,77 +2098,99 @@ addEventListener('resize', ()=>{ if(vOpen) vResize(); });
 
 const vtag=document.getElementById('viewtag');
 const titleEl=document.getElementById('title');
-let _last=0, _lastF=0;
+let _last=0, _lastF=0, _geste=performance.now();
+for(const t of ['pointermove','pointerdown','wheel','keydown']) addEventListener(t, ()=>{ _geste=performance.now(); }, {passive:true, capture:true});
 function tick(now){
   requestAnimationFrame(tick);
   if(document.hidden) return;
   if(vOpen) return;
-  if(now - _last < 16) return;
+
+  const repos = now - _geste > 10000;
+  if(now - _last < (repos ? 32 : 16)) return;
   _last = now;
   const time=now/1000;
   const nowSec=Date.now()/1000; let liveCount=0;
+
   const dtF = Math.min(0.1, (now-_lastF)/1000 || 0.016); _lastF = now;
   const kV = 1-Math.exp(-dtF*7);
   view += (viewTarget-view)*kV; if(Math.abs(viewTarget-view)<0.001) view=viewTarget;
   sem  += (semTarget-sem)*kV;   if(Math.abs(semTarget-sem)<0.001)   sem=semTarget;
   usage += (usageTarget-usage)*kV; if(Math.abs(usageTarget-usage)<0.001) usage=usageTarget;
+
   focus += (focusTarget-focus)*kV;
   if(Math.abs(focusTarget-focus)<0.004) focus=focusTarget;
+
   if(focusRegion) regionVue=focusRegion; else if(focus<0.01) regionVue=null;
-  const toutMontrer = sem>0.01;
+
+  const toutMontrer = sem>0.01 && !(focusRegion && semTarget<0.5);
   const niveau2 = Math.max(focus, sem);
   niveau2Global = niveau2;
-  const morphing = Math.abs(viewTarget-view)>0.001;
+  majCadres();
+
   const enVolume = view<0.5 || sem>0.5;
-  controls.autoRotate  = enVolume;
+
+  controls.autoRotate  = enVolume && ROTATION;
   controls.enableRotate = enVolume;
   controls.minDistance = view>0.5 ? 5 : 16;
-  const morphSens = Math.abs(semTarget-sem)>0.001;
-  if(viewTarget>0.5 && semTarget<0.5 && (morphing || morphSens)){
-    camera.position.lerp(CAM2D, 0.06); controls.target.lerp(ORIGIN, 0.08); }
-  else if(viewTarget<0.5 && (morphing || morphSens)){
-    const d = camera.position.length(), cible = CAM3D.length();
-    if(Math.abs(d-cible) > 0.5) camera.position.multiplyScalar(1 + (cible/d - 1)*0.08);
-    controls.target.lerp(ORIGIN, 0.08); }
+
+  if(!cadreFait && regionObjs.length > 4){ viserCadrage(true); cadreFait = true; }
+  if(recadrant) poserCadrage(kV);
   controls.update();
   coreMat.opacity=0.55*(1-view); core.visible=false;
+
   const verreK = (1-view)*(1-niveau2Global);
   verre.material.opacity=0.13*verreK; verre.visible=verreK>0.01;
   grille.material.opacity=0.10*verreK; grille.visible=verreK>0.01;
+
   _camDir.copy(camera.position).normalize();
   for(const b of regionObjs){
     const dedans = b.userData.region===regionVue;
+
     const devant = THREE.MathUtils.lerp(
       THREE.MathUtils.smoothstep(b.userData.dir.dot(_camDir), -0.28, 0.02), 1, view);
+
     b.position.copy(b.userData.pos3).lerp(b.userData.pos2, view).lerp(b.userData.posSens, sem);
     const k = (1-niveau2)*devant;
     b.visible = k>0.01 || sem>0.01;
     b.userData.blobMat.visible = k>0.01;
+
     const s = dedans ? THREE.MathUtils.lerp(1, 2.2, niveau2) : 1;
     b.scale.setScalar(THREE.MathUtils.lerp(b.scale.x, s, 0.2));
+
     const vise = b.userData.region===hoveredRegion || b.userData.region===(podPin||podHover);
     b.userData.blobMat.opacity = (vise?1:0.9)*k;
+
     b.userData.blobMat.size = THREE.MathUtils.lerp(b.userData.blobMat.size, vise?0.62:0.42, 0.25);
     b.userData.blobMat.color.copy(b.userData.colBase).lerp(HOT, vise?0.35:0);
-    const poids = 0.34 + 0.61*Math.sqrt(b.userData.n/Math.max(1,totalNoeuds));
+
+    b.userData.labPoids = 0.34 + 0.61*Math.sqrt(b.userData.n/Math.max(1,totalNoeuds));
+
     const kLab = Math.max(k, sem*devant);
-    b.userData.labMat.opacity = (b.userData.region===(hoveredRegion||podPin||podHover) ? 1 : Math.min(0.95, poids))*kLab;
-    b.userData.lab.position.y = THREE.MathUtils.lerp(b.userData.rad*1.8,
+
+    const nomVise = b.userData.region===(hoveredRegion||podPin||podHover);
+    const replie = b.userData.n<=2 ? view*(1-sem) : 0;
+    b.userData.labBase = (nomVise ? 1 : 0.92*(1-replie))*kLab;
+
+    b.userData.labY0 = THREE.MathUtils.lerp(b.userData.rad*1.8,
                                   Math.min(b.userData.radSens*0.85, 4.5), sem) + LABEL_H*0.45;
-    b.userData.lab.visible = kLab > 0.01;
+    b.userData.lab.position.y = b.userData.labY0 + b.userData.labDecal;
   }
-  decollerEtiquettes();
+  demelerEtiquettes();
   for(const L of regionLinks){
     const k=1-niveau2;
     if(k<=0.01){ L.mat.opacity=0; if(L.ligne) L.ligne.visible=false; continue; }
     const mid=arcEntre(L.a, L.b, L.attr, view);
+
     L.mat.opacity = k*(0.03 + 0.15*L.poids)*versNous(L.a, mid, L.b);
     if(L.ligne) L.ligne.visible = L.mat.opacity > 0.012;
   }
   magnet();
   const viseFamille = podPin || podHover;
+
   for(const m of nodeObjs){
+
     const dansLaVue = toutMontrer || (regionVue && regionOf(m.userData.data)===regionVue);
+
     if(!dansLaVue || niveau2<=0.01){
       const sc = THREE.MathUtils.lerp(m.scale.x, 0, kV);
       m.scale.setScalar(Math.max(sc, 0.0001));
@@ -1610,8 +2198,10 @@ function tick(now){
       continue;
     }
     m.visible = true;
+    m.quaternion.copy(camera.quaternion);
     if(m.userData.hatching){ m.scale.multiplyScalar(1.08); if(m.scale.x>=1){ m.scale.setScalar(1); m.userData.hatching=false; } continue; }
     easeMagnet(m);
+
     m.material.color.copy(m.userData.col);
     const ht=m.userData.heat||0;
     if(ht>0.25){
@@ -1619,23 +2209,31 @@ function tick(now){
       m.material.color.lerp(HOT, (0.10+0.30*ht)*b*b*b);
     }
     let fam = 1;
-    if(viseFamille){
-      const dedans = groupeDe(m.userData.data)===viseFamille;
+    if(viseFamille || sujetVise!==null){
+      const dedans = sujetVise!==null ? (FAM_DE[m.userData.data.id]||'')===sujetVise
+                                      : groupeDe(m.userData.data)===viseFamille;
       fam = dedans ? 1.9 : 1;
+
       if(dedans) m.material.color.lerp(HOT, 0.55); else m.material.color.multiplyScalar(0.45);
     }
+    m.userData._fam = fam;
     const ts=((m===hovered)?MAGNET_SCALE:1)*niveau2*fam;
+
     m.scale.setScalar(THREE.MathUtils.lerp(m.scale.x, ts, 1-Math.exp(-dtF*16)));
+
     if(m.userData.activeRing){
       const alive = (nowSec - m.userData.activeTs) <= LIVE_WINDOW_S;
       m.userData.activeRing.visible = alive;
       if(alive){ liveCount++; m.userData.activeRing.material.opacity = 0.35 + 0.4*(0.5+0.5*Math.sin(time*2.4)); }
     }
+
     if(m.userData.playMark) m.userData.playMark.material.opacity = 0.55 + 0.35*(0.5+0.5*Math.sin(time*2.2));
   }
+
   {
     let disparu = 0;
     for(const m of nodeObjs){
+
       const ech = m.userData._ech || 0;
       if(m.userData._vu && !m.visible && ech > 0.15) disparu += ech;
       m.userData._vu = m.visible; m.userData._ech = m.scale.x;
@@ -1645,26 +2243,31 @@ function tick(now){
   if(liveCount!==_liveShown){
     _liveShown=liveCount;
     liveEl.innerHTML = liveCount
-      ? `◉ ${liveCount} live point${liveCount>1?'s':''} <span style="opacity:.6">— read in the last ${Math.round(LIVE_WINDOW_S/60)} min</span>`
-      : `<span class="off">◉ 0 live points — nothing read for ${Math.round(LIVE_WINDOW_S/60)} min</span>`;
+      ? `◉ ${liveCount} active note${liveCount>1?'s':''} <span style="opacity:.6">— read in the last ${Math.round(LIVE_WINDOW_S/60)} min</span>`
+      : `<span class="off">◉ 0 active note — nothing read for ${Math.round(LIVE_WINDOW_S/60)} min</span>`;
     if(!liveCount){ const s=document.getElementById('session'); if(s) s.textContent=''; }
   }
   updateLinks(time);
-  // The title follows the actual view (2026-08-15). The semantic label comes
-  // from semantic-label.js and the exporter's measured coverage.
-  const _sensTag = etiquetteSens(semCap);
-  const _t = view<0.5 ? (focusRegion ? `[ REGION — ${focusRegion.toUpperCase()} ]` : '[ TRUNK PLANET ]')
-                      : (sem>0.5 ? _sensTag.titre : '[ TRUNK MAP — STRUCTURE ]');
+
+  const _t = view<0.5 ? (focusRegion ? `GMTR · REGION — ${focusRegion.toUpperCase()}` : 'GMTR · TRUNK GLOBE')
+                      : (sem>0.5 ? 'GMTR · GRAPH' : 'GMTR · PANEL');
   if(titleEl && titleEl.textContent !== _t) titleEl.textContent = _t;
-  vtag.textContent = view<0.5 ? etiquette3d(semCap, focusRegion)
-    : (sem>0.5 ? _sensTag.bandeau
-               : '▦ STRUCTURE — folder clusters laid flat · click a cluster for volume');
+  vtag.textContent = view<0.5 ? (focusRegion ? `${focusRegion} in 3D — drag to rotate · Esc to go back`
+                                              : '3D — S for graph')
+    : (sem>0.5 ? 'graph — closeness = similarity, every note · S panel'
+               : 'panel — the families, laid flat · click a family = 3D');
   syncModeButtons();
+  syncFiches();
   composer.render();
   podTick(dtF);
 }
 tick(0);
 </script>
   <div id="grille"></div>
+<script src="/gmtr-motion.js"></script>
+
+<script src="/logo/marque-cotes.js"></script>
+<script src="/logo/gmtr-marque.js"></script>
+<script src="/carte/gmtr-carte.js"></script> <!-- i18n-ok: legacy filename -->
 </body>
 </html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" data-palette="vert" data-effets="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMTR</title>
+<link rel="stylesheet" href="grammaire.css">
+<link rel="stylesheet" href="gmtr-motion.css">
+<link rel="stylesheet" href="sequence.css">
+</head>
+<body>
+
+
+<section class="scene amorce" id="amorce" aria-hidden="true">
+  <canvas class="logo-centre" id="logo" aria-hidden="true"></canvas>
+
+  <div class="amorce-barre" id="barre"><div class="amorce-remplissage" id="barre-remplissage"></div></div>
+  <div class="amorce-gauche" id="amorce-gauche">
+    <pre class="etat-machine" id="etat-machine"></pre>
+    <ol class="phases" id="phases"><li data-phase="source">source</li><li data-phase="test">self-test</li><li data-phase="lock">lock</li></ol>
+  </div>
+  <div class="flux-bloc" id="flux-bloc">
+    <div class="flux-jauge" id="flux-jauge"></div>
+    <div class="flux" id="flux"></div>
+  </div>
+</section>
+
+
+<section class="scene verrou" id="verrou">
+  <span class="croix c-hg"></span><span class="croix c-hd"></span><span class="croix c-bg"></span><span class="croix c-bd"></span>
+  <span class="micro coin coin-hd" id="coin-essais"></span>
+  <span class="micro coin coin-bg">127.0.0.1 · gmtr lock</span>
+  <label class="verrou-titre" for="code">access code</label>
+  <div class="glyphes" id="glyphes" aria-hidden="true"></div>
+  <input class="code-saisie" id="code" type="password" inputmode="numeric" autocomplete="off" maxlength="32" spellcheck="false">
+  <div class="attente" id="attente" aria-hidden="true"></div>
+  <p class="verrou-message" id="verrou-message" role="status"></p>
+</section>
+
+
+<p class="micro passer" id="passer"><span class="touche">Esc</span> skip intro</p>
+<div class="tube" aria-hidden="true"></div>
+<canvas class="voile" id="voile" aria-hidden="true"></canvas>
+
+<script src="commun.js"></script>
+<script src="gmtr-motion.js"></script>
+
+<script src="logo/marque-cotes.js"></script>
+<script src="logo/gmtr-marque.js"></script>
+<script src="sequence.js"></script>
+</body>
+</html>

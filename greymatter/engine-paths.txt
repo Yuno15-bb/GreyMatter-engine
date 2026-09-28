@@ -21,5 +21,6 @@ hooks
 agents
 capsule
 planet
+gmtr
 companion
 tests

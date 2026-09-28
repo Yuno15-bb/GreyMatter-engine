@@ -60,7 +60,7 @@ changes.
 | the `brain` CLI | `$GM/engine/brain` | `install.sh:198` |
 | Claude Code hooks in `settings.json` | `~/.greymatter/engine/...` | `merge_settings.py:69` |
 | launchd jobs | `~/.greymatter/trunk/hooks/...` → engine | plist templates, **guarded** — see below |
-| the Desktop planet launcher | `$TRUNK/planet/launch.sh` → engine | `install.sh:398` |
+| the Desktop planet launcher | `$TRUNK/gmtr/launch.sh` → engine (GMTR map, since v2.2) | `install.sh:398` |
 
 One exception: `~/.claude/statusline.py` is a **copy** (`install.sh:227`), not a
 link. It is refreshed by the `install.sh` replay that follows every switch.

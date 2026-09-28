@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-palette="vert" data-effets="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMTR — eight agents</title>
+<link rel="stylesheet" href="../grammaire.css">
+<link rel="stylesheet" href="../gmtr-motion.css">
+<link rel="stylesheet" href="gmtr-panneau.css">
+</head>
+<body>
+
+<div class="cadre" aria-hidden="true">
+  <span class="angle hg"></span><span class="angle hd"></span>
+  <span class="angle bg"></span><span class="angle bd"></span>
+</div>
+
+<main class="instrument">
+
+
+  <header class="bandeau">
+    <h1 class="titre">request</h1>
+
+    <p class="sceau" id="sceau" data-actif="0"><span class="fr">deliberating</span></p>
+    <h1 class="titre">resolution</h1>
+  </header>
+
+  <div class="corps">
+
+
+    <section class="fiche micro" aria-label="data provenance"> <!-- i18n-ok: inherited class -->
+      <p><b>file</b><span id="source">—</span></p>
+
+      <p><b>agents</b><span id="recensement">—</span></p>
+
+      <p><b>measured</b><span id="fraicheur">—</span></p>
+      <p><b>trunk</b><span>127.0.0.1 · gmtr</span></p>
+    </section>
+
+
+    <div class="rosace">
+      <div class="grille" id="grille" role="list" aria-label="the eight trunk agents"></div>
+    </div>
+  </div>
+
+
+  <footer class="bande">
+    <span class="micro etiquette">reason</span> <!-- i18n-ok: inherited class -->
+    <p class="raison" id="raison" role="status">—</p>
+  </footer>
+
+</main>
+
+<div class="tube" aria-hidden="true"></div>
+
+<script src="../commun.js"></script>
+<script src="../gmtr-motion.js"></script>
+<script src="gmtr-panneau.js"></script>
+</body>
+</html>
