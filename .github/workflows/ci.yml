@@ -407,17 +407,25 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: every migration, twice
+      - name: the whole chain, twice, from each old layout
         run: |
           set -euo pipefail
-          for m in greymatter/migrations/*.sh; do
+          # An update runs every migration in order, so they are tested as a chain.
+          # Run alone, 002 rightly leaves ~/claude-brain to 001: judging each script
+          # on 001's starting point failed a migration that had lost nothing.
+          for old in claude-brain .c-brain/trunk; do
             H="$(mktemp -d)"
-            mkdir -p "$H/claude-brain/lessons"
-            echo "keep me" > "$H/claude-brain/lessons/a-note.md"
-            echo "▸ $m — first run";  HOME="$H" bash "$m"
-            echo "▸ $m — second run"; HOME="$H" bash "$m"
-            # A replayed migration must be a non-event, and must never eat a note.
+            mkdir -p "$H/$old/lessons"
+            echo "keep me" > "$H/$old/lessons/a-note.md"
+            for pass in first second; do
+              for m in greymatter/migrations/*.sh; do
+                echo "▸ ~/$old — $m — $pass run"; HOME="$H" bash "$m"
+              done
+            done
+            # A replayed chain must be a non-event, and must never eat a note.
             grep -q "keep me" "$H/.greymatter/trunk/lessons/a-note.md" \
-              || { echo "❌ $m lost a note on replay"; exit 1; }
+              || { echo "❌ from ~/$old, the note is not in ~/.greymatter/trunk"; exit 1; }
+            grep -q "keep me" "$H/$old/lessons/a-note.md" \
+              || { echo "❌ from ~/$old, the old path no longer reaches the note"; exit 1; }
           done
-          echo "✅ migrations are idempotent and keep their notes"
+          echo "✅ migrations are idempotent and keep their notes, from both old layouts"
