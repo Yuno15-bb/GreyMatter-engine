@@ -14,20 +14,20 @@ Worth stating plainly, because it is the honest basis for judging risk:
   `--no-launchd` if you would rather nothing ran unattended.
 - **It makes no network call except `git pull`.** No telemetry, no analytics, no
   crash reporting, no phone-home on install.
-- **It updates itself — know this before you install.** Since v1.28.0, every
-  session start fetches the published tags and installs the latest version, in
-  the background. That is **remote code running on your machine without you
-  asking for it**: the heaviest trade-off in this package, and a deliberate one —
-  a fix nobody installs fixes nothing. What bounds it:
+- **It looks for updates, and asks before installing one.** Every session
+  start checks the published tags in the background. When a newer version
+  exists, the next session tells your agent to **ask you** — once per version
+  per day — and nothing is installed until you say yes (`brain update`). From
+  v1.28.0 to v2.1.0 it installed on its own; since v2.1.1 that is an opt-in:
+  `brain update --auto-on`. Silent installing is **remote code running on your
+  machine without you asking for it**, which is why it is no longer the
+  default. Either way, what bounds an update:
   - updates follow **published tags**, never a working branch;
-  - the **selftest decides**: on red, the previous version is restored
-    automatically and the next session tells you so;
+  - the **selftest decides**: a version whose selftest goes red is never
+    activated, and the next session tells you so;
   - the **trunk is never touched** — only `~/.greymatter/engine` is replaced;
-  - `brain update --auto-off` restores the old behaviour (report, do not
-    install). `--auto-on` brings it back.
-
-  If you want to inspect before anything runs, turn it off **at install time**:
-  `brain update --auto-off`.
+  - `brain update --auto-off` goes back to asking; `GREYMATTER_NO_AUTO_UPDATE=1`
+    stops silent installs whatever the switch says.
 - **It reads your notes locally, and that is how it works.** Recall, the index,
   the graph and the agents all open the files — there is no way to find a note
   without reading one. It happens on your machine, and nothing is written back

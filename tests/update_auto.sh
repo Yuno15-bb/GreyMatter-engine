@@ -109,6 +109,9 @@ mkdir -p "$TRUNK/lessons"
 printf -- "---\nname: mine\ndescription: \"a note of my own\"\n---\nwork I cannot afford to lose\n" \
   > "$TRUNK/lessons/mine.md"
 NOTE_SUM="$(shasum -a 256 "$TRUNK/lessons/mine.md" | cut -d' ' -f1)"
+# Since v2.1.1 silent installing is an opt-in (the default asks first, see
+# tests/update_ask.sh). This file measures the opt-in, so it opts in.
+brain update --auto-on >/dev/null 2>&1
 
 echo
 echo "▸ 1. session start does NOT block"
@@ -147,10 +150,13 @@ wait_done
 brain update --auto-off >/dev/null 2>&1
 ( cd "$H/upstream" && echo "even-newer" > OTHER_MARKER \
   && git add OTHER_MARKER && git commit -q -m "test: newer" && git tag -a v9.9.2 -m "test: newer" )
-OUT4="$(hook)"
-sleep 3
+hook >/dev/null
+# Switched off, the hook LOOKS in the background and the answer shows at the
+# next session: wait for the look to land, not for a fixed delay.
+n=0; while [ ! -f "$H/.greymatter/state/update-available" ] && [ "$n" -lt 60 ]; do sleep 1; n=$((n + 1)); done
 [ ! -f "$H/.greymatter/engine/OTHER_MARKER" ]
 check $? "switched off, it installs nothing"
+OUT4="$(hook)"
 printf '%s' "$OUT4" | grep -q "v9.9.2"
 check $? "but it still REPORTS the available version" "got: $OUT4"
 

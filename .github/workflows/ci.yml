@@ -365,6 +365,18 @@ jobs:
           # taken on trust.
           bash tests/update_auto.sh
 
+      - name: session start looks, the agent asks, nothing installs without a yes
+        run: |
+          set -euo pipefail
+          # The default since v2.1.1. Each sabotage breaks one promise and must redden.
+          bash tests/update_ask.sh
+          for s in installs nags; do
+            if bash tests/update_ask.sh --sabotage "$s" >/dev/null 2>&1; then
+              echo "❌ sabotage $s left the contract green"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+
       - name: the Desktop launcher rebuilds its own app, and nothing else
         run: |
           set -euo pipefail

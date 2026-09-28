@@ -48,7 +48,7 @@ conversation history, which only gets longer.
   Sulaco challenges, links and archives; Anesidora writes syntheses across projects;
   Nostromo repairs the wiring and watches the machine.
 - **A closed loop.** Session ends → archive → distill → file, without being asked.
-- **Updates.** The engine updates itself **every session**; **your notes are never touched**.
+- **Updates.** Every session looks for a new version and your agent **asks you** before installing it; **your notes are never touched**.
 
 **And two ways to look at it**, which are extensions and install separately —
 `./install.sh --core-only` leaves both out:
@@ -215,12 +215,12 @@ rewritten. What changes and how to go back: [docs/UPGRADING.md](docs/UPGRADING.m
   notes to that prompt, and agents you start read whole notes. Both go to your
   model provider, like the rest of your message. [`SECURITY.md`](SECURITY.md)
   spells out where the line is.
-- **It updates itself, and you should know that.** Every session start installs
-  the latest published version, in the background — so code from the repo runs
-  on your machine without you asking. The trunk is never touched, a version
-  whose selftest goes red is undone automatically, and
-  `brain update --auto-off` restores the old behaviour (report without
-  installing).
+- **It asks before it updates.** Every session start looks for a newer
+  published version, in the background. When there is one, your agent asks you
+  whether to install it, and nothing runs until you say yes. If you would rather
+  it installed on its own, `brain update --auto-on` does that (it was the
+  default from v1.28.0 to v2.1.0). The trunk is never touched, and a version
+  whose selftest goes red is never activated.
 - **It ships no knowledge.** Your tree starts empty, and the three skills it
   does ship only drive the tool. See [`skills/README.md`](skills/README.md) for
   the reasoning: we pass on the method, not somebody else's lived experience.
@@ -323,7 +323,7 @@ brain next            your resume points
 brain capsule         open the floating orb  (stop · status)
 brain selftest        verify the installation
 brain update          update the engine  (--check · --rollback)
-                      automatic every session: --auto-off / --auto-on
+                      session start looks, your agent asks · --auto-on installs without asking
 brain version         installed version
 ```
 
