@@ -101,13 +101,13 @@ y += 118 + ETAGE
 fleche(f"M500,{y - ETAGE} V{y - 4}")
 boite(CX, y, CW, 128, BEIGE, [
     {"t": "EVERY TIME", "s": 18, "w": 700},
-    {"t": "the distiller turns the session", "s": 17},
-    {"t": "into notes; the gardener", "s": 17},
-    {"t": "files and links them", "s": 17},
+    {"t": "NARCISSUS distills the session", "s": 17},
+    {"t": "into notes, then files", "s": 17},
+    {"t": "and links them", "s": 17},
 ])
 boite(NX, y + 14, NW, 100, GRIS, [
-    {"t": "the gardener runs", "s": 16, "w": 700},
-    {"t": "only if the distiller", "s": 16},
+    {"t": "it files and links", "s": 16, "w": 700},
+    {"t": "only if distilling", "s": 16},
     {"t": "succeeded", "s": 16},
 ])
 fleche(f"M670,{y + 64} H{NX - 2}", double=True)
@@ -116,8 +116,8 @@ y += 128 + ETAGE
 fleche(f"M500,{y - ETAGE} V{y - 4}")
 boite(CX + 20, y, CW - 40, 104, BEIGE, [
     {"t": "SOMETIMES, AT MOST ONE", "s": 17, "w": 700},
-    {"t": "challenger · architect", "s": 16},
-    {"t": "archivist · mechanic", "s": 16},
+    {"t": "SULACO checks the notes", "s": 16},
+    {"t": "NOSTROMO repairs the wiring", "s": 16},
 ])
 boite(NX, y + 2, NW, 100, GRIS, [
     {"t": "only when needed", "s": 16, "w": 700},
