@@ -88,6 +88,15 @@ else
   say " removing them would mean touching identities this script cannot prove are ours)"
 fi
 
+# The menu bar pill runs from the trunk's capsule link. Left running, it would
+# stay in the menu bar after its engine is gone, reading a trunk nobody feeds.
+# Matched on the trunk path only: a pill from another trunk is not ours to stop.
+if pgrep -f "$TRUNK/capsule/macos/.build/release/Capsule" >/dev/null 2>&1; then
+  pkill -f "$TRUNK/capsule/macos/.build/release/Capsule" 2>/dev/null || true
+  say "- menu bar pill stopped"
+fi
+pkill -f "$TRUNK/capsule/node_modules/electron" 2>/dev/null || true
+
 # ─── 3. Links ─────────────────────────────────────────────────────────────
 # We delete symlinks ONLY. If something has become a real folder, that is
 # content — we leave it alone.
@@ -155,7 +164,7 @@ if [ "$PURGE_ENGINE" = "1" ]; then
   # `~/.greymatter/engine` was a link to the user's own clone, the only honest thing
   # to remove was the link — deleting the target would have deleted a repository
   # somebody else made. Since 2026-08-17 the installer BUILDS what it mounts:
-  # `versions/`, the source mirror and the shared Electron runtime are all ours,
+  # `versions/`, the source mirror and the shared runtime (the native pill's build) are all ours,
   # so `--purge-engine` finally removes what its name promises.
   #
   # The user's clone is still never touched. It was a source, it stays a source.

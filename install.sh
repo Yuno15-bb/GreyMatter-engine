@@ -12,7 +12,7 @@
 #   ~/.greymatter/versions/<id>/  an ENGINE: an immutable export of the source
 #   ~/.greymatter/engine          → link to the ACTIVE version. Switching is one symlink.
 #   ~/.greymatter/source.git      the mirror updates are fetched into
-#   ~/.greymatter/runtime/        the Electron runtime, installed once and shared
+#   ~/.greymatter/runtime/        the native capsule's build, shared by versions
 #   ~/.greymatter/trunk           YOUR trunk (your notes). Never overwritten, never updated.
 #
 # THIS REPOSITORY IS THE SOURCE, NOT THE ENGINE. The installer reads it to build
@@ -71,7 +71,7 @@ for a in "$@"; do
     --no-capsule) DO_CAPSULE=0 ;;
     --no-shortcut) DO_SHORTCUT=0 ;;
     # The memory, and nothing else: trunk, recall, agents, hooks, `brain`.
-    # No Electron window, no 3D globe, no background job. Named as one option
+    # No menu bar pill, no 3D globe, no background job. Named as one option
     # because "install it without the ornaments" is a thing people want to ask
     # for in one go, and three flags they have to discover is not an answer.
     --core-only)  DO_LAUNCHD=0; DO_CAPSULE=0; DO_PLANET=0 ;;
@@ -227,7 +227,7 @@ echo "   trunk  : $TRUNK"
 
 # ─── 0. Prerequisites ────────────────────────────────────────────────────────
 step "Prerequisites"
-[ "$(uname)" = "Darwin" ] || die "GreyMatter targets macOS (launchd, Electron, \`open\`)."
+[ "$(uname)" = "Darwin" ] || die "GreyMatter targets macOS (launchd, AppKit, \`open\`)."
 command -v python3 >/dev/null || die "python3 is required (it runs every hook)."
 say "python3 $(python3 -c 'import sys;print(".".join(map(str,sys.version_info[:3])))')"
 command -v git >/dev/null || warn "git missing — \`brain update\` will not be able to pull updates."
@@ -523,148 +523,65 @@ else
 fi
 
 # ─── 7. Capsule ───────────────────────────────────────────────────────────
-step "Capsule (Electron window)"
-capsule_ok() {  # does Electron ACTUALLY respond?
-  local bin="$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
-  # ⚠ The whole point is to run a binary that may be broken, and a half-extracted
-  # Electron does not exit — it ABORTS. The message "Abort trap: 6" is not written
-  # by that binary: bash writes it, about a job it has just reaped, to the stderr
-  # bash had when it reaped. So no redirection placed ON the command can reach it,
-  # and the install printed a crash trace one line before announcing success.
-  #
-  # The first attempt here wrapped the call in a subshell whose stderr went to
-  # /dev/null. MEASURED 2026-09-20 with a stub that does `kill -ABRT $$`: that
-  # made it WORSE — 77 bytes of trace became 94, because bash executes a lone
-  # command inside `( )` in the subshell process itself, so the subshell IS the
-  # job, and the outer bash reports it by quoting the parenthesis AND the
-  # redirection. The comment claiming it was caught was never checked against a
-  # binary that really aborts; the bench that now does is tests/capsule_runtime.py.
-  #
-  # What works is redirecting the SHELL's stderr for the duration of the check,
-  # which a `{ }` group does without forking: bash's own report then lands inside
-  # the redirection. A boolean probe has nothing to say on stderr anyway.
-  { [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1; } 2>/dev/null
-}
-
-# ─── Repairing an Electron that npm reported as installed ────────────────────
+# SINCE v2.2 THE CAPSULE IS NATIVE: a small Swift app (capsule/macos) that sits
+# in the menu bar, shows which agent is working, and drops a panel on click.
+# No Electron, no Node, no npm, nothing downloaded. It needs the Swift compiler
+# from Apple's Command Line Tools, which a Mac running Claude Code usually has.
 #
-# MEASURED on 2026-08-17, macOS arm64, Node v26.5.0, npm 11.17:
-#   · the archive downloads fine and `unzip -t` reports no error;
-#   · electron's postinstall RUNS (`> electron@33.4.11 postinstall`), finishes in
-#     ONE second, exits 0, prints nothing;
-#   · with DEBUG=* it extracts 20 directory entries, reaches the first real file
-#     ("opening read stream … electron.icns") and the process simply ends;
-#   · `dist/` is left at 256 KB instead of ~250 MB, with no `Frameworks/` at all,
-#     and `path.txt` — which electron writes only on success — is never created.
-# So the binary exists, is executable, and dies with
-# "Library not loaded: @rpath/Electron Framework.framework/Electron Framework".
-# Reproduced identically on electron 42, so it is not the electron version: the
-# node-side extraction is what broke. The system `unzip` reads the same archive
-# without complaint and yields a runtime that answers `--version`.
+# The build goes OUTSIDE the version (see build_capsule in engine-lib.sh): a
+# version is immutable, and the build output is a runtime, like the old
+# node_modules was. In --dev the checkout IS the engine, so it builds in place,
+# in the `.build` folder a developer already has — never deleted from here.
 #
-# ⚠ This is a REPAIR, not an architecture. It uses the archive electron already
-# downloaded, and does nothing that electron's own installer would not have done.
-# The capsule's future is not more Electron plumbing, so this stays the smallest
-# thing that makes a fresh install produce a window that opens.
-capsule_repair() {
-  local ed="$ENGINE/capsule/node_modules/electron" ver arch zip
-  [ "$(uname -s)" = "Darwin" ] || return 1        # the only packaging we ship
-  [ -d "$ed" ] || return 1
-  command -v unzip >/dev/null 2>&1 || return 1
-  ver="$(node -p "require('$ed/package.json').version" 2>/dev/null)" || return 1
-  [ -n "$ver" ] || return 1
-  case "$(uname -m)" in arm64) arch=arm64 ;; x86_64) arch=x64 ;; *) return 1 ;; esac
-  # Where @electron/get puts what it downloaded, keyed by a hash we do not need
-  # to recompute: the file name carries the version and the architecture.
-  zip="$(find "$HOME/Library/Caches/electron" -name "electron-v$ver-darwin-$arch.zip" \
-         -print 2>/dev/null | head -1)"
-  [ -n "$zip" ] && [ -f "$zip" ] || return 1
-  rm -rf "$ed/dist" && mkdir -p "$ed/dist" || return 1
-  unzip -q "$zip" -d "$ed/dist" || return 1
-  # ⚠ NO trailing newline. electron's `isInstalled()` compares this file to the
-  # platform path with `!==`, so a stray "\n" makes every later `npm install`
-  # decide the runtime is missing and run the broken download again.
-  printf '%s' 'Electron.app/Contents/MacOS/Electron' > "$ed/path.txt"
+# Then the pill is STARTED, right away. A user who has just installed GreyMatter
+# should see it in the menu bar without waiting for their next Claude session.
+step "Capsule (menu bar pill)"
+CAPSULE_BIN="$ENGINE/capsule/macos/.build/release/Capsule"
+capsule_start() {
+  local trunk bin
+  trunk="$(cd "$TRUNK" 2>/dev/null && pwd -P)" || return 1
+  # Launched through the trunk, the path hooks/auto_maintain.py looks for with
+  # pgrep: started from anywhere else, the hook would not recognise it as ours.
+  bin="$trunk/capsule/macos/.build/release/Capsule"
+  [ -x "$bin" ] || return 1
+  [ -e "$trunk/state/no-capsule" ] && { say "= capsule not started (state/no-capsule: light mode)"; return 0; }
+  # An Electron pill from an older install would sit next to the new one.
+  pkill -f "$trunk/capsule/node_modules/electron" 2>/dev/null || true
+  if pgrep -f "$bin" >/dev/null 2>&1; then say "= capsule already running"; return 0; fi
+  CAPSULE_BRAIN="$trunk" nohup "$bin" </dev/null >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+  say "+ capsule started: look for \"GreyMatter idle\" in the menu bar"
 }
-
-# WHERE npm IS ALLOWED TO WRITE. `npm install` rewrites `package-lock.json` in
-# the directory it runs in. In the old model that directory was the engine repo,
-# and the rewrite is what made the SECOND update refuse ("local changes") — the
-# net for it is still in update.sh. Here it would be worse: it would mutate an
-# immutable version at every install, and doctor would report an anomaly the
-# installer had just caused itself. So for a managed engine npm runs in the
-# SHARED RUNTIME, and the version holds only a symlink to its `node_modules`.
-if [ "$DEV" = "1" ] || [ "$DRY" = "1" ]; then
-  CAPSULE_PREFIX="$ENGINE/capsule"
-else
-  link_runtime "$ENGINE" "$RUNTIME" || warn "could not mount the shared Electron runtime"
-  CAPSULE_PREFIX="$(runtime_dir "$ENGINE" "$RUNTIME")"
-fi
 
 if [ "$DO_CAPSULE" = "0" ]; then say "(skipped — --no-capsule)"
-elif ! command -v npm >/dev/null; then
-  # ⚠ THIS BRANCH USED TO BE ONE SILENT LINE, and it cost a first user about an
-  # hour (install report, 2026-08-13, macOS Intel with no dev tooling). Told only
-  # "npm missing", they went looking for Node themselves, landed on Homebrew —
-  # which needs an interactive sudo, then recompiled openssl@3, xz, lz4 and cmake
-  # FROM SOURCE for 38 minutes without ever reaching Node, with the fans at full
-  # tilt. Every minute of that was avoidable: the official .pkg takes two.
-  # Saying WHAT IS MISSING is not enough. A message that does not name the next
-  # step sends the reader to invent one, and they invent the expensive one.
-  warn "Node.js is missing — only the capsule (the floating orb) is skipped."
+elif [ ! -f "$ENGINE/capsule/macos/Package.swift" ]; then say "(no native capsule in this version)"
+elif ! { command -v swift >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1; }; then
+  # A message that names what is missing but not the next step sends the reader
+  # to invent one, and they invent the expensive one (install report, 2026-08-13).
+  warn "Apple's Command Line Tools are missing — only the capsule (the menu bar pill) is skipped."
   say  "Everything else is installed and working: hooks, agents, memory, \`brain\`."
-  say  "To get the orb later:"
-  say  "  1. install Node with the OFFICIAL package — https://nodejs.org (macOS .pkg,"
-  say  "     ~2 min, one password prompt, compiles nothing);"
+  say  "To get the pill later:"
+  say  "  1. run: xcode-select --install   (Apple's installer, one window, a few minutes);"
   say  "  2. re-run this installer: it is idempotent, it will only add the capsule."
-  say  "  (Homebrew works too, but on a machine without up-to-date Command Line Tools"
-  say  "   it rebuilds its dependencies from source — count 40 min instead of 2.)"
-  # Offered, never done behind their back: installing Node means an admin
-  # password and a system-wide change. Asking costs one keypress; deciding for
-  # them costs their trust. Only when a human is actually there to answer —
-  # in a pipe or a CI this must not hang.
-  if [ -t 0 ]; then
-    printf "  Open the download page now? [y/N] "
-    read -r rep || rep=""
-    case "$rep" in
-      [yYoO]*) open "https://nodejs.org/en/download" 2>/dev/null \
-                 && say "→ page opened. Once Node is installed: re-run ./install.sh" \
-                 || warn "could not open the browser — https://nodejs.org/en/download" ;;
-      *) say "(not opened — the address is above)" ;;
-    esac
-  fi
-elif [ "$DRY" = "1" ]; then say "(dry-run) would install the capsule dependencies"
-elif capsule_ok; then say "= capsule already working"
+elif [ "$DRY" = "1" ]; then say "(dry-run) would build the capsule (swift build, ~30 s) and start it"
 else
-  say "npm install (Electron, ~1 min)…"
-  npm --prefix "$CAPSULE_PREFIX" install --silent >/dev/null 2>&1 || true
-  # `npm install` exits SUCCESSFULLY even when the Electron binary was never
-  # extracted (archive truncated by @electron/get — a trap already hit). Trusting
-  # the exit code would report a capsule as installed while it cannot start.
-  # So we check the binary itself.
-  if capsule_ok; then
-    say "+ capsule working ($("$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" --version 2>/dev/null))"
-    # npm 11 prints `warn allow-scripts ... electron (postinstall: node install.js)`
-    # here. It reads like a failure, and it worried the first outside user enough
-    # to be logged in their report. It is not one — and we are in a position to
-    # PROVE it, since capsule_ok has just started the actual binary.
-    say "  (npm's \"allow-scripts\" warning above is benign: Electron did start,"
-    say "   which is what the line above checks — the binary, not npm's exit code.)"
-  elif capsule_repair && capsule_ok; then
-    # The remedy this branch used to PRINT was the very thing that had just
-    # failed — `npm install` again, which re-runs the extraction that dies. A
-    # remedy that cannot work is worse than none: it sends the reader round the
-    # loop and lets us call the capsule "known flaw, not ours" while a fresh
-    # install ships a window that never opens.
-    say "+ capsule repaired and working ($("$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" --version 2>/dev/null))"
-    say "  (electron's own extraction stopped at the first file and exited 0;"
-    say "   the archive it had already downloaded was unpacked with unzip.)"
+  CAPSULE_LOG="$GM/state/capsule-build.log"
+  mkdir -p "$GM/state"
+  if [ -x "$CAPSULE_BIN" ] && [ "$DEV" != "1" ]; then built=0
+  else say "building the capsule (swift build, ~30 s the first time)…"; built=1; fi
+  if [ "$DEV" = "1" ]; then
+    swift build -c release --package-path "$ENGINE/capsule/macos" >"$CAPSULE_LOG" 2>&1 || true
   else
-    warn "The Electron binary does not respond, and the archive could not be unpacked."
-    warn "The capsule (the floating orb) will not open. Everything else works."
-    warn "To retry by hand:"
-    warn "  rm -rf $CAPSULE_PREFIX/node_modules && npm --prefix $CAPSULE_PREFIX install"
-    warn "  then re-run this installer — it will unpack what npm downloaded."
+    build_capsule "$ENGINE" "$RUNTIME" "$CAPSULE_LOG" || true
+  fi
+  if [ -x "$CAPSULE_BIN" ]; then
+    [ "$built" = "1" ] && say "+ capsule built" || say "= capsule already built"
+    capsule_start || warn "the capsule is built but could not be started — \`brain capsule\` retries"
+  else
+    warn "The capsule did not build. Everything else works."
+    warn "  The compiler's output is in $CAPSULE_LOG"
+    warn "  It needs Swift 6 (Xcode 16 or its Command Line Tools). To update them:"
+    warn "  softwareupdate --list, then re-run this installer."
   fi
 fi
 

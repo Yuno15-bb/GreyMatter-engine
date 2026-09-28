@@ -35,7 +35,7 @@ empreinte_source() {
   {
     shasum -a 256 "$SRC/brain" "$CLAUDE_DIR/statusline.py" \
                   "$SRC/config/ranking.json" 2>/dev/null
-    find "$SRC/hooks" "$SRC/agents" "$SRC/capsule" "$SRC/planet" \
+    find "$SRC/hooks" "$SRC/agents" "$SRC/capsule/macos" "$SRC/planet" \
          "$SRC/companion" "$SRC/tests" -type f \
          ! -path "*/node_modules/*" ! -name "*.pyc" ! -name ".DS_Store" \
          ! -name "*.bak" \
@@ -57,14 +57,8 @@ empreinte_source() {
          ! -path "*/tests/en_clair_dette.txt" \
          ! -path "*/tests/a86_classe2.json" \
          ! -path "*/tests/banc-course-git/resultats-git-guard.json" \
-         ! -path "*/capsule/assets/*" \
-         ! -path "*/capsule/lottie/*" \
-         ! -path "*/capsule/hand/*" \
-         ! -path "*/capsule/index.html" ! -path "*/capsule/index-v2.html" \
-         ! -path "*/capsule/dock-geometry.js" \
-         ! -path "*/capsule/test_dock_geometry.js" \
-         ! -path "*/capsule/test_verrou_parle.sh" \
-         ! -path "*/capsule/main.js" \
+         ! -path "*/capsule/macos/.build/*" ! -path "*/capsule/macos/.swiftpm/*" \
+         ! -path "*/capsule/macos/CADRAGE.md" \
          ! -path "*/planet/*.json" \
          ! -path "*/planet/launch-mother.sh" \
          ! -path "*/planet/archive/*" 2>/dev/null \
@@ -153,12 +147,12 @@ sync_dir hooks \
 
 sync_dir agents
 
-# The package ships the orb. Old capsule screens, local assets and the
-# author's instance-lock test belong to the living Brain; the translated
-# package test is protected from --delete on this side.
-sync_dir capsule 'node_modules' 'assets' 'lottie' 'index-v2.html' 'main.js' 'hand' \
-                 'index.html' 'dock-geometry.js' 'test_dock_geometry.js' \
-                 'test_verrou_parle.sh' 'test_lock_speaks.sh'
+# The package ships the native pill only (2026-09-28): capsule/macos, the Swift
+# port of the author's menu bar pill. The Electron capsule (main.js, ilot.*,
+# orbe*, banc/, package*.json) left the package with 2.2 and is never copied
+# back. capsule/README.md and capsule/assets/ belong to the package. CADRAGE.md
+# is the author's French design brief, not something a user runs.
+sync_dir capsule/macos '.build' '.swiftpm' 'CADRAGE.md'
 
 # All generated Planet JSON belongs to the user's trunk, including files
 # introduced after this allowlist was written.

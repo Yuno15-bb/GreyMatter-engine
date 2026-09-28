@@ -1,9 +1,10 @@
 # GreyMatter — CI
 #
 # SCOPE, AND WHY IT STOPS THERE. This does NOT run a full install: launchd
-# jobs and an Electron capsule on a hosted macOS runner are a swamp, and they
+# jobs and a live menu bar pill on a hosted macOS runner are a swamp, and they
 # would buy almost nothing — the flags `--no-launchd --no-capsule` skip exactly
-# the two parts a runner cannot judge. What is left is the part that actually
+# the two parts a runner cannot judge. The pill's BUILD is judged, in its own
+# step below: that is the part an install can break. What is left is the part that actually
 # breaks: the leak check, the translation, the installer, the trunk invariants,
 # and whether a migration survives being replayed.
 #
@@ -191,17 +192,15 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
-      # The capsule functions, read out of install.sh itself rather than copied:
-      # the repair for an Electron that npm reports as installed and never
-      # extracted, and the guard that keeps the shell's own "Abort trap: 6" out
-      # of a successful install. This bench existed since 2026-08-17 and NOTHING
-      # ran it — which is how a guard that had never worked shipped for a month
-      # under a comment saying it did. It needs neither Electron nor the network:
-      # it drives the extracted functions against a 2 KB stub. It self-skips off
-      # macOS arm64, and this runner is macOS arm64 — so the skip is checked for
-      # rather than trusted: a bench that quietly opts out is a green that tests
-      # nothing, which is the exact shape of the defect above.
-      - name: the capsule functions, exercised
+      # The menu bar pill (capsule/macos), built the way install.sh builds it:
+      # through greymatter/engine-lib.sh's build_capsule, sourced rather than
+      # copied, into a runtime root OUTSIDE a fake immutable version. Then
+      # `Capsule --check` proves the binary loads and reads the status with the
+      # canonical freshness windows, and a deliberately broken source proves a
+      # failed build leaves nothing to start. It self-skips off macOS or without
+      # Swift, and this runner has both — so the skip is checked for rather than
+      # trusted: a bench that quietly opts out is a green that tests nothing.
+      - name: the capsule pill, built and exercised
         run: |
           set -euo pipefail
           # ⚠ THE REPORT IS PRINTED BEFORE IT IS JUDGED, and that is the whole
@@ -218,6 +217,7 @@ jobs:
           if grep -q skipped "$RUNNER_TEMP/capsule.out"; then
             echo "❌ capsule_runtime opted out on a runner that must run it"; exit 1
           fi
+          python3 tests/capsule_liveness.py
 
       - name: dry run writes nothing
         run: |
@@ -277,11 +277,13 @@ jobs:
       # This runner has Node and Homebrew; a new Mac has neither. Every other
       # step here therefore runs a machine no new user owns — which is how a
       # selftest that required Node shipped green. This step takes them away.
+      # Apple's swift stays (the Command Line Tools ship it), so the plain run
+      # builds the native pill; the sabotages run with --no-capsule.
       - name: a Mac with only Apple's tools (no Node, no Homebrew)
         run: |
           set -euo pipefail
           bash tests/fresh_mac_path.sh
-          for sab in node-required badge-regex lock-ignored; do
+          for sab in pill-required badge-regex lock-ignored; do
             if bash tests/fresh_mac_path.sh --sabotage "$sab" >/dev/null 2>&1; then
               echo "❌ sabotage $sab left the contract green"; exit 1
             fi

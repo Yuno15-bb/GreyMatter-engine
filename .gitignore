@@ -36,7 +36,10 @@ hooks/com.greymatter.resume.plist
 
 # --- Dead weight / dependencies ---
 capsule/node_modules/
-capsule/assets/
+capsule/assets/*
+!capsule/assets/gmtr-128.png
+capsule/macos/.build/
+capsule/macos/.swiftpm/
 .venv/
 __pycache__/
 *.pyc

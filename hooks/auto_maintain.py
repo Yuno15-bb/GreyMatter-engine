@@ -135,7 +135,7 @@ def manual_saves_for(sid):
     return out
 
 # The capsule proves it has a WINDOW by touching state/capsule-alive every 5 s
-# (cf. capsule/main.js). Looking for a PROCESS proves nothing: on 2026-08-13 a
+# (cf. the heartbeat in capsule/macos). Looking for a PROCESS proves nothing: on 2026-08-13 a
 # two-day-old Electron with no window was taken for an open capsule, and so
 # blocked its own replacement at every session start — silently, since writing
 # the status still worked perfectly.
@@ -147,7 +147,10 @@ def manual_saves_for(sid):
 #   (cf. pkill-motif-approximatif-mesure-une-instance-perimee): 4 pids when THIS trunk's
 #   capsule runs, rc=1 for a neighbouring trunk that has none. The absolute path also
 #   forbids taking ANOTHER tree's capsule for our own.
-MOTIF_CAPSULE = os.path.join(BRAIN, "capsule", "node_modules", "electron")
+MOTIF_CAPSULE = os.path.join(BRAIN, "capsule", "macos", ".build", "release", "Capsule")
+# Since v2.2 the capsule is native (capsule/macos). An Electron pill left by an older
+# install is closed on sight, or two pills would sit side by side in the menu bar.
+MOTIF_ELECTRON = os.path.join(BRAIN, "capsule", "node_modules", "electron")
 HEARTBEAT_MAX = 60          # 12 missed beats: we do not react to a hiccup
 STARTUP_GRACE = 90          # a capsule that just started has not beaten yet
 
@@ -211,19 +214,16 @@ def capsule_alive(pids):
 def ensure_capsule():
     """Opens the capsule if it is not already running (the agents are waking up).
 
-    Light mode: if the file state/no-capsule exists, nothing is launched.
-    The capsule (Electron + its GPU helper) is the machine's biggest CPU consumer
-    at rest; on a fanless MacBook Air it forces
-    WindowServer to recompose the screen continuously."""
+    The capsule is the native menu bar pill (capsule/macos), built by install.sh.
+    Light mode: if the file state/no-capsule exists, nothing is launched."""
     try:
         if os.path.exists(os.path.join(BRAIN, "state", "no-capsule")):
             return
-        cap = os.path.join(BRAIN, "capsule")
-        elec = os.path.join(cap, "node_modules", ".bin", "electron")
-        if not os.path.exists(elec):
+        if sys.platform != "darwin" or not os.access(MOTIF_CAPSULE, os.X_OK):
             return
-        # the real process runs under .../node_modules/electron/dist/... (.bin/electron
-        # is only a symlink), so we match the project's path, not the symlink.
+        if subprocess.run(["pgrep", "-f", MOTIF_ELECTRON], capture_output=True).returncode == 0:
+            subprocess.run(["pkill", "-f", MOTIF_ELECTRON], capture_output=True)
+            time.sleep(1)
         r = subprocess.run(["pgrep", "-f", MOTIF_CAPSULE],
                            capture_output=True, text=True)
         # ⚠️ AN EMPTY OUTPUT IS NOT A MEASUREMENT. pgrep returns 0 when it finds, 1 when it
@@ -235,17 +235,15 @@ def ensure_capsule():
             return
         if r.stdout.strip():
             if capsule_alive(r.stdout.split()):
-                return                       # really open: a window is beating
-            # ZOMBIE: the process lives, its window does not. We replace it rather
+                return                       # really open: its loop is beating
+            # ZOMBIE: the process lives, its loop does not. We replace it rather
             # than take it for a healthy capsule — that is what left the author's
             # orb invisible for two days on 2026-08-13.
             subprocess.run(["pkill", "-f", MOTIF_CAPSULE], capture_output=True)
             time.sleep(1)
-        # 09/24 evening: the orb leaves the notch (the author: keep the pill, drop the orb
-        # from the notch). What starts is the menu-bar pill (capsule/ilot.js), which beats
-        # on capsule-alive like the orb. The orb can still be started by hand:
-        # CAPSULE_SOLO=1 electron .
-        subprocess.Popen([elec, "ilot.js"], cwd=cap,
+        env = dict(os.environ)
+        env["CAPSULE_BRAIN"] = BRAIN        # the pill reads state/ here
+        subprocess.Popen([MOTIF_CAPSULE], cwd=os.path.join(BRAIN, "capsule"), env=env,
                          stdin=subprocess.DEVNULL,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True)

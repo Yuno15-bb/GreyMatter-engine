@@ -12,6 +12,9 @@
 # only on a green selftest: on such a Mac every release was refused, for good.
 # Every CI runner ships Node, so nothing ever ran the product the way a new
 # user's Mac runs it. Found on 2026-09-26, preparing a test install for a blank Mac.
+# In 2.2 the capsule became a native Swift pill: the toolchain it needs is now
+# Apple's own (the Command Line Tools ship swift), but the rule has not moved —
+# a Mac where the pill is not built must still get a green selftest.
 #
 # The same blank Mac found a second lock, on EVERY Mac this time. The planet's ↻
 # badge had a detector of its own — a regex that lit any note merely MENTIONING a
@@ -31,8 +34,8 @@
 # as a first session would and asks again, then asks once more while a
 # maintenance is writing.
 #
-# Run: bash tests/fresh_mac_path.sh [--sabotage node-required|badge-regex|lock-ignored]
-#   node-required — puts back the unconditional `node --check`; must go RED.
+# Run: bash tests/fresh_mac_path.sh [--sabotage pill-required|badge-regex|lock-ignored]
+#   pill-required — checks the pill even where it was not built; must go RED.
 #   badge-regex   — puts back the badge's own regex detector; must go RED.
 #   lock-ignored  — the selftest stops reading the maintenance lock; must go RED.
 set -uo pipefail
@@ -48,7 +51,10 @@ check() {  # check <exit-code> <label> [detail]
 }
 
 H="$(mktemp -d)"
-trap 'rm -rf "$H"' EXIT
+# The installer starts the pill it built; the bench's pill must not outlive it.
+# pgrep matches the resolved path (/private/var/…), so match on the unique part.
+PILL_PATTERN="$(basename "$H")/.greymatter/trunk/capsule/macos/.build/release/Capsule"
+trap 'pkill -f "$PILL_PATTERN" 2>/dev/null; rm -rf "$H"' EXIT
 
 # Everything runs with an EMPTY environment: no inherited PATH can slip Node,
 # Homebrew or the host's `brain` back in.
@@ -65,18 +71,19 @@ for tool in python3 git; do
   fresh bash -c "command -v $tool" >/dev/null 2>&1 \
     || { echo "  ❌ $tool missing from $APPLE_PATH — the Command Line Tools are a prerequisite"; exit 1; }
 done
-echo "  ✅ no node · $(fresh python3 --version 2>&1) · $(fresh git --version 2>&1)"
+SWIFT="no swift"; fresh bash -c 'command -v swift' >/dev/null 2>&1 && SWIFT="swift"
+echo "  ✅ no node · $(fresh python3 --version 2>&1) · $(fresh git --version 2>&1) · $SWIFT"
 
 # install.sh builds the engine from the source's COMMITTED tree, so the bench
 # installs from a clone: a sabotage has to be a commit to reach the engine.
 SRC="$H/src"
 git clone -q "$ROOT" "$SRC" || { echo "  ❌ could not clone $ROOT"; exit 1; }
-if [ "$SABOTAGE" = "node-required" ]; then
-  sed -i '' 's/^if command -v node >\/dev\/null 2>&1; then$/if true; then/' "$SRC/hooks/selftest.sh"
+if [ "$SABOTAGE" = "pill-required" ]; then
+  sed -i '' 's/^if \[ -x "\$PILL" \]; then$/if true; then/' "$SRC/hooks/selftest.sh"
   git -C "$SRC" diff --quiet && { echo "  ❌ sabotage did not apply"; exit 1; }
   git -C "$SRC" -c user.name=bench -c user.email=bench@localhost \
-    commit -qam "sabotage: node-required" || { echo "  ❌ sabotage commit failed"; exit 1; }
-  echo "  ⚠ sabotage node-required: node --check is unconditional again"
+    commit -qam "sabotage: pill-required" || { echo "  ❌ sabotage commit failed"; exit 1; }
+  echo "  ⚠ sabotage pill-required: the selftest checks a pill that was never built"
 elif [ "$SABOTAGE" = "badge-regex" ]; then
   sed -i '' 's/"resume": rel_file in resume_points,/"resume": bool(re.search(r"resume point", text, re.I)),/' \
     "$SRC/hooks/graph_export.py"
@@ -96,11 +103,17 @@ fi
 
 echo "▸ install, the way a new Mac runs it"
 # --no-launchd: a bench never registers jobs on the machine running it. The
-# capsule is NOT declined — the installer has to find Node missing by itself,
-# as it does for a user. stdin is not a terminal, so it asks nothing.
-OUT="$(cd "$SRC" && fresh ./install.sh --no-launchd </dev/null 2>&1)"
-printf '%s' "$OUT" | grep -q "Node.js is missing"
-check $? "the installer noticed Node is missing and skipped only the capsule"
+# plain run does NOT decline the capsule: the installer builds the pill with
+# Apple's swift if it is there, or names `xcode-select --install` if it is not.
+# A sabotage run declines it (--no-capsule) — it would only add a 30 s build,
+# and pill-required needs a Mac where the pill is absent.
+# stdin is not a terminal, so it asks nothing.
+ARGS=(--no-launchd); [ -n "$SABOTAGE" ] && ARGS+=(--no-capsule)
+OUT="$(cd "$SRC" && fresh ./install.sh "${ARGS[@]}" </dev/null 2>&1)"
+CAPS="$(printf '%s' "$OUT" | grep -E '^  (\+ capsule built|\(skipped — --no-capsule\))|xcode-select --install' | head -1)"
+[ -n "$CAPS" ]; check $? "the installer built the pill, or named why not and the next step" \
+  "$(printf '%s' "$OUT" | sed -n '/Capsule (menu bar pill)/,/Scheduled jobs/p' | head -4 | tr '\n' ' ')"
+[ -n "$CAPS" ] && echo "     →${CAPS}"
 printf '%s' "$OUT" | grep -q "❌"
 [ $? -ne 0 ]; check $? "the install output holds no ❌" \
   "$(printf '%s' "$OUT" | grep '❌' | head -3 | tr '\n' ' ')"
@@ -109,8 +122,8 @@ echo "▸ the verdict the updater relies on"
 ST="$(fresh brain selftest 2>&1)"; rc=$?
 check "$rc" "brain selftest is green without Node" \
   "$(printf '%s' "$ST" | grep '❌' | head -3 | tr '\n' ' ')"
-printf '%s' "$ST" | grep -q "⏭  capsule syntax not checked"
-check $? "the skipped check is named, not silently dropped"
+printf '%s' "$ST" | grep -qE "✅ capsule pill answers --check|⏭  capsule pill not checked"
+check $? "the pill was checked, or the skipped check is named — never silently dropped"
 
 echo "▸ after a first session"
 # Every session regenerates the planet's graph (track_read after a read, the

@@ -39,18 +39,21 @@ for f in "$SRC"/hooks/*.py; do
   python3 -m py_compile "$f" 2>/dev/null && ok "compile $f" || ko "compile $f"
 done
 
-# 2. capsule main.js — only where Node exists.
-# ⚠ A MAC WITHOUT NODE IS A SUPPORTED MAC. The installer says so ("only the
-# capsule is skipped") and installs everything else. This line used to call
-# `node` unconditionally, so on such a Mac the selftest ended red — and the
-# updater, which switches only on a green selftest, then refused every release
-# for good. The CI never saw it: its runners ship Node. With no Node, the
-# capsule cannot run here at all, so its syntax is not this machine's question;
-# the CI, which has Node, keeps asking it. tests/fresh_mac_path.sh holds this.
-if command -v node >/dev/null 2>&1; then
-  node --check "$SRC/capsule/main.js" 2>/dev/null && ok "node --check main.js" || ko "node --check main.js"
+# 2. the capsule pill — only where it was built.
+# ⚠ A MAC WITHOUT THE CAPSULE IS A SUPPORTED MAC. The installer says so ("only
+# the capsule is skipped") and installs everything else. Until 2.2 this line
+# called `node` unconditionally, so on a Mac without Node the selftest ended red
+# — and the updater, which switches only on a green selftest, then refused every
+# release for good. The native pill (2.2) needs Swift instead of Node, and the
+# same rule holds: no pill here is not this machine's fault. When it IS built,
+# `--check` proves the binary still loads and reads the status.
+# tests/fresh_mac_path.sh holds this (sabotage pill-required).
+PILL="$SRC/capsule/macos/.build/release/Capsule"
+if [ -x "$PILL" ]; then
+  CAPSULE_BRAIN="$BRAIN" "$PILL" --check 2>/dev/null | grep -q '"state"' \
+    && ok "capsule pill answers --check" || ko "capsule pill answers --check"
 else
-  echo "  ⏭  capsule syntax not checked — Node.js is not installed, and only the capsule needs it"
+  echo "  ⏭  capsule pill not checked — it is not built here (no Swift, or --no-capsule), and only the capsule needs it"
 fi
 
 # 3. SessionEnd: auto_maintain must exit 0 even on empty input / a trivial session.

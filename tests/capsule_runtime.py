@@ -1,304 +1,185 @@
 #!/usr/bin/env python3
-"""capsule_runtime.py — does a fresh install leave an Electron that actually runs?
+"""capsule_runtime.py — does a fresh install leave a menu bar pill that actually runs?
 
 THE INVARIANT:
 
-    After install.sh, either the capsule's runtime answers `--version`, or the
-    installer says plainly that the orb will not open. Never "installed" over a
-    runtime that aborts.
+    After install.sh, either the pill's binary exists and answers `--check`, or
+    the installer says plainly that the pill is skipped and names the next step
+    (`xcode-select --install`). Never "installed" over a binary that is not there.
 
-THE FAILURE THIS EXISTS TO PREVENT, measured on 2026-08-17 (macOS arm64, Node
-v26.5.0, npm 11.17), on a genuinely empty `node_modules`:
+WHY THIS BENCH CHANGED SHAPE (2026-09-28). Until 2.2 the capsule was Electron,
+and this file held the repair for an Electron that npm reported as installed and
+never extracted. The capsule is now a native Swift program (capsule/macos). What
+can go wrong moved with it:
 
-    the archive downloads, `unzip -t` reports no error;
-    electron's postinstall RUNS, finishes in ONE second, exits 0, prints nothing;
-    with DEBUG=* it extracts 20 directory entries, reaches the first real file
-      ("opening read stream … electron.icns") and the process simply ends;
-    dist/ stays at 256 KB instead of ~250 MB, with no Frameworks/ at all,
-    and path.txt — written only on success — never appears.
+    a version directory is IMMUTABLE (sha256 manifest), so the build must not
+      land inside it — it lands in the shared runtime root and the version only
+      holds a link, `capsule/macos/.build`;
+    a build that FAILS must not leave a binary behind that the installer would
+      then start and call a success;
+    a second install of the same sources must not rebuild (30 s, 120 MB scratch);
+    sources that CHANGE must get their own build, not the previous binary.
 
-The binary was therefore present, executable, and died with "Library not loaded:
-@rpath/Electron Framework.framework/Electron Framework". Identical on electron 42,
-so it is not the electron version. The installer detected it and printed a remedy
-that was `npm install` again — the very thing that had just failed.
+WHY THE FUNCTIONS ARE SOURCED RATHER THAN COPIED. A copy would test a copy. This
+sources the real greymatter/engine-lib.sh, so gutting build_capsule fails here.
 
-WHAT IS TESTED HERE, AND WHAT IS NOT. Unpacking 250 MB is not a unit test. What
-this holds is the MECHANISM: the repair reads the archive electron already
-downloaded, replaces dist, writes path.txt the way electron writes it, and the
-installer only claims success after starting the binary again. The real 250 MB
-path was verified by hand on a fresh install, and the recipe records it.
-
-WHY THE FUNCTION IS EXTRACTED FROM install.sh RATHER THAN COPIED. A copy would
-test a copy. This reads the real text between `capsule_repair() {` and its closing
-brace, so deleting or gutting the function fails the test.
+WHAT IS NOT TESTED HERE. Pixels. The pill in the menu bar needs a logged-in
+screen; `--check` proves the binary loads AppKit, finds its trunk and reads the
+status with the canonical freshness windows, which is what an install can break.
 
 Run:
   python3 tests/capsule_runtime.py
   python3 tests/capsule_runtime.py --check
 """
+import json
 import os
-import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
-import zipfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+LIB = os.path.join(ROOT, "greymatter", "engine-lib.sh")
 INSTALL = os.path.join(ROOT, "install.sh")
-PLATFORM_PATH = "Electron.app/Contents/MacOS/Electron"
+SRC = os.path.join(ROOT, "capsule", "macos")
 
 
-def extract_function(name):
-    """The real function body out of install.sh, by brace depth."""
-    src = open(INSTALL, encoding="utf-8").read()
-    start = src.find(f"{name}() {{")
-    if start == -1:
-        return None
-    depth, i = 0, start
-    while i < len(src):
-        if src[i] == "{":
-            depth += 1
-        elif src[i] == "}":
-            depth -= 1
-            if depth == 0:
-                return src[start:i + 1]
-        i += 1
-    return None
+def fake_version(base, name):
+    """A version directory holding only what the build needs: Package.swift + Sources."""
+    eng = os.path.join(base, "versions", name)
+    os.makedirs(os.path.join(eng, "capsule"))
+    shutil.copytree(SRC, os.path.join(eng, "capsule", "macos"),
+                    ignore=shutil.ignore_patterns(".build", ".swiftpm"))
+    return eng
 
 
-def fake_electron_zip(path, version):
-    """An archive shaped like electron's, small enough to be a test."""
-    with zipfile.ZipFile(path, "w") as z:
-        z.writestr("LICENSE", "x\n")
-        info = zipfile.ZipInfo(PLATFORM_PATH)
-        info.external_attr = (stat.S_IFREG | 0o755) << 16
-        z.writestr(info, f"#!/bin/sh\necho v{version}\n")
-
-
-def build_broken_install(home, engine, version, with_zip=True):
-    """A node_modules in exactly the state npm leaves behind when extraction dies."""
-    ed = os.path.join(engine, "capsule", "node_modules", "electron")
-    os.makedirs(os.path.join(ed, "dist", "Electron.app", "Contents", "MacOS"), exist_ok=True)
-    with open(os.path.join(ed, "package.json"), "w") as f:
-        f.write(f'{{"name":"electron","version":"{version}"}}')
-    # the 50 KB stub that exists and aborts — the whole trap
-    stub = os.path.join(ed, "dist", PLATFORM_PATH)
-    with open(stub, "w") as f:
-        f.write("#!/bin/sh\nexit 133\n")
-    os.chmod(stub, 0o755)
-    if with_zip:
-        cache = os.path.join(home, "Library", "Caches", "electron", "deadbeef")
-        os.makedirs(cache, exist_ok=True)
-        fake_electron_zip(os.path.join(cache, f"electron-v{version}-darwin-arm64.zip"), version)
-    return ed
-
-
-def run_repair(home, engine):
-    body = extract_function("capsule_repair")
-    if body is None:
-        return None, "capsule_repair is gone from install.sh"
-    env = dict(os.environ, HOME=home)
-
-    def run(trace):
-        opts = "set -xu" if trace else "set -u"
-        script = f'{opts}\nENGINE="{engine}"\n{body}\ncapsule_repair\n'
-        return subprocess.run(["bash", "-c", script], capture_output=True, text=True,
-                              timeout=120, env=env)
-
-    p = run(trace=False)
-    if p.returncode == 0:
-        return 0, ""
-    # ⚠ A RED THAT DOES NOT NAME ITS CAUSE IS UNREADABLE, and `capsule_repair`
-    #   has EIGHT ways of returning 1 — not Darwin, no node_modules, no unzip,
-    #   no node, no version, an architecture it does not ship, no archive in the
-    #   cache, a failed unpack. Reported as a bare `1` they are indistinguishable,
-    #   and on 2026-09-20 a CI runner went red on one of them with no way to tell
-    #   which. So a failure is replayed under xtrace and the last command the
-    #   shell ran before giving up is carried back in the report.
-    t = run(trace=True)
-    steps = [l.lstrip("+ ") for l in t.stderr.splitlines()
-             if l.startswith("+") and "return" not in l]
-    # The last TWO, because the line that fails is often an assignment whose
-    # value is already gone — `ver=` says nothing, `node -p … → ver=` says
-    # everything. Truncated: a trace line carries a whole temporary path.
-    tail = " → ".join(x[:70] for x in steps[-2:])
-    return p.returncode, (tail if tail else p.stderr.strip())
+def build(eng, runtime, log):
+    t = time.time()
+    r = subprocess.run(["bash", "-c", 'source "$1"; build_capsule "$2" "$3" "$4"',
+                        "_", LIB, eng, runtime, log], capture_output=True, text=True)
+    return r.returncode, time.time() - t
 
 
 def main():
-    check = "--check" in sys.argv
-    trouble = []
-    version = "33.4.11"
-
-    if os.uname().machine != "arm64" or os.uname().sysname != "Darwin":
-        print("Capsule runtime — skipped (the repair ships for macOS arm64)")
+    if sys.platform != "darwin":
+        print("Capsule runtime — skipped (the pill is a macOS program)")
+        return 0
+    if not shutil.which("swift") or subprocess.run(["xcode-select", "-p"],
+                                                    capture_output=True).returncode:
+        print("Capsule runtime — skipped (no Swift: xcode-select --install)")
         return 0
 
-    print("Capsule runtime — the repair for an Electron that never finished extracting\n")
+    trouble = []
+    base = tempfile.mkdtemp(prefix="capsule-runtime-")
+    runtime = os.path.join(base, "runtime")
+    try:
+        # ---------- 1. a clean build lands OUTSIDE the version ----------
+        eng = fake_version(base, "v1")
+        rc, dt = build(eng, runtime, os.path.join(base, "build1.log"))
+        link = os.path.join(eng, "capsule", "macos", ".build")
+        binary = os.path.join(link, "release", "Capsule")
+        ok = rc == 0 and os.path.islink(link) and os.access(binary, os.X_OK)
+        print(f"  first build        rc={rc}  {dt:5.1f}s  binary through the link: {'yes' if ok else 'NO'}")
+        if not ok:
+            trouble.append("build_capsule did not leave an executable pill behind the "
+                           "version's .build link — see build1.log")
+            print(open(os.path.join(base, "build1.log"), errors="replace").read()[-1500:])
+            raise SystemExit
+        target = os.path.realpath(link)
+        inside = target.startswith(os.path.realpath(eng) + os.sep)
+        print(f"  build lands in     {os.path.relpath(target, base)}  (inside the version: {'YES' if inside else 'no'})")
+        if inside:
+            trouble.append("the build landed inside the immutable version directory")
+        leftovers = [n for n in os.listdir(runtime) if ".building." in n]
+        size = os.path.getsize(binary) / 1e6
+        print(f"  scratch removed    {'yes' if not leftovers else 'NO ' + str(leftovers)}   binary {size:.1f} MB")
+        if leftovers:
+            trouble.append(f"the ~120 MB scratch build was left behind: {leftovers}")
 
-    # 1. The repair turns a broken runtime into one that answers.
-    with tempfile.TemporaryDirectory() as tmp:
-        home, engine = os.path.join(tmp, "home"), os.path.join(tmp, "engine")
-        os.makedirs(home)
-        ed = build_broken_install(home, engine, version)
-        binary = os.path.join(ed, "dist", PLATFORM_PATH)
+        # ---------- 2. the binary answers, and reads with the canonical windows ----------
+        trunk = os.path.join(base, "trunk")
+        os.makedirs(os.path.join(trunk, "state"))
+        os.makedirs(os.path.join(trunk, "hooks"))
+        shutil.copy(os.path.join(ROOT, "hooks", "status_freshness.json"),
+                    os.path.join(trunk, "hooks"))
+        now = time.time()
+        cases = (  # (status.json, expected state, expected detail, why)
+            ({"state": "busy", "ts": now, "activity": "distilling", "activity_ts": now,
+              "detail": "notes"}, "distilling", "notes", "fresh label"),
+            ({"state": "busy", "ts": now, "activity": "distilling", "activity_ts": now - 500,
+              "detail": "notes"}, "working", "", "stale label → working, detail dropped"),
+            ({"state": "busy", "ts": now - 40, "activity": "distilling", "activity_ts": now},
+             "idle", "", "no tool for 40 s → idle"),
+        )
+        cfg = json.load(open(os.path.join(ROOT, "hooks", "status_freshness.json")))
+        for status, want, want_detail, why in cases:
+            json.dump(status, open(os.path.join(trunk, "state", "status.json"), "w"))
+            r = subprocess.run([binary, "--check"], capture_output=True, text=True, timeout=20,
+                               env=dict(os.environ, CAPSULE_BRAIN=trunk))
+            try:
+                got = json.loads(r.stdout.strip().splitlines()[-1])
+            except Exception:
+                got = {}
+            ok = (got.get("state") == want and got.get("detail") == want_detail
+                  and got.get("liveness_s") == cfg["liveness_stale_seconds"]
+                  and got.get("activity_s") == cfg["activity_stale_seconds"])
+            print(f"  --check            {why:40} → {got.get('state')!s:10} {'yes' if ok else 'NO'}")
+            if not ok:
+                trouble.append(f"--check on '{why}' answered {got or r.stderr.strip()[:200]!r}")
 
-        # A repair that leaves NO binary at all must read as a failure, not as a
-        # Python traceback: a red that only shows a stack tells the next person
-        # nothing about what broke. Seen when a sabotage removed the unpack step.
-        def answers(path):
-            if not os.path.exists(path):
-                return False
-            return subprocess.run([path], capture_output=True).returncode == 0
+        # ---------- 3. same sources: no rebuild ----------
+        eng2 = fake_version(base, "v2")
+        rc, dt = build(eng2, runtime, os.path.join(base, "build2.log"))
+        same = os.path.realpath(os.path.join(eng2, "capsule", "macos", ".build")) == target
+        print(f"  same sources       rc={rc}  {dt:5.1f}s  shares the build: {'yes' if same else 'NO'}")
+        if rc or not same or dt > 5:
+            trouble.append(f"a second version with the same sources rebuilt ({dt:.0f} s) "
+                           "or linked elsewhere")
 
-        before = answers(binary)
-        rc, err = run_repair(home, engine)
-        after_ok = answers(binary)
+        # ---------- 4. a broken source: no binary, a non-zero exit ----------
+        # The sabotage the installer must survive: it starts the pill only on rc 0.
+        eng3 = fake_version(base, "v3")
+        main_swift = os.path.join(eng3, "capsule", "macos", "Sources", "Capsule", "main.swift")
+        with open(main_swift, "a") as f:
+            f.write("\nlet cassé: Int = \"not an int\"\n")
+        log3 = os.path.join(base, "build3.log")
+        rc, dt = build(eng3, runtime, log3)
+        bin3 = os.path.join(eng3, "capsule", "macos", ".build", "release", "Capsule")
+        other = os.path.realpath(os.path.join(eng3, "capsule", "macos", ".build")) != target
+        refused = rc != 0 and not os.path.exists(bin3) and other
+        said = "error" in open(log3, errors="replace").read()
+        print(f"  broken source      rc={rc}  {dt:5.1f}s  no binary, own dir: {'yes' if refused else 'NO'}"
+              f"   log names the error: {'yes' if said else 'NO'}")
+        if not refused:
+            trouble.append("a source that does not compile still produced — or borrowed — a "
+                           "binary: the installer would start the previous pill and call it new")
+        if not said:
+            trouble.append("the build log of a failed build does not contain the compiler error")
+        leftovers = [n for n in os.listdir(runtime) if ".building." in n]
+        if leftovers:
+            trouble.append(f"a failed build left its scratch behind: {leftovers}")
 
-        print(f"  broken runtime answers first     {'yes' if before else 'no'}")
-        print(f"  repair returns                   {rc}"
-              + (f"   (gave up on: {err})" if rc else ""))
-        print(f"  runtime answers after repair     {'yes' if after_ok else 'NO'}")
-        if rc is None:
-            trouble.append(err)
-        elif not after_ok:
-            trouble.append("after the repair the runtime still does not answer: a fresh "
-                           "install would ship a capsule whose window never opens"
-                           + (f" — the repair gave up on `{err}`" if err else ""))
+        # ---------- 5. the installer names the next step when Swift is missing ----------
+        src = open(INSTALL, encoding="utf-8").read()
+        names = "xcode-select --install" in src and "build_capsule" in src
+        print(f"  install.sh         names xcode-select --install, calls build_capsule: {'yes' if names else 'NO'}")
+        if not names:
+            trouble.append("install.sh no longer builds the pill through build_capsule, or no "
+                           "longer names `xcode-select --install` when Swift is missing")
+    except SystemExit:
+        pass
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
-        # 2. path.txt exactly as electron writes it. A trailing newline makes
-        #    electron's own isInstalled() disagree and re-run the broken download
-        #    on every later npm install — the bug would come back by itself.
-        pt = os.path.join(ed, "path.txt")
-        content = open(pt).read() if os.path.exists(pt) else None
-        print(f"  path.txt                         {content!r}")
-        if content != PLATFORM_PATH:
-            trouble.append(f"path.txt is {content!r}, electron compares it to "
-                           f"{PLATFORM_PATH!r} with a strict !=: any difference makes the "
-                           "next npm install redo the extraction that fails")
-
-    # 3. With nothing to unpack, the repair must FAIL rather than half-succeed.
-    with tempfile.TemporaryDirectory() as tmp:
-        home, engine = os.path.join(tmp, "home"), os.path.join(tmp, "engine")
-        os.makedirs(home)
-        build_broken_install(home, engine, version, with_zip=False)
-        rc, _ = run_repair(home, engine)
-        print(f"  no archive to unpack             refuses: {'yes' if rc else 'NO'}")
-        if not rc:
-            trouble.append("the repair reports success with no archive to unpack: the "
-                           "installer would announce a working capsule over nothing")
-
-    # 4. The installer must not CLAIM the repair worked without starting the binary.
-    src = open(INSTALL, encoding="utf-8").read()
-    gated = re.search(r"capsule_repair\s*&&\s*capsule_ok", src)
-    print(f"  success gated on the binary      {'yes' if gated else 'NO'}")
-    if not gated:
-        trouble.append("install.sh announces the repaired capsule without re-checking the "
-                       "binary: the same false 'installed' as before, one layer down")
-
-    # 5. The repair writes ~250 MB into the engine repo. If those paths were
-    #    tracked, every install would leave the engine dirty — and the ownership
-    #    gate added for `brain update` refuses on a dirty engine, absolutely. The
-    #    capsule fix would then block every future update, silently and for good.
-    #    The two worksites only stay independent because git ignores this path.
-    #    ⚠ ASKED ABOUT A FILE, NOT ABOUT THE DIRECTORY, and the difference is not
-    #    cosmetic. The rule in .gitignore is `capsule/node_modules/`, and a pattern
-    #    ending in a slash only matches a DIRECTORY — which `git check-ignore` can
-    #    only recognise by looking at the disk. Measured 2026-09-20 in a throwaway
-    #    repo: with nothing on disk, `capsule/node_modules` does NOT match while
-    #    `capsule/node_modules/electron/package.json` does; create the directory
-    #    and both match. The old probe therefore answered "not ignored" on every
-    #    fresh clone — the very situation it exists to protect — and answered it
-    #    in the same words it would use if the rule had been deleted. It was green
-    #    here only because this author's own clone has the runtime installed, and
-    #    it went red the first time a CI runner ran it. The probe is now the path
-    #    the repair actually writes, which is a file and needs no disk.
-    probe = f"capsule/node_modules/electron/dist/{PLATFORM_PATH}"
-    ignored = subprocess.run(["git", "-C", ROOT, "check-ignore", probe],
-                             capture_output=True, text=True).returncode == 0
-    print(f"  what the repair writes, ignored  {'yes' if ignored else 'NO'}")
-    if not ignored:
-        trouble.append("capsule/node_modules is not gitignored: the repair would leave the "
-                       "engine dirty, and `brain update` refuses on a dirty engine — the "
-                       "capsule fix would block every update from then on")
-
-    # 6. THE CRASH TRACE MUST NOT REACH THE READER — and the check must still fail.
-    #
-    #    "Abort trap: 6" is not written by the binary. Bash writes it, about a job
-    #    it has just reaped, to the stderr bash held at that moment. No redirection
-    #    placed on the command can reach it. Measured 2026-09-20: the subshell that
-    #    was shipped as the fix made the trace LONGER (77 bytes -> 94), because bash
-    #    runs a lone command inside `( )` in the subshell process itself, so the
-    #    subshell IS the job the outer shell reports on.
-    #
-    #    THE CALIBRATION IS THE POINT. A stub that merely exits non-zero makes this
-    #    pass without proving anything. So the bare probe is run FIRST and must be
-    #    NOISY; only then does silence from the real function mean something.
-    with tempfile.TemporaryDirectory() as tmp:
-        engine = os.path.join(tmp, "engine")
-        binary = os.path.join(engine, "capsule", "node_modules", "electron",
-                              "dist", PLATFORM_PATH)
-        os.makedirs(os.path.dirname(binary))
-        with open(binary, "w") as f:
-            f.write("#!/bin/sh\nkill -ABRT $$\n")   # dies of SIGABRT, like the real one
-        os.chmod(binary, 0o755)
-
-        def run(body_or_probe, call):
-            script = 'set -u\nENGINE="%s"\n%s\n%s\n' % (engine, body_or_probe, call)
-            p = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
-                               timeout=60)
-            return p.returncode, p.stderr
-
-        nu = ('nu() {\n'
-              '  local bin="$ENGINE/capsule/node_modules/electron/dist/%s"\n'
-              '  [ -x "$bin" ] && "$bin" --version >/dev/null 2>&1\n'
-              '}' % PLATFORM_PATH)
-        # WHICH bash, written into the report. This case measures a line the
-        # SHELL writes about a job it has reaped, not anything the binary prints,
-        # so the shell is half the instrument and an unnamed instrument makes the
-        # measurement unreadable. macOS ships bash 3.2 at /bin/bash while a build
-        # runner may well put a 5.x first on PATH, and `run()` resolves `bash`
-        # through PATH like everybody else.
-        shell = shutil.which("bash") or "bash"
-        sv = subprocess.run([shell, "--version"], capture_output=True, text=True).stdout
-        m = re.search(r"version (\S+)", sv)
-        shell_id = f"{shell} {m.group(1) if m else '?'}"
-        print(f"  the shell that reports the crash {shell_id}")
-
-        rc_nu, err_nu = run(nu, "nu")
-        print(f"  unguarded probe is noisy         {'yes' if err_nu.strip() else 'NO'}"
-              f" ({len(err_nu)} B)")
-        if not err_nu.strip():
-            trouble.append(f"{shell_id} said nothing at all about a job it reaped on a "
-                           "signal, so this case cannot tell a working guard from a missing "
-                           "one: the CALIBRATION failed, and nothing here judges capsule_ok")
-
-        body = extract_function("capsule_ok")
-        if body is None:
-            trouble.append("capsule_ok is gone from install.sh")
-        else:
-            rc_ok, err_ok = run(body, "capsule_ok")
-            print(f"  guarded probe is silent          {'yes' if not err_ok.strip() else 'NO'}"
-                  f" ({len(err_ok)} B)")
-            print(f"  broken binary still refused      {'yes' if rc_ok else 'NO'}")
-            if err_ok.strip():
-                trouble.append("capsule_ok lets the shell print %r: a fresh install shows a "
-                               "crash trace one line before announcing success"
-                               % err_ok.strip()[:80])
-            if not rc_ok:
-                trouble.append("capsule_ok returns success over a binary that aborts: "
-                               "silencing the trace must not silence the verdict")
-
+    print()
     if trouble:
-        print("\n❌ a fresh install can still ship a capsule that cannot start:")
+        print("❌ the capsule's install path is broken:")
         for t in trouble:
-            print(f"     {t}")
+            print("   -", t)
         return 1
-
-    print("\n✅ a broken Electron is repaired, and success is claimed only after it answers")
+    print("✅ the pill builds outside the version, answers, and a broken build leaves nothing to start")
     return 0
 
 

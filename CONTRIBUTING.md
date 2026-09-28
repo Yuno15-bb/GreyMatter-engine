@@ -42,20 +42,21 @@ python3 leakcheck.py           # must be CLEAN — it blocks publication otherwi
 python3 tests/english_only.py  # main only: no French in user-visible strings
 ```
 
-If you touched the capsule, also run its two benches — **the CI cannot**, because
-it installs with `--no-capsule` and a hosted runner has no Electron:
+If you touched the capsule (the menu bar pill, `capsule/macos`), run its two
+benches. They need macOS and Swift (`xcode-select --install`):
 
 ```bash
-python3 tests/capsule_runtime.py     # no Electron needed: drives install.sh's own functions
-./capsule/test_lock_speaks.sh        # needs a real Electron · puts a second orb on screen ~15s
+python3 tests/capsule_runtime.py     # builds the pill outside a fake version, runs `--check`, breaks a source
+python3 tests/capsule_liveness.py    # the pill reads the same freshness windows as brain_status.py
 ```
 
-`test_lock_speaks.sh` had no caller at all until 2026-09-20, and it spent that
-time asserting, in one of its own labels, that the single-instance lock was
-shared machine-wide. It is not — see its section D.
+To look at it: `capsule/macos/.build/release/Capsule --image working /tmp/orb.png`
+draws the orb alone, `--panel-demo working 600 300` opens the panel at that
+screen point for 8 s, and `brain capsule` puts
+the real pill in the menu bar.
 
-The CI runs both, plus a full install / selftest / uninstall on macOS and every
-migration replayed twice. It is a small workflow and it runs in under a minute —
+The CI runs `capsule_runtime.py` on its macOS runner, plus a full install / selftest / uninstall on macOS and every
+migration replayed twice. It is a small workflow — the capsule bench alone builds the pill twice, about a minute —
 read `.github/workflows/ci.yml` to see exactly what is asserted.
 
 ## Things that will get a patch turned down

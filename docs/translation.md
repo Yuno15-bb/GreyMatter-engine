@@ -49,8 +49,7 @@ from the living Brain. The public test suite does not consume those files.
 | `tests/recall_cache.py` | the recall cache invalidates when it should |
 | `tests/docs_aligned.py` | has the code a doc describes moved since it was written |
 | `tests/e2e_occupied_surfaces.sh` | installing over surfaces somebody else already holds |
-| `capsule/test_lock_speaks.sh` | measures the package's own `capsule/main.js`, in English. The author's trunk has a French twin, `test_verrou_parle.sh`, measuring the author's own `main.js`: two benches, not one file translated, so both are excluded — one so the copy cannot overwrite the English bench, the other so `--delete` cannot erase it |
-| `capsule/main.js`, `index.html`, `dock-geometry.js`, `test_dock_geometry.js` | the capsule as the package ships it, frozen on both sides |
+| `capsule/macos` (build output, `CADRAGE.md`) | only the pill's sources are copied: its `.build` would ship a binary, and `CADRAGE.md` is the author's French design brief. The Electron capsule left the package with 2.2 and is never copied back |
 
 This is the worst failure mode available here: an erased `hooks.json` does not
 crash — the plugin simply **stops recording**.

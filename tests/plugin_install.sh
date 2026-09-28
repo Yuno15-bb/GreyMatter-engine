@@ -5,8 +5,8 @@
 # plugin_install.sh — the path a stranger actually takes.
 #
 # WHY THIS EXISTS. The CI proved `install.sh` works, and `install.sh` is the
-# LONG path — clone the repo, run a script, get launchd jobs and an Electron
-# window. Anyone arriving from the marketplace takes the other one: Claude Code
+# LONG path — clone the repo, run a script, get launchd jobs and a menu bar
+# pill. Anyone arriving from the marketplace takes the other one: Claude Code
 # copies the plugin into a cache and runs `plugin_bootstrap.py` at SessionStart.
 # That path was never executed by anything.
 #

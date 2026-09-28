@@ -46,7 +46,8 @@ SKIP_FILES = {
     "leakcheck.py",          # its postal-address pattern must recognize French street terms
     "tests/english_only.py",
 }
-SKIP_DIRS = {".git", "node_modules", "docs/media", "planet/media", "skeleton", "demo"}
+SKIP_DIRS = {".git", "node_modules", "docs/media", "planet/media", "skeleton", "demo",
+             "capsule/macos/.build"}   # the Swift build output: generated, not strings
 
 # English words that legitimately carry an accent.
 ALLOWED = re.compile(r"\b(caf[ée]|r[ée]sum[ée]|na[ïi]ve|expos[ée]|clich[ée])\b", re.I)
@@ -65,7 +66,7 @@ PATTERNS = [
 ]
 
 EXTS = {".py", ".sh", ".js", ".html", ".md", "", ".json", ".jsonl",
-        ".txt", ".cjs", ".yml", ".yaml", ".toml", ".css"}
+        ".txt", ".cjs", ".yml", ".yaml", ".toml", ".css", ".swift"}
 
 
 def visible_strings(text):

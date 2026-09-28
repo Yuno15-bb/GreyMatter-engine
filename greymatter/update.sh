@@ -490,7 +490,10 @@ if ! build_version "$MIRROR" "$CANDIDATE" "$NEW"; then
   result "blocked" "$NEW"
   exit 1
 fi
-link_runtime "$CANDIDATE" "$RUNTIME" || warn "shared Electron runtime not mounted on $NEW"
+# The native capsule is built BEFORE the switch, beside the candidate: a build
+# that fails leaves a working engine without a pill, never a broken engine.
+build_capsule "$CANDIDATE" "$RUNTIME" "$STATE/capsule-build.log" \
+  || warn "capsule not built for $NEW ($STATE/capsule-build.log) — everything else updates"
 
 if ! verify_manifest "$CANDIDATE"; then
   echo "❌ $NEW does not match its own manifest — the build is not trustworthy."
@@ -550,8 +553,8 @@ say "reinstalling (idempotent)…"
 bash "$CANDIDATE/install.sh" >/tmp/greymatter-update.log 2>&1 || warn "install.sh reported a problem (/tmp/greymatter-update.log)"
 
 # The installer must not have dirtied the version it just mounted. npm used to do
-# exactly that (it rewrites package-lock.json where it runs), which is why it now
-# runs in the shared runtime instead. If anything else ever does, say so rather
+# exactly that (it rewrites package-lock.json where it runs), which is why the
+# capsule's build now runs in the shared runtime instead. If anything else ever does, say so rather
 # than quietly restoring: a version that changes under us is a fact worth seeing.
 verify_manifest "$CANDIDATE" || warn "$NEW no longer matches its manifest after the reinstall — \`brain doctor\`"
 

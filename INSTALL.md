@@ -34,13 +34,14 @@ cd ~/dev/greymatter
 Apple's Command Line Tools. The first `git clone` opens Apple's dialog to install
 them — accept, let it finish (a few minutes), then run the three lines again. You
 can also start with `xcode-select --install`. Nothing else is needed: no
-Homebrew, no Node. Only the capsule uses Node, and the installer skips it and
-says so.
+Homebrew, no Node. The same Command Line Tools ship Swift, which builds the
+capsule (the menu bar pill, about 30 s the first time); without them, the
+installer skips only the capsule and says how to add it later.
 
 Options: `--dry-run` (writes nothing, shows what would happen) ·
 `--dev` (for working ON GreyMatter: links the engine to your checkout and turns
 automatic engine updates off for it) ·
-`--no-launchd` (no scheduled jobs) · `--no-capsule` (no Electron) · `--no-shortcut`
+`--no-launchd` (no scheduled jobs) · `--no-capsule` (no menu bar pill) · `--no-shortcut`
 (no `GreyMatter` shortcut in your home folder).
 
 ---
@@ -84,12 +85,12 @@ to your model provider. See [SECURITY.md](SECURITY.md) for the full data flow.
 
 | Required | For |
 |---|---|
-| macOS | launchd, Electron, `open` |
+| macOS | launchd, the menu bar pill, `open` |
 | `python3` | every hook and the CLI |
 | `git` | updates |
-| `npm` *(optional)* | the Electron capsule — everything else works without it |
+| `swift` *(comes with the Command Line Tools)* | building the capsule — everything else works without it |
 
-`python3` and `git` both come with Apple's Command Line Tools
+`python3`, `git` and `swift` all come with Apple's Command Line Tools
 (`xcode-select --install`); their Python 3.9 is enough.
 
 ## If you don't use Claude Code
@@ -127,7 +128,7 @@ Then, day to day:
 brain status          where the trunk stands ("not started yet" until your first session)
 brain recall <word>   search your memory
 brain doctor          tree health
-brain capsule         open the floating orb  (stop · status)
+brain capsule         open the menu bar pill  (stop · status)
 brain selftest        verify the installation
 ```
 

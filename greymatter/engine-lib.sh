@@ -11,7 +11,7 @@
 #
 # A VERSION IS IMMUTABLE. It is an export: no `.git`, no history, no remote —
 # code and nothing else. Two things are added to it, both by us, both known:
-# `.greymatter-manifest` (the integrity oracle) and `capsule/node_modules` (a link
+# `.greymatter-manifest` (the integrity oracle) and `capsule/macos/.build` (a link
 # into the shared runtime). Anything else that differs from the manifest is an
 # anomaly, and it is REPORTED, never silently repaired.
 
@@ -23,9 +23,9 @@ write_manifest() {   # write_manifest <version-dir>
   local dir="$1"
   ( cd "$dir" || return 1
     # -type f only, and the manifest itself excluded: it cannot contain its own
-    # hash. `capsule/node_modules` is pruned because it is a link into the shared
-    # runtime — 250 MB that belong to no version in particular.
-    find . -type f ! -name .greymatter-manifest -not -path './capsule/node_modules/*' -print0 \
+    # hash. `capsule/macos/.build` is pruned because it is a link into the shared
+    # runtime — a build output that belongs to no version in particular.
+    find . -type f ! -name .greymatter-manifest -not -path './capsule/macos/.build/*' -print0 \
       | LC_ALL=C sort -z \
       | xargs -0 shasum -a 256 > .greymatter-manifest ) || return 1
 }
@@ -85,33 +85,54 @@ mirror_source() {    # mirror_source <git-repo> <mirror-dir>
   fi
 }
 
-# ─── The shared Electron runtime ─────────────────────────────────────────────
-# MEASURED: `capsule/node_modules` is 250 MB, against 11.6 MB for the whole
-# exported engine. Installing it per version would make a version cost 22 times
-# what its code costs, for a dependency that is identical across versions whose
-# `capsule/package.json` is identical — so the runtime is keyed by the hash of
-# that file. Same dependencies → same runtime, shared. Different → a new one,
-# automatically, with no version of ours to bump.
+# ─── The native capsule, built beside the version ───────────────────────────
+# The capsule is a small Swift app (capsule/macos). Its build output cannot live
+# inside the version: a version is immutable, and `swift build` writes a 120 MB
+# scratch folder where it runs. So the build happens in the runtime directory,
+# only the binary (under 1 MB) is kept, and the version holds one symlink,
+# `capsule/macos/.build` — the path the hooks and `brain capsule` launch.
 #
-# npm also REWRITES `package-lock.json` where it runs. Running it inside the
-# version would mutate an immutable tree at every install and make `doctor`
-# report an anomaly the installer had caused itself. So npm runs in the runtime
-# directory, and the version only ever holds a symlink.
-runtime_dir() {      # runtime_dir <version-dir> <runtime-root> → prints the path
+# The runtime is keyed by the hash of the Swift sources: two versions whose
+# capsule code is identical share one binary, and a version that changes the
+# capsule gets its own, with no version of ours to bump.
+capsule_dir() {      # capsule_dir <version-dir> <runtime-root> → prints the path
   local eng="$1" root="$2" key
-  key="$(shasum -a 256 "$eng/capsule/package.json" 2>/dev/null | cut -c1-12)"
+  key="$( cd "$eng/capsule/macos" 2>/dev/null \
+          && find Package.swift Sources -type f 2>/dev/null | LC_ALL=C sort \
+          | xargs shasum -a 256 2>/dev/null | shasum -a 256 | cut -c1-12 )"
   [ -n "$key" ] || key="nokey"
-  printf '%s/capsule-%s\n' "$root" "$key"
+  printf '%s/capsule-native-%s\n' "$root" "$key"
 }
 
-link_runtime() {     # link_runtime <version-dir> <runtime-root>
+capsule_bin() {      # capsule_bin <version-dir> → the binary the hooks launch
+  printf '%s/capsule/macos/.build/release/Capsule\n' "$1"
+}
+
+link_capsule() {     # link_capsule <version-dir> <runtime-root>
   local eng="$1" root="$2" rt
-  [ -f "$eng/capsule/package.json" ] || return 0
-  rt="$(runtime_dir "$eng" "$root")"
-  mkdir -p "$rt" || return 1
-  cp "$eng/capsule/package.json" "$rt/package.json" 2>/dev/null || return 1
-  [ -f "$eng/capsule/package-lock.json" ] && cp "$eng/capsule/package-lock.json" "$rt/" 2>/dev/null
-  mkdir -p "$rt/node_modules"
-  rm -rf "$eng/capsule/node_modules"
-  ln -s "$rt/node_modules" "$eng/capsule/node_modules"
+  [ -f "$eng/capsule/macos/Package.swift" ] || return 0
+  rt="$(capsule_dir "$eng" "$root")"
+  mkdir -p "$rt/release" || return 1
+  rm -rf "$eng/capsule/macos/.build"
+  ln -s "$rt" "$eng/capsule/macos/.build"
+}
+
+# build_capsule <version-dir> <runtime-root> [log] → 0 when the binary exists.
+# Needs Apple's Command Line Tools (Swift 6). Nothing is downloaded: the package
+# has no dependency. Already built for these sources → nothing to do.
+build_capsule() {
+  local eng="$1" root="$2" log="${3:-/dev/null}" rt scratch
+  [ -f "$eng/capsule/macos/Package.swift" ] || return 1
+  link_capsule "$eng" "$root" || return 1
+  rt="$(capsule_dir "$eng" "$root")"
+  [ -x "$rt/release/Capsule" ] && return 0
+  command -v swift >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1 || return 1
+  scratch="$rt.building.$$"
+  rm -rf "$scratch"
+  if swift build -c release --package-path "$eng/capsule/macos" --scratch-path "$scratch" >"$log" 2>&1 \
+     && [ -x "$scratch/release/Capsule" ]; then
+    cp "$scratch/release/Capsule" "$rt/release/Capsule.tmp" && mv "$rt/release/Capsule.tmp" "$rt/release/Capsule"
+  fi
+  rm -rf "$scratch"
+  [ -x "$rt/release/Capsule" ]
 }

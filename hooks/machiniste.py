@@ -49,7 +49,8 @@ NEVER_KILL = re.compile(
     r"|^/Applications/|^/System/Applications/|/Applications/[^/]+\.app/Contents/"
     r"|/System/|/usr/libexec/|/usr/sbin/|/sbin/"  # system infrastructure
     r"|(?:^|/)(gpg-agent|ssh-agent|launchd|sshd|cron)(?:\s|$)"
-    r"|node_modules/electron"                   # la capsule du Brain
+    r"|capsule/macos/\.build/release/Capsule"    # the menu bar pill (native)
+    r"|node_modules/electron"                   # the pre-2.2 Electron capsule
     r"|(?:^|/)(Code|Cursor|Xcode|Docker)(?:\s|$)",
     re.I)
 
@@ -278,12 +279,15 @@ def find_reportable(procs, mem, cpu):
                        "msg": f"{cpu['uptime_days']} days without a reboot — "
                               "compressed memory keeps accumulating"})
 
-    # Doublons de capsule (cf. lesson electron-zombie-process-cleanup)
-    caps = [p for p in procs if "greymatter/trunk/capsule/node_modules/electron/dist" in p["cmd"]
+    # Duplicate pills (cf. lesson electron-zombie-process-cleanup). The native pill
+    # holds a flock on state/capsule-natif.lock, so two of them mean two trunks —
+    # or an Electron capsule left over from before 2.2, counted here as well.
+    caps = [p for p in procs if ("capsule/macos/.build/release/Capsule" in p["cmd"]
+            or "greymatter/trunk/capsule/node_modules/electron/dist" in p["cmd"])
             and "--type=" not in p["cmd"]]
     if len(caps) > 1:
         alerts.append({"niveau": "warn", "sujet": "capsule-doublon",
-                       "msg": f"{len(caps)} instances de capsule — pids "
+                       "msg": f"{len(caps)} capsule instances — pids "
                               f"{[c['pid'] for c in caps]}"})
 
     # Large orphans outside the firing range: we name them, we let them live.

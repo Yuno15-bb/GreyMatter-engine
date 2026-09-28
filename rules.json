@@ -23,20 +23,6 @@
       "replace": "# Deux racines DISTINCTES, et c'est volontaire :\n#  · CODE  — d'où viennent les hooks à importer. Suit le fichier, car le moteur\n#    peut vivre ailleurs que le tronc (installation par symlinks).\n#  · BRAIN — le tronc de l'utilisateur, d'où viennent les DONNÉES (state/).\n#    Toujours dérivé de $HOME : écrire dans le moteur casserait l'installation\n#    et serait écrasé à la première mise à jour.\nCODE = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), \"..\"))\nBRAIN = os.path.expanduser(\"~/claude-brain\")\nsys.path.insert(0, os.path.join(CODE, \"hooks\"))\n"
     },
     {
-      "id": "capsule-test-anim-chemin",
-      "file": "capsule/test_anim.py",
-      "pattern": "STATUS = os\\.path\\.join\\(os\\.path\\.dirname\\(__file__\\), '\\.\\.', 'state', 'status\\.json'\\)",
-      "why": "Point the animation test at the user trunk state instead of the engine directory.",
-      "replace": "# Dérivé de $HOME, pas de __file__ : c'est le state du TRONC qu'on pilote.\nSTATUS = os.path.join(os.path.expanduser('~'), 'claude-brain', 'state', 'status.json')"
-    },
-    {
-      "id": "capsule-dependance-morte",
-      "file": "capsule/package.json",
-      "pattern": ",\\n    \"three\": \"\\^0\\.160\\.0\"\\n  \\}",
-      "why": "Remove an unused Three.js dependency from the package manifest.",
-      "replace": "\n  }"
-    },
-    {
       "id": "cli-commande-update",
       "file": "brain",
       "pattern": "  \\*\\)\\n    echo \"Usage : brain <status\\|doctor\\|audit\\|review\\|recall\\|next\\|coherence\\|utility\\|credit\\|embed\\|push\\|metrics\\|selftest\\|backup>\"",
@@ -71,27 +57,6 @@
       "replace": "sys.path.insert(0, os.path.join(CODE, \"hooks\"))",
       "expect": 1,
       "why": "Import test hooks from the engine code, not from the user data trunk."
-    },
-    {
-      "id": "ilot-battement-tronc",
-      "file": "capsule/ilot.js",
-      "pattern": "const ALIVE = path\\.join\\(__dirname, '\\.\\.', 'state', 'capsule-alive'\\);",
-      "replace": "// The capsule runs in the engine; the hook reads state from the user trunk.\nconst ALIVE = path.join(os.homedir(), '.greymatter', 'trunk', 'state', 'capsule-alive');",
-      "why": "The capsule lives in the engine but its heartbeat state lives in the user trunk."
-    },
-    {
-      "id": "capsule-dependance-morte-lock",
-      "file": "capsule/package-lock.json",
-      "pattern": ",\\n        \"three\": \"\\^0\\.160\\.0\"\\n      \\},\\n",
-      "replace": "\n      },\n",
-      "why": "Keep the package lock aligned when the unused Three.js package is removed."
-    },
-    {
-      "id": "capsule-dependance-morte-lock-entree",
-      "file": "capsule/package-lock.json",
-      "pattern": "    \"node_modules/three\": \\{\\n      \"version\": \"0\\.160\\.0\",\\n      \"resolved\": \"https://registry\\.npmjs\\.org/three/-/three-0\\.160\\.0\\.tgz\",\\n      \"integrity\": \"sha512-[^\"]+\",\\n      \"license\": \"MIT\"\\n    \\},\\n",
-      "replace": "",
-      "why": "Remove the unused Three.js lock entry with its package declaration."
     }
   ],
   "replacements": [
@@ -144,17 +109,6 @@
       "why": "Preserve path components when translating a segmented Python trunk path."
     },
     {
-      "id": "tronc-chemin-js",
-      "files": [
-        "capsule/*.js",
-        "capsule/*.html"
-      ],
-      "pattern": "os\\.homedir\\(\\),\\s*'claude-brain'",
-      "replace": "os.homedir(), '.greymatter', 'trunk'",
-      "expect": 2,
-      "why": "Make capsule JavaScript point at the installed user trunk."
-    },
-    {
       "id": "banc-chemins-shell",
       "files": [
         "capsule/banc/*.sh"
@@ -203,7 +157,7 @@
       ],
       "pattern": "claude-brain/capsule/node_modules/electron",
       "replace": "greymatter/trunk/capsule/node_modules/electron",
-      "expect": 2,
+      "expect": 1,
       "why": "Find the installed capsule process without the private source path."
     },
     {
@@ -216,20 +170,6 @@
       "replace": "greymatter-capsule",
       "expect": 3,
       "why": "Use the public package name in capsule metadata."
-    },
-    {
-      "id": "compte-agents-perime",
-      "files": [
-        "capsule/*.html",
-        "agents/*.md"
-      ],
-      "pattern": "(?:LES 7 AGENTS|Guide des 7 agents du système \\(distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien\\))",
-      "why": "Update a historical agent count in copied capsule material.",
-      "replace_map": {
-        "LES 7 AGENTS": "LES 8 AGENTS",
-        "Guide des 7 agents du système (distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien)": "Guide des 8 agents du système (distillateur, jardinier, architecte, challenger, synthétiseur, archiviste, mécanicien, machiniste)"
-      },
-      "expect": 1
     },
     {
       "id": "home-ancien-compte",
@@ -507,26 +447,6 @@
     }
   ],
   "_regles_gelees": [
-    {
-      "id": "capsule-watcher-vise-le-tronc",
-      "file": "capsule/main.js",
-      "pattern": "const fs = require\\('fs'\\);\\nconst path = require\\('path'\\);",
-      "why": "main.js visait state/status.json via __dirname → sous symlink, il surveillait le state du MOTEUR, jamais celui de l'utilisateur. La capsule se serait animée (index.html, lui, dérivait bien de homedir) mais ne se serait JAMAIS re-montrée quand un agent se réveille. Incohérence interne au même composant.",
-      "replace": "const fs = require('fs');\nconst path = require('path');\nconst os = require('os');",
-      "_gelee_le": "2026-07-30",
-      "_gelee_pourquoi": "capsule/main.js est EXCLU de sync.sh tant que la refonte V2 (avatar Lottie) est en chantier dans le Brain vivant. Le fichier du paquet porte donc DÉJÀ le résultat de cette règle, en dur. La laisser active la rejouait sur un fichier déjà généralisé : elle réinsérait `const os = require('os');` une SECONDE fois — doublon de `const` = SyntaxError, la capsule V1 du paquet ne démarrait plus. Vérifié par exécution.",
-      "_a_reactiver_quand": "la V2 est portée et main.js repasse dans sync.sh (voir sync.sh §4)"
-    },
-    {
-      "id": "capsule-watcher-chemin",
-      "file": "capsule/main.js",
-      "pattern": "const STATUS = path\\.join\\(__dirname, '\\.\\.', 'state', 'status\\.json'\\);",
-      "why": "Même correction, côté chemin : le tronc dérive de $HOME, exactement comme le fait déjà index.html.",
-      "replace": "// DÉRIVÉ DE $HOME, jamais de __dirname : le moteur peut vivre ailleurs que le\n// tronc (installation par symlinks), et c'est le state de l'UTILISATEUR qu'on\n// surveille. Même chemin que celui utilisé par index.html.\nconst STATUS = path.join(os.homedir(), 'claude-brain', 'state', 'status.json');",
-      "_gelee_le": "2026-07-30",
-      "_gelee_pourquoi": "capsule/main.js est EXCLU de sync.sh tant que la refonte V2 (avatar Lottie) est en chantier dans le Brain vivant. Le fichier du paquet porte donc DÉJÀ le résultat de cette règle, en dur. La laisser active la rejouait sur un fichier déjà généralisé : elle réinsérait `const os = require('os');` une SECONDE fois — doublon de `const` = SyntaxError, la capsule V1 du paquet ne démarrait plus. Vérifié par exécution.",
-      "_a_reactiver_quand": "la V2 est portée et main.js repasse dans sync.sh (voir sync.sh §4)"
-    },
     {
       "id": "decisions-de-design",
       "files": [
