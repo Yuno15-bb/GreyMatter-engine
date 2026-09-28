@@ -225,7 +225,7 @@ asks the harder question: does the binary read the state the hooks just wrote.
 
 ```bash
 CAP="$T/.greymatter/engine/capsule/macos/.build/release/Capsule"
-export CAPSULE_BRAIN=$T/.greymatter/trunk   # the pill finds its home with the system call, which ignores HOME
+export CAPSULE_BRAIN=$T/.greymatter/trunk   # names the test trunk outright; the pill would also find it from HOME
 HOME=$T python3 $T/.greymatter/trunk/hooks/brain_status.py busy distilling "test"
 HOME=$T "$CAP" --check
 HOME=$T python3 $T/.greymatter/trunk/hooks/brain_status.py idle
@@ -234,8 +234,8 @@ HOME=$T "$CAP" --check
 
 **Expected**: one JSON line each time. The first says `"state": "distilling"`
 with `"detail": "test"` and `"trunk"` pointing under `$T`; the second says
-`"idle"` with an empty detail. A `"trunk"` under your real home means
-`CAPSULE_BRAIN` was not set, and the check read your own trunk, not the test one. That
+`"idle"` with an empty detail. A `"trunk"` under your real home means the
+check read your own trunk, not the test one: stop there. That
 difference is what makes `--check` a sensor rather than a constant. No binary at
 that path means the build was skipped: the installer said so and named
 `xcode-select --install`.
