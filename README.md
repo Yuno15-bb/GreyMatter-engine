@@ -11,6 +11,10 @@ it. From any project, and without leaving your machine.**
 
 <!-- The map visual is to be filmed from the native GreyMatter.app for v2.2 (the Electron-era planet capture was removed). -->
 
+<p align="center">
+  <img src="docs/media/recall.png" alt="Terminal: brain demo places three notes, brain recall ranks them by relevance, brain demo --remove takes them away" width="760">
+</p>
+
 Your agent is brilliant within a session and amnesic between two. Solve
 something on Monday, explain it again on Thursday. GreyMatter is the part that
 remembers.
@@ -18,16 +22,27 @@ remembers.
 The more work piles up, the more useful the tree gets — the opposite of a
 conversation history, which only gets longer.
 
+**Contents**
+
+- [What it does](#what-it-does)
+- [Install](#install)
+- [How it works](#how-it-works) — from a session to a note, and the one idea holding it together
+- [Commands](#commands)
+- [The capsule and the map](#the-capsule-and-the-map)
+- [How well it recalls](#how-well-it-recalls) — a synthetic bench, a real trunk, a public benchmark
+- [What it does not do](#what-it-does-not-do)
+- [Compatibility](#compatibility) · [Language](#language) · [Going further](#going-further) · [Licence](#licence)
+
 ---
 
-## What it actually does
+## What it does
 
 **The memory itself** — this is the product, and it is all you need:
 
 - **A trunk.** Your lessons, projects and method, as markdown on your machine, versioned with git.
 - **Recall on request.** Ask — `brain recall "…"`, `?brain` in a message, or a plain
   "any notes on…" — and the two or three notes that match are handed to your agent.
-  `BRAIN_RECALL_AUTO=1` makes it fire on every prompt instead ([why it no longer does](#and-on-a-real-trunk-what-does-it-change)).
+  `BRAIN_RECALL_AUTO=1` makes it fire on every prompt instead ([why it no longer does](#on-a-real-trunk)).
 - **It does not go round in circles.** Notes are ranked by relevance alone, and one slot
   in three is kept for notes the search rarely surfaces, so the same few do not win forever.
 - **It knows its own age.** Notes never re-checked enter a review queue, dated from the git history.
@@ -42,85 +57,6 @@ conversation history, which only gets longer.
 
 - **A capsule.** A pill in your menu bar showing the agents at work, live.
 - **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
-
-<p align="center">
-  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 2 ms at 1,000 notes and 15 ms at 5,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the menu bar pill, the map app and the brain CLI." width="880">
-</p>
-
-### How good is the recall?
-
-Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
-where finding the answer means picking one note out of ~120 that share its
-subject and most of its vocabulary:
-
-| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search (median) |
-|---|---|---|---|---|---|
-| 100 | 0.94 | 0.98 | 0.96 | 35% | 0.2 ms |
-| 1000 | 0.79 | 0.93 | 0.86 | 24% | 2.4 ms |
-| 5000 | 0.46 | 0.84 | 0.64 | 39% | 15 ms |
-
-Measured 2026-09-27 on an Apple-silicon Mac. "Per search" is the search
-alone; a fresh `brain recall` also loads its cached index first, about
-0.1 s at 1,000 notes.
-
-It holds to about a thousand notes and degrades sharply past that. Published
-here because a memory tool that will not say how well it remembers is asking
-for trust it has not earned. The CI enforces these numbers as thresholds.
-
-**This bench does NOT measure everything.** Its corpus is synthetic, so its
-vocabulary is coherent by construction: it says nothing about morphology
-("ranger" versus "rangement") nor about the French/English mix, which are two
-real causes of an unfindable note. Its numbers did not move when those two
-points were fixed — that is a limit of the bench, not the absence of an effect.
-
-### And on a real trunk, what does it change?
-
-Measured on 2026-08-12 against the author's living Brain (312 notes), 10
-questions about real facts of the author's work, 50 runs isolated from one another:
-
-| what the assistant has | right answers | tokens per exchange |
-|---|---|---|
-| nothing | **0/10** | 178 k |
-| the trunk + the map, **without** recall | **8/10** | 264 k |
-| **the full system**, recall on every prompt | **10/10** | **168 k** |
-
-When the question is about the trunk, recall does not cost context, it **saves**
-it: with no suggestion the assistant has to search, and searching burns turns.
-The detail of the protocol — and the three campaigns that had to be thrown away
-before an honest measurement came out — lives in the author's trunk, not here.
-
-**Why recall now waits to be asked.** Most prompts are not questions about the
-trunk. Over the following month of daily use, 3,256 notes were offered on their
-own and 139 of them were opened afterwards — 4.27 %. The suggestion block cost
-its noise on every message for a service rendered about four times in a hundred,
-so since 2026-09-09 it fires only when you ask. The search itself did not
-change: the numbers above still hold whenever you do.
-
-### And on a public benchmark?
-
-[LongMemEval](https://github.com/xiaowu0162/LongMemEval) asks 500 questions,
-each hidden in a long history of past conversations: about 48 of them per
-question in its S set, about 475 in its M set. We measured **retrieval only** —
-is a conversation holding the answer among the five handed back
-(recall-any@5)? — not whether an agent then answers correctly. Measured
-2026-09-26, same questions and same scoring for every system:
-
-| system | S (~48 conversations) | M (~475 conversations) |
-|---|---|---|
-| **GreyMatter**, default search | **96.8 %** | **86.4 %** |
-| a plain BM25, nothing else | 96.8 % | 86.8 % |
-| claude-mem's search alone (Chroma, one message per entry) | 96.4 % | 83.0 % |
-| agentmemory hybrid, its own code at `bcf4f0d` | 95.6 % | 78.6 % |
-| GreyMatter, semantic mode | 88.2 % | 61.0 % |
-
-**Read it for what it says.** GreyMatter's default search ties a plain BM25 —
-the textbook keyword ranking — on both sets (no significant difference:
-p = 1.0 on S, p = 0.77 on M). It is ahead of claude-mem's search on M
-(p = 0.046), and only its search: claude-mem's full memory was not tested.
-agentmemory advertises 95.2 %; we measured 95.6 % on S and 78.6 % on M. So the
-bench shows GreyMatter is not behind — not that it is better than the simplest
-baseline. Its semantic mode (`brain recall --semantic`, static embeddings) loses on
-both sets; it stays off unless you ask for it.
 
 ## Install
 
@@ -149,15 +85,6 @@ then run ./install.sh and show me the final verification output.
 
 Or by hand: `git clone … && cd greymatter && ./install.sh`
 
-> **Upgrading from v2.0.x?** `brain update` carries you across the rename to
-> GreyMatter on its own; [docs/UPGRADING.md](docs/UPGRADING.md) says what moves
-> and how to roll back.
->
-> **Upgrading from v1.28.1 or earlier?** Read
-> [docs/UPGRADING.md](docs/UPGRADING.md) first — a one-time warning about
-> uncommitted changes in your engine checkout, the renamed agents, and recall
-> on request. Your notes are not affected.
-
 **The memory and nothing else** — no menu bar pill, no map app, no
 background job:
 
@@ -171,7 +98,28 @@ prints the one line to add to your shell profile.
 
 Details, prerequisites and uninstall: **[INSTALL.md](INSTALL.md)**.
 
-## The idea holding it all together
+<details>
+<summary><b>Upgrading from an older version</b></summary>
+
+**From v2.0.x?** `brain update` carries you across the rename to GreyMatter on
+its own; [docs/UPGRADING.md](docs/UPGRADING.md) says what moves and how to roll
+back.
+
+**From v1.28.1 or earlier?** Read [docs/UPGRADING.md](docs/UPGRADING.md) first —
+a one-time warning about uncommitted changes in your engine checkout, the
+renamed agents, and recall on request. Your notes are not affected.
+
+</details>
+
+## How it works
+
+### From a session to a note
+
+<p align="center">
+  <img src="docs/media/architecture.png" alt="How a session becomes memory, top to bottom. You work with your agent, in any project. When you ask — brain recall, ?brain, or a plain request — the few notes that match are handed to your agent: a lexical search, 2 ms at 1,000 notes and 15 ms at 5,000. During the session, what is written and read is noted. At session end, the session is archived and the agents wake up. Every time, the distiller turns the session into notes and the gardener files and links them; the gardener runs only if the distiller succeeded. Sometimes, at most one of the challenger, architect, archivist or mechanic runs, only when its own sensor decides, never twice in 12 hours. Everything lands in your trunk — plain markdown on your disk, versioned with git — which feeds the next recall. Three ways to look at it: the menu bar pill, the map app and the brain CLI." width="880">
+</p>
+
+### The idea holding it all together
 
 ```
 ~/.greymatter/engine  ← link to the ACTIVE version under versions/. Code, replaceable, disposable.
@@ -185,34 +133,41 @@ Both live behind a leading dot, out of the way. Your notes should not: the
 install puts a **`GreyMatter` shortcut in your home folder**, tagged, so the one
 part that is yours is the one part you can see.
 
+<p align="center">
+  <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged GreyMatter folder, with an arrow pointing at it" width="900">
+</p>
+
 Since v2.1.0 the engine carries one name everywhere — folder, commands, launchd
 jobs, plugin. An older install is moved over by its own updater: the root moves
 once, the old path stays behind as a link to it, and your notes are not
 rewritten. What changes and how to go back: [docs/UPGRADING.md](docs/UPGRADING.md).
 
-<p align="center">
-  <img src="docs/media/where-it-lands.png" alt="A home folder in Finder: the usual Applications, Desktop, Documents, Downloads, Movies, Music and Pictures — plus a red-tagged GreyMatter folder, with an arrow pointing at it" width="900">
-</p>
+## Commands
 
-## What it does not do
+Inside your agent, once the plugin is installed:
 
-- **It makes no request of its own.** No telemetry, no network call beyond
-  `git pull`. What travels is what your prompts already carry: when you ask
-  for recall, the hook adds the name, description and path of two or three
-  notes to that prompt, and agents you start read whole notes. Both go to your
-  model provider, like the rest of your message. [`SECURITY.md`](SECURITY.md)
-  spells out where the line is.
-- **It updates itself, and you should know that.** Every session start installs
-  the latest published version, in the background — so code from the repo runs
-  on your machine without you asking. The trunk is never touched, a version
-  whose selftest goes red is undone automatically, and
-  `brain update --auto-off` restores the old behaviour (report without
-  installing).
-- **It ships no knowledge.** Your tree starts empty, and the three skills it
-  does ship only drive the tool. See [`skills/README.md`](skills/README.md) for
-  the reasoning: we pass on the method, not somebody else's lived experience.
+```
+/greymatter:recall <subject>   what the trunk already knows about it
+/greymatter:distill            turn what was just worked out into a note
+/greymatter:doctor             check the wiring and the trunk
+```
 
-## The extensions
+And in any shell once `install.sh` has run — with the plugin alone, ask Claude to run them:
+
+```bash
+brain status          where the trunk stands
+brain recall <word>   search your memory
+brain doctor          tree health (dead links, inconsistencies)
+brain review          full audit of the trunk
+brain next            your resume points
+brain capsule         open the menu bar pill  (stop · status)
+brain selftest        verify the installation
+brain update          update the engine  (--check · --rollback)
+                      automatic every session: --auto-off / --auto-on
+brain version         installed version
+```
+
+## The capsule and the map
 
 This repository provides two desktop interfaces, and only these two, both native
 macOS programs built on your Mac by the installer — no Electron, no browser tab:
@@ -263,34 +218,113 @@ session has read, written and committed, and the lines being written right now.
 It is read-only: nothing you do in the map changes a note. It is rebuilt from
 your trunk on every launch, and quitting the app stops its local server.
 
-## Commands
+## How well it recalls
 
-Inside your agent, once the plugin is installed:
+Three measurements, from the most controlled to the most real. Each one says
+what it does not show.
 
-```
-/greymatter:recall <subject>   what the trunk already knows about it
-/greymatter:distill            turn what was just worked out into a note
-/greymatter:doctor             check the wiring and the trunk
-```
+### On a synthetic bench
 
-And in any shell once `install.sh` has run — with the plugin alone, ask Claude to run them:
+Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
+where finding the answer means picking one note out of ~120 that share its
+subject and most of its vocabulary:
 
-<p align="center">
-  <img src="docs/media/recall.png" alt="Terminal: brain demo places three notes, brain recall ranks them by relevance, brain demo --remove takes them away" width="820">
-</p>
+| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search (median) |
+|---|---|---|---|---|---|
+| 100 | 0.94 | 0.98 | 0.96 | 35% | 0.2 ms |
+| 1000 | 0.79 | 0.93 | 0.86 | 24% | 2.4 ms |
+| 5000 | 0.46 | 0.84 | 0.64 | 39% | 15 ms |
 
-```bash
-brain status          where the trunk stands
-brain recall <word>   search your memory
-brain doctor          tree health (dead links, inconsistencies)
-brain review          full audit of the trunk
-brain next            your resume points
-brain capsule         open the menu bar pill  (stop · status)
-brain selftest        verify the installation
-brain update          update the engine  (--check · --rollback)
-                      automatic every session: --auto-off / --auto-on
-brain version         installed version
-```
+Measured 2026-09-27 on an Apple-silicon Mac. "Per search" is the search
+alone; a fresh `brain recall` also loads its cached index first, about
+0.1 s at 1,000 notes.
+
+It holds to about a thousand notes and degrades sharply past that. Published
+here because a memory tool that will not say how well it remembers is asking
+for trust it has not earned. The CI enforces these numbers as thresholds.
+
+<details>
+<summary><b>This bench does NOT measure everything</b></summary>
+
+Its corpus is synthetic, so its vocabulary is coherent by construction: it says
+nothing about morphology ("ranger" versus "rangement") nor about the
+French/English mix, which are two real causes of an unfindable note. Its
+numbers did not move when those two points were fixed — that is a limit of the
+bench, not the absence of an effect.
+
+</details>
+
+### On a real trunk
+
+Measured on 2026-08-12 against the author's living Brain (312 notes), 10
+questions about real facts of the author's work, 50 runs isolated from one another:
+
+| what the assistant has | right answers | tokens per exchange |
+|---|---|---|
+| nothing | **0/10** | 178 k |
+| the trunk + the map, **without** recall | **8/10** | 264 k |
+| **the full system**, recall on every prompt | **10/10** | **168 k** |
+
+When the question is about the trunk, recall does not cost context, it **saves**
+it: with no suggestion the assistant has to search, and searching burns turns.
+The detail of the protocol — and the three campaigns that had to be thrown away
+before an honest measurement came out — lives in the author's trunk, not here.
+
+<details>
+<summary><b>Why recall now waits to be asked</b></summary>
+
+Most prompts are not questions about the trunk. Over the following month of
+daily use, 3,256 notes were offered on their own and 139 of them were opened
+afterwards — 4.27 %. The suggestion block cost its noise on every message for a
+service rendered about four times in a hundred, so since 2026-09-09 it fires
+only when you ask. The search itself did not change: the numbers above still
+hold whenever you do.
+
+</details>
+
+### On a public benchmark
+
+[LongMemEval](https://github.com/xiaowu0162/LongMemEval) asks 500 questions,
+each hidden in a long history of past conversations: about 48 of them per
+question in its S set, about 475 in its M set. We measured **retrieval only** —
+is a conversation holding the answer among the five handed back
+(recall-any@5)? — not whether an agent then answers correctly. Measured
+2026-09-26, same questions and same scoring for every system:
+
+| system | S (~48 conversations) | M (~475 conversations) |
+|---|---|---|
+| **GreyMatter**, default search | **96.8 %** | **86.4 %** |
+| a plain BM25, nothing else | 96.8 % | 86.8 % |
+| claude-mem's search alone (Chroma, one message per entry) | 96.4 % | 83.0 % |
+| agentmemory hybrid, its own code at `bcf4f0d` | 95.6 % | 78.6 % |
+| GreyMatter, semantic mode | 88.2 % | 61.0 % |
+
+**Read it for what it says.** GreyMatter's default search ties a plain BM25 —
+the textbook keyword ranking — on both sets (no significant difference:
+p = 1.0 on S, p = 0.77 on M). It is ahead of claude-mem's search on M
+(p = 0.046), and only its search: claude-mem's full memory was not tested.
+agentmemory advertises 95.2 %; we measured 95.6 % on S and 78.6 % on M. So the
+bench shows GreyMatter is not behind — not that it is better than the simplest
+baseline. Its semantic mode (`brain recall --semantic`, static embeddings) loses on
+both sets; it stays off unless you ask for it.
+
+## What it does not do
+
+- **It makes no request of its own.** No telemetry, no network call beyond
+  `git pull`. What travels is what your prompts already carry: when you ask
+  for recall, the hook adds the name, description and path of two or three
+  notes to that prompt, and agents you start read whole notes. Both go to your
+  model provider, like the rest of your message. [`SECURITY.md`](SECURITY.md)
+  spells out where the line is.
+- **It updates itself, and you should know that.** Every session start installs
+  the latest published version, in the background — so code from the repo runs
+  on your machine without you asking. The trunk is never touched, a version
+  whose selftest goes red is undone automatically, and
+  `brain update --auto-off` restores the old behaviour (report without
+  installing).
+- **It ships no knowledge.** Your tree starts empty, and the three skills it
+  does ship only drive the tool. See [`skills/README.md`](skills/README.md) for
+  the reasoning: we pass on the method, not somebody else's lived experience.
 
 ## Compatibility
 
@@ -303,9 +337,11 @@ installs and works **on demand** — trunk, agents, `brain`, map, capsule — bu
 without the closed loop. The installer detects this and says so, rather than
 pretending otherwise.
 
-**Linux is not supported yet, and the gap is smaller than it looks.** Reading
-the code rather than guessing: macOS is assumed in exactly four places — the
-platform check in `install.sh`, the `launchd` job templates, the Desktop app
+<details>
+<summary><b>Linux is not supported yet, and the gap is smaller than it looks</b></summary>
+
+Reading the code rather than guessing: macOS is assumed in exactly four places —
+the platform check in `install.sh`, the `launchd` job templates, the Desktop app
 bundle, and the Finder `xattr` tag. Claude Code is assumed in one
 file, `merge_settings.py`. Everything else — the trunk, recall, the agents, the
 `brain` CLI, the hooks themselves — is portable Python and shell already.
@@ -315,6 +351,8 @@ order it will be done in: **`systemd` units in place of `launchd`, a `.desktop`
 entry in place of the `.command` file, no Finder tag, and `--core-only` as the
 default shape on Linux.** No date attached to that; saying which four places
 have to change is more use than a promise.
+
+</details>
 
 ## Language
 
@@ -327,7 +365,7 @@ Recall understands requests in French as well as English. A single setting
 that switches every surface to French, without a second install, is planned
 and not built.
 
-## For the curious
+## Going further
 
 - [`docs/design-doc.md`](docs/design-doc.md) — the problem, the rejected
   alternatives, the traps hit along the way and how each was closed.
