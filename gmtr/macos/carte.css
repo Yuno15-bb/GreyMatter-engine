@@ -1,0 +1,43 @@
+/* The MAP WINDOW costume: laid by GreyMatter.app over /carte/, never saved
+   into it. Ported from the author's desktop app of 24/09 (planet-v2/app/carte.css).
+   gmtr-carte.css paints an OPAQUE sky, which a browser needs (no window behind
+   it). In the app the window itself is glass (.hudWindow), so the sky becomes a
+   tint, the plates lighten, and top/bottom veils keep the header readable. */
+html[data-app="carte"]{
+  background:
+    radial-gradient(150% 44% at 50% -6%, rgba(255,150,86,.14) 0%, rgba(198,96,58,.06) 38%, rgba(0,0,0,0) 72%),
+    radial-gradient(56% 52% at 45% 50%, rgba(4,6,12,.76) 0%, rgba(4,6,12,.44) 54%, rgba(4,6,12,0) 88%),
+    linear-gradient(180deg, rgba(42,28,24,.10) 0%, rgba(24,30,50,.13) 44%, rgba(8,12,22,.18) 100%)
+    !important; }
+html[data-app="carte"] .g-plaque{
+  background:
+    radial-gradient(135% 105% at 0% 0%, rgba(168,180,214,.14), rgba(154,164,196,0) 62%),
+    linear-gradient(180deg, rgba(18,20,26,.16), rgba(8,10,14,.30))
+    !important;
+  box-shadow:inset 0 0 0 1px rgba(226,232,240,.16),
+             inset 0 1px 0 0 rgba(226,232,240,.38),
+             0 22px 64px -26px rgba(0,0,0,.80) !important; }
+@media (prefers-reduced-transparency:reduce){
+  html[data-app="carte"] .g-plaque{
+    background:radial-gradient(120% 90% at 50% 0%, #10141a 0%, #080a0d 55%, #05070a 100%) !important; } }
+html[data-app="carte"]{ --g-flou:64px; }
+html[data-app="carte"] body::before,
+html[data-app="carte"] body::after{
+  content:''; position:fixed; left:0; right:0; height:96px; pointer-events:none; z-index:14; }
+html[data-app="carte"] body::before{
+  top:0; background:linear-gradient(180deg, rgba(4,6,12,.52), rgba(4,6,12,0)); }
+html[data-app="carte"] body::after{
+  bottom:0; background:linear-gradient(0deg, rgba(4,6,12,.52), rgba(4,6,12,0)); }
+html[data-app="carte"] .g-entete,
+html[data-app="carte"] .g-pied{ text-shadow:0 1px 3px rgba(0,0,0,.85); }
+html[data-app="carte"] .g-logo{ filter:drop-shadow(0 1px 3px rgba(0,0,0,.85)); }
+html[data-app="carte"] .g-entete{ top:40px; }
+html[data-app="carte"] .g-entete{ -webkit-app-region:drag; }
+html[data-app="carte"] .g-entete::before{ content:''; position:absolute; left:-32px; right:-32px; top:-40px; bottom:-8px;
+  -webkit-app-region:drag; z-index:-1; }
+html[data-app="carte"] .g-entete .actionnable,
+html[data-app="carte"] .g-entete input{ -webkit-app-region:no-drag; }
+html[data-app="carte"] .g-resultats.accroche.g-plaque{
+  background:radial-gradient(120% 90% at 50% 0%, #10141a 0%, #080a0d 55%, #05070a 100%) !important;
+  box-shadow:inset 0 0 0 1px rgba(242,242,238,.14), inset 0 1px 0 0 var(--actif),
+             0 24px 60px -20px rgba(0,0,0,.9) !important; }

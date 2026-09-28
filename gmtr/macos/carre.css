@@ -1,0 +1,62 @@
+/* The START SQUARE costume: laid by GreyMatter.app over the trunk page ("/"),
+   never saved into it, so the same page stays intact for a browser.
+   Ported from the author's desktop app of 24/09 (planet-v2/app/carre.css).
+   The window is 320 x 160 pt. The blur is NOT CSS: backdrop-filter paints
+   nothing in a transparent window. It comes from the window's own material
+   (NSVisualEffectView, .hudWindow); this sheet only lays the tint over it. */
+html[data-app="carre"], html[data-app="carre"] body{
+  background:transparent !important; overflow:hidden; }
+html[data-app="carre"] body{ position:relative; width:100vw; height:100vh;
+  -webkit-app-region:drag; }
+html[data-app="carre"] body::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0) 120px),
+    linear-gradient(180deg, rgba(6,8,11,.46), rgba(6,8,11,.62));
+  box-shadow:inset 0 0 0 1px rgba(242,242,238,.18),
+             inset 0 1px 0 0 rgba(242,242,238,.14); }
+@media (prefers-reduced-transparency:reduce){
+  html[data-app="carre"] body::before{
+    background:radial-gradient(120% 90% at 50% 0%, #10141a 0%, #080a0d 55%, #05070a 100%); } }
+html[data-app="carre"] .scene,
+html[data-app="carre"] .voile,
+html[data-app="carre"] .tube,
+html[data-app="carre"] .passer{ position:absolute; }
+html[data-app="carre"] .scene,
+html[data-app="carre"] .voile,
+html[data-app="carre"] .tube{ overflow:hidden; }
+html[data-app="carre"] .verrou,
+html[data-app="carre"] .valide{ background:transparent; }
+html[data-app="carre"]{ --logo-bloc:80; --logo-retro:1; }
+html[data-app="carre"] .logo-centre{ top:64px; transform:translate(-50%,-50%); }
+html[data-app="carre"] .logo-halo{ z-index:4; pointer-events:none; }
+html[data-app="carre"] .amorce-gauche{ display:none; }
+/* Access code: centred in the square, the field stays clickable. */
+html[data-app="carre"] .amorce-barre{ top:132px; width:200px; box-shadow:none; }
+html[data-app="carre"] .amorce-gauche{
+  left:50%; top:166px; width:260px; transform:translateX(-50%); text-align:center; }
+html[data-app="carre"] .etat-machine{ display:none; }
+html[data-app="carre"] .phases{ display:flex; gap:12px; justify-content:center;
+  margin-top:0; font-size:10px; line-height:14px; }
+html[data-app="carre"] .phases li{ padding:0 4px; }
+html[data-app="carre"] .flux-bloc{ display:none; }
+html[data-app="carre"] .flux-jauge{ font-size:8px; line-height:11px; height:11px; opacity:.75; }
+html[data-app="carre"] .flux{ font-size:8px; line-height:11px;
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 34%, #000 86%, transparent);
+  mask-image:linear-gradient(to bottom, transparent, #000 34%, #000 86%, transparent); }
+html[data-app="carre"] .flux .ligne{ height:11px; }
+html[data-app="carre"] .verrou{ -webkit-app-region:no-drag; }
+html[data-app="carre"] .verrou-titre{ top:44px; font-size:11px; }
+html[data-app="carre"] .glyphes{ top:70px; }
+html[data-app="carre"] .code-saisie{ top:70px; -webkit-app-region:no-drag; }
+html[data-app="carre"] .verrou-message{ top:102px; font-size:9px; }
+html[data-app="carre"] .attente{ top:99px; font-size:9px; }
+html[data-app="carre"] .attente.visible ~ .verrou-message{ visibility:hidden; }
+html[data-app="carre"] .coin-hd{ right:34px; top:14px; font-size:8px; }
+html[data-app="carre"] .coin-bg{ left:34px; bottom:14px; font-size:8px; }
+html[data-app="carre"] .verrou .croix{ width:12px; height:12px; }
+html[data-app="carre"] .verrou .c-hg{ left:12px; top:12px; }
+html[data-app="carre"] .verrou .c-hd{ right:12px; top:12px; }
+html[data-app="carre"] .verrou .c-bg{ left:12px; bottom:12px; }
+html[data-app="carre"] .verrou .c-bd{ right:12px; bottom:12px; }
+html[data-app="carre"] .passer{ display:none !important; }
