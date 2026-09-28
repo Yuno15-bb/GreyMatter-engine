@@ -740,9 +740,8 @@ fi
 # A bundle is plain files: it works on a bare machine, shows up in the Dock while
 # the planet is serving, and quitting it stops the server.
 #
-# The icon itself: `planet/planete.icns`, generated from the planet's OWN colours
-# (#07070b ground, #5ad7e6 accent) — see tools/icone-planete.py in the author's
-# trunk, which redraws it with the standard library alone.
+# The icon itself: `gmtr/macos/GreyMatter.icns`, the GMTR mark of 22/09 (the
+# author's desktop app icon), which replaced the planet icon with the map.
 step "Planet launcher (Desktop)"
 APP="$HOME/Desktop/GreyMatter.app"
 OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
@@ -783,7 +782,7 @@ elif [ -d "$HOME/Desktop" ]; then
   <key>CFBundleDisplayName</key><string>GreyMatter</string>
   <key>CFBundleIdentifier</key><string>org.greymatter.planet</string>
   <key>CFBundleExecutable</key><string>planet</string>
-  <key>CFBundleIconFile</key><string>planete</string>
+  <key>CFBundleIconFile</key><string>GreyMatter</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
@@ -792,10 +791,10 @@ elif [ -d "$HOME/Desktop" ]; then
   <key>GMTRPort</key><string>8767</string>
 </dict></plist>
 PLIST
-    if [ -f "$ENGINE/planet/planete.icns" ]; then
-      cp "$ENGINE/planet/planete.icns" "$APP/Contents/Resources/planete.icns"
+    if [ -f "$ENGINE/gmtr/macos/GreyMatter.icns" ]; then
+      cp "$ENGINE/gmtr/macos/GreyMatter.icns" "$APP/Contents/Resources/GreyMatter.icns"
     else
-      warn "planete.icns missing — the launcher works, with the generic icon."
+      warn "GreyMatter.icns missing — the launcher works, with the generic icon."
     fi
     # Finder caches an app's icon by path+mtime. Without this touch, a rebuilt
     # bundle keeps showing the previous icon until the next log-out.
