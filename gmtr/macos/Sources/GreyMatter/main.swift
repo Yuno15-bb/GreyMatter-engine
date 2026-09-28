@@ -18,6 +18,7 @@ let info = Bundle.main.infoDictionary ?? [:]
 let launchScript = info["GMTRLaunch"] as? String ?? ""
 let port = info["GMTRPort"] as? String ?? "8767"
 let home = URL(string: "http://127.0.0.1:\(port)/")!
+let env = ProcessInfo.processInfo.environment
 
 final class App: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
@@ -197,6 +198,38 @@ final class App: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDele
     func webView(_ w: WKWebView, didFinish nav: WKNavigation!) {
         w.isHidden = false
         waitLabel.isHidden = true
+        if let shot = env["GREYMATTER_SNAPSHOT"] { snapshot(w, to: shot) }
+    }
+
+    // TEST HOOK. A test cannot look at a window on the user's screen without
+    // stealing it, so GREYMATTER_SNAPSHOT=<file.png> makes the app write what
+    // this window draws, then quit (which also proves the server stops).
+    // GREYMATTER_TEST_CODE unlocks first, the way a user typing the code would.
+    var snapping = false
+    func snapshot(_ w: WKWebView, to path: String) {
+        guard !snapping else { return }
+        snapping = true
+        let after = Double(env["GREYMATTER_SNAPSHOT_AFTER"] ?? "") ?? 12
+        let shoot = {
+            DispatchQueue.main.asyncAfter(deadline: .now() + after) {
+                w.takeSnapshot(with: nil) { img, _ in
+                    if let img, let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
+                        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+                    }
+                    NSApp.terminate(nil)
+                }
+            }
+        }
+        guard let code = env["GREYMATTER_TEST_CODE"] else { return shoot() }
+        // Wait for the lock field after the boot intro, then type and press Enter.
+        let js = """
+            await new Promise(r => { const t = setInterval(() => { const c = document.getElementById('code');
+              if (c && c.offsetParent) { clearInterval(t); r(); } }, 200); });
+            const c = document.getElementById('code'); c.value = code;
+            c.dispatchEvent(new Event('input'));
+            c.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter'}));
+            """
+        w.callAsyncJavaScript(js, arguments: ["code": code], in: nil, in: .page) { _ in shoot() }
     }
 
     // Links that leave the map (a note's source on GitHub, a doc) open in the
@@ -221,4 +254,10 @@ let app = NSApplication.shared
 let delegate = App()
 app.delegate = delegate
 app.setActivationPolicy(.regular)
+// A plain `kill` (or a logout script) must stop the server too, not orphan it
+// on the port: route SIGTERM through the normal quit.
+signal(SIGTERM, SIG_IGN)
+let term = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+term.setEventHandler { NSApp.terminate(nil) }
+term.resume()
 app.run()
