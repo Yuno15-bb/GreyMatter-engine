@@ -93,11 +93,16 @@ private func lignesAgent(_ etat: String) -> [LigneCode] {
     guard let rel = SOURCE_AGENT[etat] else { return [] }
     if let c = cacheAgent[rel] { return c }
     let brut = (try? String(contentsOfFile: (TRONC as NSString).appendingPathComponent(rel), encoding: .utf8)) ?? ""
-    let l = brut.components(separatedBy: "\n")
-        .map { $0.replacingOccurrences(of: "\t", with: "  ").trimmingCharacters(in: .whitespaces) }
-        .filter { $0.count > 2 && $0.range(of: "^[-`#*_|>=:\\s]+$", options: .regularExpression) == nil }
-        .prefix(400).map { LigneCode(t: String($0.prefix(LARGEUR)), c: "") }
-    cacheAgent[rel] = Array(l)
+    // Split into typed steps: one chained expression timed out the type checker of the CI's
+    // older Swift ("unable to type-check this expression in reasonable time").
+    var l: [LigneCode] = []
+    for brute in brut.components(separatedBy: "\n") {
+        let s: String = brute.replacingOccurrences(of: "\t", with: "  ").trimmingCharacters(in: .whitespaces)
+        if s.count <= 2 || s.range(of: "^[-`#*_|>=:\\s]+$", options: .regularExpression) != nil { continue }
+        l.append(LigneCode(t: String(s.prefix(LARGEUR)), c: ""))
+        if l.count == 400 { break }
+    }
+    cacheAgent[rel] = l
     return cacheAgent[rel]!
 }
 
