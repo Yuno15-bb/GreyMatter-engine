@@ -40,14 +40,14 @@ which knows both names.
 The commands become `/greymatter:recall`, `/greymatter:distill`,
 `/greymatter:doctor`. What we measured with Claude Code 2.1.283:
 
-1. `claude plugin marketplace update c-brain` fetches v2.1.0 and renames the <!-- pre-rename -->
-   enabled plugin to `greymatter`, thanks to the `renames` map in the
-   marketplace manifest.
-2. The marketplace keeps the name you added it under, so the plugin is listed as
+1. `claude plugin marketplace update c-brain` fetches v2.1.0. The plugin list <!-- pre-rename -->
+   then marks yours "Renamed to greymatter", but it still runs v2.0.4, and
+   `claude plugin update c-brain@c-brain` answers "Plugin not found". <!-- pre-rename -->
+2. `claude plugin install greymatter@c-brain` is the step that moves you: it <!-- pre-rename -->
+   installs v2.1.0 and the old entry disappears from `enabledPlugins`. Run it.
+3. The marketplace keeps the name you added it under, so the plugin is listed as
    `greymatter@c-brain`. That is cosmetic. To get the new name there too, <!-- pre-rename -->
    remove the marketplace and add it again.
-3. `claude plugin list` kept showing the old version until
-   `claude plugin install greymatter@c-brain` was run once. Run it. <!-- pre-rename -->
 
 The plugin's first session moves `~/.c-brain` exactly as the installer does. <!-- pre-rename -->
 
