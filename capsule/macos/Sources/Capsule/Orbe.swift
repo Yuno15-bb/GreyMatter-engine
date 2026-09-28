@@ -182,6 +182,9 @@ private func perspective(fovDeg: Float, near: Float, far: Float) -> float4x4 {
     return float4x4(columns: (SIMD4(f, 0, 0, 0), SIMD4(0, f, 0, 0),
                               SIMD4(0, 0, far / (near - far), -1), SIMD4(0, 0, near * far / (near - far), 0)))
 }
+/// The orb's spin, in radians per second of its own time (× tempo). The panel's code block
+/// scrolls at this same angular speed (Pave.tourner): one number for both.
+let ROTATION_Y: Float = 0.24
 private func rotX(_ a: Float) -> float4x4 { float4x4(columns: ([1, 0, 0, 0], [0, cos(a), sin(a), 0], [0, -sin(a), cos(a), 0], [0, 0, 0, 1])) }
 private func rotY(_ a: Float) -> float4x4 { float4x4(columns: ([cos(a), 0, -sin(a), 0], [0, 1, 0, 0], [sin(a), 0, cos(a), 0], [0, 0, 0, 1])) }
 
@@ -201,7 +204,7 @@ final class Orbe: NSObject {
     private(set) var images = 0
     private var lien: CADisplayLink?, minuteur: Timer?
     private weak var vue: NSView?
-    /// Called on every frame with the real elapsed time (orbe.surImage in orbe.html): the panel's code block advances there.
+    /// Called on every frame with the orb's own elapsed time (real time × tempo): the panel's code block advances there.
     var surImage: ((Double) -> Void)?
 
     /// `cotePt`: the drawing area's size in points (34 for the pill, like the iframe).
@@ -302,11 +305,11 @@ final class Orbe: NSObject {
         let plafond = max(0.05, 3 / max(1, cadence))
         let reel = min(plafond, now - dernierT)
         let dt = tempo * reel; dernierT = now
-        surImage?(reel)
+        surImage?(dt)
         t += dt
         u.uPhase += Float(dt) * u.uSpeed
         majMix()
-        rotY_ += Float(dt) * 0.24; rotX_ += Float(dt) * 0.09
+        rotY_ += Float(dt) * ROTATION_Y; rotX_ += Float(dt) * 0.09
         dessiner()
     }
 
@@ -345,7 +348,7 @@ final class Orbe: NSObject {
         let pasN = Int(secondes * 60)
         for _ in 0..<pasN {                                      // advance time at 60 fps, without drawing
             let dt = 1.0 / 60 * tempo
-            t += dt; u.uPhase += Float(dt) * u.uSpeed; rotY_ += Float(dt) * 0.24; rotX_ += Float(dt) * 0.09
+            t += dt; u.uPhase += Float(dt) * u.uSpeed; rotY_ += Float(dt) * ROTATION_Y; rotX_ += Float(dt) * 0.09
         }
         let tx = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: cote, height: cote, mipmapped: false)
         tx.usage = [.renderTarget, .shaderRead]; tx.storageMode = .shared

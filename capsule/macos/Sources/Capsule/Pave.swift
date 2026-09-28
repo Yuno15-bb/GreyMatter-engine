@@ -31,6 +31,8 @@ let TRONC: String = {
 }()
 private let LARGEUR = 19, GARDE = 90, FENTES = 18
 private let RAYON_TXT: CGFloat = 37
+/// Angle between two lines on the text's arc (the 0.97π spread of tourner over FENTES − 1 gaps).
+private let PAS_ANGLE = Double.pi * 0.97 / Double(FENTES - 1)
 
 struct LigneCode: Hashable { let t: String; let c: String }
 
@@ -237,7 +239,10 @@ final class Pave {
     /// tournerPave: the latitudes slide, not the block. y = R·sin θ, the line narrows by cos θ.
     func tourner(_ dt: Double) {
         guard montre, !lignes.isEmpty else { return }
-        if !reduit { defilement += 1.25 * dt }
+        // Decided on 2026-09-28: the log scrolls at "exactly the same speed as the orb's
+        // rotation". Lines sit 0.97π / 17 rad apart on the text's arc, so ROTATION_Y rad/s is
+        // 0.24 / 0.179 ≈ 1.34 lines/s (was 1.25 lines/s, tuned by eye in orbe.html: 7 % slower).
+        if !reduit { defilement += dt * Double(ROTATION_Y) / PAS_ANGLE }
         let base = Int(defilement.rounded(.down)), frac = defilement - Double(base)
         CATransaction.begin(); CATransaction.setDisableActions(true)
         for k in 0..<FENTES {
