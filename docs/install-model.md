@@ -33,7 +33,7 @@ the installer **creates** what it owns, and owns nothing else.
 │   └── v1.29.0/
 ├── engine -> versions/v1.29.0 the active version. One symlink.
 ├── runtime/
-│   └── electron/              ~250 MB, installed once, shared by every version
+│   └── capsule-native-<hash>/ the menu bar pill's binary, keyed by its Swift sources
 ├── state/                     survives every switch
 │   ├── engine-managed         provenance: this installation created versions/
 │   ├── engine-dev             present ONLY in --dev mode, mutually exclusive
@@ -170,12 +170,13 @@ gating it would make a legitimate re-install refuse its own engine.
    version has no `.git`.
 4. Mirror the source into `source.git`, so updates have an origin that does not
    live in anybody's working repository.
-5. Link `runtime/electron` into `versions/<id>/capsule/node_modules`. Electron is
-   installed once, not once per version — otherwise each version would cost
-   250 MB instead of 11.6 MB. That single copy is also a single point of failure:
-   npm's own extraction can leave it truncated while exiting 0, so `install.sh`
-   checks the binary rather than the exit code and unpacks the downloaded archive
-   itself when it has to (`capsule_ok` / `capsule_repair`, held by
+5. Build the menu bar pill into `runtime/capsule-native-<hash>/` and link it as
+   `versions/<id>/capsule/macos/.build`. The version stays immutable: the build
+   happens outside it, and only the binary (under 1 MB) is kept. The key is the
+   hash of the Swift sources, so two versions with the same capsule code share
+   one binary. It needs Swift from Apple's Command Line Tools; without it the
+   installer skips only the pill and names `xcode-select --install`
+   (`build_capsule` in `greymatter/engine-lib.sh`, held by
    `tests/capsule_runtime.py`).
 6. Write `state/engine-managed`, remove `state/engine-dev`.
 7. Point `engine` at `versions/<id>`, then do everything the installer already
@@ -346,8 +347,8 @@ doctor will flag them, and a version switch will drop them. That is the correct
 behaviour for "immutable", and it is a real change from today. Named here, not
 fixed here.
 
-**Disk.** 11.6 MB per retained version, plus one shared 250 MB Electron runtime,
-plus the mirror. Three versions retained ≈ 35 MB of engine.
+**Disk.** 11.6 MB per retained version, plus the pill's binary (under 1 MB,
+shared by the versions whose capsule code is identical), plus the mirror. Three versions retained ≈ 35 MB of engine.
 
 ## What this buys
 

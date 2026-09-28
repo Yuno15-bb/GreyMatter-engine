@@ -63,8 +63,8 @@ In an isolated `HOME` first, then on a third-party machine:
 | Health | `brain selftest` **green**, `brain doctor` without error |
 | Hooks live | a test session triggers recall + archiving (proven by `state/`, not by the docs) |
 | Agents resolved | the 4 ship briefs listed by the CLI, covering 8 missions (the symlink trap is detected by the installer) |
-| Capsule | an Electron window animating on a change to `state/status.json` |
-| Planet | double-clicking the `.command` → a globe served on `localhost:8765` |
+| Capsule | the menu bar pill changes state on a change to `state/status.json` (`Capsule --check` reads the same state) |
+| Map | double-clicking `GreyMatter.app` on the Desktop → the access code, then the map in its own window |
 | Status line | visible in the CLI, same rendering as on the source machine |
 | Idempotence | a second `install.sh` run does zero damage, `settings.json` untouched |
 | **Updates** | a fix published here reaches the user **at their next session start**, without intervention, **without touching a single one of their notes** |
@@ -80,7 +80,7 @@ decide how to handle its history.
 - **No note content whatsoever.** The package ships an **empty** trunk. Nobody clones somebody else's brain.
 - **No skills** (`~/.claude/skills`) — too personal. Measured: **20 out of 20** contained personal markers (client, people, personal context). None was transferable. What ships instead: an **empty** `skills/` plus `skills/README.md`, the documentation of the **house standard** (nine requirements, forge-on-block, the skill/agent boundary, a template). We pass on the method that makes the skill, not the skill.
 - **No `desktop_sync.py`** and no matching plist: it backs up the author's Desktop to *their* GitHub — strictly personal, and destructive on somebody else's machine (`--delete` on an unknown destination).
-- **macOS only** (launchd, Electron, `open`). No Linux or Windows.
+- **macOS only** (launchd, `open`, and Swift for the pill and the map app). No Linux or Windows.
 - **No telemetry.** An update is a `git pull`; it reports **nothing** back.
 - **No forced migration of the source machine** to the new layout (see "Impact").
 - **Neither the cold corpus nor the embeddings venv**: optional, BM25 is enough by default.
@@ -249,7 +249,8 @@ greymatter/
                       #   update|demo|capsule|version)
   hooks/              # the hooks + .plist.template  (desktop-sync EXCLUDED)
   agents/             # 4 ship briefs, 8 missions (no client or project names)
-  capsule/            # Electron, without node_modules, without dead assets
+  capsule/            # the menu bar pill: Swift sources, built at install
+  gmtr/               # the map: server, pages, and the native app's sources (macos/)
   planet/             # index.html, launch.sh, media/  (graph.json EXCLUDED)
   companion/          # live change tracking
   statusline.py       # the CLI status line

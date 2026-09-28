@@ -219,78 +219,56 @@ verify the capsule could not be run, and nobody noticed because nobody ran it.
 What follows is the mechanism that was then built, and exercised.
 
 Day to day you do not need any of this: `brain capsule` opens it, `brain capsule
-stop` closes it, `brain capsule status` says whether one is running and from
-where. What follows is the VERIFICATION, which asks a harder question than "is
-there an orb": does the renderer hold the text the hooks just wrote.
+stop` closes it, `brain capsule status` says whether one is running, drawing and
+built. The pill is a native Swift binary, built by the installer; what follows
+asks the harder question: does the binary read the state the hooks just wrote.
 
 ```bash
-export GREYMATTER_PROBE_OUT=$T/probe.json      # opt-in; nothing is written without it
-HOME=$T "$ENGINE/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
-  "$ENGINE/capsule" --user-data-dir=$T/electron-data &
+CAP="$T/.greymatter/engine/capsule/macos/.build/release/Capsule"
+export CAPSULE_BRAIN=$T/.greymatter/trunk   # the pill finds its home with the system call, which ignores HOME
 HOME=$T python3 $T/.greymatter/trunk/hooks/brain_status.py busy distilling "test"
-sleep 6; cat $T/probe.json
+HOME=$T "$CAP" --check
+HOME=$T python3 $T/.greymatter/trunk/hooks/brain_status.py idle
+HOME=$T "$CAP" --check
 ```
 
-**Expected**: `state_text: "DISTILLING..."`, `detail_text: "test"`,
-`state_visible: true`, `renderer_ready: "complete"`, and `engine_dir` pointing
-under `~/.greymatter/versions/`. Set `idle` and both texts go empty with
-`state_visible: false` — measured, and that difference is what makes the probe a
-sensor rather than a constant.
+**Expected**: one JSON line each time. The first says `"state": "distilling"`
+with `"detail": "test"` and `"trunk"` pointing under `$T`; the second says
+`"idle"` with an empty detail. A `"trunk"` under your real home means
+`CAPSULE_BRAIN` was not set, and the check read your own trunk, not the test one. That
+difference is what makes `--check` a sensor rather than a constant. No binary at
+that path means the build was skipped: the installer said so and named
+`xcode-select --install`.
 
-> ⚠️ **This is the RENDERER's opinion, not the screen.** It says what the DOM
-> holds. A renderer can be certain it is drawing an orb nobody can see, and — the
-> trap this whole section exists for — a screenshot can show an orb no renderer
-> is drawing, because macOS keeps ghost layers. The two observables do not
-> substitute for one another. The pixel half is `tests/a1_capsule_pixel.sh`, and
-> it refuses to run until it has proved its own sensor can see.
-
-> `--user-data-dir` is mandatory, and what it actually does is move the LOCK.
-> Electron's single-instance lock lives in `userData`, so pointing that elsewhere
-> gives this probe its own lock and leaves a capsule you already have on screen
-> completely alone. Without the flag the second launch stands aside — since
-> 2026-09-19 it says so on stderr, naming the pid, the uptime and the directory
-> holding the lock, instead of the silent exit 0 that used to read as "broken".
-> ⚠️ The corollary, measured 2026-09-20: the lock is **not** machine-wide. Two
-> installations whose `capsule/package.json` carry different names have different
-> `userData`, so both run at once. `capsule/test_lock_speaks.sh` section D.
-
-> If Electron will not start, do **not** reach for `npm install` again — that is
-> the step that fails. Measured on 2026-08-17 (Node 26, npm 11): the archive
-> downloads intact, the postinstall runs, ends in one second, exits 0, and
-> extracts 20 directory entries before stopping at the first real file. `dist/`
-> stays at 256 KB with no `Frameworks/`, and `path.txt` never appears. The binary
-> then aborts with *Library not loaded: Electron Framework*.
-> `install.sh` now unpacks the downloaded archive itself and only reports success
-> after the binary answers `--version`. Re-running the installer is the remedy.
-
-**Do not stop at "the process started".** A half-extracted Electron starts too.
-The chain to check, in order:
-
-- [ ] `…/Electron.app/Contents/MacOS/Electron --version` answers;
-- [ ] `dist/` is ~250 MB and `Frameworks/Electron Framework.framework` exists;
-- [ ] `path.txt` reads exactly `Electron.app/Contents/MacOS/Electron`, **no newline**
-      (electron compares it with a strict `!==`; a stray `\n` makes every later
-      `npm install` redo the extraction that fails);
-- [ ] the process is alive;
-- [ ] the **renderer** loaded and built its DOM — not just the main process.
-
-> ⚠️ **Screenshots of the orb are not a reliable sensor.** macOS keeps ghost
-> layers of these transparent always-on-top windows: a capture taken after every
-> capsule process was killed still showed an orb. Verify the renderer's own DOM,
-> and keep the pixel check for a clean graphics session.
-
-## 6. Planet
+To see the orb itself without putting a window on screen:
 
 ```bash
-HOME=$T bash $T/.greymatter/trunk/planet/launch.sh 8799 &
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8799/
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8799/graph.json
+"$CAP" --image working $T/orb.png     # the orb alone, off screen, 272 px
 ```
 
-**Expected**: `200` twice. For visual proof, a headless capture (Chromium
-`--use-gl=angle --use-angle=swiftshader`) must show the globe, the starfield and
-the agent legend — **and no French text**. Two strings without accents once
-survived every grep and were only caught on a rendered screenshot.
+> ⚠️ **This is the binary's opinion, not the screen.** `--check` says what the
+> pill would show; it does not prove a pill is in your menu bar. That half is
+> `brain capsule status`, and your eyes.
+
+> Launching it twice does not add a second pill: a lock file
+> (`state/capsule-natif.lock`) keeps it to one, and drops by itself when the
+> process dies.
+
+## 6. Map
+
+```bash
+printf '%s' 'abcd1234' | HOME=$T python3 $T/.greymatter/trunk/gmtr/serveur.py --definir-code
+HOME=$T GMTR_NO_BROWSER=1 bash $T/.greymatter/trunk/gmtr/launch.sh 8799 &
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8799/carte/
+curl -s -c $T/jar -X POST -d '{"code":"abcd1234"}' http://127.0.0.1:8799/deverrouiller
+curl -s -b $T/jar -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8799/carte/graph.json
+```
+
+**Expected**: `302` first — the map is locked until the code is given — then
+`{"ok": true}`, then `200`. Setting the code first matters: without it the
+launcher asks for one in a dialog. For visual proof, open `GreyMatter.app` and
+read the map with your eyes — **no French text**. Two strings without accents
+once survived every grep and were only caught on a rendered screenshot.
 
 ## 7. Companion
 

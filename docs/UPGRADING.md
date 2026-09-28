@@ -91,7 +91,7 @@ git -C ~/.greymatter/engine status --short
 Read the output like this:
 
 - **Nothing at all** — your checkout is clean. Nothing to do; upgrade normally.
-- **A list of files** (`M hooks/something.py`, `M capsule/main.js`, …) — those are
+- **A list of files** (`M hooks/something.py`, `M capsule/macos/Sources/Capsule/main.swift`, …) — those are
   the changes at risk. Put them away first:
 
   ```bash

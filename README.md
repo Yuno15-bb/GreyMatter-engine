@@ -9,20 +9,7 @@
 distilled into a note, filed, linked, and handed back the moment you ask for
 it. From any project, and without leaving your machine.**
 
-<table width="100%">
-<tr>
-<td width="74%" align="center">
-  <img src="docs/media/planet.webp" alt="The knowledge map, turning: hundreds of notes arranged by resemblance in phosphor orange on black. The cursor lands on a note and a panel gives its region, title and summary; then the structure button is clicked and the map reorganises into the filing; then a family is clicked and opens as a sphere of its own" width="100%">
-</td>
-<td width="26%" align="center">
-  <img src="docs/media/capsule.webp" alt="The capsule: a glass orb sitting on the desktop, its material and hue changing as each agent works — idle, gardening, challenging, committing — with the lines being written scrolling inside it and the current task named underneath" width="168">
-</td>
-</tr>
-<tr>
-<td align="center"><sub><b>Map</b></sub></td>
-<td align="center"><sub><b>Agents</b></sub></td>
-</tr>
-</table>
+<!-- The map visual is to be filmed from the native GreyMatter.app for v2.2 (the Electron-era planet capture was removed). -->
 
 Your agent is brilliant within a session and amnesic between two. Solve
 something on Monday, explain it again on Thursday. GreyMatter is the part that
@@ -53,7 +40,7 @@ conversation history, which only gets longer.
 **And two ways to look at it**, which are extensions and install separately —
 `./install.sh --core-only` leaves both out:
 
-- **A capsule.** A glass orb on your desktop showing the agents at work, live.
+- **A capsule.** A pill in your menu bar showing the agents at work, live.
 - **A map.** Everything you wrote as one navigable 3D map, rebuilt on every launch.
 
 <p align="center">
@@ -148,11 +135,11 @@ That gives you the whole memory: the trunk, recall, the four agents,
 the `brain` command inside Claude Code (your own terminal gets it from the full
 install below), and three commands you can type — `/greymatter:recall`,
 `/greymatter:distill`, `/greymatter:doctor`. It creates `~/.greymatter/trunk` on your first session and
-tells you so. It does **not** set up the capsule, the planet or the scheduled
+tells you so. It does **not** set up the capsule, the map or the scheduled
 jobs — a plugin cannot install a background service, and pretending otherwise
 would leave you with a window that never opens.
 
-**The full install** — everything above, plus the capsule, the planet and the
+**The full install** — everything above, plus the capsule, the map and the
 unattended maintenance:
 
 ```
@@ -171,7 +158,7 @@ Or by hand: `git clone … && cd greymatter && ./install.sh`
 > uncommitted changes in your engine checkout, the renamed agents, and recall
 > on request. Your notes are not affected.
 
-**The memory and nothing else** — no Electron window, no 3D globe, no
+**The memory and nothing else** — no menu bar pill, no map app, no
 background job:
 
 ```bash
@@ -227,69 +214,54 @@ rewritten. What changes and how to go back: [docs/UPGRADING.md](docs/UPGRADING.m
 
 ## The extensions
 
-Neither of the two below is the product. They are how you *watch* it — pleasant,
+This repository provides two desktop interfaces, and only these two, both native
+macOS programs built on your Mac by the installer — no Electron, no browser tab:
+
+- **`GreyMatter.app`** on your Desktop opens the **map**, in a window of its own.
+- **The capsule** is a pill in the menu bar, showing the agents at work.
+
+Neither of the two is the product. They are how you *watch* it — pleasant,
 optional, and skipped entirely by `./install.sh --core-only`. The plugin install
 never sets them up at all, because a plugin cannot install a background service.
 
+Both need Swift, which comes with Apple's Command Line Tools
+(`xcode-select --install`). Without it, the installer skips only these two and
+says so; the memory works the same.
+
 ### The capsule
 
-A pane of living glass in the corner of your screen. It does not decorate: it
-carries three separate channels, and the first two read **without colour**.
+A small pill in the menu bar: an orb, the name of the agent at work and what it
+is doing — `NARCISSUS distilling`. The orb's colour and motion follow the kind
+of work, so it reads at a glance without the words.
 
-| Channel | What it says |
-|---|---|
-| **Fluid mechanic** | the nature of the work — swell, sweep, vortex, shards |
-| **Speed and amplitude** | how intense that step is |
-| **Hue** | the family of agent — four, not thirteen |
-
-Inside the sphere, the lines your agents are **actually writing** scroll by, bent
-around the curve. When nothing has been written for a while it falls back to the
-file the running agent executes — because an agent spends long minutes reading
-without writing, and that is exactly when you look at it.
-
-It clears itself off the desktop a minute after the work ends, and comes back on
-the first agent. Clicks pass straight through it, except on the sphere itself:
-grab it there and drop it wherever you like.
+Click it and a panel drops down: the task, how long it has run, its detail, and
+a track of the agents that took part, one station each, until the work is done.
 
 <p align="center">
-  <img src="docs/media/capsule.webp" alt="The capsule: a glass orb in the corner of the screen, cycling through every agent state — distilling, gardening, filing, correcting, mapping, architecting, challenging, archiving, synthesizing, auditing, committing, then back to idle" width="190">
+  <img src="docs/media/pill.webp" alt="The capsule: a pill in the macOS menu bar naming the agent at work, and the panel it drops — agent, elapsed time, activity and detail, the run's stations, and the live orb." width="520">
 </p>
-<p align="center"><sub>At its real size, one state per family — then back to rest.</sub></p>
 
-Rest costs about 5 % of one core, work about 9 %. The cost follows the frame
-rate, almost not the geometry — so the rate drops at rest and rises only during
-transitions, where a dropped frame would read as a stutter.
+It reflects **real** operations — the hooks write `state/status.json` on every
+action and the pill reads it; it invents nothing. `brain capsule` opens it,
+`brain capsule stop` closes it. How it is built and how to keep it off:
+[capsule/README.md](capsule/README.md).
 
-### The planet
+### The map
 
-Every note is a dot, every `[[link]]` an arc, rebuilt from your trunk on each
-launch — projects become cities, cross-cutting lessons become regions.
+`GreyMatter.app` opens with a short self-test, then asks for your access code:
+the map is locked behind one, chosen on first launch and stored only as a hash.
 
-What opens is the **meaning map**: every note placed next to what it resembles,
-folders ignored. That is where the map earns its place — two notes sitting
-against each other here while your filing keeps them apart is a link you have
-not written yet.
+What opens is every region of your trunk as a small cluster, with its number of
+notes. Click a region to enter it: its notes unfold into a sphere you turn with
+the mouse. Point at a note and its preview appears; click it and it opens in two
+layers — the plain-language section for you, the complete note for the model.
+The **graph** view spreads a region's links out to the others.
 
-The **filing** is the second view, not the first: a small globe in the left
-column holds it, one cluster per region. Aim a region in it and the same notes
-light up in the map. `V` brings the filing back full size when you want to walk
-it.
+Along the bottom, three panes: the regions and their share of notes, what this
+session has read, written and committed, and the lines being written right now.
 
-Point at a note: its links light up and the panel gives you the region, the
-title and the summary — nothing more, because hovering is how you sweep. Click
-it and the panel opens out: the plain-language section, the full note behind it,
-and the connections at the end.
-
-Points warm up as you read them and fade on their own; the ⚠ ✦ ↻ ▷ markers flag
-what was challenged, held as a conviction, left open, or is replayable in 3D.
-
-<p align="center">
-  <img src="docs/media/planet.webp" alt="The knowledge map, turning: hundreds of notes arranged by resemblance in phosphor orange on black. The cursor lands on a note and a panel gives its region, title and summary; then the structure button is clicked and the map reorganises into the filing; then a family is clicked and opens as a sphere of its own" width="100%">
-</p>
-<p align="center"><sub>A showcase trunk of 375 notes and 1 474 links — the real shape of a working trunk, with generated titles. Yours starts empty.</sub></p>
-
-**[Full planet documentation](docs/planet.md)** — the two views, reading a
-point, the markers, and what the map cannot do.
+It is read-only: nothing you do in the map changes a note. It is rebuilt from
+your trunk on every launch, and quitting the app stops its local server.
 
 ## Commands
 
@@ -313,7 +285,7 @@ brain recall <word>   search your memory
 brain doctor          tree health (dead links, inconsistencies)
 brain review          full audit of the trunk
 brain next            your resume points
-brain capsule         open the floating orb  (stop · status)
+brain capsule         open the menu bar pill  (stop · status)
 brain selftest        verify the installation
 brain update          update the engine  (--check · --rollback)
                       automatic every session: --auto-off / --auto-on
@@ -322,11 +294,12 @@ brain version         installed version
 
 ## Compatibility
 
-**macOS.** launchd, Electron and `open` are used.
+**macOS.** launchd and `open` are used; the capsule and the map app are built
+with Swift from Apple's Command Line Tools.
 
 **Claude Code** for the full experience: it is what fires the hooks (recall,
 archiving, autonomous maintenance, status line). With another CLI agent, GreyMatter
-installs and works **on demand** — trunk, agents, `brain`, planet, capsule — but
+installs and works **on demand** — trunk, agents, `brain`, map, capsule — but
 without the closed loop. The installer detects this and says so, rather than
 pretending otherwise.
 
@@ -346,7 +319,7 @@ have to change is more use than a promise.
 ## Language
 
 `main` is the product, and it is English: the docs, the installer, the CLI,
-the agents, the hooks and the capsule and planet interfaces. The French
+the agents, the hooks and the capsule and map interfaces. The French
 original lives on the **`fr` branch**, the staging copy the engine is extracted
 from; see [`docs/translation.md`](docs/translation.md).
 
