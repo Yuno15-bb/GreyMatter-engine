@@ -3,22 +3,31 @@
 // Terminal green, 18 slots, shadow rather than outline, fallback on the agent's own file.
 import AppKit
 
-let FLUX = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/companion/sessions")
+/// The home folder: `$HOME` first. NSHomeDirectory() reads the account database and ignores `$HOME`, so a
+/// bench run with HOME=<temp> would still read the real user's trunk (found by a peer session, 2026-09-28).
+let MAISON: String = ProcessInfo.processInfo.environment["HOME"].flatMap { $0.isEmpty ? nil : $0 } ?? NSHomeDirectory()
+let FLUX = (MAISON as NSString).appendingPathComponent(".claude/companion/sessions")
 /// The trunk: `CAPSULE_BRAIN` (set by hooks/auto_maintain.py and install.sh, which know the trunk), otherwise
-/// the folder holding `capsule/` found by walking up from the executable, otherwise ~/.greymatter/trunk.
+/// the folder holding `capsule/` found by walking up from the executable, otherwise $HOME/.greymatter/trunk.
 /// `CAPSULE_STATUT_HOME` (benches) comes first. Without this, an install whose trunk lives elsewhere
 /// read a status that does not exist.
 let TRONC: String = {
     let env = ProcessInfo.processInfo.environment, fm = FileManager.default
     if let h = env["CAPSULE_STATUT_HOME"] { return (h as NSString).appendingPathComponent("claude-brain") }
     if let b = env["CAPSULE_BRAIN"], !b.isEmpty { return b }
-    var u = Bundle.main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent()
-    while let d = u, d.path != "/" {
-        let parent = d.deletingLastPathComponent()
-        if d.lastPathComponent == "capsule", fm.fileExists(atPath: parent.appendingPathComponent("state").path) { return parent.path }
-        u = parent
+    // The path AS LAUNCHED first: an install runs <trunk>/capsule/macos/.build/release/Capsule, where
+    // `.build` is a link into ~/.greymatter/runtime. Resolved, that path leaves the trunk and the walk
+    // finds nothing. The resolved path stays second, for a pill run from a linked checkout.
+    let exe = Bundle.main.executableURL
+    for depart in [exe?.standardizedFileURL, exe?.resolvingSymlinksInPath()] {
+        var u = depart?.deletingLastPathComponent()
+        while let d = u, d.path != "/" {
+            let parent = d.deletingLastPathComponent()
+            if d.lastPathComponent == "capsule", fm.fileExists(atPath: parent.appendingPathComponent("state").path) { return parent.path }
+            u = parent
+        }
     }
-    return (NSHomeDirectory() as NSString).appendingPathComponent(".greymatter/trunk")
+    return (MAISON as NSString).appendingPathComponent(".greymatter/trunk")
 }()
 private let LARGEUR = 19, GARDE = 90, FENTES = 18
 private let RAYON_TXT: CGFloat = 37

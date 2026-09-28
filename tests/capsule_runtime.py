@@ -129,6 +129,30 @@ def main():
             if not ok:
                 trouble.append(f"--check on '{why}' answered {got or r.stderr.strip()[:200]!r}")
 
+        # ---------- 2b. it finds ITS trunk, never the user's ----------
+        # Found on 2026-09-28: with HOME=<temp> and no CAPSULE_BRAIN, the pill read the REAL
+        # ~/.greymatter/trunk. It resolved the `.build` link (into the runtime, outside any
+        # trunk) before walking up, then fell back on NSHomeDirectory(), which ignores $HOME.
+        # Any bench isolating a pill with HOME=<temp> was reading the author's live trunk.
+        home = os.path.join(base, "home")
+        t2 = os.path.join(home, ".greymatter", "trunk")
+        os.makedirs(os.path.join(t2, "state"))
+        os.makedirs(os.path.join(t2, "capsule", "macos"))
+        os.symlink(target, os.path.join(t2, "capsule", "macos", ".build"))
+        env = {k: v for k, v in os.environ.items() if k not in ("CAPSULE_BRAIN", "CAPSULE_STATUT_HOME")}
+        env["HOME"] = home
+        for why, exe in (("launched through the trunk's link", os.path.join(t2, "capsule", "macos", ".build", "release", "Capsule")),
+                         ("launched from the runtime, HOME=<temp>", os.path.join(target, "release", "Capsule"))):
+            r = subprocess.run([exe, "--check"], capture_output=True, text=True, timeout=20, env=env)
+            try:
+                got = json.loads(r.stdout.strip().splitlines()[-1]).get("trunk", "")
+            except Exception:
+                got = ""
+            ok = os.path.realpath(got or "/nonexistent") == os.path.realpath(t2)
+            print(f"  its trunk          {why:40} → {'yes' if ok else 'NO: ' + (got or r.stderr.strip()[:80])}")
+            if not ok:
+                trouble.append(f"{why}, the pill read {got or 'nothing'!r} instead of its own trunk")
+
         # ---------- 3. same sources: no rebuild ----------
         eng2 = fake_version(base, "v2")
         rc, dt = build(eng2, runtime, os.path.join(base, "build2.log"))
