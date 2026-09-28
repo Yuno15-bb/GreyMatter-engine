@@ -109,17 +109,35 @@ def main():
     # BEHIND is the failure; AHEAD is normal — publish.sh bumps the manifest and
     # commits it just before creating the tag, so between those two instants the
     # file is legitimately one version in front.
+    #
+    # What users receive is not always this checkout. When the marketplace entry
+    # pins a git ref (since 2026-09-28: the plugin stays on v2.1.1 while main
+    # carries the unfinished v2.2), Claude Code fetches THAT ref, so the version
+    # to check is the plugin.json inside it — main's own copy is served to no one.
+    served, where = plugin.get("version", "0"), "plugin.json"
+    entry = next((p for p in market.get("plugins", []) if p.get("name") == plugin.get("name")), {})
+    src = entry.get("source")
+    if isinstance(src, dict) and src.get("ref"):
+        ref = src["ref"]
+        try:
+            pinned = subprocess.run(["git", "-C", str(ROOT), "show", f"{ref}:.claude-plugin/plugin.json"],
+                                    capture_output=True, text=True, check=True).stdout
+            served, where = json.loads(pinned).get("version", "0"), f"the pinned ref {ref}"
+        except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError):
+            served = None
+            errors += fail(f"marketplace.json pins ref {ref!r}, which has no readable "
+                           f".claude-plugin/plugin.json here. Users would get an install error.")
     tag = latest_tag()
-    if tag:
+    if tag and served is not None:
         def parts(v):
             return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
-        if parts(plugin.get("version", "0")) < parts(tag):
-            errors += fail(f"plugin.json version is {plugin.get('version')!r}, BEHIND the latest "
+        if parts(served) < parts(tag):
+            errors += fail(f"{where} serves version {served!r}, BEHIND the latest "
                            f"tag {tag}. Users would never be offered the update.")
 
     if errors:
         return 1
-    print(f"✅ plugin manifests consistent — greymatter {plugin.get('version')}, "
+    print(f"✅ plugin manifests consistent — greymatter {served} served from {where}, "
           f"{len(set(PATH_RE.findall(HOOKS.read_text(encoding='utf-8'))))} hook script(s), "
           f"{len(skills)} skill(s) that can trigger")
     return 0

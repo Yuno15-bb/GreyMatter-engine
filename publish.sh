@@ -121,7 +121,25 @@ if new != raw:
 else:
     print("  plugin.json already at %s" % version)
 PYEOF
-  if ! git diff --quiet -- "$PLUGIN_MANIFEST"; then
+  # When the marketplace entry pins a ref, Claude Code serves THAT ref, not this
+  # branch — so a release must move the pin onto its own tag, or users stay on
+  # the old one. Only the English family: the pin names English tags.
+  MARKET_MANIFEST=".claude-plugin/marketplace.json"
+  case "$TAG" in *-fr) ;; *)
+    if [ -f "$MARKET_MANIFEST" ]; then
+      python3 - "$MARKET_MANIFEST" "$TAG" <<'PYEOF'
+import re, sys
+path, tag = sys.argv[1], sys.argv[2]
+raw = open(path, encoding="utf-8").read()
+new = re.sub(r'("ref"\s*:\s*)"[^"]*"', lambda m: m.group(1) + '"%s"' % tag, raw, count=1)
+if new != raw:
+    open(path, "w", encoding="utf-8").write(new)
+    print("  marketplace pin → %s" % tag)
+PYEOF
+      git add "$MARKET_MANIFEST"
+    fi ;;
+  esac
+  if ! git diff --quiet -- "$PLUGIN_MANIFEST" || ! git diff --cached --quiet -- "$MARKET_MANIFEST"; then
     git add "$PLUGIN_MANIFEST"
     git commit -q -m "Plugin manifest: version $TAG"
     echo "  committed the version bump"
