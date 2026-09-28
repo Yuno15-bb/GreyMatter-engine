@@ -34,5 +34,6 @@ fi
 
 python3 "$ENGINE/hooks/coactivation.py"
 python3 "$ENGINE/hooks/graph_export.py"
-( sleep 1; open "http://127.0.0.1:$PORT" ) &
+# GreyMatter.app shows the map in its own window and sets GMTR_NO_BROWSER.
+[ -n "${GMTR_NO_BROWSER:-}" ] || ( sleep 1; open "http://127.0.0.1:$PORT" ) &
 exec python3 "$DIR/serveur.py" "$PORT"

@@ -725,9 +725,13 @@ else
 fi
 
 # ─── 9. Planet launcher ─────────────────────────────────────────────
-# SINCE v2.2 IT OPENS GMTR, NOT THE OLD PLANET. Same bundle, same icon, same
-# place on the Desktop — only the target changed: gmtr/launch.sh serves the map
-# on localhost:8767 and opens it in the default browser. No Electron.
+# SINCE v2.2 IT OPENS GMTR, NOT THE OLD PLANET, IN ITS OWN WINDOW. Same bundle
+# id, same icon, same place on the Desktop. Its executable is now a native app
+# (gmtr/macos: AppKit + the system's WebKit, no Electron, no browser tab), built
+# here with `swift build`. It starts gmtr/launch.sh, shows the map when the
+# server answers on localhost:8767, and stops the server when it quits. Without
+# the Apple developer tools there is nothing to build with: the bundle then
+# carries the v2.1 shell script, which opens the map in the default browser.
 # AN APP BUNDLE, NOT A `.command`. Both are one double-click, but only a bundle
 # can carry an icon: a `.command` takes one solely through its resource fork,
 # which on macOS is set with `Rez` — from the Xcode Command Line Tools, exactly
@@ -755,9 +759,23 @@ elif [ -d "$HOME/Desktop" ]; then
   if [ "$DRY" != "1" ]; then
     # The GUI hands a launched app a minimal PATH — python3 and `open` have to be
     # findable, or the double-click does nothing at all and says nothing either.
-    printf '#!/bin/bash\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\nexec "%s/gmtr/launch.sh"\n' "$TRUNK" > "$APP/Contents/MacOS/planet"
+    # Built outside the engine: SwiftPM's scratch folder is hundreds of MB that
+    # would otherwise ride along in every copy of the engine.
+    GM_BUILD="$(mktemp -d "${TMPDIR:-/tmp}/greymatter-app.XXXXXX")"
+    MAP_APP=native
+    if ! command -v swift >/dev/null 2>&1 \
+       || ! swift build -c release --package-path "$ENGINE/gmtr/macos" --scratch-path "$GM_BUILD" >"$GM_BUILD.log" 2>&1 \
+       || ! cp "$GM_BUILD/release/GreyMatter" "$APP/Contents/MacOS/planet"; then
+      MAP_APP=browser
+      warn "the native map app could not be built (no Apple developer tools?) — the"
+      warn "launcher opens the map in your browser instead. Log: $GM_BUILD.log"
+      printf '#!/bin/bash\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\nexec "%s/gmtr/launch.sh"\n' "$TRUNK" > "$APP/Contents/MacOS/planet"
+    else
+      rm -f "$GM_BUILD.log"
+    fi
+    rm -rf "$GM_BUILD"
     chmod +x "$APP/Contents/MacOS/planet"
-    cat > "$APP/Contents/Info.plist" <<'PLIST'
+    cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -768,6 +786,10 @@ elif [ -d "$HOME/Desktop" ]; then
   <key>CFBundleIconFile</key><string>planete</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>GMTRLaunch</key><string>$TRUNK/gmtr/launch.sh</string>
+  <key>GMTRPort</key><string>8767</string>
 </dict></plist>
 PLIST
     if [ -f "$ENGINE/planet/planete.icns" ]; then
@@ -780,7 +802,8 @@ PLIST
     touch "$APP"
   fi
   note dir "$APP"
-  say "+ $APP (double-click → GMTR map in your browser, localhost:8767)"
+  if [ "$MAP_APP" = "native" ]; then say "+ $APP (double-click → the GMTR map in its own window)"
+  else say "+ $APP (double-click → GMTR map in your browser, localhost:8767)"; fi
   # An installer that leaves the previous version's shortcut behind hands the
   # user two icons for one action, and lets them pick the stale one.
   OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename

@@ -85,6 +85,13 @@ rm -rf "$APP"
 ( cd "$H/src" && ./install.sh ) >"$H/install2.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install2.log")"
 grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; check $? "GreyMatter.app is ours"
 [ -x "$APP/Contents/MacOS/planet" ]; check $? "…and it launches the planet"
+# v2.2: with the Apple developer tools present, the launcher is the native map
+# app (a Mach-O binary), not the shell script that opens the browser.
+if command -v swift >/dev/null 2>&1; then
+  file "$APP/Contents/MacOS/planet" | grep -q "Mach-O"; check $? "…as the native app, not the browser fallback"
+  L=$(/usr/libexec/PlistBuddy -c "Print :GMTRLaunch" "$APP/Contents/Info.plist" 2>/dev/null)
+  [ -x "$L" ]; check $? "…pointed at a map launcher that exists"
+fi
 [ ! -e "$H/Desktop/GreyMatter Planet.app" ]; check $? "no second launcher under the longer name"
 
 echo "▸ 4. a second install rebuilds ours in place"
