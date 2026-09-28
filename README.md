@@ -212,7 +212,11 @@ What opens is every region of your trunk as a small cluster, with its number of
 notes. Click a region to enter it: its notes unfold into a sphere you turn with
 the mouse. Point at a note and its preview appears; click it and it opens in two
 layers — the plain-language section for you, the complete note for the model.
-The **graph** view spreads a region's links out to the others.
+The **graph** view spreads every note out in volume by meaning, each region
+kept together, so two notes about the same thing sit side by side even with no
+link between them; point at a note and its links light up. Placing by meaning
+needs the optional embeddings index (the one `brain recall --semantic` uses);
+without it, the graph view keeps the panel's layout.
 
 Along the bottom, three panes: the regions and their share of notes, what this
 session has read, written and committed, and the lines being written right now.
