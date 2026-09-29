@@ -3,12 +3,14 @@
 gmtr_lock.py — the map's access code holds under parallel guesses, and a
 session does not outlive its token.
 
-Two holes an external audit pointed at, both measured before they were closed:
+Holes an external audit pointed at, each measured before it was closed:
 
 - The lockout (five wrong codes, then 30 s) was a counter shared by threads with
   nothing around it. Forty wrong codes sent at once were ALL verified: every
   request passed the "are we locked?" check before any of them had counted.
 - A session token lived as long as the server did.
+- Any page could reach the server under another name (DNS rebinding) and
+  read the launch screen or try codes; the Host header is now checked.
 
 This starts the real server on a throwaway HOME, sends twenty wrong codes at
 once, and requires exactly five to be verified. Then it opens a session with
@@ -17,6 +19,7 @@ the right code, ages its token past expiry, and requires the map to lock again.
 Run:      HOME=$(mktemp -d) python3 tests/gmtr_lock.py
 Sabotage: ... --sabotage race    (no lock: more than five get verified)
           ... --sabotage ttl     (the old check: an expired token still opens)
+          ... --sabotage host    (no Host check: a rebound page is served)
 Both must exit 1.
 """
 import contextlib
@@ -53,6 +56,8 @@ def main():
 
     if sabotage == "race":
         serveur.VERROU = contextlib.nullcontext()
+    if sabotage == "host":
+        serveur.Guichet._hote_local = lambda self: True
     if sabotage == "ttl":
         def ancien(self):
             for morceau in (self.headers.get("Cookie") or "").split(";"):
@@ -78,8 +83,10 @@ def main():
         except urllib.error.HTTPError as e:
             return e.code, ""
 
-    def get(path, cookie):
+    def get(path, cookie, host=None):
         r = urllib.request.Request(f"{base}{path}", headers={"Cookie": cookie})
+        if host:
+            r.add_unredirected_header("Host", host)
         try:
             with urllib.request.urlopen(r) as rep:
                 return rep.status
@@ -103,6 +110,13 @@ def main():
     jeton = jeton_cookie.split("=", 1)[1]
     serveur.SESSIONS[jeton] = time.time() - 1
     check(get("/etat.json", jeton_cookie) == 401, "an expired token no longer opens it")
+
+    print("▸ 3. a page under another name is turned away (DNS rebinding)")
+    port = srv.server_address[1]
+    check(get("/amorce.json", "") == 200, "the launch screen answers on 127.0.0.1")
+    check(get("/amorce.json", "", host=f"localhost:{port}") == 200, "…and on localhost")
+    check(get("/amorce.json", "", host=f"attacker.example:{port}") == 403,
+          "a rebound name gets 403, even on the launch screen")
 
     srv.shutdown()
     print(f"{'✅ all green' if FAILS == 0 else f'❌ {FAILS} failure(s)'}")

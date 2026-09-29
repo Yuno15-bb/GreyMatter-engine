@@ -77,12 +77,12 @@ jobs:
       - name: the map's access code holds under parallel guesses
         run: |
           python3 tests/gmtr_lock.py
-          for s in race ttl; do
+          for s in race ttl host; do
             if python3 tests/gmtr_lock.py --sabotage $s >/dev/null; then
               echo "❌ sabotage $s left gmtr_lock green"; exit 1
             fi
           done
-          echo "✅ both sabotages redden gmtr_lock"
+          echo "✅ all three sabotages redden gmtr_lock"
       # A release cut from a side branch must come back: v2.1.1's "ask before
       # updating" was missing from main while every job here stayed green.
       # `fr` is left out — its tag family stopped at v1.27.0-fr.

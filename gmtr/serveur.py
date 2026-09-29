@@ -468,6 +468,15 @@ class Guichet(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(corps)
 
+    def _hote_local(self):
+        # DNS rebinding: a web page whose name the attacker re-points at
+        # 127.0.0.1 reaches this port as its own origin — it could read
+        # /amorce.json and try codes at its own pace, then hold a session
+        # cookie for its own name. Binding to loopback does not stop it; the
+        # Host header does, since the browser sends the page's name there.
+        port = self.server.server_address[1]
+        return (self.headers.get("Host") or "") in {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+
     def _session(self):
         for morceau in (self.headers.get("Cookie") or "").split(";"):
             cle, _, val = morceau.strip().partition("=")
@@ -476,6 +485,8 @@ class Guichet(SimpleHTTPRequestHandler):
         return False
 
     def do_POST(self):
+        if not self._hote_local():
+            return self._envoyer(b"{}", "application/json", 403)
         if self.path != "/deverrouiller":
             return self.send_error(404)
         try:
@@ -507,6 +518,8 @@ class Guichet(SimpleHTTPRequestHandler):
         return self._envoyer(json.dumps({"ok": True}).encode(), "application/json", 200, cookie)
 
     def do_GET(self):
+        if not self._hote_local():
+            return self._envoyer(b"{}", "application/json", 403)
         chemin = unquote(self.path.split("?", 1)[0])
         if chemin == "/amorce.json":
             return self._envoyer(json.dumps(amorce(), ensure_ascii=False).encode(), "application/json; charset=utf-8")
