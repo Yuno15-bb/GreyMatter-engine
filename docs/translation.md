@@ -8,6 +8,22 @@ extracted onto.
      the living Brain                                         what people install
 ```
 
+[Why this direction](#why-this-direction-and-not-the-other) · [The guard](#the-guard) ·
+[What the sync does not take](#what-the-sync-does-not-take) ·
+[Workflow](#workflow-when-the-brain-evolves) · [Tags](#tags) ·
+[Not translated](#what-is-not-translated-on-purpose) ·
+[Glossary](#the-glossary--what-the-translation-renames) ·
+[Two tools](#two-tools-one-guarantee--and-the-gap-between-them)
+
+| Rule | In short |
+|---|---|
+| The sync lands on `fr` | the living Brain and its rewrite rules are French |
+| `main` is translated from `fr` | by someone reading the diff, never by a merge |
+| `sync.sh` refuses to run on `main` | one run would overwrite every translated file |
+| Package-only files are excluded twice | as an `rsync --exclude` and in the `--check` fingerprint |
+| Only `main` is released | `publish.sh` refuses to tag from `fr` since 2026-08-13 |
+| A renamed file or key is renamed on both sides | the glossary below; extend it, do not decide again |
+
 ## Why this direction and not the other
 
 The source Brain is written in French: its hooks, its agent prompts, its
@@ -23,12 +39,12 @@ silently overwrite every translated file with its French original — and nothin
 would catch it: no test reads prose. Only a reader would notice, much later.
 
 ```
-❌ scripts/sync.sh runs on the `fr` branch, not on `main`.
+❌ Run scripts/sync.sh on the fr branch, not main.
 ```
 
 `GREYMATTER_ALLOW_SYNC_ON_MAIN=1` forces it, for the rare case where you know why.
 
-## What the sync does NOT take
+## What the sync does not take
 
 Some files live **only in the package** and are excluded from the sync, because
 `rsync --delete` would wipe them on the first pass:
@@ -98,6 +114,11 @@ automated.** It is the step that needs someone to read.
 
 ## `main` is the product, `fr` is a staging buffer (2026-08-13)
 
+`fr` is read by nobody but the translation step; only `main` is released.
+
+<details>
+<summary><b>Why <code>fr</code> stopped being a product</b></summary>
+
 `fr` used to be a released product of its own, with a `-fr` tag family. It is not
 any more. It stays exactly what it always really was: **the French landing strip
 of the sync**, read by nobody but the translation step.
@@ -123,12 +144,20 @@ French and `generalize.py` matches French strings, so the sync still lands on
 `fr` first and `main` is still translated from it by a human reading a diff.
 `fr` is a step, no longer a destination.
 
+</details>
+
 ## Tags
 
 | Branch | Tags | Who installs it |
 |---|---|---|
-| `main` | `v1.2.0` | everyone, by default |
-| `fr` | `v1.2.0-fr` | French speakers who ask for it |
+| `main` | `v2.1.1` | everyone |
+| `fr` | `v1.27.0-fr` and earlier, frozen | whoever is still on one; no new `-fr` tag is made |
+
+`update.sh` keeps an install inside its own tag family, and
+`tests/update_tag_family.sh` holds that in CI.
+
+<details>
+<summary><b>The bug the tag families hid</b></summary>
 
 ⚠ **This used to be stated the wrong way round, and it was a real bug.** The
 earlier text claimed each install stayed in its own language "as long as each
@@ -147,6 +176,8 @@ level is what armed it.
 checked-out tag, or the tracked branch when there is none — and filters the tag
 list to that family before sorting. `tests/update_tag_family.sh` builds a
 throwaway repository with both branches and holds it down in CI.
+
+</details>
 
 ## What is not translated, on purpose
 
@@ -213,6 +244,9 @@ should not. They are not redundant, and neither covers the other:
 
 ## Porting glossary added after the first translation
 
+<details>
+<summary><b>The full porting list, one line per module</b></summary>
+
 These are source identifiers and stored values from `fr`, followed by their `main` equivalents. The `<owner>` placeholder stands for the private owner token in source filenames and topic IDs. The French strings below are data to match, not copy for user-facing output.
 
 ```text
@@ -271,3 +305,5 @@ Planet topic capsule: French `graph.json` node `tags[0]` → engine node `topic`
 topic labels come from the engine's `graph.json` `topics` object.
 
 GMTR state readers: `state/ecritures-fiches.jsonl` → `state/note-writes.jsonl`; journal key `outil` → `tool`. `state/agents.jsonl` mission names `architecte/distillateur/synthetiseur/archiviste/jardinier/machiniste/mecanicien` → `architect/distiller/synthesizer/archivist/gardener/machinist/mechanic`; phase value `debut` → `start`; payload keys `activite/raison/duree_s/cout_usd` → `activity/reason/duration_s/cost_usd`. `state/git-journal.jsonl` event `libere` → `released`; keys `evenement/head_a_bouge/fichiers_commites/perimetre/head_apres` → `event/head_moved/committed_files/scope/head_after`. GMTR's code root `planet/index.html` comes from the engine; graph and text JSON come from the trunk. GMTR uses `BRAIN_HOME` through `hooks/brain_racine.py` in place of the source's `BRAIN_RACINE`.
+
+</details>

@@ -1,9 +1,30 @@
 # Verification recipe
 
 Replay this **before every published tag**. Everything happens inside an isolated
-`HOME`: no step touches the real machine.
+`HOME`: no step touches the real machine. The order matters: each step assumes
+the previous one is green.
 
-The order matters: each step assumes the previous one is green.
+[Extraction](#0-the-extraction-chain-on-the-fr-branch) ·
+[Leak check](#0-bis-the-leak-check-and-the-decoys-it-must-not-wave-through) ·
+[Install](#1-install-from-a-real-clone) · [Update](#8-updates--the-test-that-matters-most) ·
+[Publish](#9-publish)
+
+| Step | What it proves |
+|---|---|
+| [0. Extraction](#0-the-extraction-chain-on-the-fr-branch) | the package matches the living Brain, and no private marker leaves |
+| [0 bis. Leak check](#0-bis-the-leak-check-and-the-decoys-it-must-not-wave-through) | the deliberate decoys in `tests/` pass, and nothing else does |
+| [1. Install from a clone](#1-install-from-a-real-clone) | what `git clone` delivers installs, selftest green, exit code honest |
+| [1 bis. Dry run](#1-bis-the-preview-must-leave-the-machine-exactly-as-it-found-it) | the preview writes nothing and runs to the end |
+| [2. Second pass](#2-non-destructive-and-idempotent) | re-installing keeps your settings and adds nothing |
+| [3. Uninstall](#3-the-full-life-cycle) | your notes stay, `settings.json` goes back to how it was |
+| [4. CLI](#4-every-cli-command) | every `brain` command runs, in English |
+| [5. Capsule](#5-capsule) | the pill reads the state the hooks just wrote |
+| [6. Map](#6-map) | the map stays locked until the code is given, and answers only on this machine |
+| [7. Companion](#7-companion) | the status line counts the files a session changed |
+| [7 bis. History](#7-bis-the-local-history--prove-the-observable-not-git) | a note you wrote can be read back from the trunk's git |
+| [8. Updates](#8-updates--the-test-that-matters-most) | notes intact, migration once, rollback works, foreign engines refused |
+| [8 bis. launchd](#8-bis-launchd-ownership--and-what-must-never-be-in-a-recipe) | the jobs' ownership rules, proved without touching the real launchd |
+| [9. Publish](#9-publish) | nothing ships dirty, drifted, leaking, unreviewed, or behind a release |
 
 The translation barrier includes JSON, JSONL, plain text, CJS, YAML, TOML,
 and CSS as well as Python, shell, JavaScript, HTML, and Markdown. Run
@@ -32,6 +53,19 @@ python3 scripts/leakcheck.py --history
 
 ## 0 bis. The leak check, and the decoys it must NOT wave through
 
+```bash
+python3 scripts/leakcheck.py
+python3 scripts/leakcheck.py --history
+python3 tests/leakcheck_fixtures.py
+python3 tests/leakcheck_fingerprints.py
+```
+
+**Expected on a publishable branch**: a clean scan twice, 12 green fixture cases, and a passing
+fingerprint check. Run the invented-name check with `--sabotage`; it must fail.
+
+<details>
+<summary>Why some tests are allowed to contain what the check forbids, and the three locks on that exception</summary>
+
 Some tests have to CONTAIN what the check forbids: `tests/fiche_write_contract.py`
 writes a fake Anthropic key to prove that a key is refused, `tests/a1_pixel_lib.py`
 compares home-directory paths to prove that a personal path is recognized. On
@@ -45,18 +79,14 @@ red), and a manifestly fake shape, one no reader could mistake for real data. Th
 literals themselves are deliberately not reprinted here: `docs/` is exempt for the
 owner's name only, so a decoy quoted in this file would go red like any other leak.
 
-An exception nobody tests is a hole that hides itself, so the counter-proof runs
-next to the check:
+An exception nobody tests is a hole that hides itself, so the counter-proof
+(`leakcheck_fixtures.py`, above) runs next to the check.
 
-```bash
-python3 scripts/leakcheck.py
-python3 scripts/leakcheck.py --history
-python3 tests/leakcheck_fixtures.py
-python3 tests/leakcheck_fingerprints.py
-```
+</details>
 
-**Expected on a publishable branch**: a clean scan twice, 12 green fixture cases, and a passing
-fingerprint check. Run the invented-name check with `--sabotage`; it must fail.
+<details>
+<summary>What the fingerprints cover</summary>
+
 The named markers and exception values are stored as salted SHA-256 digests.
 The guard also fingerprints private note paths and identifiers, and it reads
 `rules.json` with every `*_b64` value decoded first: base64 is a reversible
@@ -65,7 +95,12 @@ one. The local postal-code class remains a numeric pattern because a digest
 cannot represent a range. The guard's status, instructions and marker labels
 are printed in English.
 
-**History that is already public.** The fingerprints grew after the first
+</details>
+
+<details>
+<summary>History that is already public: why <code>--history</code> skips two tips, and only those</summary>
+
+The fingerprints grew after the first
 commits of `main` and `fr` were published, so `--history` turned red on commits
 that are already online and that no new version can take back. Rewriting them is
 ruled out: moving a published tag breaks updates for every installation that
@@ -89,6 +124,11 @@ and that a leak added then removed after the public tips is still caught.
 A local port branch keeps its intermediate commits and stays red on
 `--history`; it is never published as such, only squashed onto `main`.
 
+</details>
+
+<details>
+<summary>Why the counter-proof names the marker it expects, and two traps recorded in the code</summary>
+
 The counter-proof NAMES the marker it expects for every case instead of settling
 for "something was flagged" — a sabotage found exactly that hole in the first
 version of this check. Allowing a real key as a decoy still went red, but on a
@@ -105,6 +145,8 @@ a marker, whitelist a real key.
 > Adding an entry to the decoy list is a decision, not a convenience: it comes with
 > a case in `tests/leakcheck_fixtures.py` proving that the non-exempted variant
 > still blocks.
+
+</details>
 
 ## 1. Install from a real CLONE
 
@@ -124,9 +166,18 @@ re-install over notes it must read `▸ Your trunk is already growing.` instead.
 Since v2.1.1 the end screen also names the desktop interfaces it actually made —
 `GreyMatter.app opens the planet` only when the Desktop app is ours, the capsule
 line only when Electron is installed (`--no-capsule` drops it) — and closes with
-`These are the only desktop interfaces GreyMatter ships.` That
-line had no test at all until 2026-08-16: it announced an empty trunk to somebody
-holding 23 notes, and then offered `brain demo`, which writes into a live trunk.
+`These are the only desktop interfaces GreyMatter ships.`
+
+Read the exit code too (`echo $?` right after): `0` only when the selftest is
+green, `1` otherwise. Read the selftest line on a machine that has never had
+GreyMatter, and once on a machine that has.
+
+<details>
+<summary>Why each of these expectations is written the way it is</summary>
+
+The empty-trunk line had no test at all until 2026-08-16: it announced an empty
+trunk to somebody holding 23 notes, and then offered `brain demo`, which writes
+into a live trunk.
 
 `✅ selftest OK` is only worth reading because the installer hands the selftest
 the engine it has just built. Until 2026-08-26 it called it with no argument, so
@@ -137,12 +188,14 @@ machine that already had GreyMatter, the line above was reporting on the OTHER
 installation's engine. Read this expectation on a machine that has never had
 GreyMatter, and once on a machine that has.
 
-Read the exit code too (`echo $?` right after). Since v2.0.3 it is `0` only when
-the selftest is green; a red selftest ends the install with `1`. Until then the
+The exit code has been `0` only when the selftest is green since
+v2.0.3; a red selftest ends the install with `1`. Until then the
 installer printed the red and exited 0, so anything that ran it read success
 (`tests/install_exit_code.sh`). Over another installation, expect the same: its
 agents folder left to its owner makes the verification red, so `1`, with the
 surfaces left alone counted on the closing screen.
+
+</details>
 
 ## 1 bis. The preview must leave the machine exactly as it found it
 
@@ -153,6 +206,9 @@ HOME=$T bash ./install.sh --dry-run --no-launchd --no-capsule; echo "rc=$?"
 ```
 
 **Expected**: it runs to the end, `rc=0`, `inert`.
+
+<details>
+<summary>Why "inert" and not "the folder is empty", and the bug this caught</summary>
 
 **Not** "the folder is empty" — and the difference is the whole reason the check
 is written this way. The Python interpreter drops its own bytecode cache under
@@ -169,6 +225,8 @@ takes the whole shell down under `set -e`.
 
 A preview that writes is not a preview. A preview that stops early is a promise
 about an install nobody previewed.
+
+</details>
 
 ## 2. Non-destructive and idempotent
 
@@ -216,11 +274,15 @@ grep, and only reading catches them.
 
 ## 5. Capsule
 
-⚠️ **The procedure that used to be written here did not exist.** It told you to
-`touch /tmp/cap_shot_req` and read `/tmp/cap.png`; grepping the whole tree on
-2026-08-17 found that string in this file and nowhere else. The documented way to
-verify the capsule could not be run, and nobody noticed because nobody ran it.
-What follows is the mechanism that was then built, and exercised.
+<details>
+<summary>⚠️ The procedure that used to be written here did not exist</summary>
+
+It told you to `touch /tmp/cap_shot_req` and read `/tmp/cap.png`; grepping the
+whole tree on 2026-08-17 found that string in this file and nowhere else. The
+documented way to verify the capsule could not be run, and nobody noticed because
+nobody ran it. What follows is the mechanism that was then built, and exercised.
+
+</details>
 
 Day to day you do not need any of this: `brain capsule` opens it, `brain capsule
 stop` closes it, `brain capsule status` says whether one is running, drawing and
@@ -273,6 +335,20 @@ curl -s -b $T/jar -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8799/carte/g
 launcher asks for one in a dialog. For visual proof, open `GreyMatter.app` and
 read the map with your eyes — **no French text**. Two strings without accents
 once survived every grep and were only caught on a rendered screenshot.
+
+The lock itself has its own test, run on the real server in a throwaway `HOME`:
+
+```bash
+HOME=$(mktemp -d) python3 tests/gmtr_lock.py
+for s in race ttl host; do HOME=$(mktemp -d) python3 tests/gmtr_lock.py --sabotage $s; done
+```
+
+**Expected**: all green, then each sabotage exits `1`. It proves three things: twenty
+wrong codes sent at once get exactly five tries before the 30-second lockout; a
+session token stops opening the map once it expires (12 hours); and a request
+that names the server under another host (a page using DNS rebinding) gets `403`,
+even on the launch screen. What the code protects, and what it does not, is in
+[`gmtr/README.md`](../gmtr/README.md).
 
 ## 7. Companion
 
@@ -331,6 +407,20 @@ HOME=$T brain update
 - [ ] a second `brain update` says "already up to date" and does **not** replay the migration;
 - [ ] `brain update --rollback` returns to the previous version, selftest green, note still there.
 
+Since v2.1.1 a session only **looks** for the new tag: the agent asks before
+anything is installed, and `brain update` is how the answer "yes" is carried
+out. Check that half too:
+
+- [ ] with v1.1.0 published, a session start installs **nothing** —
+      `brain version` still returns v1.0.0;
+- [ ] the **next** session start tells the agent v1.1.0 exists: the look runs
+      in the background, so its answer arrives one session late, and the same
+      version is asked about at most once a day;
+- [ ] `brain update --auto-on` brings back silent installs, `--auto-off` returns
+      to asking (the default).
+
+`tests/update_ask.sh` runs this half on a local remote.
+
 > Remember: it is the **installed** updater that runs. A fix in `update.sh` only
 > protects users already on that version or later. Think twice before publishing
 > a change to the updater itself.
@@ -353,12 +443,17 @@ An updater replaces the engine. It is allowed to do that **only** on an engine
 the installer BUILT — a directory under `~/.greymatter/versions/`, recorded in
 `state/engine-managed`. Anywhere else it must refuse and change nothing at all.
 
-⚠️ This used to read "it checks out a release tag over your engine", and the
+<details>
+<summary>⚠️ This used to be about git state, and why that changed</summary>
+
+This used to read "it checks out a release tag over your engine", and the
 refusals below used to be about git state — dirty, on a branch, not on a tag.
 That was the old model, and inferring ownership from git state is what made the
 documented install permanently un-updatable (chantier #9, 2026-08-17). There is
 no longer any git command in the update path that names a directory a user made.
 See [install-model.md](install-model.md).
+
+</details>
 
 Point `~/.greymatter/engine` at a repository you work in, and check each refusal:
 
@@ -465,3 +560,20 @@ program that stopped behaving that way. This check does not read the prose and
 does not judge whether a sentence is true; it asks whether a watched path moved
 after the document was last edited. Re-aligning is not a command: you open the
 document and edit it, and that commit is the new baseline.
+
+Two more checks have run in CI on every push since v2.1.1; `publish.sh` does
+not call them, so run them by hand before tagging:
+
+```bash
+python3 tests/release_ancestry.py    # the latest release is inside this branch's history
+python3 tests/plugin_manifest.py     # one version everywhere: tag, plugin manifests, changelog
+```
+
+v2.1.1 was cut from a side branch and never merged back: for a day, `main` did
+not contain "ask before updating" while its README promised it, and every job
+was green. The first check turns red in that case. The second refuses a plugin
+manifest or a changelog that names another version than the latest tag, and a
+manifest that promises more privacy than the code keeps. Each has a
+`--sabotage` that must exit `1`. After tagging, `publish.sh` adds the new
+entry at the top of `CHANGELOG.md` and never rewrites the older ones, which
+were translated by hand.
