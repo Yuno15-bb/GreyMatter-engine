@@ -139,7 +139,7 @@ def hooks_rendus(brain=BRAIN):
     return {"hooks": {"PostToolUse": gardes}} if gardes else {}
 
 
-def drapeaux(mission, brain=BRAIN):
+def drapeaux(mission, brain=BRAIN, extra_dirs=()):
     """The options to place after `claude -p --model … --output-format json`, prompt AFTER.
 
     `--agent` comes last on purpose: `--allowedTools` and `--add-dir` swallow every
@@ -156,7 +156,12 @@ def drapeaux(mission, brain=BRAIN):
     rendus = hooks_rendus(brain)
     if rendus:
         f += ["--settings", json.dumps(rendus, ensure_ascii=False)]
-    for d in r.get("lit_aussi", []):
+    # extra_dirs: the finished session's OWN transcript folder. A session opened in
+    # ~/some-project writes to ~/.claude/projects/<home key>-some-project, a sibling
+    # of TRANSCRIPTS that the fixed grant never covered: the distiller was refused
+    # the very transcript it was sent to read. Only that one folder is added, never
+    # all of ~/.claude/projects, which holds every other project's history too.
+    for d in dict.fromkeys([*r.get("lit_aussi", []), *extra_dirs]):
         f += ["--add-dir", d]
     f += ["--allowedTools", *autorise, "--agent", famille]
     return f

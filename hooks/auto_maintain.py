@@ -379,7 +379,9 @@ def launch_agent(sid, n, to_distill, transcript_path=None):
     try:
         import shlex
         from robots_permissions import drapeaux
-        droits = {a: shlex.join(drapeaux(a, BRAIN)) for a in MODEL_L1}
+        propre = [os.path.dirname(transcript)] if transcript else []
+        droits = {a: shlex.join(drapeaux(a, BRAIN, propre if a == "distiller" else ()))
+                  for a in MODEL_L1}
     except Exception:
         write_status("idle")
         if guard is not None:
