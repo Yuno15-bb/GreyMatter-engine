@@ -14,3 +14,6 @@ and folds its detail underneath.
 
 Installing for the first time is in [INSTALL.md](../INSTALL.md), at the root of
 the repository. What each version changed is in [CHANGELOG.md](../CHANGELOG.md).
+
+Each page is listed in [_coverage.json](_coverage.json) with the code it
+describes; when that code changes, `tests/docs_aligned.py` says which page to reread.

@@ -50,6 +50,12 @@
         "install.sh"
       ],
       "why": "The recipe tells a reader how to verify the package for themselves — it is only true while these three behave as described."
+    },
+    "docs/README.md": {
+      "documents": [
+        "docs/_coverage.json"
+      ],
+      "why": "The index lists the pages under docs/. A page cannot be added or removed without an entry here, so this registry changing is exactly when the index may have gone stale."
     }
   }
 }
