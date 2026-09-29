@@ -38,11 +38,11 @@
 
 <p align="center">
   <a href="#what-it-does">What it does</a> ·
+  <a href="#how-well-it-recalls">How well it recalls</a> ·
   <a href="#install">Install</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#commands">Commands</a> ·
   <a href="#watch-it-work">Watch it work</a> ·
-  <a href="#how-well-it-recalls">How well it recalls</a> ·
   <a href="#at-a-glance">At a glance</a> ·
   <a href="#going-further">Going further</a>
 </p>
@@ -109,6 +109,108 @@ A menu bar pill and a map app — [below](#watch-it-work). Optional, and install
 </table>
 
 `BRAIN_RECALL_AUTO=1` makes recall fire on every prompt instead ([why it no longer does](#on-a-real-trunk)).
+
+## How well it recalls
+
+<p align="center">
+  <img src="docs/media/recall-chart.png" alt="Two bar charts. Left, on a real trunk, right answers out of 10 questions: nothing 0/10, the trunk without recall 8/10, GreyMatter's full system 10/10; tokens per exchange 178 k, 264 k and 168 k. Right, LongMemEval M set, a conversation holding the answer among the top 5: a plain BM25 86.8 %, GreyMatter default search 86.4 %, claude-mem's search alone 83.0 %, agentmemory hybrid 78.6 %, GreyMatter semantic mode 61.0 %. GreyMatter ties BM25: not behind, not better." width="880">
+</p>
+
+Three measurements, from the most controlled to the most real. Each one says
+what it does not show. A memory tool that will not say how well it remembers is
+asking for trust it has not earned.
+
+| | measured (2026) | what it tells you |
+|---|---|---|
+| [Synthetic bench](#on-a-synthetic-bench) | Sep 27 | 2.4 ms per search at 1,000 notes, 15 ms at 5,000; it holds to about a thousand notes and degrades sharply past that |
+| [Real trunk](#on-a-real-trunk) | Aug 12 | 10/10 right answers with recall, 0/10 without anything — and fewer tokens spent |
+| [LongMemEval](#on-a-public-benchmark) | Sep 26 | ties a plain BM25, ahead of claude-mem's search on the larger set |
+
+<details>
+<summary><b>On a synthetic bench</b> — speed and precision as the trunk grows</summary>
+
+### On a synthetic bench
+
+Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
+where finding the answer means picking one note out of ~120 that share its
+subject and most of its vocabulary:
+
+| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search (median) |
+|---|---|---|---|---|---|
+| 100 | 0.94 | 0.98 | 0.96 | 35% | 0.2 ms |
+| 1000 | 0.79 | 0.93 | 0.86 | 24% | 2.4 ms |
+| 5000 | 0.46 | 0.84 | 0.64 | 39% | 15 ms |
+
+Measured 2026-09-27 on an Apple-silicon Mac. "Per search" is the search
+alone; a fresh `brain recall` also loads its cached index first, about
+0.1 s at 1,000 notes. The CI enforces these numbers as thresholds.
+
+**What this bench does NOT measure.** Its corpus is synthetic, so its vocabulary
+is coherent by construction: it says nothing about morphology ("ranger" versus
+"rangement") nor about the French/English mix, which are two real causes of an
+unfindable note. Its numbers did not move when those two points were fixed —
+that is a limit of the bench, not the absence of an effect.
+
+</details>
+
+<details>
+<summary><b>On a real trunk</b> — 10 questions, 50 isolated runs, and why recall now waits to be asked</summary>
+
+### On a real trunk
+
+Measured on 2026-08-12 against the author's living Brain (312 notes), 10
+questions about real facts of the author's work, 50 runs isolated from one another:
+
+| what the assistant has | right answers | tokens per exchange |
+|---|---|---|
+| nothing | **0/10** | 178 k |
+| the trunk + the map, **without** recall | **8/10** | 264 k |
+| **the full system**, recall on every prompt | **10/10** | **168 k** |
+
+When the question is about the trunk, recall does not cost context, it **saves**
+it: with no suggestion the assistant has to search, and searching burns turns.
+The detail of the protocol — and the three campaigns that had to be thrown away
+before an honest measurement came out — lives in the author's trunk, not here.
+
+**Why recall now waits to be asked.** Most prompts are not questions about the
+trunk. Over the following month of daily use, 3,256 notes were offered on their
+own and 139 of them were opened afterwards — 4.27 %. The suggestion block cost
+its noise on every message for a service rendered about four times in a hundred,
+so since 2026-09-09 it fires only when you ask. The search itself did not
+change: the numbers above still hold whenever you do.
+
+</details>
+
+<details>
+<summary><b>On a public benchmark</b> — LongMemEval, 500 questions, five systems</summary>
+
+### On a public benchmark
+
+[LongMemEval](https://github.com/xiaowu0162/LongMemEval) asks 500 questions,
+each hidden in a long history of past conversations: about 48 of them per
+question in its S set, about 475 in its M set. We measured **retrieval only** —
+is a conversation holding the answer among the five handed back
+(recall-any@5)? — not whether an agent then answers correctly. Measured
+2026-09-26, same questions and same scoring for every system:
+
+| system | S (~48 conversations) | M (~475 conversations) |
+|---|---|---|
+| **GreyMatter**, default search | **96.8 %** | **86.4 %** |
+| a plain BM25, nothing else | 96.8 % | 86.8 % |
+| claude-mem's search alone (Chroma, one message per entry) | 96.4 % | 83.0 % |
+| agentmemory hybrid, its own code at `bcf4f0d` | 95.6 % | 78.6 % |
+| GreyMatter, semantic mode | 88.2 % | 61.0 % |
+
+**Read it for what it says.** GreyMatter's default search ties a plain BM25 —
+the textbook keyword ranking — on both sets (no significant difference:
+p = 1.0 on S, p = 0.77 on M). It is ahead of claude-mem's search on M
+(p = 0.046), and only its search: claude-mem's full memory was not tested.
+agentmemory advertises 95.2 %; we measured 95.6 % on S and 78.6 % on M. So the
+bench shows GreyMatter is not behind — not that it is better than the simplest
+baseline. Its semantic mode (`brain recall --semantic`, static embeddings) loses on
+both sets; it stays off unless you ask for it.
+
+</details>
 
 ## Install
 
@@ -213,7 +315,7 @@ brain version         installed version
 > [!NOTE]
 > **v2.2 · in development.** The menu bar pill and the map app below are on
 > `main` and not yet in a release. **v2.1.1**, what you install today, ships the
-> floating orb (just below) and the planet in your browser —
+> floating orb and the planet in your browser —
 > [its README](https://github.com/Yuno15-bb/GreyMatter-engine/tree/v2.1.1#the-extensions)
 > shows them.
 
@@ -242,18 +344,6 @@ the plain-language section for you, the complete note for the model.
 </tr>
 </table>
 
-<p align="center">
-  <img src="docs/media/pill.webp" alt="The capsule: a pill in the macOS menu bar naming the agent at work, and the panel it drops — agent, elapsed time, activity and detail, the run's stations, and the live orb." width="520">
-</p>
-
-**What you install today · v2.1.1 — the orb.** A glass orb floating on your
-desktop. Its colour and motion change with the kind of work, the lines being
-written scroll inside it, and the task is named underneath.
-
-<p align="center">
-  <img src="docs/media/orb.webp" alt="The v2.1.1 orb: a glass sphere on a dark background, changing colour and motion as the agents work — gardening, distilling, auditing, committing, then idle — with code scrolling inside it and the current task named underneath, such as auditing 312 notes" width="240">
-</p>
-
 <details>
 <summary><b>More on the pill and the map</b></summary>
 
@@ -281,108 +371,6 @@ session has read, written and committed, and the lines being written right now.
 
 It is read-only: nothing you do in the map changes a note. It is rebuilt from
 your trunk on every launch, and quitting the app stops its local server.
-
-</details>
-
-## How well it recalls
-
-<p align="center">
-  <img src="docs/media/recall-chart.png" alt="Two bar charts. Left, on a real trunk, right answers out of 10 questions: nothing 0/10, the trunk without recall 8/10, GreyMatter's full system 10/10; tokens per exchange 178 k, 264 k and 168 k. Right, LongMemEval M set, a conversation holding the answer among the top 5: a plain BM25 86.8 %, GreyMatter default search 86.4 %, claude-mem's search alone 83.0 %, agentmemory hybrid 78.6 %, GreyMatter semantic mode 61.0 %. GreyMatter ties BM25: not behind, not better." width="880">
-</p>
-
-Three measurements, from the most controlled to the most real. Each one says
-what it does not show. A memory tool that will not say how well it remembers is
-asking for trust it has not earned.
-
-| | measured (2026) | what it tells you |
-|---|---|---|
-| [Synthetic bench](#on-a-synthetic-bench) | Sep 27 | 2.4 ms per search at 1,000 notes, 15 ms at 5,000; it holds to about a thousand notes and degrades sharply past that |
-| [Real trunk](#on-a-real-trunk) | Aug 12 | 10/10 right answers with recall, 0/10 without anything — and fewer tokens spent |
-| [LongMemEval](#on-a-public-benchmark) | Sep 26 | ties a plain BM25, ahead of claude-mem's search on the larger set |
-
-<details>
-<summary><b>On a synthetic bench</b> — speed and precision as the trunk grows</summary>
-
-### On a synthetic bench
-
-Measured, not asserted — `tests/recall_benchmark.py`, on a synthetic corpus
-where finding the answer means picking one note out of ~120 that share its
-subject and most of its vocabulary:
-
-| notes | P@1 | P@3 | MRR | off-topic in what it hands back | per search (median) |
-|---|---|---|---|---|---|
-| 100 | 0.94 | 0.98 | 0.96 | 35% | 0.2 ms |
-| 1000 | 0.79 | 0.93 | 0.86 | 24% | 2.4 ms |
-| 5000 | 0.46 | 0.84 | 0.64 | 39% | 15 ms |
-
-Measured 2026-09-27 on an Apple-silicon Mac. "Per search" is the search
-alone; a fresh `brain recall` also loads its cached index first, about
-0.1 s at 1,000 notes. The CI enforces these numbers as thresholds.
-
-**What this bench does NOT measure.** Its corpus is synthetic, so its vocabulary
-is coherent by construction: it says nothing about morphology ("ranger" versus
-"rangement") nor about the French/English mix, which are two real causes of an
-unfindable note. Its numbers did not move when those two points were fixed —
-that is a limit of the bench, not the absence of an effect.
-
-</details>
-
-<details>
-<summary><b>On a real trunk</b> — 10 questions, 50 isolated runs, and why recall now waits to be asked</summary>
-
-### On a real trunk
-
-Measured on 2026-08-12 against the author's living Brain (312 notes), 10
-questions about real facts of the author's work, 50 runs isolated from one another:
-
-| what the assistant has | right answers | tokens per exchange |
-|---|---|---|
-| nothing | **0/10** | 178 k |
-| the trunk + the map, **without** recall | **8/10** | 264 k |
-| **the full system**, recall on every prompt | **10/10** | **168 k** |
-
-When the question is about the trunk, recall does not cost context, it **saves**
-it: with no suggestion the assistant has to search, and searching burns turns.
-The detail of the protocol — and the three campaigns that had to be thrown away
-before an honest measurement came out — lives in the author's trunk, not here.
-
-**Why recall now waits to be asked.** Most prompts are not questions about the
-trunk. Over the following month of daily use, 3,256 notes were offered on their
-own and 139 of them were opened afterwards — 4.27 %. The suggestion block cost
-its noise on every message for a service rendered about four times in a hundred,
-so since 2026-09-09 it fires only when you ask. The search itself did not
-change: the numbers above still hold whenever you do.
-
-</details>
-
-<details>
-<summary><b>On a public benchmark</b> — LongMemEval, 500 questions, five systems</summary>
-
-### On a public benchmark
-
-[LongMemEval](https://github.com/xiaowu0162/LongMemEval) asks 500 questions,
-each hidden in a long history of past conversations: about 48 of them per
-question in its S set, about 475 in its M set. We measured **retrieval only** —
-is a conversation holding the answer among the five handed back
-(recall-any@5)? — not whether an agent then answers correctly. Measured
-2026-09-26, same questions and same scoring for every system:
-
-| system | S (~48 conversations) | M (~475 conversations) |
-|---|---|---|
-| **GreyMatter**, default search | **96.8 %** | **86.4 %** |
-| a plain BM25, nothing else | 96.8 % | 86.8 % |
-| claude-mem's search alone (Chroma, one message per entry) | 96.4 % | 83.0 % |
-| agentmemory hybrid, its own code at `bcf4f0d` | 95.6 % | 78.6 % |
-| GreyMatter, semantic mode | 88.2 % | 61.0 % |
-
-**Read it for what it says.** GreyMatter's default search ties a plain BM25 —
-the textbook keyword ranking — on both sets (no significant difference:
-p = 1.0 on S, p = 0.77 on M). It is ahead of claude-mem's search on M
-(p = 0.046), and only its search: claude-mem's full memory was not tested.
-agentmemory advertises 95.2 %; we measured 95.6 % on S and 78.6 % on M. So the
-bench shows GreyMatter is not behind — not that it is better than the simplest
-baseline. Its semantic mode (`brain recall --semantic`, static embeddings) loses on
-both sets; it stays off unless you ask for it.
 
 </details>
 
