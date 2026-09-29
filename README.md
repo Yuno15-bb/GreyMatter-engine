@@ -228,7 +228,7 @@ browser tab. Neither is the product: they are how you *watch* it, optional, and
 skipped by `--core-only` and by the plugin install.
 
 <p align="center">
-  <img src="docs/media/pill-at-work.webp" alt="The right-hand corner of a Mac menu bar, at night. Top right, the GreyMatter pill with its panel open underneath; below, the same corner enlarged. Torrens tidies the map, Anesidora writes the digest, Torrens commits; the glass orb changes colour with the kind of work. At the end, Done and three steps." width="100%">
+  <img src="docs/media/pill-at-work.webp" alt="A Mac at night: a real Claude Code session in a large terminal, and the GreyMatter pill open in the menu bar above it. The first session fixes a rounding bug in a test shop, then closes; Narcissus turns what it learned into a note and files it. A second session asks about cart prices and gets the note back before Claude answers. Sulaco checks the note's links, then Torrens commits; the orb and the steps under the pill change colour with each agent. A caption at the bottom says what is happening. Sped up ×1.5, test data." width="100%">
 </p>
 
 <table>
