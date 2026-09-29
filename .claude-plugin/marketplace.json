@@ -12,8 +12,8 @@
     {
       "name": "greymatter",
       "source": {
-        "source": "github",
-        "repo": "Yuno15-bb/GreyMatter-engine",
+        "source": "url",
+        "url": "https://github.com/Yuno15-bb/GreyMatter-engine.git",
         "ref": "v2.1.1"
       },
       "description": "A memory that grows. What you work out once is distilled into a note, filed, linked, and handed back when you ask for it — from any project. Your notes stay on your machine and nothing is sent anywhere."
