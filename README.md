@@ -1,13 +1,31 @@
-# GreyMatter
+<p align="center">
+  <a href="https://peellaertech.com/en/projects/greymatter/">
+    <img src="docs/media/logo.png" width="112" alt="GreyMatter logo">
+  </a>
+</p>
+
+<h1 align="center">GreyMatter</h1>
+
+<p align="center">
+  <b>GreyMatter turns each session with your CLI agent into memory it can reuse —
+  distilled into a note, filed, linked, and handed back the moment you ask for
+  it. From any project, and without leaving your machine.</b>
+</p>
+
+<div align="center">
 
 [![CI](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Yuno15-bb/GreyMatter-engine?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/GreyMatter-engine/releases/latest)
 [![Licence](https://img.shields.io/github/license/Yuno15-bb/GreyMatter-engine?color=8a8f98)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
 
-**GreyMatter turns each session with your CLI agent into memory it can reuse —
-distilled into a note, filed, linked, and handed back the moment you ask for
-it. From any project, and without leaving your machine.**
+[Website](https://peellaertech.com/en/projects/greymatter/) ·
+[Install](#install) ·
+[How it works](#how-it-works) ·
+[Changelog](CHANGELOG.md) ·
+[Security](SECURITY.md)
+
+</div>
 
 <p align="center">
   <img src="docs/media/map.webp" alt="GreyMatter.app on a Mac at night, filmed on a test trunk of 792 made-up notes. The start square assembles the logo and asks for the access code; the map opens with its 21 regions. We enter a region, point at notes, search for a word, then click the logo to come back to the whole map. The graph view spreads every note in volume by meaning; the cloud turns and a hovered note lights up its links. Along the bottom, the regions, the session log and the lines being written." width="880">
