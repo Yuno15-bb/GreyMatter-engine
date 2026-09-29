@@ -38,7 +38,7 @@ What follows from that:
 ## Before you open a pull request
 
 ```bash
-python3 leakcheck.py           # must be CLEAN — it blocks publication otherwise
+python3 scripts/leakcheck.py           # must be CLEAN — it blocks publication otherwise
 python3 tests/english_only.py  # main only: no French in user-visible strings
 ```
 

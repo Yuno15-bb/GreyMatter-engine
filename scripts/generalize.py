@@ -26,8 +26,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-RULES = ROOT / "rules.json"
+ROOT = Path(__file__).resolve().parent.parent
+RULES = Path(__file__).resolve().parent / "rules.json"
 
 # The generalization tools must not rewrite themselves. rules.json contains
 # patterns that a broad JSON glob would otherwise replace inside the rule
@@ -260,7 +260,7 @@ def main():
         print("\n⛔ FAILED — at least one rule stopped biting. Nothing may ship as is.")
         return 1
 
-    print("\n✅ Generalized. Now check: python3 leakcheck.py")
+    print("\n✅ Generalized. Now check: python3 scripts/leakcheck.py")
     return 0
 
 

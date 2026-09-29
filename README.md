@@ -513,7 +513,7 @@ The problem, the rejected alternatives, the traps hit along the way and how each
 <tr>
 <td width="34%" valign="top">
 
-`sync.sh` · `rules.json` · `leakcheck.py`
+[`scripts/`](scripts/) — `sync.sh` · `rules.json` · `leakcheck.py`
 
 </td>
 <td valign="top">

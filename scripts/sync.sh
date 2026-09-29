@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SRC="${GREYMATTER_SRC:-$HOME/claude-brain}"
-DEST="$(cd "$(dirname "$0")" && pwd)"
+DEST="$(cd "$(dirname "$0")/.." && pwd)"
 CLAUDE_DIR="${GREYMATTER_CLAUDE_DIR:-$HOME/.claude}"
 
 MODE="copy"
@@ -27,7 +27,7 @@ fi
 [ -d "$SRC" ] || { echo "❌ Source not found: $SRC"; exit 1; }
 [ "$SRC" = "$DEST" ] && { echo "❌ Source and destination are identical."; exit 1; }
 
-MANIFEST="$DEST/.sync-manifest"
+MANIFEST="$DEST/scripts/.sync-manifest"
 
 # Keep these exclusions aligned with the rsync rules below. Path based rules
 # avoid hiding another file with the same name elsewhere in the source.
@@ -183,7 +183,7 @@ sync_file "$CLAUDE_DIR/statusline.py" "statusline.py"
 # Recording it earlier would mark a failed generalization as current.
 echo
 echo "───"
-python3 "$DEST/generalize.py"
+python3 "$DEST/scripts/generalize.py"
 
 empreinte_source > "$MANIFEST"
 

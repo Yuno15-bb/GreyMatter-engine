@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0     # --history scans every commit, not the tip
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: python3 leakcheck.py --history
+      - run: python3 scripts/leakcheck.py --history
       # Check the test-decoy exception: declared values pass while all other
       # leaks still fail. Without this check, the exception could go unnoticed.
       - run: python3 tests/leakcheck_fixtures.py

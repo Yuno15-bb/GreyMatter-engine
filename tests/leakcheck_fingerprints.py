@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location("leakcheck", ROOT / "leakcheck.py")
+spec = importlib.util.spec_from_file_location("leakcheck", ROOT / "scripts" / "leakcheck.py")
 lc = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lc)
 

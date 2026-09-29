@@ -18,12 +18,12 @@ So English cannot be the sync target. It is derived from `fr`, one step later.
 
 ## The guard
 
-`./sync.sh` **refuses to run on `main`**. Without that guard, one sync would
+`scripts/sync.sh` **refuses to run on `main`**. Without that guard, one sync would
 silently overwrite every translated file with its French original — and nothing
 would catch it: no test reads prose. Only a reader would notice, much later.
 
 ```
-❌ ./sync.sh runs on the `fr` branch, not on `main`.
+❌ scripts/sync.sh runs on the `fr` branch, not on `main`.
 ```
 
 `GREYMATTER_ALLOW_SYNC_ON_MAIN=1` forces it, for the rare case where you know why.
@@ -73,15 +73,15 @@ git worktree add ~/greymatter-fr fr     # once
 
 ```bash
 cd ~/greymatter-fr
-./sync.sh                  # copy + generalize, French
-python3 leakcheck.py       # must be green
+scripts/sync.sh                  # copy + generalize, French
+python3 scripts/leakcheck.py       # must be green
 git commit -am "sync: <what moved>"
 
 cd ~/greymatter            # the `main` working copy — no branch switching
 git diff fr@{1} fr -- .    # what actually changed
 # port those changes, translated, onto main
-python3 leakcheck.py --history
-./publish.sh v1.2.0 "..."
+python3 scripts/leakcheck.py --history
+scripts/publish.sh v1.2.0 "..."
 ```
 
 Read the diff before translating. Most syncs move a handful of lines; a blind

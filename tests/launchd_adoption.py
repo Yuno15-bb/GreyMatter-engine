@@ -306,7 +306,7 @@ def case_no_automatic_caller():
     """An adoption a machine can trigger on its own is not an adoption."""
     callers = []
     for rel in ("install.sh", "uninstall.sh", "greymatter/update.sh",
-                "greymatter/check_update.py", "bin/brain", "sync.sh"):
+                "greymatter/check_update.py", "bin/brain", "scripts/sync.sh"):
         p = os.path.join(ROOT, rel)
         if os.path.exists(p) and "adopt-launchd" in open(p, errors="replace").read():
             callers.append(rel)

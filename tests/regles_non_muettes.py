@@ -17,13 +17,13 @@ import sys
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 
 class ReglesNonMuettes(unittest.TestCase):
 
     def setUp(self):
-        with open(os.path.join(ROOT, "rules.json"), encoding="utf-8") as f:
+        with open(os.path.join(ROOT, "scripts", "rules.json"), encoding="utf-8") as f:
             self.rules = json.load(f)
 
     def test_aucune_regle_ne_cherche_ce_qu_elle_ecrit(self):

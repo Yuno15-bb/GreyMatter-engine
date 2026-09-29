@@ -17,15 +17,15 @@ checker.
 
 ```bash
 cd ~/greymatter-fr        # the `fr` working copy — `git worktree add ~/greymatter-fr fr`
-./sync.sh --check      # rc=0 → the package matches the living Brain
-./sync.sh              # copy + generalization, chained
-python3 leakcheck.py --history
+scripts/sync.sh --check      # rc=0 → the package matches the living Brain
+scripts/sync.sh              # copy + generalization, chained
+python3 scripts/leakcheck.py --history
 ```
 
 **Expected**: `✅ CLEAN`. A single marker and nothing ships.
 
 > The positive control matters as much as the green: modify a file in the source
-> Brain, re-run `./sync.sh --check`, it must exit 1. A green that can never turn
+> Brain, re-run `scripts/sync.sh --check`, it must exit 1. A green that can never turn
 > red proves nothing.
 
 > On `main`, `sync.sh` refuses to run — see [`translation.md`](translation.md).
@@ -49,8 +49,8 @@ An exception nobody tests is a hole that hides itself, so the counter-proof runs
 next to the check:
 
 ```bash
-python3 leakcheck.py
-python3 leakcheck.py --history
+python3 scripts/leakcheck.py
+python3 scripts/leakcheck.py --history
 python3 tests/leakcheck_fixtures.py
 python3 tests/leakcheck_fingerprints.py
 ```
@@ -441,7 +441,7 @@ and that its exit codes match the man page.
 ## 9. Publish
 
 ```bash
-./publish.sh v1.2.3 "what this version changes"
+scripts/publish.sh v1.2.3 "what this version changes"
 ```
 
 It refuses to push if the package has drifted, if the tree is dirty, if the leak

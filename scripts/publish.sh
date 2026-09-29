@@ -11,15 +11,15 @@
 # Here there is no pipe and no `&&`: the check is an explicit `if`, and its
 # failure stops everything.
 #
-# Usage: ./publish.sh v1.2.3 "tag message"
+# Usage: scripts/publish.sh v1.2.3 "tag message"
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
 TAG="${1:-}"
 MSG="${2:-}"
-[ -n "$TAG" ] || { echo "Usage: ./publish.sh v1.2.3 \"tag message\""; exit 1; }
+[ -n "$TAG" ] || { echo "Usage: scripts/publish.sh v1.2.3 \"tag message\""; exit 1; }
 [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+)?$ ]] || { echo "❌ Expected a vX.Y.Z tag"; exit 1; }
 [ -n "$MSG" ] || { echo "❌ A tag message is required."; exit 1; }
 
@@ -47,8 +47,8 @@ fi
 
 echo "▸ Does the package still match the living Brain?"
 if [ "$BRANCH" = "fr" ]; then
-  if ! ./sync.sh --check >/dev/null 2>&1; then
-    echo "❌ The package has drifted. Run ./sync.sh, read the diff, then retry."
+  if ! scripts/sync.sh --check >/dev/null 2>&1; then
+    echo "❌ The package has drifted. Run scripts/sync.sh, read the diff, then retry."
     exit 1
   fi
   echo "  ✅ up to date"
@@ -88,7 +88,7 @@ fi
 echo "  ✅ clean"
 
 echo "▸ Leak check (history included)"
-if ! python3 leakcheck.py --history; then
+if ! python3 scripts/leakcheck.py --history; then
   echo
   echo "⛔ LEAK — nothing is published."
   exit 1

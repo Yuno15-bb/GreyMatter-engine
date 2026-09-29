@@ -21,9 +21,9 @@
     },
     "docs/translation.md": {
       "documents": [
-        "sync.sh",
-        "generalize.py",
-        "rules.json"
+        "scripts/sync.sh",
+        "scripts/generalize.py",
+        "scripts/rules.json"
       ],
       "why": "The translation doc describes the fr → main chain: what is copied, what is rewritten, and by which rules."
     },
@@ -45,8 +45,8 @@
     },
     "docs/verification-recipe.md": {
       "documents": [
-        "leakcheck.py",
-        "publish.sh",
+        "scripts/leakcheck.py",
+        "scripts/publish.sh",
         "install.sh"
       ],
       "why": "The recipe tells a reader how to verify the package for themselves — it is only true while these three behave as described."

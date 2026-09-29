@@ -75,7 +75,7 @@ OWNERSHIP_FACTS = ("launchd-owned", "engine-managed", "MANIFEST", "manifest.txt"
 # case where the file was there, correct, and owned by somebody else.
 EXISTENCE_ONLY = re.compile(r"^\s*(\[\[?|test)\s+-[efLrsd]\s")
 
-SHELL_SOURCES = ["install.sh", "uninstall.sh", "sync.sh", "publish.sh",
+SHELL_SOURCES = ["install.sh", "uninstall.sh", "scripts/sync.sh", "scripts/publish.sh",
                  "greymatter/launchd-lib.sh"]
 
 fails = []

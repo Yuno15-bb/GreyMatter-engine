@@ -8,8 +8,8 @@ that would ship and, with --history, their Git history. A surviving marker
 causes exit status 1; a clean scan returns 0.
 
 Usage:
-  python3 leakcheck.py              scan the working tree
-  python3 leakcheck.py --history    scan the tree and Git history
+  python3 scripts/leakcheck.py              scan the working tree
+  python3 scripts/leakcheck.py --history    scan the tree and Git history
 """
 
 import base64
@@ -23,7 +23,7 @@ import sys
 import unicodedata
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 # These tips were already public on 2026-09-27 (read from `git ls-remote`, not
 # from a local branch). History before them cannot be recalled; never add a tip

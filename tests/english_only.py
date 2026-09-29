@@ -39,11 +39,11 @@ ACCENTS = "àâäçéèêëîïôöùûüÿœÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸŒ"
 # Files whose French is the subject, not a leak.
 SKIP_FILES = {
     "docs/translation.md",   # documents the fr branch, quotes it
-    "sync.sh",               # reads the author's living, French Brain
-    "rules.json",            # the French→English rules themselves
+    "scripts/sync.sh",               # reads the author's living, French Brain
+    "scripts/rules.json",            # the French→English rules themselves
     "tests/banc-retrieval/cas.json",  # French retrieval queries are the benchmark input
-    "generalize.py",         # ships the French patterns it rewrites
-    "leakcheck.py",          # its postal-address pattern must recognize French street terms
+    "scripts/generalize.py",         # ships the French patterns it rewrites
+    "scripts/leakcheck.py",          # its postal-address pattern must recognize French street terms
     "tests/english_only.py",
 }
 SKIP_DIRS = {".git", "node_modules", "docs/media", "planet/media", "skeleton", "demo",
