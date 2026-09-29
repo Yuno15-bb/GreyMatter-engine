@@ -33,6 +33,12 @@ let mapSize = NSSize(width: 1028, height: 673)   // ONE size, not resizable: mea
 // Test mode (see the test hook below): windows stay invisible on the user's screen.
 let testing = env["GREYMATTER_SNAPSHOT"] != nil
 
+/// A borderless window refuses the keyboard by default (canBecomeKey is false
+/// without a title bar), so the square's code field could never be typed in.
+final class KeyWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+}
+
 /// A strip the user can drag the window by. The web view swallows every mouse
 /// event, so the page's -webkit-app-region (an Electron-only property) does
 /// nothing here: native strips carry that job instead.
@@ -113,8 +119,8 @@ final class App: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDele
         // Centred across, a little above the middle: 1/2.4 of the free height from the top.
         let origin = NSPoint(x: (area.minX + (area.width - squareSize.width) / 2).rounded(),
                              y: (area.maxY - (area.height - squareSize.height) / 2.4 - squareSize.height).rounded())
-        let w = NSWindow(contentRect: NSRect(origin: origin, size: squareSize),
-                         styleMask: [.borderless], backing: .buffered, defer: false)
+        let w = KeyWindow(contentRect: NSRect(origin: origin, size: squareSize),
+                          styleMask: [.borderless], backing: .buffered, defer: false)
         w.isOpaque = false
         w.backgroundColor = .clear
         w.hasShadow = true                  // macOS draws it from the alpha: it follows the rounded corners
