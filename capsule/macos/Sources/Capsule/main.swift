@@ -10,6 +10,9 @@ import AppKit
 
 let ENV = ProcessInfo.processInfo.environment
 let STATUT = (TRONC as NSString).appendingPathComponent("state/status.json")
+/// Present: the panel was closed by hand and no longer opens by itself (see `basculer`). A file rather
+/// than a user default: it survives relaunches and belongs to THIS brain, not to every copy of the app.
+let REPLIE_MAIN = (TRONC as NSString).appendingPathComponent("state/capsule-replie")
 let REPOS_AVANT_FIN = 4.0, TERMINE_VISIBLE = 6.0
 /// Filming mode: the code block in the panel shows a fixed, neutral sample instead of the live diff.
 let TOURNAGE = ENV["CAPSULE_TOURNAGE"] == "1"
@@ -175,6 +178,7 @@ final class Pastille: NSObject, NSApplicationDelegate {
             NotificationCenter.default.addObserver(self, selector: #selector(poserObjc), name: NSWindow.didChangeOcclusionStateNotification, object: w)
         }
         panneau = Panneau(depart: cible)
+        panneau.auClic = { [weak self] in self?.basculer() }
         commencer(); auRepos()
         orbe.dessiner()
         poser()
@@ -303,8 +307,22 @@ final class Pastille: NSObject, NSApplicationDelegate {
     }
 
     // ── THE PANEL (ilot.js basculerPanneau, ouvrirPanneau, fermerPanneau) ──
-    /// Unfolded and persistent: only a click on the pill folds it back.
-    func basculer() { panneau.visible ? fermer() : ouvrir() }
+    /// It used to open by itself at every new ship, and only a click on the pill folded it back. But every
+    /// Claude session and every brain hook writes the same status.json, so a "new ship" arrives all the
+    /// time: a close only lasted until the next one, and the panel itself ignored clicks. Now a click on
+    /// the panel closes it too, and the LAST HAND GESTURE wins: closed by hand, it no longer opens by
+    /// itself, even after a relaunch; reopened by hand, it opens by itself again.
+    func basculer() {
+        let ouvre = !panneau.visible
+        ouvre ? ouvrir() : fermer()
+        if ouvre { try? FileManager.default.removeItem(atPath: REPLIE_MAIN) }
+        else { FileManager.default.createFile(atPath: REPLIE_MAIN, contents: nil) }
+    }
+    /// Opening by itself: not when filming the pill alone, not after a close by hand, and never while the
+    /// pill is hidden (tucked behind the menu bar's overflow): nothing on screen could close it again.
+    func ouvertureSeule() -> Bool {
+        !PANNEAU_REPLIE && fen.isVisible && !FileManager.default.fileExists(atPath: REPLIE_MAIN)
+    }
     func ouvrir() {
         guard !panneau.visible, let t = item.button?.window?.frame else { return }
         if let c = course { panneau.peindre(c) }
@@ -344,7 +362,7 @@ final class Pastille: NSObject, NSApplicationDelegate {
             if course == nil || course!.fin != nil { commencer() }
             let vaisseau = VAISSEAUX[etat] ?? "TORRENS"
             if let der = course!.stations.last, der.vaisseau == vaisseau { course!.stations[course!.stations.count - 1].etat = etat }
-            else { course!.stations.append(Station(vaisseau: vaisseau, etat: etat)); if !PANNEAU_REPLIE { ouvrir() } }
+            else { course!.stations.append(Station(vaisseau: vaisseau, etat: etat)); if ouvertureSeule() { ouvrir() } }
             course!.detail = detail
             course!.theme = themeEnCours()
         } else if let c = course, c.fin == nil, attenteFin == nil {

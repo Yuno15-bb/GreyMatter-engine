@@ -146,6 +146,7 @@ final class Panneau {
     private var yPoints: CGFloat = 0
     private let reduit = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     var visible: Bool { fen.isVisible }
+    var auClic: (() -> Void)? { didSet { (fen.contentView as? Cliquable)?.clic = auClic } }
 
     // The page's styles (ilot.html)
     private let sTitre = Style(taille: 15, graisse: .bold, kern: -0.1)
@@ -167,7 +168,8 @@ final class Panneau {
         fen.isReleasedWhenClosed = false
         fen.hidesOnDeactivate = false
 
-        let racine = NSView(frame: NSRect(x: 0, y: 0, width: PANNEAU_W, height: h0))
+        // The whole panel answers the click: before, only a click on the pill closed it.
+        let racine = Cliquable(frame: NSRect(x: 0, y: 0, width: PANNEAU_W, height: h0))
         racine.wantsLayer = true
         racine.addSubview(fondVerre(racine.bounds, rayon: (24 * ECHELLE).rounded(), teinte: 0x1a))
         page.frame = racine.bounds; page.autoresizingMask = [.width, .height]
