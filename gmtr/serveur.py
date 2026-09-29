@@ -8,6 +8,7 @@ import os
 import secrets
 import subprocess
 import sys
+import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -27,8 +28,16 @@ FENETRE_SESSION_S = 10 * 60
 CODE_P = BRAIN / "state" / "gmtr-code"
 ITERATIONS = 240_000
 ESSAIS_MAX, BLOCAGE_S = 5, 30
-SESSIONS = set()
+# A session token lives this long, then the code is asked again. Before, a
+# token lived as long as the server did.
+DUREE_JETON_S = 12 * 3600
+SESSIONS = {}                               # token -> expiry (time.time())
 ECHECS = {"n": 0, "jusqua": 0.0}
+# The server is threaded: without this, parallel wrong guesses all passed the
+# lockout check before any of them counted — 40 at once were all verified,
+# against a limit of five. Held from the check to the count, so guesses are
+# verified one at a time.
+VERROU = threading.Lock()
 
 
 def empreinte(code, sel=None):
@@ -462,35 +471,38 @@ class Guichet(SimpleHTTPRequestHandler):
     def _session(self):
         for morceau in (self.headers.get("Cookie") or "").split(";"):
             cle, _, val = morceau.strip().partition("=")
-            if cle == "gmtr_session" and val in SESSIONS:
+            if cle == "gmtr_session" and SESSIONS.get(val, 0) > time.time():
                 return True
         return False
 
     def do_POST(self):
         if self.path != "/deverrouiller":
             return self.send_error(404)
-        maintenant = time.time()
-        if maintenant < ECHECS["jusqua"]:
-            corps = {"ok": False, "raison": "bloque", "attendre_s": int(ECHECS["jusqua"] - maintenant) + 1}
-            return self._envoyer(json.dumps(corps).encode(), "application/json", 429)
         try:
             n = min(int(self.headers.get("Content-Length") or 0), 256)
             code = str(json.loads(self.rfile.read(n) or b"{}").get("code", ""))
         except (ValueError, AttributeError):
             code = ""
-        juste = code_juste(code)
-        if juste is None:
-            return self._envoyer(json.dumps({"ok": False, "raison": "non_arme"}).encode(), "application/json", 503)
-        if not juste:
-            ECHECS["n"] += 1
-            restants = ESSAIS_MAX - ECHECS["n"]
-            if restants <= 0:
-                ECHECS.update(n=0, jusqua=maintenant + BLOCAGE_S)
-            corps = {"ok": False, "raison": "refuse", "restants": max(restants, 0), "attendre_s": BLOCAGE_S if restants <= 0 else 0}
-            return self._envoyer(json.dumps(corps).encode(), "application/json", 401)
-        ECHECS.update(n=0, jusqua=0.0)
-        jeton = secrets.token_urlsafe(32)
-        SESSIONS.add(jeton)
+        with VERROU:
+            maintenant = time.time()
+            if maintenant < ECHECS["jusqua"]:
+                corps = {"ok": False, "raison": "bloque", "attendre_s": int(ECHECS["jusqua"] - maintenant) + 1}
+                return self._envoyer(json.dumps(corps).encode(), "application/json", 429)
+            juste = code_juste(code)
+            if juste is None:
+                return self._envoyer(json.dumps({"ok": False, "raison": "non_arme"}).encode(), "application/json", 503)
+            if not juste:
+                ECHECS["n"] += 1
+                restants = ESSAIS_MAX - ECHECS["n"]
+                if restants <= 0:
+                    ECHECS.update(n=0, jusqua=maintenant + BLOCAGE_S)
+                corps = {"ok": False, "raison": "refuse", "restants": max(restants, 0), "attendre_s": BLOCAGE_S if restants <= 0 else 0}
+                return self._envoyer(json.dumps(corps).encode(), "application/json", 401)
+            ECHECS.update(n=0, jusqua=0.0)
+            jeton = secrets.token_urlsafe(32)
+            for vieux in [t for t, fin in SESSIONS.items() if fin <= maintenant]:
+                del SESSIONS[vieux]
+            SESSIONS[jeton] = maintenant + DUREE_JETON_S
         cookie = f"gmtr_session={jeton}; HttpOnly; SameSite=Strict; Path=/"
         return self._envoyer(json.dumps({"ok": True}).encode(), "application/json", 200, cookie)
 
