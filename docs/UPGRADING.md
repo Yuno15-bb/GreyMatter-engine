@@ -1,5 +1,21 @@
 # Upgrading
 
+## Upgrading to v2.1.1 — it asks before it updates
+
+From v1.28.0 to v2.1.0 every session start installed the newest version on its
+own. From v2.1.1 session start only **looks**; when a newer version exists, your
+agent **asks you**, once per version per day, and runs `brain update` if you say
+yes. **Your notes are not touched.**
+
+If you preferred the old way, one command brings it back:
+
+```bash
+brain update --auto-on    # install on its own again
+brain update --auto-off   # back to asking
+```
+
+If v2.1.0 installed v2.1.1 on its own, the next session says so once, in its update report.
+
 ## Upgrading to v2.1.0 — one name
 
 Until v2.1.0 the product was called GreyMatter while the machine still said

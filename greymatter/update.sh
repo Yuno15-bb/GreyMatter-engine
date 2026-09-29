@@ -51,7 +51,8 @@ AUTO=0
 LOCK="$STATE/auto-update.lock"            # a directory: `mkdir` is atomic
 JOURNAL="$STATE/auto-update.log"
 RESULT="$STATE/last-auto-update"          # read, shown, then deleted by the hook
-AUTO_OFF="$STATE/auto-update-off"
+AUTO_OFF="$STATE/auto-update-off"     # before v2.1.1: the switch; now only cleared
+AUTO_ON="$STATE/auto-update-on"       # silent installing is an opt-in since v2.1.1
 
 MODE="update"
 for a in "$@"; do
@@ -72,16 +73,17 @@ done
 # can fail. It is the one command in this file that has to work when nothing
 # else does.
 if [ "$MODE" = "auto-off" ]; then
-  mkdir -p "$STATE"; : > "$AUTO_OFF"
-  echo "✅ Automatic updates are OFF."
-  echo "   Session start will report new versions without installing them."
-  echo "   To turn them back on:  brain update --auto-on"
+  mkdir -p "$STATE"; rm -f "$AUTO_ON"; : > "$AUTO_OFF"
+  echo "✅ Silent updates are OFF (the default)."
+  echo "   Session start looks for new versions, and your agent asks you before installing one."
+  echo "   To install on its own instead:  brain update --auto-on"
   exit 0
 fi
 if [ "$MODE" = "auto-on" ]; then
-  rm -f "$AUTO_OFF"
-  echo "✅ Automatic updates are back ON."
-  echo "   Every session start will install the latest published version."
+  mkdir -p "$STATE"; rm -f "$AUTO_OFF"; : > "$AUTO_ON"
+  echo "✅ Silent updates are ON."
+  echo "   Every session start installs the latest published version, without asking."
+  echo "   To be asked first again:  brain update --auto-off"
   exit 0
 fi
 
@@ -94,15 +96,19 @@ fi
 # What it costs, said plainly: code from the remote repo now installs itself
 # WITHOUT being asked. That is an execution channel. Three counterweights, none
 # of them optional:
-#   · `$AUTO_OFF` (or GREYMATTER_NO_AUTO_UPDATE=1) restores the previous behaviour —
-#     report, do not apply. The way out exists before the way in.
+#   · since v2.1.1 it runs only for whoever asked for it (`$AUTO_ON`, from
+#     `brain update --auto-on`); by default the agent asks the user first.
+#     GREYMATTER_NO_AUTO_UPDATE=1 still overrides the opt-in.
 #   · the selftest decides. In automatic mode nobody is watching the screen: an
 #     update that breaks the tool and LEAVES it broken would be worse than no
 #     update at all. So red means roll back, immediately, by the script itself.
 #   · nothing ever blocks a session — the hook is what detaches; here we only
 #     work quietly into a log.
 if [ "$AUTO" = "1" ]; then
-  if [ -e "$AUTO_OFF" ] || [ -n "${GREYMATTER_NO_AUTO_UPDATE:-}${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi   # pre-rename name still honoured
+  # Since v2.1.1 silent installing is an OPT-IN (the author's decision, 2026-09-28: ask first).
+  # A `--auto` without the opt-in file installs nothing: the hook is not the
+  # only thing that could call it, and the default must hold whoever does.
+  if [ ! -e "$AUTO_ON" ] || [ -n "${GREYMATTER_NO_AUTO_UPDATE:-}${CBRAIN_NO_AUTO_UPDATE:-}" ]; then exit 0; fi   # pre-rename name still honoured
 
   # A lock, because several sessions start at the same time. `mkdir` fails when
   # the directory exists: that is the shell's atomic test-and-set, where

@@ -120,7 +120,11 @@ HOME=$T bash $T/dev-greymatter/install.sh --no-launchd
 
 **Expected**: `✅ selftest OK`, `✅ doctor — tree consistent`, `✅ GreyMatter installed.`
 followed by `▸ Your trunk is empty.` — and *only* on a genuinely empty trunk. On a
-re-install over notes it must read `▸ Your trunk is already growing.` instead. That
+re-install over notes it must read `▸ Your trunk is already growing.` instead.
+Since v2.1.1 the end screen also names the desktop interfaces it actually made —
+`GreyMatter.app opens the planet` only when the Desktop app is ours, the capsule
+line only when Electron is installed (`--no-capsule` drops it) — and closes with
+`These are the only desktop interfaces GreyMatter ships.` That
 line had no test at all until 2026-08-16: it announced an empty trunk to somebody
 holding 23 notes, and then offered `brain demo`, which writes into a live trunk.
 

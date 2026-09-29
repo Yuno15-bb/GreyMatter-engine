@@ -16,14 +16,14 @@
 |---|---|---|
 | **writes inside `$HOME`** | `~/.greymatter/`, `~/.claude/`, `~/Library/LaunchAgents/com.greymatter.*`, a Desktop launcher, a `GreyMatter` shortcut | `uninstall.sh` undoes it all · `--no-shortcut` |
 | **runs code unattended** | hooks on your agent's events · two `launchd` jobs on a timer | install with `--no-launchd` |
-| **updates itself** | every session start, from published tags | `brain update --auto-off` |
+| **looks for updates, and asks before installing** | every session start, from published tags | nothing to do — `brain update --auto-on` makes it silent |
 | **reads your notes** | on your machine, to find them | — that is how recall works |
 | **makes no network call** | except `git pull` | — |
 | **adds 2–3 note titles to your prompt** | name, one-line description and path, not the bodies | remove the `UserPromptSubmit` hook |
 | **lets agents send whole notes** | only when you start one | do not start it |
 
 Worth stating plainly, because it is the honest basis for judging risk. The two
-rows that deserve a second look are the self-update and what travels with a
+rows that deserve a second look are the update check and what travels with a
 prompt — both are spelled out below.
 
 <details>
@@ -50,22 +50,22 @@ only network call is `git pull`.
 </details>
 
 <details>
-<summary><b>It updates itself — know this before you install</b></summary>
+<summary><b>It looks for updates, and asks before installing one</b></summary>
 
-Since v1.28.0, every session start fetches the published tags and installs the
-latest version, in the background. That is **remote code running on your
-machine without you asking for it**: the heaviest trade-off in this package,
-and a deliberate one — a fix nobody installs fixes nothing. What bounds it:
+Every session start checks the published tags in the background. When a newer
+version exists, the next session tells your agent to **ask you** — once per
+version per day — and nothing is installed until you say yes (`brain update`).
+From v1.28.0 to v2.1.0 it installed on its own; since v2.1.1 that is an opt-in:
+`brain update --auto-on`. Silent installing is **remote code running on your
+machine without you asking for it**, which is why it is no longer the default.
+Either way, what bounds an update:
 
 - updates follow **published tags**, never a working branch;
-- the **selftest decides**: on red, the previous version is restored
-  automatically and the next session tells you so;
+- the **selftest decides**: a version whose selftest goes red is never
+  activated, and the next session tells you so;
 - the **trunk is never touched** — only `~/.greymatter/engine` is replaced;
-- `brain update --auto-off` restores the old behaviour (report, do not
-  install). `--auto-on` brings it back.
-
-If you want to inspect before anything runs, turn it off **at install time**:
-`brain update --auto-off`.
+- `brain update --auto-off` goes back to asking; `GREYMATTER_NO_AUTO_UPDATE=1`
+  stops silent installs whatever the switch says.
 
 </details>
 

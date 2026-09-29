@@ -75,6 +75,7 @@ foreign; BEFORE="$(sum_app)"
 ( cd "$H/src" && ./install.sh ) >"$H/install1.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install1.log")"
 [ "$(sum_app)" = "$BEFORE" ]; check $? "the foreign app is byte-identical"
 grep -q "is not this launcher" "$H/install1.log"; check $? "the installer says why it made no launcher"
+! grep -q "GreyMatter.app opens the map" "$H/install1.log"; check $? "…and does not announce a launcher it did not make"
 
 echo "▸ 2. uninstall with the foreign app still there"
 ( cd "$H/src" && ./uninstall.sh --yes ) >"$H/uninstall1.log" 2>&1 </dev/null; check $? "uninstall exits 0" "$(tail -3 "$H/uninstall1.log")"
@@ -92,6 +93,7 @@ if command -v swift >/dev/null 2>&1; then
   L=$(/usr/libexec/PlistBuddy -c "Print :GMTRLaunch" "$APP/Contents/Info.plist" 2>/dev/null)
   [ -x "$L" ]; check $? "…pointed at a map launcher that exists"
 fi
+grep -q "GreyMatter.app opens the map" "$H/install2.log"; check $? "the install screen names the Desktop app it made"
 [ ! -e "$H/Desktop/GreyMatter Planet.app" ]; check $? "no second launcher under the longer name"
 
 echo "▸ 4. a second install rebuilds ours in place"

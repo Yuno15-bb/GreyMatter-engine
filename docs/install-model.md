@@ -212,6 +212,10 @@ decide *whose* repo this is; it reads provenance.
    ```
    No checkout, no reset, no fetch. Exit 0 under `--auto` (this is a
    configuration, not a failure); exit 1 by hand.
+   Since v2.1.1 `--auto` also exits 0 before this step unless
+   `state/auto-update-on` exists: silent installing is an opt-in
+   (`brain update --auto-on`), and by default session start only looks
+   (`--check`) and the agent asks the user.
 2. `state/engine-managed` absent, or `engine` resolving outside `versions/` →
    refuse without touching anything.
 3. `git fetch --tags` into **`source.git`**. No git command ever runs against a

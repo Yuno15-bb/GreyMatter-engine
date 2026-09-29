@@ -152,7 +152,7 @@ if b and time.time() < b:
     echo "        (credit: can the agents spend? — --unblock lifts a block that has become false)"
     echo '      (capsule: opens the menu bar pill — stop closes it, status says if it is drawing)'
     echo "       (recall accepts --semantic for embeddings, --lines for passages instead of descriptions)"
-    echo "        (update is AUTOMATIC every session — --auto-off to turn it off)"
+    echo "        (update: session start looks, your agent asks before installing — --auto-on installs without asking)"
     exit 1
     ;;
 esac

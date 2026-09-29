@@ -884,6 +884,27 @@ echo "   brain recall <q> search your memory"
 echo "   brain doctor     tree health"
 echo "   brain selftest   re-check the installation"
 echo
+# WHAT IS ON THE DESKTOP, said from what is on disk. A user of v2.0.3 went
+# looking for a desktop app this repository does not ship (issue #4): the screen
+# that ends the install is where they look, so it names the two there are, and
+# only the ones actually in place.
+if [ "$DRY" != "1" ]; then
+  _gm_ui=0
+  if grep -q "org.greymatter.planet" "${APP:-/nonexistent}/Contents/Info.plist" 2>/dev/null; then
+    case "${MAP_APP:-}" in
+      native)  echo "   On your Desktop: GreyMatter.app opens the map of your notes, in its own window." ;;
+      browser) echo "   On your Desktop: GreyMatter.app opens the map of your notes, in your browser." ;;
+      *)       echo "   On your Desktop: GreyMatter.app opens the map of your notes." ;;
+    esac
+    _gm_ui=1
+  fi
+  if [ "$DO_CAPSULE" = "1" ] && [ -x "${CAPSULE_BIN:-/nonexistent}" ]; then
+    echo "   In the menu bar: the pill, the agents at work, live"
+    echo "   (\`brain capsule\` opens it now)."
+    _gm_ui=1
+  fi
+  if [ "$_gm_ui" = "1" ]; then echo "   These are the only desktop interfaces GreyMatter ships."; echo; fi
+fi
 [ "$HAS_CLAUDE_CODE" = "1" ] \
   && echo "   Restart your CLI session for the hooks to take effect." \
   || echo "   Without Claude Code: no closed loop, but the whole CLI is there."
