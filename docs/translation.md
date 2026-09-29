@@ -150,7 +150,7 @@ French and `generalize.py` matches French strings, so the sync still lands on
 
 | Branch | Tags | Who installs it |
 |---|---|---|
-| `main` | `v2.1.1` | everyone |
+| `main` | `v2.2.0` | everyone |
 | `fr` | `v1.27.0-fr` and earlier, frozen | whoever is still on one; no new `-fr` tag is made |
 
 `update.sh` keeps an install inside its own tag family, and

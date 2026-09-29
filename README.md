@@ -110,6 +110,67 @@ A menu bar pill and a map app — [below](#watch-it-work). Optional, and install
 
 `BRAIN_RECALL_AUTO=1` makes recall fire on every prompt instead ([why it no longer does](#on-a-real-trunk)).
 
+## Watch it work
+
+Two native macOS programs, built on your Mac by the installer — no Electron, no
+browser tab. Neither is the product: they are how you *watch* it, optional, and
+skipped by `--core-only` and by the plugin install.
+
+<p align="center">
+  <img src="docs/media/pill-at-work.webp" alt="A Mac at night: a real Claude Code session in a large terminal, and the GreyMatter pill open in the menu bar above it. The first session fixes a rounding bug in a test shop, then closes; Narcissus turns what it learned into a note and files it. A second session asks about cart prices and gets the note back before Claude answers. Sulaco checks the note's links, then Torrens commits; the orb and the steps under the pill change colour with each agent. A caption at the bottom says what is happening. Sped up ×1.5, test data." width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**The pill** — in the menu bar, the agent at work and what it is doing:
+`NARCISSUS distilling`. The orb's colour and motion follow the kind of work, so
+it reads at a glance without the words. Click it for the task, how long it has
+run, and the agents that took part, one station each.
+
+</td>
+<td width="50%" valign="top">
+
+**The map** — `GreyMatter.app` on your Desktop, the video at the top of this
+page. Every region of your trunk as a cluster; enter one and its notes unfold
+into a sphere you turn with the mouse. Click a note to open it in two layers:
+the plain-language section for you, the complete note for the model.
+
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>More on the pill and the map</b></summary>
+
+Both need Swift, which comes with Apple's Command Line Tools
+(`xcode-select --install`). Without it, the installer skips only these two and
+says so; the memory works the same.
+
+**The pill** reflects **real** operations — the hooks write `state/status.json`
+on every action and the pill reads it; it invents nothing. `brain capsule` opens
+it, `brain capsule stop` closes it. How it is built and how to keep it off:
+[capsule/README.md](capsule/README.md).
+
+**The map** opens with a short self-test, then asks for your access code: the
+map is locked behind one, chosen on first launch and stored only as a hash. Each
+region shows its number of notes; point at a note and its preview appears.
+
+The **graph** view spreads every note out in volume by meaning, each region
+kept together, so two notes about the same thing sit side by side even with no
+link between them; point at a note and its links light up. Placing by meaning
+needs the optional embeddings index (the one `brain recall --semantic` uses);
+without it, the graph view keeps the panel's layout.
+
+Along the bottom, three panes: the regions and their share of notes, what this
+session has read, written and committed, and the lines being written right now.
+
+It is read-only: nothing you do in the map changes a note. It is rebuilt from
+your trunk on every launch, and quitting the app stops its local server.
+
+</details>
+
 ## How well it recalls
 
 <p align="center">
@@ -212,76 +273,6 @@ both sets; it stays off unless you ask for it.
 
 </details>
 
-<!-- When v2.2 ships: move this section right after "What it does" and drop the note below.
-     It sits after the measurements only because the pill is not in a release yet (2026-09-29). -->
-## Watch it work
-
-> [!NOTE]
-> **v2.2 · in development.** The menu bar pill and the map app below are on
-> `main` and not yet in a release. **v2.1.1**, what you install today, ships the
-> floating orb and the planet in your browser —
-> [its README](https://github.com/Yuno15-bb/GreyMatter-engine/tree/v2.1.1#the-extensions)
-> shows them.
-
-Two native macOS programs, built on your Mac by the installer — no Electron, no
-browser tab. Neither is the product: they are how you *watch* it, optional, and
-skipped by `--core-only` and by the plugin install.
-
-<p align="center">
-  <img src="docs/media/pill-at-work.webp" alt="A Mac at night: a real Claude Code session in a large terminal, and the GreyMatter pill open in the menu bar above it. The first session fixes a rounding bug in a test shop, then closes; Narcissus turns what it learned into a note and files it. A second session asks about cart prices and gets the note back before Claude answers. Sulaco checks the note's links, then Torrens commits; the orb and the steps under the pill change colour with each agent. A caption at the bottom says what is happening. Sped up ×1.5, test data." width="100%">
-</p>
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**The pill** — in the menu bar, the agent at work and what it is doing:
-`NARCISSUS distilling`. The orb's colour and motion follow the kind of work, so
-it reads at a glance without the words. Click it for the task, how long it has
-run, and the agents that took part, one station each.
-
-</td>
-<td width="50%" valign="top">
-
-**The map** — `GreyMatter.app` on your Desktop, the video at the top of this
-page. Every region of your trunk as a cluster; enter one and its notes unfold
-into a sphere you turn with the mouse. Click a note to open it in two layers:
-the plain-language section for you, the complete note for the model.
-
-</td>
-</tr>
-</table>
-
-<details>
-<summary><b>More on the pill and the map</b></summary>
-
-Both need Swift, which comes with Apple's Command Line Tools
-(`xcode-select --install`). Without it, the installer skips only these two and
-says so; the memory works the same.
-
-**The pill** reflects **real** operations — the hooks write `state/status.json`
-on every action and the pill reads it; it invents nothing. `brain capsule` opens
-it, `brain capsule stop` closes it. How it is built and how to keep it off:
-[capsule/README.md](capsule/README.md).
-
-**The map** opens with a short self-test, then asks for your access code: the
-map is locked behind one, chosen on first launch and stored only as a hash. Each
-region shows its number of notes; point at a note and its preview appears.
-
-The **graph** view spreads every note out in volume by meaning, each region
-kept together, so two notes about the same thing sit side by side even with no
-link between them; point at a note and its links light up. Placing by meaning
-needs the optional embeddings index (the one `brain recall --semantic` uses);
-without it, the graph view keeps the panel's layout.
-
-Along the bottom, three panes: the regions and their share of notes, what this
-session has read, written and committed, and the lines being written right now.
-
-It is read-only: nothing you do in the map changes a note. It is rebuilt from
-your trunk on every launch, and quitting the app stops its local server.
-
-</details>
-
 ## Install
 
 **As a Claude Code plugin** — the short way:
@@ -294,24 +285,23 @@ your trunk on every launch, and quitting the app stops its local server.
 **The full install** — ask your agent:
 
 ```
-Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine at tag v2.1.1
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine at tag v2.2.0
 into ~/dev/greymatter, read its INSTALL.md, then run ./install.sh
 and show me the final verification output.
 ```
 
-Or by hand: `git clone --branch v2.1.1 … && cd greymatter && ./install.sh` — add `--core-only` for the memory and nothing else.
-Without `--branch v2.1.1` you get `main`, the unfinished v2.2: [what differs](INSTALL.md#the-version-in-development).
+Or by hand: `git clone --branch v2.2.0 … && cd greymatter && ./install.sh` — add `--core-only` for the memory and nothing else.
 
 | | Plugin | Full install | `--core-only` |
 |---|:---:|:---:|:---:|
 | Trunk, recall, the four agents | ✅ | ✅ | ✅ |
 | `/greymatter:recall` · `:distill` · `:doctor` | ✅ | — | — |
 | `brain` in your own terminal | inside Claude Code | ✅ | ✅ |
-| Floating orb and planet (v2.2: menu bar pill and map app) | — | ✅ | — |
+| Menu bar pill and map app | — | ✅ | — |
 | Scheduled maintenance jobs (launchd) | — | ✅ | — |
 
 The plugin creates `~/.greymatter/trunk` on your first session and tells you so.
-It does not set up the orb, the planet or the scheduled jobs — a plugin cannot
+It does not set up the pill, the map app or the scheduled jobs — a plugin cannot
 install a background service, and pretending otherwise would leave you with a
 window that never opens.
 
@@ -322,6 +312,10 @@ uninstall: **[INSTALL.md](INSTALL.md)**.
 
 <details>
 <summary><b>Upgrading from an older version</b></summary>
+
+**From v2.1.1?** `brain update`. The floating orb gives way to the menu bar pill,
+built on your Mac with Swift; [docs/UPGRADING.md](docs/UPGRADING.md#upgrading-to-v220--the-menu-bar-pill)
+says what moves.
 
 **From v2.0.x?** `brain update` carries you across the rename to GreyMatter on
 its own; [docs/UPGRADING.md](docs/UPGRADING.md) says what moves and how to roll

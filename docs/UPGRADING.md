@@ -6,10 +6,42 @@ whichever row is yours.
 
 | Coming from | Read | Anything to do? |
 |---|---|---|
-| v2.1.1 | nothing — `brain update` | No |
-| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates) | No. `brain update --auto-on` if you preferred silent installs |
-| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates) | Usually no. Yes if a job is "left running", or if you use the plugin |
+| v2.2.0 | nothing — `brain update` | No |
+| v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Only if you installed with `--core-only` or a `--no-…` option |
+| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No. `brain update --auto-on` if you preferred silent installs |
+| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if a job is "left running", or if you use the plugin |
 | **v1.28.1 or earlier** | [The one-time warning](#important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
+
+## Upgrading to v2.2.0 — the menu bar pill
+
+`brain update`, and say yes when your agent asks. **Your notes are not touched.**
+
+| v2.1.1 | v2.2.0 |
+|---|---|
+| the floating orb, an Electron window | the menu bar pill, a native macOS program |
+| the Desktop launcher opens the planet in your browser | the same launcher opens the map in its own window |
+| `npm` builds the orb, optional | `swift` builds the pill, from the Command Line Tools |
+
+**During the update** the installer builds the pill (about 30 s), starts it and
+stops the old orb. From then on each session start opens the pill, never the
+orb. Without Swift only the pill is skipped, and `brain capsule` then tells
+you how to add it: `xcode-select --install`, then `./install.sh` again from your
+clone. The planet is still there, through `planet/launch.sh`.
+
+**If you declined pieces at install.** The updater shipped with v2.1.1 reinstalls
+with the default options: after the update, a machine installed with
+`--core-only` or a `--no-…` option has the pieces it had declined. To keep the
+pill from starting, create one empty file — the installer and every session
+start both respect it:
+
+```bash
+touch ~/.greymatter/trunk/state/no-capsule
+```
+
+**On a full menu bar.** macOS tucks the icons furthest left behind the «
+arrow when the bar runs out of room, and on macOS 27 a relaunched pill is placed
+furthest left until the menu bar restarts. `killall MenuBarAgent` puts it back
+in its place; macOS restarts the menu bar on its own within a second.
 
 ## Upgrading to v2.1.1 — it asks before it updates
 

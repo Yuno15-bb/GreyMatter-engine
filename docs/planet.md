@@ -25,8 +25,8 @@ planet/launch.sh 8770     # another port, if 8765 is taken
 
 | Version | What the **GreyMatter** app on your Desktop opens |
 |---|---|
-| v2.1.1, the release | this planet, through the same launcher, in your browser as *3D/2D Knowledge Map — GreyMatter* |
-| v2.2, in development | the map (`gmtr/`) in its own window; the planet stays reachable with `planet/launch.sh` |
+| v2.2.0 and later | the map (`gmtr/`) in its own window; the planet stays reachable with `planet/launch.sh` |
+| v2.1.1 and earlier | this planet, through the same launcher, in your browser as *3D/2D Knowledge Map — GreyMatter* |
 
 The launcher rebuilds the graph **before** opening the page, so the map never
 shows a stale state.
