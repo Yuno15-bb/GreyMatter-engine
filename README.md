@@ -213,7 +213,7 @@ brain version         installed version
 > [!NOTE]
 > **v2.2 · in development.** The menu bar pill and the map app below are on
 > `main` and not yet in a release. **v2.1.1**, what you install today, ships the
-> floating orb and the planet in your browser —
+> floating orb (just below) and the planet in your browser —
 > [its README](https://github.com/Yuno15-bb/GreyMatter-engine/tree/v2.1.1#the-extensions)
 > shows them.
 
@@ -244,6 +244,14 @@ the plain-language section for you, the complete note for the model.
 
 <p align="center">
   <img src="docs/media/pill.webp" alt="The capsule: a pill in the macOS menu bar naming the agent at work, and the panel it drops — agent, elapsed time, activity and detail, the run's stations, and the live orb." width="520">
+</p>
+
+**What you install today · v2.1.1 — the orb.** A glass orb floating on your
+desktop. Its colour and motion change with the kind of work, the lines being
+written scroll inside it, and the task is named underneath.
+
+<p align="center">
+  <img src="docs/media/orb.webp" alt="The v2.1.1 orb: a glass sphere on a dark background, changing colour and motion as the agents work — gardening, distilling, auditing, committing, then idle — with code scrolling inside it and the current task named underneath, such as auditing 312 notes" width="240">
 </p>
 
 <details>
