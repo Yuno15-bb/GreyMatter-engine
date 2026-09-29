@@ -155,6 +155,10 @@ if [ -f "$SL" ]; then
   fi
 fi
 
+# The pieces declined at install. Kept, it would make the next install decline
+# them again without being asked: an install after an uninstall starts afresh.
+[ -f "$GM/state/install-choices" ] && rm -f "$GM/state/install-choices" && say "- the install choices" || true
+
 # ─── 5. Engine ────────────────────────────────────────────────────────────
 echo
 echo "▸ Engine"

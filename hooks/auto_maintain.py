@@ -217,13 +217,17 @@ def ensure_capsule():
     The capsule is the native menu bar pill (capsule/macos), built by install.sh.
     Light mode: if the file state/no-capsule exists, nothing is launched."""
     try:
-        if os.path.exists(os.path.join(BRAIN, "state", "no-capsule")):
+        if sys.platform != "darwin":
             return
-        if sys.platform != "darwin" or not os.access(MOTIF_CAPSULE, os.X_OK):
-            return
+        # The Electron orb of v2.1.x first, before either return below: light mode
+        # or a pill that is not built must not keep an orb this version replaced.
         if subprocess.run(["pgrep", "-f", MOTIF_ELECTRON], capture_output=True).returncode == 0:
             subprocess.run(["pkill", "-f", MOTIF_ELECTRON], capture_output=True)
             time.sleep(1)
+        if os.path.exists(os.path.join(BRAIN, "state", "no-capsule")):
+            return
+        if not os.access(MOTIF_CAPSULE, os.X_OK):
+            return
         r = subprocess.run(["pgrep", "-f", MOTIF_CAPSULE],
                            capture_output=True, text=True)
         # ⚠️ AN EMPTY OUTPUT IS NOT A MEASUREMENT. pgrep returns 0 when it finds, 1 when it

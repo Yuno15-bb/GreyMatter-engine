@@ -74,6 +74,11 @@ The same tools ship Swift, which builds the menu bar pill and the map app.
 | `--no-planet` | no GreyMatter launcher on your Desktop (the map app) |
 | `--no-shortcut` | no `GreyMatter` shortcut in your home folder |
 
+What you decline is remembered: updates, rollbacks and a new `./install.sh`
+without these options keep it declined. Giving `--core-only` or a `--no-…`
+option again replaces the old choices. To get every piece back, delete
+`~/.greymatter/state/install-choices`, then run `./install.sh` with no option.
+
 </details>
 
 ## What the install does — and does not do

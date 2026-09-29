@@ -136,3 +136,51 @@ build_capsule() {
   rm -rf "$scratch"
   [ -x "$rt/release/Capsule" ]
 }
+
+# ─── The pieces the user chose at install ────────────────────────────────────
+# `--no-launchd`, `--no-capsule`, `--no-planet`, `--no-shortcut` and `--core-only`
+# decline a piece. Every update and every rollback ends by replaying an installer,
+# and until v2.2.0 that replay passed no option: each update put back what the
+# user had turned down. So the choices are written down at every install, and
+# read back by both consumers — the installer when it is replayed, the updater
+# when it rolls back to an installer that predates this record and only
+# understands flags. The file is parsed, never sourced: nothing in state/ runs.
+choices_file() {     # choices_file → the record's path
+  printf '%s/state/install-choices\n' "${GM:-$HOME/.greymatter}"
+}
+
+choices_write() {    # choices_write — records DO_LAUNCHD DO_CAPSULE DO_PLANET DO_SHORTCUT
+  local f; f="$(choices_file)"
+  mkdir -p "$(dirname "$f")" || return 1
+  printf 'launchd=%s\ncapsule=%s\nplanet=%s\nshortcut=%s\n' \
+    "$DO_LAUNCHD" "$DO_CAPSULE" "$DO_PLANET" "$DO_SHORTCUT" > "$f.tmp" && mv "$f.tmp" "$f"
+}
+
+choices_read() {     # choices_read → sets the DO_* it finds; 1 when there is no record
+  local f k v; f="$(choices_file)"
+  [ -f "$f" ] || return 1
+  while IFS='=' read -r k v; do
+    case "$v" in 0|1) ;; *) continue ;; esac
+    case "$k" in
+      launchd)  DO_LAUNCHD="$v" ;;
+      capsule)  DO_CAPSULE="$v" ;;
+      planet)   DO_PLANET="$v" ;;
+      shortcut) DO_SHORTCUT="$v" ;;
+    esac
+  done < "$f"
+  return 0
+}
+
+choices_as_flags() { # choices_as_flags → the options that reproduce DO_* as they stand
+  [ "$DO_LAUNCHD" = "0" ] && printf ' --no-launchd'
+  [ "$DO_CAPSULE" = "0" ] && printf ' --no-capsule'
+  [ "$DO_PLANET" = "0" ] && printf ' --no-planet'
+  [ "$DO_SHORTCUT" = "0" ] && printf ' --no-shortcut'
+  return 0
+}
+
+choices_flags() {    # choices_flags → the options that reproduce the RECORD (none if absent)
+  local DO_LAUNCHD=1 DO_CAPSULE=1 DO_PLANET=1 DO_SHORTCUT=1
+  choices_read && choices_as_flags
+  return 0
+}

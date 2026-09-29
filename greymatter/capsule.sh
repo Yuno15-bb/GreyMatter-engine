@@ -42,7 +42,7 @@ case "${1:-start}" in
     else
       echo "capsule: not running"
       [ -x "$BIN" ] && echo "  the pill is built — \`brain capsule\` opens it" \
-                    || echo "  the pill is not built — re-run ./install.sh (it needs Apple's Command Line Tools)"
+                    || echo "  the pill is not built — \`brain capsule\` says how to add it"
     fi
     pgrep -f "$ELECTRON" >/dev/null 2>&1 && echo "  an old Electron capsule is still running — \`brain capsule\` retires it"
     [ -e "$TRUNK/state/no-capsule" ] && echo "  light mode is on (state/no-capsule): the hooks never start it"
@@ -69,7 +69,16 @@ case "${1:-start}" in
   start|"")
     if [ ! -x "$BIN" ]; then
       echo "capsule: the pill is not built ($BIN)"
-      echo "Re-run ./install.sh — it builds it with Swift (xcode-select --install first if Swift is missing)."
+      # A re-run keeps the choices of the last install: when the pill was one of
+      # the pieces declined, "re-run ./install.sh" alone would skip it again.
+      if grep -qx 'capsule=0' "$HOME/.greymatter/state/install-choices" 2>/dev/null; then
+        echo "The install choices mark it as declined (~/.greymatter/state/install-choices): chosen"
+        echo "at install, or read on the update to v2.2.0 when no orb was there. A re-run keeps that."
+        echo "To add it: re-run ./install.sh with only the options you still want (--no-launchd,"
+        echo "--no-planet, --no-shortcut) — or, for every piece, delete that file first."
+      else
+        echo "Re-run ./install.sh — it builds it with Swift (xcode-select --install first if Swift is missing)."
+      fi
       exit 1
     fi
     pkill -f "$ELECTRON" 2>/dev/null || true

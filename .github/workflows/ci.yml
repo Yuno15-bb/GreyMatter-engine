@@ -444,6 +444,38 @@ jobs:
           [ -d "$H/.greymatter/trunk" ] || { echo "❌ uninstall removed the trunk"; exit 1; }
           echo "✅ trunk still there"
 
+  update-choices:
+    name: what was declined at install stays declined
+    # Its own job, for the tags: the install job checks out one commit, and a
+    # test that installs v2.1.1 would skip there — a green that tests nothing.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # the test installs the tag v2.1.1 and updates from it
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: update, roll back, update, re-run — the refusals hold
+        run: |
+          set -euo pipefail
+          # Every updater up to v2.1.1 replays the installer with no option: the
+          # installer it replays must find the user's choices by itself.
+          bash tests/update_keeps_choices.sh | tee "$RUNNER_TEMP/choices.out"
+          if grep -q skipped "$RUNNER_TEMP/choices.out"; then
+            echo "❌ update_keeps_choices opted out on a runner that must run it"; exit 1
+          fi
+          # Each sabotage must redden on a CHECK, not on a crash or a pattern
+          # that no longer matches: either would be a red that proves nothing.
+          for s in replay-ignores-record rollback-without-flags orb-survives; do
+            if out="$(bash tests/update_keeps_choices.sh --sabotage "$s" 2>&1)"; then
+              echo "❌ sabotage $s left the contract green"; exit 1
+            fi
+            if ! grep -q "SABOTAGE: $s" <<<"$out" || ! grep -q '^  ❌ ' <<<"$out"; then
+              echo "❌ sabotage $s failed without a check going red:"; tail -5 <<<"$out"; exit 1
+            fi
+            echo "✅ sabotage $s reddens"
+          done
+
   migrations:
     name: migrations replay clean
     runs-on: macos-latest

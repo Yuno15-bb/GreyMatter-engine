@@ -369,7 +369,9 @@ if [ "$MODE" = "rollback" ]; then
     done
   fi
   switch_to "$target" || { echo "❌ could not switch the engine link."; exit 1; }
-  bash "$VERSIONS/$target/install.sh" >/dev/null 2>&1 || warn "install.sh reported a problem"
+  # The installer being replayed may predate the record of install choices and
+  # know only flags: it gets them, or it would put back every declined piece.
+  bash "$VERSIONS/$target/install.sh" $(choices_flags) >/dev/null 2>&1 || warn "install.sh reported a problem"
   echo "✅ Back on $target. Your notes did not move."
   exit 0
 fi

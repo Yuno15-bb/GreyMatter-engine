@@ -60,6 +60,8 @@ BACKUPS="$GM/backups/$TS"
 MANIFEST="$GM/manifest.txt"
 
 DO_LAUNCHD=1; DO_CAPSULE=1; DO_SHORTCUT=1; DO_PLANET=1; DRY=0; DEV=0
+# 1 once any piece is chosen by option: a replay then obeys the options, not the record.
+CHOSEN_BY_HAND=0
 for a in "$@"; do
   case "$a" in
     # The ONLY mode in which an engine may be a working checkout, and it has to
@@ -67,15 +69,15 @@ for a in "$@"; do
     # switched off for this install: a development repo is somebody's work, and
     # no amount of inspection can tell it apart from an install after the fact.
     --dev) DEV=1 ;;
-    --no-launchd) DO_LAUNCHD=0 ;;
-    --no-capsule) DO_CAPSULE=0 ;;
-    --no-shortcut) DO_SHORTCUT=0 ;;
+    --no-launchd) DO_LAUNCHD=0; CHOSEN_BY_HAND=1 ;;
+    --no-capsule) DO_CAPSULE=0; CHOSEN_BY_HAND=1 ;;
+    --no-shortcut) DO_SHORTCUT=0; CHOSEN_BY_HAND=1 ;;
     # The memory, and nothing else: trunk, recall, agents, hooks, `brain`.
     # No menu bar pill, no 3D globe, no background job. Named as one option
     # because "install it without the ornaments" is a thing people want to ask
     # for in one go, and three flags they have to discover is not an answer.
-    --core-only)  DO_LAUNCHD=0; DO_CAPSULE=0; DO_PLANET=0 ;;
-    --no-planet)  DO_PLANET=0 ;;
+    --core-only)  DO_LAUNCHD=0; DO_CAPSULE=0; DO_PLANET=0; CHOSEN_BY_HAND=1 ;;
+    --no-planet)  DO_PLANET=0; CHOSEN_BY_HAND=1 ;;
     --dry-run)    DRY=1 ;;
     *) echo "Unknown option: $a"; exit 1 ;;
   esac
@@ -302,6 +304,57 @@ case "$SOURCE" in
   "$VERSIONS"/*) ALREADY_A_VERSION=1 ;;
   *)             ALREADY_A_VERSION=0 ;;
 esac
+
+# ─── WHAT THE USER DECLINED STAYS DECLINED ───────────────────────────────────
+# Every `brain update` and every rollback ends by replaying this script, and the
+# updaters already on users' disks pass it no option at all. So each update used
+# to put back the jobs, the pill, the Desktop app and the shortcut the user had
+# turned down — and so did the documented repair, "re-run ./install.sh".
+#
+#   run                    record    → the pieces installed
+#   with options           —         → the options, which become the record
+#   without options        present   → the record: the choices of the last install
+#   replay, no options     absent    → read from this Mac (installed before v2.2.0)
+#   by hand, no options    absent    → every piece: a first install
+#
+# The record holds the CHOICE, never the outcome: a pill skipped because Swift
+# is missing stays chosen, so installing Swift and re-running still adds it. An
+# install from before v2.2.0 left no choice written anywhere, only its result on
+# disk, where a declined piece is simply absent; the Electron orb of v2.1.x
+# stands for the pill. That reading cannot tell "declined" from "Node was
+# missing" — both had no orb, and both keep having no pill, which is the error
+# that takes nothing away. engine-lib.sh keeps the record.
+kept=""
+if [ "$CHOSEN_BY_HAND" = "0" ]; then
+  if choices_read; then
+    kept="kept from the last install"
+  elif [ "$ALREADY_A_VERSION" = "1" ]; then
+    kept="read from this Mac (installed before v2.2.0)"
+    DO_LAUNCHD=0; DO_CAPSULE=0; DO_PLANET=0; DO_SHORTCUT=0
+    la="$HOME/Library/LaunchAgents"
+    for f in "$la/com.greymatter.resume.plist" "$la/com.greymatter.machiniste.plist" \
+             "$la/com.claudebrain.resume.plist" "$la/com.claudebrain.machiniste.plist"; do  # pre-rename
+      [ -e "$f" ] && DO_LAUNCHD=1
+    done
+    for f in "$RUNTIME"/capsule-*/node_modules/electron/dist/Electron.app \
+             "$RUNTIME"/capsule-native-*/release/Capsule; do
+      [ -e "$f" ] && DO_CAPSULE=1
+    done
+    for f in "$HOME/Desktop/GreyMatter.app" "$HOME/Desktop/C Brain Planet.app"; do  # pre-rename
+      [ -e "$f" ] && DO_PLANET=1
+    done
+    for f in "$HOME/GreyMatter" "$HOME/C Brain"; do  # pre-rename
+      [ -L "$f" ] && DO_SHORTCUT=1
+    done
+  fi
+fi
+if [ -n "$kept" ]; then
+  declined="$(choices_as_flags)"
+  say "= install choices $kept:${declined:- nothing declined}"
+  say "  to change them, run ./install.sh with the options you want now; for every"
+  say "  piece, delete $(choices_file) first"
+fi
+[ "$DRY" = "1" ] || choices_write || warn "could not record the install choices ($(choices_file))"
 
 if [ "$ALREADY_A_VERSION" = "1" ]; then
   ENGINE="$SOURCE"
@@ -546,13 +599,19 @@ capsule_start() {
   bin="$trunk/capsule/macos/.build/release/Capsule"
   [ -x "$bin" ] || return 1
   [ -e "$trunk/state/no-capsule" ] && { say "= capsule not started (state/no-capsule: light mode)"; return 0; }
-  # An Electron pill from an older install would sit next to the new one.
-  pkill -f "$trunk/capsule/node_modules/electron" 2>/dev/null || true
   if pgrep -f "$bin" >/dev/null 2>&1; then say "= capsule already running"; return 0; fi
   CAPSULE_BRAIN="$trunk" nohup "$bin" </dev/null >/dev/null 2>&1 &
   disown 2>/dev/null || true
   say "+ capsule started: look for \"GreyMatter idle\" in the menu bar"
 }
+
+# The Electron orb of v2.1.x is gone from this version, whatever the choice: left
+# running, it would sit next to the new pill, or outlive a pill the user declined.
+# Stopped BEFORE any branch below, light mode and --no-capsule included — inside
+# capsule_start it came after the light-mode return, and survived the update.
+if [ "$DRY" != "1" ] && orb_trunk="$(cd "$TRUNK" 2>/dev/null && pwd -P)"; then
+  pkill -f "$orb_trunk/capsule/node_modules/electron" 2>/dev/null || true
+fi
 
 if [ "$DO_CAPSULE" = "0" ]; then say "(skipped — --no-capsule)"
 elif [ ! -f "$ENGINE/capsule/macos/Package.swift" ]; then say "(no native capsule in this version)"
@@ -663,7 +722,7 @@ fi
 step "Planet launcher (Desktop)"
 APP="$HOME/Desktop/GreyMatter.app"
 OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
-if [ "$DO_PLANET" = "0" ]; then say "(skipped — --core-only)"
+if [ "$DO_PLANET" = "0" ]; then say "(skipped — --no-planet)"
 elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
 # "GreyMatter.app" is a plain name another app could carry: only OUR launcher
 # (its bundle id) is rebuilt, anything else under that name is left alone.

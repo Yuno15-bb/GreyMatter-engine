@@ -7,9 +7,9 @@ whichever row is yours.
 | Coming from | Read | Anything to do? |
 |---|---|---|
 | v2.2.0 | nothing — `brain update` | No |
-| v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Only if you [declined pieces at install](#if-you-declined-pieces-at-install) |
-| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No, unless you [declined pieces at install](#if-you-declined-pieces-at-install). `brain update --auto-on` if you preferred silent installs |
-| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if you [declined pieces at install](#if-you-declined-pieces-at-install), if a job is "left running", or if you use the plugin |
+| v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No. What you [declined at install](#if-you-declined-pieces-at-install) stays declined |
+| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No — what you [declined at install](#if-you-declined-pieces-at-install) stays declined. `brain update --auto-on` if you preferred silent installs |
+| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if a job is "left running", or if you use the plugin. What you [declined at install](#if-you-declined-pieces-at-install) stays declined |
 | **v1.28.1 or earlier** | [The one-time warning](#%EF%B8%8F-important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
 
 ## Upgrading to v2.2.0 — the menu bar pill
@@ -22,35 +22,50 @@ whichever row is yours.
 | the Desktop launcher opens the planet in your browser | the same launcher opens the map in its own window |
 | `npm` builds the orb, optional | `swift` builds the pill, from the Command Line Tools |
 
-**During the update** the installer builds the pill (about 30 s), starts it and
-stops the old orb. From then on each session start opens the pill, never the
-orb. Without Swift only the pill is skipped, and `brain capsule` then tells
-you how to add it: `xcode-select --install`, then `./install.sh` again from your
-clone. The planet is still there, through `planet/launch.sh`.
+**During the update** the installer stops the old orb, builds the pill (about
+30 s) and starts it — unless you had declined the orb: see
+[below](#if-you-declined-pieces-at-install). From then on each session start
+opens the pill, never the orb. Without Swift only the pill is skipped, and
+`brain capsule` then tells you how to add it: `xcode-select --install`, then
+`./install.sh` again from your clone. The planet is still there, through
+`planet/launch.sh`.
 
 ### If you declined pieces at install
 
-Every updater up to v2.1.1 — the one that runs when you type `brain update` —
-reinstalls with the default options. A machine installed with `--core-only` or
-a `--no-…` option gets back, after the update, the pieces it had declined.
+From v2.2.0 the installer remembers what you declined with `--core-only` or a
+`--no-…` option, in `~/.greymatter/state/install-choices`. Every update and
+every rollback reads it, so a declined piece stays declined. You have nothing
+to do.
 
-**Before** `brain update`, create this empty file. The installer and every
-session start both respect it: the pill is built, but never started.
+Before v2.2.0 there was no such record, and each update reinstalled every
+piece. On the update that brings v2.2.0, the installer therefore reads your
+Mac instead: a piece you had counts as chosen, and a piece you did not have
+counts as declined.
 
-```bash
-touch ~/.greymatter/trunk/state/no-capsule
-```
+| Declined with | Looked for on your Mac |
+|---|---|
+| `--no-launchd` | the two scheduled jobs' files, in `~/Library/LaunchAgents/` |
+| `--no-capsule` | the floating orb, or the pill |
+| `--no-planet` | `GreyMatter.app` on your Desktop |
+| `--no-shortcut` | the `~/GreyMatter` shortcut |
 
-Created after the update, it keeps the pill off from the next session on, and
-`brain capsule stop` closes the one already running. The other pieces have no
-such switch, so remove what you had declined once the update is done — and
-again after the next one, since each update reinstalls them:
+Pieces installed under the names used before v2.1.0 count too.
 
-| Declined with | Comes back as | Remove it with |
-|---|---|---|
-| `--no-launchd` | two scheduled jobs, `com.greymatter.resume` and `com.greymatter.machiniste` | `launchctl bootout gui/$(id -u)/com.greymatter.resume`, the same for `.machiniste`, then delete both files in `~/Library/LaunchAgents/` |
-| `--no-planet` | `GreyMatter.app` on your Desktop | drag it to the Trash |
-| `--no-shortcut` | the `~/GreyMatter` shortcut | `rm ~/GreyMatter` — a link: your notes stay where they are |
+**One case reads wrong.** A piece missing for another reason also counts as
+declined. The usual one is the orb, which v2.1.1 skipped when `npm` was not
+installed: you then get no pill after the update. `brain capsule` tells you
+when that happened.
+
+**To change your choices**, run `./install.sh` again from your clone:
+
+- **With options:** they replace the record. Give only the options you still
+  want.
+- **With no option:** the record is kept, and the installer says which choices
+  it kept.
+- **For every piece:** delete `~/.greymatter/state/install-choices` first,
+  then run `./install.sh` with no option.
+
+`./uninstall.sh` deletes the record too.
 
 ### On a full menu bar
 
