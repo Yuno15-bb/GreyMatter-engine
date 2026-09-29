@@ -212,6 +212,8 @@ both sets; it stays off unless you ask for it.
 
 </details>
 
+<!-- When v2.2 ships: move this section right after "What it does" and drop the note below.
+     It sits after the measurements only because the pill is not in a release yet (2026-09-29). -->
 ## Watch it work
 
 > [!NOTE]
