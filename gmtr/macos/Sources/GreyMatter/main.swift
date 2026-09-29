@@ -108,6 +108,9 @@ final class App: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDele
 
     func applicationWillTerminate(_ note: Notification) {
         guard let s = server, s.isRunning else { return }
+        // Stopping it is ours, not a failure: without this, waitUntilExit lets
+        // serverEnded run and show "The map could not start." on every close.
+        s.terminationHandler = nil
         s.terminate()
         s.waitUntilExit()
     }
