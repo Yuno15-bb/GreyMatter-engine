@@ -292,8 +292,10 @@ decide *whose* repo this is; it reads provenance.
    points at it. This is the ordering the old model could not offer: it checked
    out first and hoped.
 6. Green → atomic switch of `engine`, then replay `install.sh` to refresh the
-   copies (statusline) and the mounts. Record the outgoing version in
-   `state/previous-version`.
+   copies (statusline) and the mounts. The replay keeps what was declined at
+   install: it reads `state/install-choices`, or, with no record yet (an
+   install older than v2.2.0), the pieces present on the Mac. Record the
+   outgoing version in `state/previous-version`.
    Red → **delete `versions/<new>`**. `engine` never moved. There is nothing to
    roll back from, because nothing was ever switched.
 
@@ -302,7 +304,8 @@ decide *whose* repo this is; it reads provenance.
 <details>
 <summary><b><code>brain update --rollback</code></b></summary>
 
-Repoint `engine` at `versions/<previous-version>`, replay `install.sh`,
+Repoint `engine` at `versions/<previous-version>`, run that version's
+`install.sh` with the recorded choices as options (it may predate the record),
 selftest. No git, no checkout, no network. If that directory no longer exists,
 refuse and say which versions are retained — a rollback that silently lands
 somewhere else is worse than one that refuses.

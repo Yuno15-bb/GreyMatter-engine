@@ -268,11 +268,12 @@ changes shape**. Behaviour is identical; only where the files come from changes.
 | Tags, never `main` | a draft commit reaches nobody |
 | Migrations | numbered, idempotent, **never destructive** to the notes |
 | Rollback by hand | `brain update --rollback` |
+| What was declined stays declined (v2.2.0) | the replay and the rollback reuse the choices made at install |
 
 <details>
 <summary><b>Each rule, in full</b></summary>
 
-- `brain update`: `git pull` inside `~/.greymatter/engine`, then **replays `install.sh`** (idempotent by construction — it already knows not to overwrite anything). The symlinks make propagation immediate.
+- `brain update`: fetches the tag into its own mirror, builds it under `~/.greymatter/versions/`, switches the `engine` link, then **replays `install.sh`** (idempotent by construction — it already knows not to overwrite anything). The symlinks make propagation immediate. Since v2.2.0 the replay reuses the choices recorded at install (`state/install-choices`), so a piece declined then stays declined; with no record yet, it reads which pieces are on the Mac. [install-model.md](install-model.md) has the sequence.
 - **Automatic trigger (v1.28.0)**: a `SessionStart` hook launches the update **detached** and returns immediately, on **every** session. It does not merely report any more — it **installs**. The report of the run is shown at the *next* session start, which is the price of never blocking: better news one session late than a session waiting on a `git fetch` and a selftest.
   - Until v1.28.0 the same hook only *announced*, throttled to once every 24 h. That throttle existed because a notice repeated too often stops being read; it made no sense once the thing applies itself. **Nobody typed `brain update`** — the published engine sat weeks behind the author's, and a fix nobody installs fixes nothing.
   - A lock directory (`state/auto-update.lock`, `mkdir` being the shell's atomic test-and-set) keeps several sessions starting at once from updating in parallel; it is reclaimed after 30 minutes so a sleeping machine cannot wedge updates forever.
@@ -287,7 +288,7 @@ changes shape**. Behaviour is identical; only where the files come from changes.
   - Not covered: plugin installs have no `~/.greymatter/engine`, so they get no question; Claude Code's own plugin update is their path.
 - **Tagged versions, never `main`**: users follow `vX.Y.Z` tags, not the working branch. A draft commit reaches nobody.
 - **Migrations**: a numbered `migrations/` folder, each script idempotent and **never destructive** to `lessons|projects|meta|life|sessions`. The log lives in `~/.greymatter/state`.
-- **Rollback by hand**: `brain update --rollback` checks out the previous tag and re-runs `install.sh`.
+- **Rollback by hand**: `brain update --rollback` points `engine` back at the previous version and runs that version's `install.sh`, with the recorded choices as options — the older installer knows nothing of the record.
 
 </details>
 

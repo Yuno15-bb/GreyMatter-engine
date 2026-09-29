@@ -406,6 +406,7 @@ HOME=$T brain update
 - [ ] `brain version` returns the new tag;
 - [ ] a second `brain update` says "already up to date" and does **not** replay the migration;
 - [ ] what the reinstall printed is in `$T/.greymatter/state/update.log`, not in a shared `/tmp` file;
+- [ ] no plist in `$T/Library/LaunchAgents`, after the update or after the rollback: the `--no-launchd` given at install still holds;
 - [ ] `brain update --rollback` returns to the previous version, selftest green, note still there.
 
 Since v2.1.1 a session only **looks** for the new tag: the agent asks before
@@ -524,6 +525,12 @@ git -C <engine> write-tree;     git -C <engine> status --porcelain
 is not a convenience, it is the reason they are safe to run. A recipe that loaded
 a job would register it in the real `gui/<uid>` — that is the experiment, run by
 accident on 2026-08-18, that took the author's jobs over for 28 hours.
+
+Through `brain update` and `--rollback`, that option holds only since v2.2.0.
+Every earlier updater replayed the installer with no option at all, and the
+replay installs the jobs: step 8, run on a sandbox older than v2.2.0, would load
+them into the real domain. `tests/update_keeps_choices.sh` proves the choice
+now survives an update, a rollback and the update after it, on a fake launchd.
 
 The three contracts are therefore proved without it, and they are the whole of
 what is proved today:
