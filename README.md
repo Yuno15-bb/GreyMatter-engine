@@ -17,7 +17,7 @@
 [![CI](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Yuno15-bb/GreyMatter-engine/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Yuno15-bb/GreyMatter-engine?sort=semver&color=6b8afd)](https://github.com/Yuno15-bb/GreyMatter-engine/releases/latest)
 [![Licence](https://img.shields.io/github/license/Yuno15-bb/GreyMatter-engine?color=8a8f98)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#compatibility)
+[![Platform](https://img.shields.io/badge/platform-macOS-8a8f98)](#at-a-glance)
 
 [Website](https://peellaertech.com/en/projects/greymatter/) ·
 [Install](#install) ·

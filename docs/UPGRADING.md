@@ -10,7 +10,7 @@ whichever row is yours.
 | v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Only if you installed with `--core-only` or a `--no-…` option |
 | v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No. `brain update --auto-on` if you preferred silent installs |
 | v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if a job is "left running", or if you use the plugin |
-| **v1.28.1 or earlier** | [The one-time warning](#important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
+| **v1.28.1 or earlier** | [The one-time warning](#-important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
 
 ## Upgrading to v2.2.0 — the menu bar pill
 
