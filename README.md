@@ -39,10 +39,10 @@
 <p align="center">
   <a href="#what-it-does">What it does</a> ·
   <a href="#how-well-it-recalls">How well it recalls</a> ·
+  <a href="#watch-it-work">Watch it work</a> ·
   <a href="#install">Install</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#commands">Commands</a> ·
-  <a href="#watch-it-work">Watch it work</a> ·
   <a href="#at-a-glance">At a glance</a> ·
   <a href="#going-further">Going further</a>
 </p>
@@ -212,6 +212,74 @@ both sets; it stays off unless you ask for it.
 
 </details>
 
+## Watch it work
+
+> [!NOTE]
+> **v2.2 · in development.** The menu bar pill and the map app below are on
+> `main` and not yet in a release. **v2.1.1**, what you install today, ships the
+> floating orb and the planet in your browser —
+> [its README](https://github.com/Yuno15-bb/GreyMatter-engine/tree/v2.1.1#the-extensions)
+> shows them.
+
+Two native macOS programs, built on your Mac by the installer — no Electron, no
+browser tab. Neither is the product: they are how you *watch* it, optional, and
+skipped by `--core-only` and by the plugin install.
+
+<p align="center">
+  <img src="docs/media/pill-at-work.webp" alt="The right-hand corner of a Mac menu bar, at night. Top right, the GreyMatter pill with its panel open underneath; below, the same corner enlarged. Torrens tidies the map, Anesidora writes the digest, Torrens commits; the glass orb changes colour with the kind of work. At the end, Done and three steps." width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**The pill** — in the menu bar, the agent at work and what it is doing:
+`NARCISSUS distilling`. The orb's colour and motion follow the kind of work, so
+it reads at a glance without the words. Click it for the task, how long it has
+run, and the agents that took part, one station each.
+
+</td>
+<td width="50%" valign="top">
+
+**The map** — `GreyMatter.app` on your Desktop, the video at the top of this
+page. Every region of your trunk as a cluster; enter one and its notes unfold
+into a sphere you turn with the mouse. Click a note to open it in two layers:
+the plain-language section for you, the complete note for the model.
+
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>More on the pill and the map</b></summary>
+
+Both need Swift, which comes with Apple's Command Line Tools
+(`xcode-select --install`). Without it, the installer skips only these two and
+says so; the memory works the same.
+
+**The pill** reflects **real** operations — the hooks write `state/status.json`
+on every action and the pill reads it; it invents nothing. `brain capsule` opens
+it, `brain capsule stop` closes it. How it is built and how to keep it off:
+[capsule/README.md](capsule/README.md).
+
+**The map** opens with a short self-test, then asks for your access code: the
+map is locked behind one, chosen on first launch and stored only as a hash. Each
+region shows its number of notes; point at a note and its preview appears.
+
+The **graph** view spreads every note out in volume by meaning, each region
+kept together, so two notes about the same thing sit side by side even with no
+link between them; point at a note and its links light up. Placing by meaning
+needs the optional embeddings index (the one `brain recall --semantic` uses);
+without it, the graph view keeps the panel's layout.
+
+Along the bottom, three panes: the regions and their share of notes, what this
+session has read, written and committed, and the lines being written right now.
+
+It is read-only: nothing you do in the map changes a note. It is rebuilt from
+your trunk on every launch, and quitting the app stops its local server.
+
+</details>
+
 ## Install
 
 **As a Claude Code plugin** — the short way:
@@ -309,74 +377,6 @@ brain update          update the engine  (--check · --rollback)
                       session start looks, your agent asks · --auto-on installs without asking
 brain version         installed version
 ```
-
-## Watch it work
-
-> [!NOTE]
-> **v2.2 · in development.** The menu bar pill and the map app below are on
-> `main` and not yet in a release. **v2.1.1**, what you install today, ships the
-> floating orb and the planet in your browser —
-> [its README](https://github.com/Yuno15-bb/GreyMatter-engine/tree/v2.1.1#the-extensions)
-> shows them.
-
-Two native macOS programs, built on your Mac by the installer — no Electron, no
-browser tab. Neither is the product: they are how you *watch* it, optional, and
-skipped by `--core-only` and by the plugin install.
-
-<p align="center">
-  <img src="docs/media/pill.webp" alt="The right-hand corner of a Mac menu bar, at night. Top right, the GreyMatter pill with its panel open underneath; below, the same corner enlarged. Torrens tidies the map, Anesidora writes the digest, Torrens commits; the glass orb changes colour with the kind of work. At the end, Done and three steps." width="100%">
-</p>
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**The pill** — in the menu bar, the agent at work and what it is doing:
-`NARCISSUS distilling`. The orb's colour and motion follow the kind of work, so
-it reads at a glance without the words. Click it for the task, how long it has
-run, and the agents that took part, one station each.
-
-</td>
-<td width="50%" valign="top">
-
-**The map** — `GreyMatter.app` on your Desktop, the video at the top of this
-page. Every region of your trunk as a cluster; enter one and its notes unfold
-into a sphere you turn with the mouse. Click a note to open it in two layers:
-the plain-language section for you, the complete note for the model.
-
-</td>
-</tr>
-</table>
-
-<details>
-<summary><b>More on the pill and the map</b></summary>
-
-Both need Swift, which comes with Apple's Command Line Tools
-(`xcode-select --install`). Without it, the installer skips only these two and
-says so; the memory works the same.
-
-**The pill** reflects **real** operations — the hooks write `state/status.json`
-on every action and the pill reads it; it invents nothing. `brain capsule` opens
-it, `brain capsule stop` closes it. How it is built and how to keep it off:
-[capsule/README.md](capsule/README.md).
-
-**The map** opens with a short self-test, then asks for your access code: the
-map is locked behind one, chosen on first launch and stored only as a hash. Each
-region shows its number of notes; point at a note and its preview appears.
-
-The **graph** view spreads every note out in volume by meaning, each region
-kept together, so two notes about the same thing sit side by side even with no
-link between them; point at a note and its links light up. Placing by meaning
-needs the optional embeddings index (the one `brain recall --semantic` uses);
-without it, the graph view keeps the panel's layout.
-
-Along the bottom, three panes: the regions and their share of notes, what this
-session has read, written and committed, and the lines being written right now.
-
-It is read-only: nothing you do in the map changes a note. It is rebuilt from
-your trunk on every launch, and quitting the app stops its local server.
-
-</details>
 
 ## At a glance
 
