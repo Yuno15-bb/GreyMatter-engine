@@ -135,6 +135,35 @@ def main():
             errors += fail(f"{where} serves version {served!r}, BEHIND the latest "
                            f"tag {tag}. Users would never be offered the update.")
 
+    # The changelog is the third place a version is written. It is generated
+    # from the tags, so it cannot be wrong, only stale — and stale it was: v2.1.1
+    # went out on 2026-09-28 and CHANGELOG.md still stopped at v2.1.0 the next
+    # day. publish.sh now regenerates it right after tagging, so the only commit
+    # allowed to lack the entry is the tagged commit itself.
+    sabotage = sys.argv[sys.argv.index("--sabotage") + 1] if "--sabotage" in sys.argv else None
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    if sabotage == "changelog":
+        changelog = re.sub(r"^## v\S+ — .*?(?=^## )", "", changelog, count=1, flags=re.M | re.S)
+    top = re.search(r"^## (v\d+\.\d+\.\d+) ", changelog, re.M)
+    at_tag = subprocess.run(["git", "-C", str(ROOT), "tag", "--points-at", "HEAD"],
+                            capture_output=True, text=True).stdout.split()
+    if tag and not tag.endswith("-fr") and tag not in at_tag:
+        if not top or top.group(1) != tag:
+            errors += fail(f"CHANGELOG.md starts at {top.group(1) if top else 'nothing'}, "
+                           f"the latest release is {tag}. Run greymatter/changelog.sh.")
+
+    # What the store page promises about privacy. "Nothing is sent anywhere" was
+    # false: recall puts note names and paths into the prompt, and an agent run
+    # sends whole notes to the model provider (SECURITY.md, "what leaves your
+    # machine"). The store text must not say otherwise again.
+    blurbs = [plugin.get("description", "")] + [p.get("description", "") for p in market.get("plugins", [])]
+    if sabotage == "privacy":
+        blurbs.append("Your notes stay on your machine and nothing is sent anywhere.")
+    for text in blurbs:
+        if re.search(r"nothing (is|gets) sent|never leaves? your machine|stay on your machine", text, re.I):
+            errors += fail(f"a manifest promises nothing leaves the machine: {text[-90:]!r} "
+                           f"— prompts carry recalled notes to the model provider")
+
     if errors:
         return 1
     print(f"✅ plugin manifests consistent — greymatter {served} served from {where}, "

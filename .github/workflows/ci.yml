@@ -64,6 +64,25 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python3 tests/plugin_manifest.py
+      - name: the version and privacy checks can turn red
+        run: |
+          for s in changelog privacy; do
+            if python3 tests/plugin_manifest.py --sabotage $s >/dev/null; then
+              echo "❌ sabotage $s left plugin_manifest green"; exit 1
+            fi
+          done
+          echo "✅ both sabotages redden plugin_manifest"
+      # The map's server: five wrong codes then a lockout, even when forty
+      # arrive at once, and a session that expires.
+      - name: the map's access code holds under parallel guesses
+        run: |
+          python3 tests/gmtr_lock.py
+          for s in race ttl; do
+            if python3 tests/gmtr_lock.py --sabotage $s >/dev/null; then
+              echo "❌ sabotage $s left gmtr_lock green"; exit 1
+            fi
+          done
+          echo "✅ both sabotages redden gmtr_lock"
       # A release cut from a side branch must come back: v2.1.1's "ask before
       # updating" was missing from main while every job here stayed green.
       # `fr` is left out — its tag family stopped at v1.27.0-fr.

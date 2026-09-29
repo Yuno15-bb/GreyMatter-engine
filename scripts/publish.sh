@@ -153,6 +153,27 @@ fi
 # the remote `fr` branch stayed frozen. Fixed here in c91c10d; `fr` only caught
 # up on 2026-07-27, after two releases had gone out with the branch behind.
 git tag -a "$TAG" -m "$MSG"
+# The changelog entry can only be written once the tag exists. It was a
+# separate manual step, and v2.1.1 shipped without it. Only the new entry is
+# added: a full `changelog.sh` rewrite would undo the older entries translated
+# by hand from French tag messages.
+if [ "$BRANCH" != "fr" ]; then
+  TAG="$TAG" DATE="$(git tag -l "$TAG" --format='%(creatordate:short)')" \
+  SUBJECT="$(git tag -l "$TAG" --format='%(contents:subject)')" python3 - <<'PYEOF'
+import os, re
+tag, date, subject = os.environ["TAG"], os.environ["DATE"], os.environ["SUBJECT"]
+text = open("CHANGELOG.md", encoding="utf-8").read()
+if not re.search(rf"^## {re.escape(tag)} ", text, re.M):
+    first = re.search(r"^## ", text, re.M)
+    at = first.start() if first else len(text)
+    text = text[:at] + f"## {tag} — {date}\n\n{subject}\n\n" + text[at:]
+    open("CHANGELOG.md", "w", encoding="utf-8").write(text)
+PYEOF
+  if ! git diff --quiet -- CHANGELOG.md; then
+    git commit -q -m "CHANGELOG: $TAG" -- CHANGELOG.md
+    echo "  committed the changelog"
+  fi
+fi
 git push origin "$BRANCH" "$TAG"
 echo
 echo "✅ $TAG published on $BRANCH."

@@ -8,6 +8,10 @@ buffer the engine is synced onto, and `publish.sh` refuses to tag from it. The `
 tags up to v1.27.0-fr stay published (moving a tag breaks the fetch of anyone still on
 it), and are not listed here.
 
+## v2.1.1 — 2026-09-28
+
+Asks before updating: session start looks for a new version and your agent asks you; silent installing is now opt-in (brain update --auto-on). The install screen names the two desktop interfaces GreyMatter ships.
+
 ## v2.1.0 — 2026-09-28
 
 One name everywhere: the root, the jobs, the hooks, the Desktop app and the plugin say GreyMatter
