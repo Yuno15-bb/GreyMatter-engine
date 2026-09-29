@@ -1,18 +1,28 @@
 # The install model: a source is not an engine
 
-Decided 2026-08-17, after chantier #9 measured a contradiction between two
-correct fixes: the documented install path produced exactly the object the
-updater had just learned to refuse.
+Your clone is read once, to build the engine, and nothing writes to it again.
+This page is the reference the installer, the updater and their end-to-end
+tests are written against.
 
-This document draws the target model, the migration of existing installs, and
-the behaviour of every command that touches an engine. It is the reference the
-implementation and the end-to-end contract are written against.
+[The idea](#the-idea) · [The layout](#the-layout) ·
+[Ownership](#ownership-is-recorded-never-guessed) ·
+[Command by command](#behaviour-command-by-command) ·
+[Migration](#migration-of-existing-installs) ·
+[Chosen costs](#two-consequences-we-are-choosing-not-hiding) ·
+[What this buys](#what-this-buys)
 
-The installer also seeds `config/ranking.json` in an existing trunk when that
-file is absent. It leaves a user's existing weights in place, so updating the
-engine cannot silently replace their recall configuration.
+Decided 2026-08-17, after an audit (work item #9) measured a contradiction
+between two correct fixes: the documented install path produced exactly the
+object the updater had just learned to refuse.
 
-## The one sentence
+## The idea
+
+| | Up to v1.28.1 | Since v1.29.0 |
+|---|---|---|
+| The engine is | your clone | a version the installer built, `versions/<id>/` |
+| Who owns it | *inferred* from its git state | *recorded*: `state/engine-managed` |
+| An update writes into | your clone | a mirror the installer owns, `source.git` |
+| A failed update | leaves a half-checked-out clone | deletes the candidate; nothing had switched |
 
 `install.sh` used to **observe** whether the engine happened to be clean,
 detached and on a release tag. It never **put** it there. Ownership was inferred
@@ -45,10 +55,12 @@ the installer **creates** what it owns, and owns nothing else.
 └── VERSION, manifest.txt
 ```
 
-`~/greymatter` — the user's clone — is a **source**. It is read to build a version
-and never written to again.
+`~/greymatter` — the user's clone — is a **source**. It is read to build a
+version and never written to again. Switching versions changes one symlink,
+`engine`, and nothing else.
 
-### Why the switch is one symlink
+<details>
+<summary><b>Why the switch is one symlink</b></summary>
 
 Measured on the current tree: everything already resolves *through*
 `~/.greymatter/engine`, so nothing has to be rewritten when the active version
@@ -56,16 +68,57 @@ changes.
 
 | What | Points at | Where |
 |---|---|---|
-| trunk mounts (`hooks`, `agents`, `capsule`, `planet`, `companion`, `tests`) | `$GM/engine/<dir>` | `install.sh:193` |
-| the `brain` CLI | `$GM/engine/brain` | `install.sh:198` |
-| Claude Code hooks in `settings.json` | `~/.greymatter/engine/...` | `merge_settings.py:69` |
-| launchd jobs | `~/.greymatter/trunk/hooks/...` → engine | plist templates, **guarded** — see below |
-| the Desktop planet launcher | `$TRUNK/gmtr/launch.sh` → engine (GMTR map, since v2.2) | `install.sh:398` |
+| trunk mounts (`hooks`, `agents`, `capsule`, `planet`, `companion`, `tests`) | `$GM/engine/<dir>` | `install.sh` §3 |
+| the `brain` CLI | `$GM/engine/brain` | `install.sh` §4 |
+| Claude Code hooks in `settings.json` | `~/.greymatter/engine/...` | `merge_settings.py` |
+| launchd jobs | `~/.greymatter/trunk/hooks/...` → engine | plist templates, **guarded** — see [ownership](#ownership-is-recorded-never-guessed) |
+| the Desktop planet launcher | `$TRUNK/gmtr/launch.sh` → engine (GMTR map, since v2.2) | `install.sh` §9 |
 
-One exception: `~/.claude/statusline.py` is a **copy** (`install.sh:227`), not a
+One exception: `~/.claude/statusline.py` is a **copy** (`install.sh` §6), not a
 link. It is refreshed by the `install.sh` replay that follows every switch.
 
-### launchd jobs are the one thing the installer may not simply replace
+So a version switch is `ln -sfn` + **`mv -hf`** on a single symlink — one
+`rename(2)`, atomic. There is no window in which half the installation is on the
+new version.
+
+</details>
+
+<details>
+<summary><b>⚠️ Why <code>mv -hf</code> and not <code>mv -f</code></b></summary>
+
+`-h` is not a detail, and leaving it out does not fail — it does something
+else. `~/.greymatter/engine` is a symlink to a DIRECTORY, so plain `mv -f`
+follows it and moves the new link *inside* the old version: the engine never
+switches, and an immutable version quietly gains a stray file that breaks its
+own manifest.
+
+Written that way first, and it still looked like it worked — the `install.sh`
+replay relinks the engine afterwards with `rm` + `ln -s`, so the real switch was
+happening non-atomically, in another file, by accident. The end-to-end test
+found it on its second run; no component test could have.
+
+</details>
+
+## Ownership is recorded, never guessed
+
+| What the installer touches | Where ownership is recorded | Already there, not recorded |
+|---|---|---|
+| the engine, inside `~/.greymatter` | `state/engine-managed` | no gate: that directory **is** the installation |
+| a launchd job (its Label) | `state/launchd-owned` | refuses by name, writes nothing |
+| `~/.claude/agents`, `~/.claude/statusline.py`, `~/.local/bin/brain` | `manifest.txt` | names it, changes nothing |
+
+Two things live outside the installer's own folder and can belong to someone
+else: launchd jobs, and three paths shared with the rest of the machine. For
+both, ownership is a **recorded fact** written only after a successful
+placement — never inferred from a name, a prefix or "it looks like something
+GreyMatter writes".
+
+Inside `~/.greymatter` there is no gate. That directory **is** the
+installation, and gating it would make a legitimate re-install refuse its own
+engine.
+
+<details>
+<summary><b>launchd jobs — the incident, and the rule</b></summary>
 
 `launchctl` indexes the per-user domain by **Label**, not by `$HOME` and not by
 the path of the plist. `launchctl unload <path>` therefore frees whatever the
@@ -89,43 +142,33 @@ A job installed before that record existed is adopted by a separate, deliberate
 command, `greymatter/adopt-launchd.sh <label>`. No automatic path calls it. It
 requires two concordances **before** it asks anything — the live service must
 run this installation's program from the expected plist, and that plist must be
-equivalent to the template this installation would render, under the normal form
-in `greymatter/plist_normalise.py` — and then an explicit human confirmation. The
-two together do not discover who loaded the job; nothing can. They say the
-service matches this installation today, and the person decides.
+equivalent to the template this installation would render, under the normal
+form in `greymatter/plist_normalise.py` — and then an explicit human
+confirmation. The two together do not discover who loaded the job; nothing can.
+They say the service matches this installation today, and the person decides.
 
-So a version switch is `ln -sfn` + **`mv -hf`** on a single symlink — one
-`rename(2)`, atomic. There is no window in which half the installation is on the
-new version.
+</details>
 
-⚠️ `-h` is not a detail, and leaving it out does not fail — it does something
-else. `~/.greymatter/engine` is a symlink to a DIRECTORY, so plain `mv -f` follows
-it and moves the new link *inside* the old version: the engine never switches,
-and an immutable version quietly gains a stray file that breaks its own manifest.
-Written that way first, and it still looked like it worked — the `install.sh`
-replay relinks the engine afterwards with `rm` + `ln -s`, so the real switch was
-happening non-atomically, in another file, by accident. The end-to-end test found
-it on its second run; no component test could have.
+<details>
+<summary><b>The three shared paths — the incident, and the rule</b></summary>
 
-### Nor the surfaces it shares with the rest of the machine
-
-Three paths do not belong to the installation that writes them: `~/.claude/agents`,
-`~/.claude/statusline.py` and `~/.local/bin/brain`. They live outside `~/.greymatter`,
-one machine can hold several GreyMatters, and the first one there is using them.
+Three paths do not belong to the installation that writes them:
+`~/.claude/agents`, `~/.claude/statusline.py` and `~/.local/bin/brain`. They
+live outside `~/.greymatter`, one machine can hold several GreyMatters, and the
+first one there is using them.
 
 On 2026-08-19 an install ran on a machine that already had the author's. It
-repointed the agents link at its own trunk and overwrote the status line, printed
-`backed up:` and `+`, and exited 0. The other installation went on calling agents
-that were no longer where it had left them: **118 `agent not found` in 39 hours**,
-its distillation dead, and no line anywhere saying a foreign surface had been
-taken. The timestamped backup was real, and it is what allowed the repair — the
-defect is the silent takeover, not a missing backup.
+repointed the agents link at its own trunk and overwrote the status line,
+printed `backed up:` and `+`, and exited 0. The other installation went on
+calling agents that were no longer where it had left them: **118
+`agent not found` in 39 hours**, its distillation dead, and no line anywhere
+saying a foreign surface had been taken. The timestamped backup was real, and
+it is what allowed the repair — the defect is the silent takeover, not a
+missing backup.
 
-The answer is the launchd answer, one surface over. Ownership is a **recorded
-fact** and never inferred — not from the name of the file, not from "it looks
-like something GreyMatter writes". The record already existed and was simply never
-read: `manifest.txt`, appended to after every successful placement, written for
-the uninstaller.
+The answer is the launchd answer, one surface over. The record already existed
+and was simply never read: `manifest.txt`, appended to after every successful
+placement, written for the uninstaller.
 
 | Situation | What the installer does |
 |---|---|
@@ -135,23 +178,33 @@ the uninstaller.
 
 A refusal is a reported outcome, not a crash: everything else installs, and the
 closing screen counts what was left alone — a message printed three screens up
-has scrolled away, which is the defect C bis A4 named for the PATH warning. The
-next step is the one the refusal prints, `mv <path> <path>.before-greymatter`
-followed by a re-run, and `tests/e2e_occupied_surfaces.sh` runs that gesture
-rather than describing it.
+has scrolled away, the same defect an earlier audit (C bis A4) named for the PATH
+warning. The next step is the one the refusal prints,
+`mv <path> <path>.before-greymatter` followed by a re-run, and
+`tests/e2e_occupied_surfaces.sh` runs that gesture rather than describing it.
 
 Not a crash, and not a clean install either. A surface left alone can cost
-something the verification checks: an agents folder that belongs to someone else
-means Claude Code cannot reach GreyMatter's agents, the selftest says so, and the
-installer then exits 1 like any install whose verification is red. The closing
-screen says "works" only when the verification agrees.
+something the verification checks: an agents folder that belongs to someone
+else means Claude Code cannot reach GreyMatter's agents, the selftest says so,
+and the installer then exits 1 like any install whose verification is red. The
+closing screen says "works" only when the verification agrees.
 
-Inside `~/.greymatter` there is no gate. That directory **is** the installation, and
-gating it would make a legitimate re-install refuse its own engine.
+</details>
 
 ## Behaviour, command by command
 
-### `install.sh` (normal)
+| Command | In one line |
+|---|---|
+| `install.sh` | builds `versions/<id>/` from the clone, points `engine` at it, exits with the selftest's verdict |
+| `install.sh --dev` | points `engine` at the clone itself; automatic updates off |
+| `brain update` | builds the new version from the mirror, tests it **before** switching, switches only on green |
+| `brain update --rollback` | points `engine` back at the previous version — no git, no network |
+| `uninstall.sh` | removes what the installer made; `--purge-engine` also removes the versions and the mirror |
+| `brain doctor` | checks every engine file against its manifest; reports, never repairs |
+| `selftest.sh` | takes an optional engine path, so a version is tested before anything points at it |
+
+<details>
+<summary><b><code>install.sh</code> (normal), step by step</b></summary>
 
 1. Read the version identity from the source it is run from:
    `git describe --tags --always` — `v1.29.0` when detached on a tag,
@@ -159,14 +212,14 @@ gating it would make a legitimate re-install refuse its own engine.
    **Uncommitted edits in the source never change the name** (no `-dirty`
    suffix since 2026-09-20): the engine is `git archive HEAD`, so those edits
    are not in it anyway. Two names for one content made every re-install from a
-   working clone rebuild 11.6 MB it already had. The installer now says out loud,
-   once, that the uncommitted work is not in the engine.
+   working clone rebuild 11.6 MB it already had. The installer now says out
+   loud, once, that the uncommitted work is not in the engine.
    **The documented `git clone && ./install.sh` keeps working unchanged**, and
-   produces an updatable install. That is the whole point of the chantier.
-2. Build `versions/<id>/` with `git archive <HEAD> | tar -x`. 162 files, 11.6 MB
-   measured. The source is read, never written.
-3. Write `versions/<id>/.greymatter-manifest`: sha256 of every file. This is the
-   immutability oracle, and it replaces the git-based dirt check, since a
+   produces an updatable install. That is the whole point of the change.
+2. Build `versions/<id>/` with `git archive <HEAD> | tar -x`. 162 files,
+   11.6 MB measured. The source is read, never written.
+3. Write `versions/<id>/.greymatter-manifest`: sha256 of every file. This is
+   the immutability oracle, and it replaces the git-based dirt check, since a
    version has no `.git`.
 4. Mirror the source into `source.git`, so updates have an origin that does not
    live in anybody's working repository.
@@ -189,7 +242,14 @@ gating it would make a legitimate re-install refuse its own engine.
 Idempotent: re-running with the same source rebuilds nothing if
 `.greymatter-manifest` already matches.
 
-### `install.sh --dev`
+The installer also seeds `config/ranking.json` in an existing trunk when that
+file is absent. It leaves a user's existing weights in place, so updating the
+engine cannot silently replace their recall configuration.
+
+</details>
+
+<details>
+<summary><b><code>install.sh --dev</code></b></summary>
 
 The only mode in which an engine may be a working checkout, and it must be
 asked for by name.
@@ -200,7 +260,10 @@ asked for by name.
 - Prints, so nobody discovers it later:
   `development engine — automatic updates are OFF for this install`.
 
-### `brain update`
+</details>
+
+<details>
+<summary><b><code>brain update</code></b></summary>
 
 The gate is now structural. It does not reason about branches, tags or dirt to
 decide *whose* repo this is; it reads provenance.
@@ -232,45 +295,55 @@ decide *whose* repo this is; it reads provenance.
    Red → **delete `versions/<new>`**. `engine` never moved. There is nothing to
    roll back from, because nothing was ever switched.
 
-### `brain update --rollback`
+</details>
 
-Repoint `engine` at `versions/<previous-version>`, replay `install.sh`, selftest.
-No git, no checkout, no network. If that directory no longer exists, refuse and
-say which versions are retained — a rollback that silently lands somewhere else
-is worse than one that refuses.
+<details>
+<summary><b><code>brain update --rollback</code></b></summary>
+
+Repoint `engine` at `versions/<previous-version>`, replay `install.sh`,
+selftest. No git, no checkout, no network. If that directory no longer exists,
+refuse and say which versions are retained — a rollback that silently lands
+somewhere else is worse than one that refuses.
 
 Retention: the active version, the previous one, and one spare. Older ones are
 pruned at the end of a successful update.
 
-### `uninstall.sh`
+</details>
+
+<details>
+<summary><b><code>uninstall.sh</code></b></summary>
 
 `--purge-engine` can finally do what its name says: remove `versions/`,
-`source.git` and `runtime/`, because the installer created all three. The user's
-source clone stays on disk, untouched — it was never ours to delete. Without the
-flag, nothing changes.
+`source.git` and `runtime/`, because the installer created all three. The
+user's source clone stays on disk, untouched — it was never ours to delete.
+Without the flag, nothing changes.
 
-**It resolves `~/.greymatter` exactly the way the installer does** (2026-08-26). The
-two scripts decide ownership by comparing PATHS — is this shortcut the one we
-made, is this engine the one we built — and a comparison is only as good as the
-spelling on both sides. The installer canonicalises with `pwd -P`; uninstall did
-not, so wherever `$HOME` goes through a symlink (every `mktemp -d` on macOS, and
-the CI runner) it read the Finder shortcut it had just created, saw
-`/private/var/…` where it expected `/var/…`, concluded the link was somebody
-else's and left it on the machine. Same trap as the ownership record install.sh
-already warns about, one file further on.
+**It resolves `~/.greymatter` exactly the way the installer does**
+(2026-08-26). The two scripts decide ownership by comparing PATHS — is this
+shortcut the one we made, is this engine the one we built — and a comparison is
+only as good as the spelling on both sides. The installer canonicalises with
+`pwd -P`; uninstall did not, so wherever `$HOME` goes through a symlink (every
+`mktemp -d` on macOS, and the CI runner) it read the Finder shortcut it had just
+created, saw `/private/var/…` where it expected `/var/…`, concluded the link was
+somebody else's and left it on the machine. Same trap as the ownership record
+install.sh already warns about, one file further on.
 
-**The Desktop app is removed by bundle id, not by name** (2026-09-27). It became
-`GreyMatter.app`, a name plain enough for another app to carry, so both scripts
-read `org.greymatter.planet` in its `Info.plist` before their `rm -rf`; anything
-else under that name stays, with a warning (`tests/desktop_launcher.sh`).
+**The Desktop app is removed by bundle id, not by name** (2026-09-27). It
+became `GreyMatter.app`, a name plain enough for another app to carry, so both
+scripts read `org.greymatter.planet` in its `Info.plist` before their
+`rm -rf`; anything else under that name stays, with a warning
+(`tests/desktop_launcher.sh`).
 
 **An uninstaller from before the rename hands over.** A clone at v2.0.x has its
 own `uninstall.sh`, which sources `cbrain/launchd-lib.sh` from the engine and knows <!-- pre-rename -->
-only the old names. The engine ships a stub at that path which `exec`s
-the engine's own `uninstall.sh --yes`; on a blank Mac, without it, the old
-script reported success and left both jobs, the shortcut and the Desktop app.
+only the old names. The engine ships a stub at that path which `exec`s the
+engine's own `uninstall.sh --yes`; on a blank Mac, without it, the old script
+reported success and left both jobs, the shortcut and the Desktop app.
 
-### `brain doctor`
+</details>
+
+<details>
+<summary><b><code>brain doctor</code></b></summary>
 
 - It used to run `git -C engine status` to detect a dirty engine. A versioned
   engine has no `.git`, so doctor now checks every file against
@@ -282,26 +355,46 @@ script reported success and left both jobs, the shortcut and the Desktop app.
 - In `--dev` mode the git-based check is kept, and doctor says which mode the
   install is in and which version is active.
 
-### `selftest.sh`
+</details>
+
+<details>
+<summary><b><code>selftest.sh</code></b></summary>
 
 Gains an optional engine path. Called with none, it behaves exactly as today.
 
 **And `install.sh` now always names it** (2026-08-26). With no argument the
-selftest resolves the CLI through the trunk, then through PATH — neither of which
-belongs to the version being installed. A fresh machine has no `brain` on PATH at
-that moment, so the installer's own verification went red on a healthy tree; a
-machine that already had GreyMatter gave it the OTHER installation's engine to test.
-The rule the header states — when an engine is named, its own `brain` is the only
-one allowed — is exactly what an installer is in a position to guarantee, so it
-does. `brain update` already named the candidate it was about to switch to.
+selftest resolves the CLI through the trunk, then through PATH — neither of
+which belongs to the version being installed. A fresh machine has no `brain` on
+PATH at that moment, so the installer's own verification went red on a healthy
+tree; a machine that already had GreyMatter gave it the OTHER installation's
+engine to test. The rule the header states — when an engine is named, its own
+`brain` is the only one allowed — is exactly what an installer is in a position
+to guarantee, so it does. `brain update` already named the candidate it was
+about to switch to.
+
+</details>
 
 ## Migration of existing installs
 
-Measured, not assumed — replayed in a sandbox with a laboratory origin, the real
-`install.sh` and the real `brain update`.
+```
+v1.28.1 install            its OLD updater                 the NEW install.sh
+engine → your clone   ──▶  git checkout v1.29.0       ──▶  builds versions/v1.29.0/,
+                           inside your clone (last time)    points engine at it;
+                                                            the clone becomes a source
+```
 
-1. Today's installed users run **v1.28.1 or older, which contain no gate at all**
-   (verified: neither `engine-managed` nor `gate_ownership` appears in
+The conversion heals itself: there is no migration script for the user to run.
+It costs one thing, once — uncommitted work in the clone — and that cost has
+its own document, [UPGRADING.md](UPGRADING.md).
+
+<details>
+<summary><b>The five steps, measured</b></summary>
+
+Measured, not assumed — replayed in a sandbox with a laboratory origin, the
+real `install.sh` and the real `brain update`.
+
+1. Today's installed users run **v1.28.1 or older, which contain no gate at
+   all** (verified: neither `engine-managed` nor `gate_ownership` appears in
    `v1.27.1`, `v1.28.0` or `v1.28.1`). Their `engine` is a symlink to their own
    clone.
 2. Their **old** updater fetches and runs `git checkout v1.29.0` **inside that
@@ -313,26 +406,38 @@ Measured, not assumed — replayed in a sandbox with a laboratory origin, the re
    `engine-managed`, repoints `engine`.
 5. From that moment the clone is a source. Nothing writes to it again.
 
-The installer **says so when it happens**. A conversion changes what somebody's
-checkout IS, inside an automatic update they did not watch, so the notice goes
-into the update log at the moment it applies rather than waiting to be looked up:
-what the checkout was, what the engine is now, and that `brain update` will not
-touch the checkout again. It fires only on a conversion — an ordinary re-install
-is silent, because a notice printed every time stops being read.
-
 Measured end state of the equivalent sequence: `branch main` →
-`detached v1.29.0` → marker written. The conversion self-heals; there is no
-migration script for the user to run.
-
-**The one honest cost, and it has its own document** — [UPGRADING.md](UPGRADING.md). The old updater has no gate, so
-for a user with uncommitted work in their clone, step 2 runs `git checkout -- .`
-one final time and discards it. We cannot fix that from here — it is the code
-already installed. The release note must say, plainly: *commit or stash anything
-in your greymatter clone before updating to v1.29.0.*
+`detached v1.29.0` → marker written.
 
 Developers convert by running `./install.sh --dev` once.
 
-### The v2.1.0 rename, replayed the same way
+</details>
+
+<details>
+<summary><b>The installer says so when it happens</b></summary>
+
+A conversion changes what somebody's checkout IS, inside an automatic update
+they did not watch, so the notice goes into the update log at the moment it
+applies rather than waiting to be looked up: what the checkout was, what the
+engine is now, and that `brain update` will not touch the checkout again. It
+fires only on a conversion — an ordinary re-install is silent, because a notice
+printed every time stops being read.
+
+</details>
+
+<details>
+<summary><b>The one honest cost</b></summary>
+
+The old updater has no gate, so for a user with uncommitted work in their
+clone, step 2 runs `git checkout -- .` one final time and discards it. We cannot
+fix that from here — it is the code already installed. The release note must
+say, plainly: *commit or stash anything in your greymatter clone before
+updating to v1.29.0.* [UPGRADING.md](UPGRADING.md) is that note.
+
+</details>
+
+<details>
+<summary><b>The v2.1.0 rename, replayed the same way</b></summary>
 
 An updater from v2.0.x builds the v2.1.0 candidate with its **own** code: it
 writes the manifest under the old file name, runs migrations from the old
@@ -341,30 +446,38 @@ side: `verify_manifest` reads either manifest name, the old migrations folder
 keeps forwarding stubs, and `install.sh` runs migration 002 before it resolves
 a single path. Details in [the migrations README](../greymatter/migrations/README.md).
 
+</details>
+
 ## Two consequences we are choosing, not hiding
 
+| Consequence | What happens | Status |
+|---|---|---|
+| Agent briefs edited in place | the edit lands in an immutable version: doctor flags it, a switch drops it | named here, not fixed here |
+| Disk | 11.6 MB per retained version, three retained ≈ 35 MB | accepted |
+
+<details>
+<summary><b>Both, in full</b></summary>
+
 **Agent briefs.** `agents/` is mounted into the trunk from the engine
-(`greymatter/engine-paths.txt`), and the gardening agents edit `agents/*.md` through
-those links — the incident reported by a tester on 2026-08-16. Under an
+(`greymatter/engine-paths.txt`), and the gardening agents edit `agents/*.md`
+through those links — the incident reported by a tester on 2026-08-16. Under an
 immutable engine those edits land in a version that is not supposed to change:
 doctor will flag them, and a version switch will drop them. That is the correct
-behaviour for "immutable", and it is a real change from today. Named here, not
+behaviour for "immutable", and it is a real change from before. Named here, not
 fixed here.
 
 **Disk.** 11.6 MB per retained version, plus the pill's binary (under 1 MB,
-shared by the versions whose capsule code is identical), plus the mirror. Three versions retained ≈ 35 MB of engine.
+shared by the versions whose capsule code is identical), plus the mirror. Three
+versions retained ≈ 35 MB of engine.
+
+</details>
 
 ## What this buys
 
-- **P1 is structural.** The updater has no code path that writes to a directory
-  the user created. There is nothing left to detect, so there is nothing left to
-  get wrong.
-- **P2 is structural.** The installer creates the engine, therefore it owns it.
-  The marker records a provenance instead of passing a verdict on a git state.
-- **P3 is unchanged** and now trivially auditable: no git command in the update
-  path names the trunk.
-- **Rollback stops being a gamble.** Repointing a symlink at a directory that was
-  already tested beats checking out and hoping.
-- **GMatter inherits it.** An app that ships as a bundle has no clone to adopt.
-  A versioned, replaceable engine beside a durable trunk is the model it needs,
-  and this is that model, built early.
+| Promise | Why it now holds |
+|---|---|
+| **P1** — the updater never writes where the user created something | it has no code path that does: nothing left to detect, nothing left to get wrong |
+| **P2** — the installer owns what it made, and only that | the marker records a provenance instead of passing a verdict on a git state |
+| **P3** — the trunk is never touched by an update | unchanged, and now trivially auditable: no git command in the update path names the trunk |
+| Rollback | repointing a symlink at a directory already tested beats checking out and hoping |
+| GMatter, the app | an app that ships as a bundle has no clone to adopt; a versioned engine beside a durable trunk is the model it needs, built early |

@@ -1,5 +1,16 @@
 # Upgrading
 
+Find the version you are coming from; the row tells you what to read and
+whether you have anything to do. **Your notes are never touched by an update**,
+whichever row is yours.
+
+| Coming from | Read | Anything to do? |
+|---|---|---|
+| v2.1.1 | nothing — `brain update` | No |
+| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates) | No. `brain update --auto-on` if you preferred silent installs |
+| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates) | Usually no. Yes if a job is "left running", or if you use the plugin |
+| **v1.28.1 or earlier** | [The one-time warning](#important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
+
 ## Upgrading to v2.1.1 — it asks before it updates
 
 From v1.28.0 to v2.1.0 every session start installed the newest version on its
@@ -18,12 +29,20 @@ If v2.1.0 installed v2.1.1 on its own, the next session says so once, in its upd
 
 ## Upgrading to v2.1.0 — one name
 
-Until v2.1.0 the product was called GreyMatter while the machine still said
-C Brain: the root `~/.c-brain`, the Home shortcut `~/C Brain`, the launchd <!-- pre-rename -->
-jobs `com.claudebrain.*`, the Desktop app and the plugin `c-brain`. From v2.1.0 <!-- pre-rename -->
-every one of them says GreyMatter. **Your notes are not touched.**
+| Before v2.1.0 | From v2.1.0 |
+|---|---|
+| root `~/.c-brain` | `~/.greymatter` — the old path stays as a link | <!-- pre-rename -->
+| Home shortcut `~/C Brain` | `~/GreyMatter` | <!-- pre-rename -->
+| launchd jobs `com.claudebrain.*` | `com.greymatter.*` | <!-- pre-rename -->
+| the Desktop app | `GreyMatter.app` |
+| the plugin `c-brain` | `greymatter` | <!-- pre-rename -->
 
-### If you installed with `install.sh`
+Until v2.1.0 the product was called GreyMatter while the machine still said
+C Brain. From v2.1.0 every one of those names says GreyMatter. **Your notes are <!-- pre-rename -->
+not touched.**
+
+<details>
+<summary><b>If you installed with <code>install.sh</code></b></summary>
 
 Nothing to do. `brain update` (or `git pull && ./install.sh`) moves the root to
 `~/.greymatter` and leaves a permanent link at the old path, so a script or an
@@ -51,7 +70,10 @@ The Desktop app is now called `GreyMatter.app`. To uninstall, the `uninstall.sh`
 of your old clone still works: it hands over to the engine's own uninstaller,
 which knows both names.
 
-### If you installed the Claude Code plugin
+</details>
+
+<details>
+<summary><b>If you installed the Claude Code plugin</b></summary>
 
 The commands become `/greymatter:recall`, `/greymatter:distill`,
 `/greymatter:doctor`. What we measured with Claude Code 2.1.283:
@@ -67,26 +89,56 @@ The commands become `/greymatter:recall`, `/greymatter:distill`,
 
 The plugin's first session moves `~/.c-brain` exactly as the installer does. <!-- pre-rename -->
 
+</details>
+
 ## ⚠️ IMPORTANT — one-time warning, before upgrading from v1.28.1 or earlier
+
+```bash
+git -C ~/.greymatter/engine status --short
+```
+
+**Run that first.** If it lists files, your engine checkout has uncommitted
+changes, and the old updater will discard them once, during the upgrade to
+v2.0.0. Commit or stash them before you upgrade.
+
+| What the command prints | What it means | What to do |
+|---|---|---|
+| **nothing at all** | your checkout is clean | nothing; upgrade normally |
+| **a list of files** (`M hooks/something.py`, `M capsule/macos/Sources/Capsule/main.swift`, …) | those are the changes at risk | put them away first (below) |
+| **`fatal: not a git repository`** | good news, and the clearest signal there is: your engine is already a managed version, not a checkout | nothing — this warning does not apply to you |
+
+```bash
+git -C ~/.greymatter/engine stash          # or: git -C ~/.greymatter/engine commit -a
+```
+
+Run the check even if you are sure you never edited the engine yourself: some
+agent-driven setups accumulate edits under `agents/` without anyone typing a
+command — the gardening agents reach those files through the trunk's symlinks.
+
+<details>
+<summary><b>Why it happens, and why v2.0.0 cannot prevent it</b></summary>
 
 **If your current GreyMatter engine is a Git checkout that contains uncommitted
 changes, commit or stash them before upgrading to v2.0.0.**
 
-The updater bundled with older releases predates the managed-engine architecture
-and may reset tracked engine files once during the upgrade. That reset is
-performed by the code already installed on your machine, so v2.0.0 cannot
-prevent it — the older updater runs first, and it is what fetches and installs
-the new version.
-
-Reviewed after the September 2026 cleanup of comments in `install.sh` and
-`greymatter/update.sh`: those edits changed attribution only. The upgrade behavior
-and this warning remain the same.
+The updater bundled with older releases predates the managed-engine
+architecture and may reset tracked engine files once during the upgrade. That
+reset is performed by the code already installed on your machine, so v2.0.0
+cannot prevent it — the older updater runs first, and it is what fetches and
+installs the new version.
 
 This is not a formality. `git checkout -- .` discards uncommitted changes to
 tracked files without asking and without a copy. If you have edits in your
 checkout that are not committed, **they are not recoverable afterwards.**
 
-### What is at risk, and what is not
+Reviewed after the September 2026 cleanup of comments in `install.sh` and
+`greymatter/update.sh`: those edits changed attribution only. The upgrade
+behavior and this warning remain the same.
+
+</details>
+
+<details>
+<summary><b>What is at risk, and what is not</b></summary>
 
 | | At risk |
 |---|---|
@@ -98,38 +150,20 @@ checkout that are not committed, **they are not recoverable afterwards.**
 The risk is confined to the *code* checkout, and only to changes you have not
 committed there.
 
-### How to check, in one command
-
-```bash
-git -C ~/.greymatter/engine status --short
-```
-
-Read the output like this:
-
-- **Nothing at all** — your checkout is clean. Nothing to do; upgrade normally.
-- **A list of files** (`M hooks/something.py`, `M capsule/macos/Sources/Capsule/main.swift`, …) — those are
-  the changes at risk. Put them away first:
-
-  ```bash
-  git -C ~/.greymatter/engine stash          # or: git -C ~/.greymatter/engine commit -a
-  ```
-
-- **`fatal: not a git repository`** — good news, and the clearest signal there is:
-  your engine is already a managed version rather than a checkout, so this whole
-  warning does not apply to you.
-
-Some agent-driven setups accumulate edits under `agents/` without anyone typing a
-command — the gardening agents reach those files through the trunk's symlinks. So
-run the check even if you are sure you never edited the engine yourself.
-
----
+</details>
 
 ## Why this is 2.0.0
+
+| What changed | Before | Since v2.0.0 |
+|---|---|---|
+| Recall | added 2–3 notes to **every** prompt | fires only when you ask |
+| Agents | eight, one per job | four ships carrying the same eight jobs |
 
 Two things you may rely on change meaning. Nothing is lost in either case, but
 a habit or a script built on the old behaviour stops working the way it did.
 
-### Recall now waits to be asked
+<details>
+<summary><b>Recall now waits to be asked</b></summary>
 
 Until v1.28.1 the recall hook added two or three notes to **every** prompt.
 Over a month of daily use, 3,256 notes were offered that way and 139 of them
@@ -150,7 +184,10 @@ often used to climb; that weight is now fixed at 1.0, so the rank is the
 relevance score alone. One slot in three is still kept for notes the search
 rarely surfaces.
 
-### Eight agents became four, with the same eight jobs
+</details>
+
+<details>
+<summary><b>Eight agents became four, with the same eight jobs</b></summary>
 
 The files `agents/mechanic.md`, `machinist.md`, `distiller.md`, `gardener.md`,
 `challenger.md`, `architect.md`, `archivist.md` and `synthesizer.md` are gone.
@@ -166,46 +203,64 @@ Their work now runs under four agents, and the task you give names the job:
 Each job keeps its own write permissions. If you launched an agent by its old
 name — by hand, in a script, in a scheduled job — launch the ship instead and
 name the job in the task, for example `nostromo` with "mechanic: …". The
-automatic end-of-session pass already launches them this way. See [agents/README.md](../agents/README.md).
+automatic end-of-session pass already launches them this way. See
+[agents/README.md](../agents/README.md).
 
----
+</details>
 
 ## What changes in how the engine is installed
 
+```
+before v2.0.0     ~/.greymatter/engine  →  your clone (updated in place, by git)
+since v2.0.0      ~/.greymatter/engine  →  ~/.greymatter/versions/<id>/  (built, immutable)
+                  your clone            =  a source: read once, never written again
+```
+
+**There is nothing to run** — no migration script, no command. After v2.0.0, GreyMatter no longer uses
+your checkout as the installed engine. An older installation upgrades itself: its updater
+installs v2.0.0, which replays the new installer, which builds a managed
+version from what was checked out and repoints the engine at it. From that
+moment your checkout is a source, and stays one. The background is in
+[install-model.md](install-model.md).
+
 This part was written for a v1.29.0 that was never tagged; it ships in v2.0.0
-unchanged. After v2.0.0, GreyMatter no longer uses your checkout as the installed
-engine.
+unchanged.
+
+<details>
+<summary><b>Everything that changes, point by point</b></summary>
 
 - **Source checkouts are left untouched.** The repository you cloned is a SOURCE.
   The installer reads it to build an engine and never writes to it again. Update
   it with `git`, like any other repository — `brain update` has nothing to do
   with it and cannot move, reset or overwrite it.
 - **Installed engines live under `~/.greymatter/versions/`.** Each one is an
-  immutable export: no `.git`, no history, code only, with a `.greymatter-manifest`
-  recording a checksum per file.
-- **`~/.greymatter/engine` points to the active managed version.** Switching version
-  is a single atomic symlink rename — nothing is copied over anything.
+  immutable export: no `.git`, no history, code only, with a
+  `.greymatter-manifest` recording a checksum per file.
+- **`~/.greymatter/engine` points to the active managed version.** Switching
+  version is a single atomic symlink rename — nothing is copied over anything.
 - **Updates test a candidate before switching.** The new version is built,
   verified against its manifest, migrated and selftested *while it is still
   inactive*. Only a green candidate becomes the engine; a red one is deleted and
   the running version is never involved.
-- **Rollback switches between managed versions.** No checkout, no network. If the
-  version being rolled back to is no longer on disk, the rollback refuses and
-  says which versions remain, rather than landing somewhere else.
+- **Rollback switches between managed versions.** No checkout, no network. If
+  the version being rolled back to is no longer on disk, the rollback refuses
+  and says which versions remain, rather than landing somewhere else.
 - **The trunk is not touched.** As before, and now structurally: no git command
   in the update path names the trunk.
 - **`install.sh --dry-run` is inert, and reaches the end.** Reviewed 2026-08-26,
-  because this release is the one people will want to preview before running it:
-  until then the preview created `~/.greymatter` before it had read its own flag,
-  and then died at "Engine linked into the trunk" with no message and exit 2.
+  because this release is the one people will want to preview before running
+  it: until then the preview created `~/.greymatter` before it had read its own
+  flag, and then died at "Engine linked into the trunk" with no message and
+  exit 2.
 - **The installer's closing verification tests the version it just built.** It
   used to fall back to whichever `brain` was on PATH — nothing at all on a clean
   machine, so a healthy install ended on "some hooks are broken"; the other
-  installation's engine on a machine that already had GreyMatter. Nothing else in
-  the upgrade path changes: the warning above still applies exactly as written.
-- **Older trunks receive ranking defaults only if missing.** The installer copies
-  `config/ranking.json` into an existing trunk only when it has no copy. A user
-  configuration is never replaced by this default.
+  installation's engine on a machine that already had GreyMatter. Nothing else
+  in the upgrade path changes: the warning above still applies exactly as
+  written.
+- **Older trunks receive ranking defaults only if missing.** The installer
+  copies `config/ranking.json` into an existing trunk only when it has no copy.
+  A user configuration is never replaced by this default.
 - **The installer's last screen says what happened.** It used to end on
   "installed" whatever had occurred above it. When the `brain` command is not on
   your PATH yet, the ending now says so, with the one-line export that fixes it
@@ -214,8 +269,8 @@ engine.
   is there too, and the installer exits 1, so a script, a CI job or an agent
   running it sees the failure (`tests/install_exit_code.sh`). That includes an
   install over another installation's agents folder: Claude Code cannot reach
-  GreyMatter's agents there, the verification was already red in v2.0.2 behind an
-  exit 0, and the closing screen no longer calls that install "working"
+  GreyMatter's agents there, the verification was already red in v2.0.2 behind
+  an exit 0, and the closing screen no longer calls that install "working"
   (`tests/e2e_occupied_surfaces.sh`). An update that replays `install.sh` still
   treats that exit as a warning: the candidate's own selftest is what decides
   the switch.
@@ -225,7 +280,10 @@ engine.
   longer builds a second `…-dirty` copy of the same version: those edits are not
   in the engine, and the installer says so instead of renaming it.
 
-### If you work ON GreyMatter
+</details>
+
+<details>
+<summary><b>If you work ON GreyMatter</b></summary>
 
 Run the installer once with `--dev`:
 
@@ -233,9 +291,9 @@ Run the installer once with `--dev`:
 ./install.sh --dev
 ```
 
-This is the only mode in which the engine may be a working checkout. It links the
-engine to your checkout, records the choice in `~/.greymatter/state/engine-dev`, and
-`brain update` then refuses by name:
+This is the only mode in which the engine may be a working checkout. It links
+the engine to your checkout, records the choice in
+`~/.greymatter/state/engine-dev`, and `brain update` then refuses by name:
 
 ```
 Development engine detected.
@@ -244,7 +302,10 @@ Automatic engine updates are disabled for --dev installations.
 
 No checkout, no reset, no fetch. Update your checkout with git.
 
-### Your scheduled jobs will be left alone, and told so
+</details>
+
+<details>
+<summary><b>Your scheduled jobs will be left alone, and told so</b></summary>
 
 An update replays `install.sh`. From now on the installer refuses to unload a
 launchd Label it holds no record of owning — and an installation made before
@@ -253,30 +314,23 @@ that record existed has none. So on the first update you will see, by name:
     ! The service com.greymatter.resume already exists, and this installation
       holds no proof that it owns it. NOTHING was changed [...]
 
-**Nothing is broken**: the jobs keep running exactly what they were running. The
-message names the command that adopts them. Until you run it, the plist is no
-longer rewritten by an update, so a future change to the job definition will not
-reach this machine — that is the price of not guessing whose job it is.
+**Nothing is broken**: the jobs keep running exactly what they were running.
+The message names the command that adopts them. Until you run it, the plist is
+no longer rewritten by an update, so a future change to the job definition will
+not reach this machine — that is the price of not guessing whose job it is.
 
-### Nothing else to do
+</details>
 
-There is no migration script and no command to run. An older installation
-upgrades itself: its updater installs v2.0.0, which replays the new installer,
-which builds a managed version from what was checked out and repoints the engine
-at it. From that moment your checkout is a source, and stays one.
+## For whoever published v2.0.0
 
-The background is in [install-model.md](install-model.md).
-
----
-
-## For whoever publishes v2.0.0
-
-`CHANGELOG.md` is generated from annotated tags, so the warning has to be in the
-tag message or it will not appear there at all. Written here in advance, on
+`CHANGELOG.md` is generated from annotated tags, so the warning has to be in
+the tag message or it will not appear there at all. Written here in advance, on
 purpose: this is a safety instruction, and a safety instruction improvised at
-`publish.sh` time is one that gets shortened.
+`publish.sh` time is one that gets shortened. v2.0.0 is out; the message stays here
+as the record of what it said.
 
-Use it as is:
+<details>
+<summary><b>The tag message, as written</b></summary>
 
 ```bash
 ./publish.sh v2.0.0 "Recall on request, four agents, and a source that is no longer the engine
@@ -302,3 +356,5 @@ BRAIN_RECALL_AUTO=1 restores it on every prompt. The eight agents are now four
 - nostromo, narcissus, sulaco, anesidora - carrying the same eight jobs; a
 script that launched an agent by its old name must name the ship instead."
 ```
+
+</details>

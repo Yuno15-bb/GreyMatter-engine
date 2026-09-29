@@ -1,10 +1,25 @@
-# Design doc — GreyMatter (an installable, self-updating knowledge trunk)
+# Design doc — GreyMatter
 
-**TL;DR** — Extract, from a living `~/claude-brain`, a package called **GreyMatter**
-that installs in one command on another macOS machine, behaves **identically** to
-the original with everything around it (hooks, agents, capsule, planet,
-companion, status line, CLI, launchd), and **updates itself** on each user's
-machine.
+An installable, self-updating knowledge trunk, extracted from a living one. This
+page records what was decided, why, and what running it proved wrong.
+
+[In one table](#in-one-table) · [Who it is for](#who-it-is-for-and-why) ·
+[Problem](#problem-the-need-not-the-solution) · [Success](#measurable-success) ·
+[Non-goals](#non-goals-explicit-boundaries) · [Recall](#recall-one-corpus-and-weights-you-can-read) ·
+[Vocabularies](#one-owner-per-vocabulary) · [Approach](#approach) ·
+[Contract](#contract-what-everything-else-rests-on) · [Risks](#impact--risks) ·
+[Kill switch](#reversibility--kill-switch) · [Delivery](#delivery-mergeable-lots-each-testable-alone) ·
+[Open questions](#open-questions)
+
+## In one table
+
+| Question | Answer |
+|---|---|
+| What | extract, from a living `~/claude-brain`, a package called **GreyMatter** |
+| How it installs | in one command on another macOS machine |
+| How it behaves | **identically** to the original, with everything around it: hooks, agents, capsule, planet, companion, status line, CLI, launchd |
+| How it stays current | it **looks for new versions** on each user's machine, and the agent asks before installing one (since v2.1.1) |
+| What makes that safe | the code (the **engine**) and the notes (the **trunk**) live apart |
 
 **Why this doc is sized the way it is**: publishing is irreversible (revoking
 access does not un-clone what is already cloned), the source of the package is a
@@ -12,17 +27,20 @@ system holding **real personal data about third parties**, and automatic updates
 add a second serious risk: **code that installs itself on somebody else's
 machine**.
 
----
-
 ## Who it is for, and why
 
-**Audience**: users of a command-line agent — Claude Code first, but any model
-running in a CLI — who want **more memory, more context, and a knowledge tree
-that grows with time and with the volume of work** accumulated alongside their
-agent.
+| | |
+|---|---|
+| **Audience** | users of a command-line agent — Claude Code first, but any model running in a CLI |
+| **What they want** | **more memory, more context, and a knowledge tree that grows with time and with the volume of work** accumulated alongside their agent |
+| **How they install** | they give **one command to the agent already running in their CLI** |
+| **What they get outside Claude Code** | everything **on demand**, **not as a closed loop** |
 
 This is not one more tool: it is what stops a session starting from zero, and
 keeps what was understood once findable from any other project.
+
+<details>
+<summary><b>Installation, and the honest constraint</b></summary>
 
 **Installation**: the user does not follow a procedure. They give **one command
 to the agent already running in their CLI**, and the agent installs it. That is
@@ -36,19 +54,21 @@ GreyMatter works **on demand** (`brain recall`, `brain status`, agents invoked
 explicitly) but **not as a closed loop**. The installer detects this and says so;
 it never lets anyone believe in an autonomy that is not there.
 
+</details>
+
 ## Problem (the need, not the solution)
 
-The trunk worked on **one** machine only, and its installation was not an
-artefact: it was a sequence of manual gestures reconstructed from memory.
+| What happened | What it cost |
+|---|---|
+| a machine migration never recreated the `~/.claude/agents` symlink | **the agents were invisible and the autonomous loop spun on nothing for 24 hours**, with no visible error at all |
+| the resume `.plist` carried a hardcoded home path | the scheduler died silently |
+| nobody else could run the system | it was neither showable nor transmissible |
+| once installed somewhere, **it freezes** | fixes made here never reach it |
 
-- A machine migration proved it: the `~/.claude/agents` symlink was never
-  recreated → **the agents were invisible and the autonomous loop spun on nothing
-  for 24 hours**, with no visible error at all.
-- The resume `.plist` carried a hardcoded home path → the scheduler died silently.
-- Nobody else could run the system, so it was neither showable nor transmissible.
-- And once installed somewhere, **it freezes**: fixes made here never reach it. A
-  frozen system on somebody else's machine is worse than none — it carries the
-  bugs that have already been repaired.
+The trunk worked on **one** machine only, and its installation was not an
+artefact: it was a sequence of manual gestures reconstructed from memory. A
+frozen system on somebody else's machine is worse than none — it carries the
+bugs that have already been repaired.
 
 The need: **that another person gets the same system running, that it can be
 proven, and that it stays current without them doing anything.**
@@ -77,6 +97,19 @@ decide how to handle its history.
 
 ## Non-goals (explicit boundaries)
 
+| Not shipped | Why |
+|---|---|
+| **Note content** | the package ships an **empty** trunk |
+| **Skills** | too personal: **20 out of 20** carried personal markers |
+| **`desktop_sync.py`** | strictly personal, and destructive on somebody else's machine |
+| **Linux, Windows** | **macOS only** |
+| **Telemetry** | an update reports **nothing** back |
+| **A forced migration of the source machine** | see [Impact](#impact--risks) |
+| **The cold corpus, the embeddings venv** | optional: BM25 is enough by default |
+
+<details>
+<summary><b>Each boundary, in full</b></summary>
+
 - **No note content whatsoever.** The package ships an **empty** trunk. Nobody clones somebody else's brain.
 - **No skills** (`~/.claude/skills`) — too personal. Measured: **20 out of 20** contained personal markers (client, people, personal context). None was transferable. What ships instead: an **empty** `skills/` plus `skills/README.md`, the documentation of the **house standard** (nine requirements, forge-on-block, the skill/agent boundary, a template). We pass on the method that makes the skill, not the skill.
 - **No `desktop_sync.py`** and no matching plist: it backs up the author's Desktop to *their* GitHub — strictly personal, and destructive on somebody else's machine (`--delete` on an unknown destination).
@@ -85,15 +118,31 @@ decide how to handle its history.
 - **No forced migration of the source machine** to the new layout (see "Impact").
 - **Neither the cold corpus nor the embeddings venv**: optional, BM25 is enough by default.
 
+</details>
+
 ## Recall: one corpus, and weights you can read
 
+| Decision | Where it lives | What holds it |
+|---|---|---|
+| the indexable corpus is defined **once** | `hooks/brain_corpus.py` | `tests/shared_corpus.py` |
+| the ranking weights live **outside the engine** | `config/ranking.json` | `brain_recall.py --explain` |
+| the family bridge ships **OFF** | `index.family_bridge_weight` | a 15-case golden set |
+
 Two decisions worth stating, because both were once invisible.
+
+<details>
+<summary><b>One corpus</b></summary>
 
 **The indexable corpus is defined once**, in `hooks/brain_corpus.py`. It used to be written
 twice — once per recall engine — under a comment claiming the two were identical. Measured
 on a real trunk, they had drifted by 5 documents. `tests/shared_corpus.py` now rejects any
 engine that writes itself a local copy; the check is static, because comparing two lists
 imported from the same module would be tautological and could never fail.
+
+</details>
+
+<details>
+<summary><b>Weights you can read</b></summary>
 
 **The ranking weights live in `config/ranking.json`**, not in the engine. Each weight ships
 with the measurement that justifies it, and `brain_recall.py --explain` decomposes any
@@ -107,20 +156,20 @@ are exactly the previously hardcoded values — a configuration must never be ab
 recall. It is part of the index fingerprint, so changing a weight rebuilds the index instead
 of silently serving one scored under the old rules.
 
+</details>
+
+<details>
+<summary><b>The knob that ships off</b></summary>
+
 One knob ships OFF: `index.family_bridge_weight`, the vocabulary bridge between notes of the
 same thematic family. At weight 1, on a 15-case golden set over a real trunk, it demoted the
 note that literally answers the query from 1st to 2nd place and promoted an off-topic one.
 The setting remains off, and this package has no thematic-family registry to read.
 Turning it up would require a registry and a fresh measurement.
 
+</details>
+
 ## One owner per vocabulary
-
-Three times in three days this repository shipped the same shape of bug: a contract stated
-in two places instead of shared from one. Two recall engines silently indexed different
-corpora. The map read a field its exporter never wrote. A list of note types lived in a hook
-and in five agent briefs at once.
-
-So each vocabulary now has exactly one owner, and everyone else imports it:
 
 | Vocabulary | Owner |
 |---|---|
@@ -129,6 +178,16 @@ So each vocabulary now has exactly one owner, and everyone else imports it:
 | typed `relations:` | `hooks/graph_export.py` |
 | ranking weights | `config/ranking.json` |
 
+Each vocabulary has exactly one owner, and everyone else imports it.
+
+<details>
+<summary><b>Why — three bugs of the same shape in three days</b></summary>
+
+Three times in three days this repository shipped the same shape of bug: a contract stated
+in two places instead of shared from one. Two recall engines silently indexed different
+corpora. The map read a field its exporter never wrote. A list of note types lived in a hook
+and in five agent briefs at once.
+
 `brain_doctor` reports disagreements between these sources. It deliberately owns none of
 them — a diagnostic tool that defines a vocabulary becomes a third thing to disagree with,
 and then nobody can say which one is right. The cost of importing rather than restating is
@@ -136,12 +195,26 @@ that an import can fail, so the doctor announces a check it could not run instea
 reporting a clean trunk. `tests/doctor_contract.py` makes falling back on a local copy a
 test failure.
 
+</details>
+
 ### What `metadata.type` means — and what it is not
 
-Five values: `user`, `feedback`, `project`, `reference`, `lesson`. They classify a note by
-**what kind of knowledge it is**, and the writing agents are told this list in
-`agents/*.md`; `tests/type_vocabulary.py` holds the two sides equal, because a vocabulary
-written down twice is one that will disagree with itself.
+```
+type: user | feedback | project | reference | lesson
+```
+
+| The pair that shares `lessons/` | Its origin |
+|---|---|
+| `feedback` | what the user told you |
+| `lesson` | what was learned by measuring something |
+
+Five values. They classify a note by **what kind of knowledge it is**, and the
+writing agents are told this list in `agents/*.md`; `tests/type_vocabulary.py`
+holds the two sides equal, because a vocabulary written down twice is one that
+will disagree with itself.
+
+<details>
+<summary><b>It is not the folder</b></summary>
 
 **It is not the folder.** The two dimensions look alike — there is a `lessons/` folder and
 a `lesson` type — and collapsing them would be a one-way mistake. Measured on a 400-note
@@ -157,9 +230,21 @@ not on the grounds that a lot of notes live in `lessons/`.
 The vocabulary stays **closed**: an unrecognised value is still recorded and still
 reported. Widening it by one word did not turn it into "anything goes".
 
+</details>
+
 ## Approach
 
 ### 1. The structural decision: separate the ENGINE from the TRUNK
+
+```
+~/.greymatter/versions/   ← the installed versions. Immutable exports, code ONLY.
+~/.greymatter/engine/     ← a link to the ACTIVE version. Updating switches this link.
+~/.greymatter/trunk/      ← the user's trunk. Their notes, their own git. NEVER touched.
+    hooks/  → symlink to ~/.greymatter/engine/hooks
+    agents/ → symlink to ~/.greymatter/engine/agents
+    capsule/ planet/ companion/ → symlinks
+    lessons/ projects/ meta/ life/ sessions/ state/ → REAL, the user's own
+```
 
 This is what makes automatic updates possible **with no risk to the data**.
 
@@ -167,20 +252,25 @@ A single `~/claude-brain` mixes code (hooks, agents, capsule, planet) and conten
 (notes). A `git pull` on a repo where the user also commits their own notes ends
 in conflict — or in loss.
 
-```
-~/.greymatter/versions/   ← the installed versions. Immutable exports, code ONLY.
-~/.greymatter/engine/     ← a link to the ACTIVE version. Updating switches this link.
-~/.greymatter/trunk/        ← the user's trunk. Their notes, their own git. NEVER touched.
-    hooks/  → symlink to ~/.greymatter/engine/hooks
-    agents/ → symlink to ~/.greymatter/engine/agents
-    capsule/ planet/ companion/ → symlinks
-    lessons/ projects/ meta/ life/ sessions/ state/ → REAL, the user's own
-```
-
 The paths become `~/.greymatter/trunk/hooks/...`: **no hook, no agent and no path
 changes shape**. Behaviour is identical; only where the files come from changes.
 
 ### 2. Automatic updates
+
+| Rule | In short |
+|---|---|
+| `brain update` | fetch, then **replay `install.sh`** |
+| Automatic trigger (v1.28.0 → v2.1.0) | every session start, **detached**; it **installs**, it does not just report |
+| Ask first (since v2.1.1) | session start only **looks**; the agent asks, once per version per day. `--auto-on` restores silent installs |
+| One at a time | a lock directory, reclaimed after 30 minutes |
+| **The selftest decides** | red → the previous version comes back by itself |
+| A way out | `brain update --auto-off` (the default since v2.1.1) |
+| Tags, never `main` | a draft commit reaches nobody |
+| Migrations | numbered, idempotent, **never destructive** to the notes |
+| Rollback by hand | `brain update --rollback` |
+
+<details>
+<summary><b>Each rule, in full</b></summary>
 
 - `brain update`: `git pull` inside `~/.greymatter/engine`, then **replays `install.sh`** (idempotent by construction — it already knows not to overwrite anything). The symlinks make propagation immediate.
 - **Automatic trigger (v1.28.0)**: a `SessionStart` hook launches the update **detached** and returns immediately, on **every** session. It does not merely report any more — it **installs**. The report of the run is shown at the *next* session start, which is the price of never blocking: better news one session late than a session waiting on a `git fetch` and a selftest.
@@ -198,6 +288,12 @@ changes shape**. Behaviour is identical; only where the files come from changes.
 - **Tagged versions, never `main`**: users follow `vX.Y.Z` tags, not the working branch. A draft commit reaches nobody.
 - **Migrations**: a numbered `migrations/` folder, each script idempotent and **never destructive** to `lessons|projects|meta|life|sessions`. The log lives in `~/.greymatter/state`.
 - **Rollback by hand**: `brain update --rollback` checks out the previous tag and re-runs `install.sh`.
+
+</details>
+
+<details>
+<summary><b>What running it taught — eight incidents, in order</b></summary>
+
 - **The engine has to come back clean after the installer.** `install.sh` runs `npm install` in the capsule, and npm rewrote `capsule/package-lock.json` — which left the engine with an uncommitted change, and `update.sh` *refuses* a dirty engine rather than overwrite somebody's work. So `brain update` worked once and never again, on a machine where nobody suspected having touched anything. Root cause fixed (the lock declared a dependency `package.json` no longer had); `update.sh` also restores tracked files after the installer, which is safe precisely because the pre-check demanded a clean tree first.
 - **And the same trap had a second mouth, found on somebody else's machine (2026-08-16).** The engine directories are mounted *inside* the trunk as symlinks, so the gardening agents walk into them and edit agent briefs — correct work, wrong repository. Each pass dirtied the engine, `update.sh` refused, and the install fell behind for ever without a signal. Two halves to the fix, because repairing the cause rescues nobody already stuck: the writing agents are now told the engine is off limits (`greymatter/engine-paths.txt` is the one list, read by the installer, the updater and the doctor), and `update.sh` **tolerates dirt confined to those paths** — it discarded them after updating anyway, so the refusal only ever cost people their updates. Anything outside still blocks, and is now named in the error.
 - **`brain doctor` looks at the engine too.** It used to read only the trunk, so it came back fully green while the engine was dirty and updates were refusing to run — the diagnostic a user is asked to paste was blind to precisely this. It now reports the engine's own worktree, and prints the one-line repair.
@@ -205,30 +301,59 @@ changes shape**. Behaviour is identical; only where the files come from changes.
 - **The update gate judged the machine, not the code (found on a blank Mac, 2026-09-26).** `update.sh` switches only on a green selftest, so a false red in the selftest is a lock, not a warning. A test on a blank macOS virtual machine found three. `node --check` ran unconditionally, so a Mac without Node — which the installer supports — was red from the first day. The planet's ↻ badge kept a regex detector of its own, which lit `agents/narcissus.md` for merely describing resume points, so the first session turned every Mac red. And the maintenance heartbeat rewrites `status.json` while the selftest checks that `brain status` leaves it untouched. In v2.0.2 the capsule check runs only where Node exists; the badge reads `brain_anticipate`, as the author's engine had since 2026-08-14 and this port had not; a graph written by an older exporter, or at another HEAD, is a named skip; and the status comparison is skipped while the maintenance holds its lock. Because the updater runs the *candidate's* selftest, a Mac stuck on v2.0.1 takes v2.0.2 on its own — verified on that virtual machine. `tests/fresh_mac_path.sh` replays the blank Mac on Apple's tools alone, with one sabotage per fault.
 - **A command is not a session (found on the same blank Mac).** Claude Code runs the `SessionEnd` hooks when `claude plugin install` exits, with a fresh session id and a `transcript_path` it never writes (observed with Claude Code 2.1.283). The maintenance loop treats a transcript it cannot read as "unable to measure", which is not "trivial", so it queued that id and a headless distillation was later spent on nothing; the archive wrote a note for it. Since v2.0.3 `auto_maintain.wrote_nothing()` recognises the case — the named transcript does not exist, no transcript exists under that id anywhere, and the index has never seen it — and neither hook keeps it. A session with no transcript path at all is still queued, as before. `tests/ghost_session.sh` replays the ghost, that unmeasurable session and a real one; ids queued by 2.0.2 or earlier are processed once more.
 - **The distiller reads the transcript it is sent, wherever it lives (2026-09-29).** Its read grant was the home project's transcript folder alone, but a session opened in `~/some-project` writes to a sibling folder, so the distiller was refused the file it was asked to distil and wrote nothing. `auto_maintain.py` now adds that session's own folder, and only that one — never the whole of `~/.claude/projects`, which holds every other project's history.
-- **…and it does not have to read it at all (2026-09-29).** An interactive transcript carries attachment lines of 35 to 109 KB (skill and agent listings, prompt snapshots): the Read tool truncates the file, and the distiller has no Bash to slice it, so a 9-message interactive session came back with no note while the same task through `claude -p` produced one. The archive note now carries a `Conversation (excerpt)` section — the user's words, the assistant's words, each tool call reduced to what it touched, about 8,000 characters kept from the end — which is what the distiller is told to rely on.
+- **…and it does not have to read it at all (2026-09-29).** An interactive transcript carries attachment lines of 35 to 109 KB (skill and agent listings, prompt snapshots): the Read tool truncates the file, and the distiller has no Bash to slice it, so a 9-message interactive session came back with no note while the same task through `claude -p` produced one. The archive note now carries a `Conversation (excerpt)` section — the user's words, the assistant's words, each tool call reduced to what it touched, about 8,000 characters kept from the end — which is what the distiller is told to rely on. A rerun then still wrote nothing, for two reasons of its own: it judged it had no verbatim quote for its first requirement, although that requirement already accepts the archive note, and it dropped a project constraint the user had stated as "not a reusable lesson". So the excerpt is now labelled verbatim and quotable, and the brief says such a constraint is a `projects/` note.
+
+</details>
 
 ### 3. Generalization is declarative, not manual
 
-`sync.sh` re-copies the engine from the living trunk on every pass: **a fix made
-by hand would be overwritten**, and the leak would be back at the next commit
-with nothing to flag it. Hence `rules.json` + `generalize.py`, **chained
-automatically after every copy**, with a guard: a rule finding fewer occurrences
-than expected makes the script **fail** — a falling counter means the source
-changed its wording, not that the problem went away.
+```
+the author's living trunk
+   │  scripts/sync.sh         copies the engine, allowlist only
+   ▼
+   │  scripts/generalize.py   applies scripts/rules.json — chained after EVERY copy
+   ▼
+   │  scripts/leakcheck.py    zero marker, or exit 1
+   ▼
+the package
+```
+
+`scripts/sync.sh` re-copies the engine from the living trunk on every pass: **a
+fix made by hand would be overwritten**, and the leak would be back at the next
+commit with nothing to flag it. Hence `scripts/rules.json` +
+`scripts/generalize.py`, **chained automatically after every copy**, with a
+guard: a rule finding fewer occurrences than expected makes the script **fail**
+— a falling counter means the source changed its wording, not that the problem
+went away.
 
 ### What the engine/trunk split broke (found by running, not by reading)
 
 The same trap twice: code deriving its paths from `__file__` instead of `$HOME`.
 Under a symlink it then points into the **engine** instead of the **trunk**.
 
+<details>
+<summary><b>The three cases</b></summary>
+
 - `tests/invariants_brain.py` was writing `state/coherence.json` **into the installed repo** → three tests in error. Fixed by a rule: two distinct roots, `CODE` (follows the file) and `BRAIN` (derives from `$HOME`). The 22 other uses of `__file__` locate neighbouring **code** — those are correct and stay.
 - `capsule/main.js` watched `status.json` through `__dirname` while `index.html` derived it from `homedir()`. The capsule would have animated but **never re-shown itself** when an agent woke up. Two halves of the same component disagreeing.
 - `planet/graph.json` is regenerated **inside the engine**. Tolerated: it is gitignored and rebuilt on every launch. Never to be extended to user data.
 
+</details>
+
 ### Two silent failures the installer work caught
+
+| What looked fine | What was actually wrong |
+|---|---|
+| a status line, installed | invisible: the `statusLine` key was never written |
+| `brain update`, announced | the command did not exist yet |
+
+<details>
+<summary><b>Both, in full</b></summary>
 
 - **A status line installed and invisible**: the file was copied into `~/.claude` but the `statusLine` key was never written into `settings.json`. Nothing would have flagged it — just a missing line. Fixed, and set **only** when the user has none of their own.
 - **`brain update` announced but non-existent**: the installation summary listed it before the command existed. Removed from the message rather than promised empty.
+
+</details>
 
 ### Rejected alternatives
 
@@ -248,14 +373,17 @@ Under a symlink it then points into the **engine** instead of the **trunk**.
 greymatter/
   install.sh          # the single entry point, idempotent, backs up before overwriting
   uninstall.sh        # back to the previous state, in one command
-  publish.sh          # the only sanctioned path to a git push
-  sync.sh             # living trunk → repo, allowlist; --check = drift report only
-  generalize.py       # applies rules.json AFTER the copy (chained by sync.sh)
-  rules.json          # declarative rules: code blocks + text substitutions
-  leakcheck.py        # zero marker, otherwise exit 1 (blocks the commit)
+  merge_settings.py   # adds and removes the hooks in ~/.claude/settings.json
   brain               # CLI, 18 subcommands (status|doctor|audit|review|recall|next|
                       #   coherence|utility|credit|embed|push|metrics|selftest|backup|
                       #   update|demo|capsule|version)
+  bin/                # the `brain` shim placed on the PATH
+  scripts/            # the maintainer's tools — never run on a user's machine:
+    publish.sh        #   the only sanctioned path to a git push
+    sync.sh           #   living trunk → repo, allowlist; --check = drift report only
+    generalize.py     #   applies rules.json AFTER the copy (chained by sync.sh)
+    rules.json        #   declarative rules: code blocks + text substitutions
+    leakcheck.py      #   zero marker, otherwise exit 1 (blocks the commit)
   hooks/              # the hooks + .plist.template  (desktop-sync EXCLUDED)
   agents/             # 4 ship briefs, 8 missions (no client or project names)
   capsule/            # the menu bar pill: Swift sources, built at install
@@ -263,7 +391,8 @@ greymatter/
   planet/             # index.html, launch.sh, media/  (graph.json EXCLUDED)
   companion/          # live change tracking
   statusline.py       # the CLI status line
-  greymatter/             # update.sh, check_update.py, migrations/ — GreyMatter specific
+  greymatter/         # update.sh, check_update.py, migrations/ — GreyMatter specific
+  cbrain/             # the pre-v2.1.0 name, kept so an old uninstaller can hand over  <!-- pre-rename -->
   skeleton/           # the EMPTY trunk created on the user's machine
   skills/             # EMPTY + README.md = the house standard (no skill shipped)
   demo/               # a throwaway trunk `brain demo` places and removes (open question 3)
@@ -273,6 +402,20 @@ greymatter/
 ```
 
 **Contract invariants** (checked by `selftest`, not by re-reading):
+
+| Invariant | In short |
+|---|---|
+| no absolute `/Users/<somebody>` path | everything derives from `$HOME` |
+| generated state is never committed | `state/`, `planet/graph.json`, `corpus/`, `.venv/`… |
+| `install.sh` run twice | the same state |
+| **no engine script writes the notes** | only the agents, through the user's trunk |
+| **the local history exists before anything relies on it** | `install.sh` starts it, and says so |
+| **one zone per automatic commit** | a mixed commit is refused |
+| **the maintenance loop asks before it spends** | `brain credit` |
+| **prose is held like code** | `tests/docs_aligned.py` |
+
+<details>
+<summary><b>Each invariant, in full</b></summary>
 
 - no absolute `/Users/<somebody>` path in an executed file — everything derives from `$HOME`;
 - `state/`, `planet/graph.json`, `capsule/node_modules/`, `corpus/`, `.venv/` are never committed;
@@ -292,9 +435,23 @@ greymatter/
   reasons about the ENGINE repository. Nothing about updating may look at the notes.
 - **the automatic save commits ONE ZONE PER COMMIT** (`hooks/commit_par_zone.py`). It used to be a single `git add -A`: one such commit swallowed nineteen files of an unfinished piece of work, and 612 commits of that shape are in the history. A mixed commit cannot be read back, so the trunk's pre-commit hook refuses them and the automatic save leans on that refusal instead of working around it.
 - **the maintenance loop asks before it spends** (`hooks/quota_probe.py`, surfaced as `brain credit`). An agent pass that starts with no credit left does not fail loudly — it half-runs and marks work as done. The probe is what makes the degraded mode a decision rather than an accident.
-- **prose is held to the same standard as code** (`tests/docs_aligned.py`). Not by reading it — a check that needs a model to decide is not a check — but by asking whether the code a document claims to describe has moved since that document was last edited. `publish.sh` reports it; it does not yet refuse.
+- **prose is held to the same standard as code** (`tests/docs_aligned.py`). Not by reading it — a check that needs a model to decide is not a check — but by asking whether the code a document claims to describe has moved since that document was last edited. `scripts/publish.sh` reports it; it does not yet refuse.
+
+</details>
 
 ## Impact & risks
+
+| Risk | What answers it |
+|---|---|
+| **#1 — leaking third parties' personal data** | three nets: the allowlist, `.gitignore`, leakcheck |
+| **#2 — auto-update runs code on somebody else's machine** | tags only, a selftest that rolls back, `--auto-off`; **the tags are not signed** |
+| **#3 — the engine named its author and their clients** | 50 occurrences in 16 files, generalized to 0 |
+| The source machine | stays the source of truth, not migrated |
+| Dead weight, a tooling trap, macOS permissions | see below |
+| Cost | none — no server |
+
+<details>
+<summary><b>Each risk, in full</b></summary>
 
 - **Risk #1 — leaking third parties' personal data.** `planet/graph.json` holds the **full text of the notes**, real names included, and is regenerated on every launch. Excluded by the allowlist *and* by `.gitignore` *and* caught by leakcheck. Three nets.
 - **Risk #2 — auto-update is a code-execution channel into somebody else's machine.** Live since v1.28.0, and it is the heaviest trade-off in the package. Mitigations: tags only, never `main`; migrations non-destructive by construction; a red selftest rolls the version back automatically; rollback in one command by hand; since v2.1.1 silent installing is opt-in (`--auto-on`) and the default asks the user through the agent; the hook never blocks a session, and never takes one down when it fails. What is *not* mitigated, and is written in `SECURITY.md` rather than glossed over: **the tags are not signed**, so this trusts whoever can write to the repo. Signing is a decision deferred until there are installs to protect (see `SECURITY.md`).
@@ -305,13 +462,17 @@ greymatter/
 - **macOS TCC**: anything going through launchd and reading `~/Desktop` is refused without Full Disk Access — a GUI action that cannot be scripted, so it belongs in the install procedure.
 - **Cost**: none. No server; an update is a `git pull`.
 
+</details>
+
 ## Reversibility / kill switch
 
-- **Before the first push**: everything is local, `rm -rf` is enough.
-- **After publishing**: making the repo private again **does not un-clone** what is already out → the real kill switch is the leak check **before** the push, not after.
-- **A bad update**: `brain update --rollback` (previous tag + reinstall). Removing the tag on GitHub also stops propagation to users who have not pulled yet.
-- **On the user's machine**: `uninstall.sh` plus a timestamped `settings.json` backup → back to the previous state in one command. Their trunk is never deleted.
-- **On the source machine**: no risk — the pipeline is read-only on the living trunk.
+| When | How to undo it |
+|---|---|
+| **Before the first push** | everything is local, `rm -rf` is enough |
+| **After publishing** | making the repo private again **does not un-clone** what is already out → the real kill switch is the leak check **before** the push, not after |
+| **A bad update** | `brain update --rollback` (previous tag + reinstall). Removing the tag on GitHub also stops propagation to users who have not pulled yet |
+| **On the user's machine** | `uninstall.sh` plus a timestamped `settings.json` backup → back to the previous state in one command. Their trunk is never deleted |
+| **On the source machine** | no risk — the pipeline is read-only on the living trunk |
 
 ## Delivery (mergeable lots, each testable alone)
 
@@ -319,9 +480,7 @@ greymatter/
 |---|---|---|
 | **L0** ✅ | `sync.sh` (allowlist) + `leakcheck.py` + `.gitignore` + `skills/` | tools shipped and **executed**: `sync --check` proven on three simultaneous divergences, leakcheck red at 50 (it sees) |
 | **L1** ✅ | `generalize.py` + `rules.json` + `skeleton/` | **leakcheck green** (50 → 0); `selftest` + `doctor` + `recall` + `graph_export` green in an isolated HOME |
-| **L2** ✅ | `install.sh` + `uninstall.sh` + `merge_settings.py` + `INSTALL.md` | full cycle proven in an isolated HOME: second pass = zero change; `settings.json` returns **semantically identical** after uninstall — every key of
-yours back, none of ours left. Not byte-identical: uninstall rewrites the file through
-Python's JSON serializer, so hand-formatting comes back reformatted (corrected v1.13.0); the user's note intact |
+| **L2** ✅ | `install.sh` + `uninstall.sh` + `merge_settings.py` + `INSTALL.md` | full cycle proven in an isolated HOME: second pass = zero change; `settings.json` returns **semantically identical** after uninstall — see below; the user's note intact |
 | **L3** ✅ | Capsule + status line | screenshots: `DISTILLING` then `IDLE` on a `status.json` change; three components aligned on the same path |
 | **L4** ✅ | Planet + Desktop `.command` | `launch.sh` → `200` on index/graph/glb; headless capture of the globe and its legend |
 | **L5** ✅ | Companion | pre/post hooks replayed: `+3 −1` aggregated, status line at **two lines** |
@@ -331,16 +490,69 @@ Python's JSON serializer, so hand-formatting comes back reformatted (corrected v
 
 Critical path: **L0 → L1 → L2 → L6**. L3/L4/L5 parallelize after L2.
 
+**L2, "semantically identical".** Every key of yours comes back, none of ours is
+left. Not byte-identical: uninstall rewrites the file through Python's JSON
+serializer, so hand-formatting comes back reformatted (corrected v1.13.0).
+
 ## Open questions
 
-1. **Tag signing**: GPG or a plain annotated tag? The first proves an update really comes from the author; the second is simpler. **Still open.**
+| # | Question | Status |
+|:---:|---|---|
+| 1 | Tag signing: GPG, or a plain annotated tag? | **Still open** |
+| 2 | `sync.sh` cadence: by hand, or a warning hook? | Settled 2026-08-15 — neither: propagation |
+| 3 | Is the empty trunk really empty? | Settled — `demo/` |
+| 4 | Should `publish.sh` refuse on unreviewed docs, or only warn? | Warns today |
 
-2. ~~**`sync.sh` cadence**: by hand, or a hook that warns when the package has fallen more than N days behind the living trunk?~~ — **Settled 2026-08-15, and neither answer was right.** A warning was the wrong shape: the drift detector had been reporting "up to date" for twelve days while the package served a two-week-old planet, because one exclusion was written by filename and silently hid the file it was meant to keep. A sensor nobody can trust is worse than no sensor. What actually shipped is *propagation*, not warning: at session end the author's machine copies, leak-checks, commits and pushes the `fr` branch on its own. The obstacle had never been risk — it was that `sync.sh` refuses to run anywhere but `fr`, the working copy sits on `main`, and switching branches under someone who is editing is worse than doing nothing. A second working copy pinned to `fr` (`git worktree`) satisfies the guard instead of bypassing it.
-   **What stays a human gesture, and why**: translating `fr` → `main`, and stamping a version. Both are judgement. The tool that pushes is deliberately *not* in this package — a user who added a remote to their trunk never asked for their private notes to be pushed at the end of every session.
+<details>
+<summary><b>1. Tag signing</b></summary>
 
-3. ~~**Is the empty trunk really empty?**~~ — **Settled.** `demo/` ships a throwaway trunk that `brain demo` places and `brain demo --remove` takes away, so a newcomer can see the format without anyone's real notes leaking into the package. The trunk a user gets is still empty.
+GPG or a plain annotated tag? The first proves an update really comes from the
+author; the second is simpler. **Still open.**
 
-4. **Should `publish.sh` refuse on unreviewed docs, or only warn?** It warns today, because four documents were behind the day the check landed and a gate nobody can satisfy only teaches people to skip the script. The honest answer is "refuse, once the backlog is zero" — but nothing currently forces that day to arrive.
+</details>
+
+<details>
+<summary><b>2. <code>sync.sh</code> cadence — settled 2026-08-15, and neither answer was right</b></summary>
+
+~~By hand, or a hook that warns when the package has fallen more than N days
+behind the living trunk?~~
+
+A warning was the wrong shape: the drift detector had been reporting "up to
+date" for twelve days while the package served a two-week-old planet, because
+one exclusion was written by filename and silently hid the file it was meant to
+keep. A sensor nobody can trust is worse than no sensor. What actually shipped
+is *propagation*, not warning: at session end the author's machine copies,
+leak-checks, commits and pushes the `fr` branch on its own. The obstacle had
+never been risk — it was that `sync.sh` refuses to run anywhere but `fr`, the
+working copy sits on `main`, and switching branches under someone who is
+editing is worse than doing nothing. A second working copy pinned to `fr`
+(`git worktree`) satisfies the guard instead of bypassing it.
+
+**What stays a human gesture, and why**: translating `fr` → `main`, and stamping
+a version. Both are judgement. The tool that pushes is deliberately *not* in
+this package — a user who added a remote to their trunk never asked for their
+private notes to be pushed at the end of every session.
+
+</details>
+
+<details>
+<summary><b>3. Is the empty trunk really empty? — settled</b></summary>
+
+`demo/` ships a throwaway trunk that `brain demo` places and `brain demo
+--remove` takes away, so a newcomer can see the format without anyone's real
+notes leaking into the package. The trunk a user gets is still empty.
+
+</details>
+
+<details>
+<summary><b>4. Refuse, or only warn, on unreviewed docs</b></summary>
+
+It warns today, because four documents were behind the day the check landed and
+a gate nobody can satisfy only teaches people to skip the script. The honest
+answer is "refuse, once the backlog is zero" — but nothing currently forces that
+day to arrive.
+
+</details>
 
 ---
 
