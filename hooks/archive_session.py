@@ -108,6 +108,62 @@ def parse_transcript(path):
         pass
     return ts, topic, nmsg
 
+def conversation_excerpt(path, budget=8000, per_entry=700):
+    """What was said and done, as plain lines the distiller can read in one go.
+
+    The distiller is told to rely on this note, and it has to: an interactive
+    transcript carries attachment lines of 35 to 109 KB (skill and agent listings,
+    prompt snapshots), so the Read tool truncates the file, and the distiller has
+    no Bash to slice it. Measured 2026-09-29: an interactive session, 9 messages,
+    212 KB of transcript, came back "without the transcript I can't quote the
+    fix" and no note. Kept: the user's words, the assistant's words, and each
+    tool call reduced to what it touched. Budget spent from the END (where the
+    outcome is), with the first request always kept.
+    """
+    def cut(t, n=per_entry):
+        t = re.sub(r"\s+", " ", t or "").strip()
+        return t if len(t) <= n else t[:n] + " …"
+
+    entries = []
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                try: o = json.loads(line)
+                except Exception: continue
+                role = o.get("type")
+                if role not in ("user", "assistant") or o.get("isMeta"):
+                    continue
+                c = o.get("message", {}).get("content")
+                parts = [{"type": "text", "text": c}] if isinstance(c, str) else (c or [])
+                for p in parts:
+                    if not isinstance(p, dict):
+                        continue
+                    if p.get("type") == "text":
+                        t = (p.get("text") or "").strip()
+                        if not t or t.startswith("<") or t.startswith("Caveat") or t.startswith("[Request"):
+                            continue
+                        entries.append(f"**{role}**: {cut(t)}")
+                    elif p.get("type") == "tool_use" and role == "assistant":
+                        i = p.get("input") or {}
+                        what = i.get("file_path") or i.get("command") or i.get("pattern") or ""
+                        detail = ""
+                        if "old_string" in i:
+                            detail = f" — replaced «{cut(i.get('old_string'), 300)}» with «{cut(i.get('new_string'), 300)}»"
+                        elif "content" in i:
+                            detail = f" — «{cut(i.get('content'), 300)}»"
+                        entries.append(f"- tool `{p.get('name')}` {cut(str(what), 200)}{detail}")
+    except Exception:
+        return []
+    if not entries:
+        return []
+    first, kept, used = entries[0], [], len(entries[0])
+    for e in reversed(entries[1:]):
+        if used + len(e) > budget:
+            kept.append("*(earlier exchanges left out)*")
+            break
+        kept.append(e); used += len(e)
+    return [redact(e) for e in [first, *reversed(kept)]]
+
 def load_cache():
     try:
         return json.load(open(CACHE, encoding='utf-8'))
@@ -229,6 +285,11 @@ def write_archive_note(data, cache):
             lines.append("\n**Files touched (status):**\n```\n" + redact(git["status"])[:2000] + "\n```")
     else:
         lines.append("\n*(No git diff captured — cwd outside a repo, or nothing changed.)*")
+    if _tp and os.path.exists(_tp):
+        said = conversation_excerpt(_tp)
+        if said:
+            lines.append("\n## Conversation (excerpt)\n")
+            lines += said
     open(fn, "w", encoding='utf-8').write("\n".join(lines))
     return fn
 
