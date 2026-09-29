@@ -289,6 +289,7 @@ def write_archive_note(data, cache):
         said = conversation_excerpt(_tp)
         if said:
             lines.append("\n## Conversation (excerpt)\n")
+            lines.append("*Verbatim from the transcript — only whitespace collapsed, long lines cut at «…». Quotable as an excerpt.*\n")
             lines += said
     open(fn, "w", encoding='utf-8').write("\n".join(lines))
     return fn
