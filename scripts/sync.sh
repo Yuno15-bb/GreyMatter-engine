@@ -18,7 +18,7 @@ RSYNC_FLAGS=(-a --delete --itemize-changes --exclude '*.bak')
 # A sync on main would overwrite the English translation with French sources.
 BRANCHE="$(git -C "$DEST" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 if [ "$BRANCHE" = "main" ] && [ "${GREYMATTER_ALLOW_SYNC_ON_MAIN:-}" != "1" ]; then
-  echo "❌ Run ./sync.sh on the fr branch, not main."
+  echo "❌ Run scripts/sync.sh on the fr branch, not main."
   echo "   main is the translation; a sync would overwrite it with French source files."
   echo "   → git checkout fr    (or set GREYMATTER_ALLOW_SYNC_ON_MAIN=1 deliberately)"
   exit 1
@@ -69,7 +69,7 @@ empreinte_source() {
 if [ "$MODE" = "check" ]; then
   echo "🔄 GreyMatter — has the living Brain changed since the last copy?"
   if [ ! -f "$MANIFEST" ]; then
-    echo "  ⚠️  no fingerprint recorded — run ./sync.sh once."
+    echo "  ⚠️  no fingerprint recorded — run scripts/sync.sh once."
     exit 1
   fi
   DIFF="$(diff <(cat "$MANIFEST") <(empreinte_source) || true)"
@@ -85,7 +85,7 @@ if [ "$MODE" = "check" ]; then
     echo "      … and $((N_CHANGES - 20)) more not shown."
   fi
   echo
-  echo "  → Run ./sync.sh to carry the changes, then review the git diff."
+  echo "  → Run scripts/sync.sh to carry the changes, then review the git diff."
   exit 1
 fi
 
@@ -188,4 +188,4 @@ python3 "$DEST/scripts/generalize.py"
 empreinte_source > "$MANIFEST"
 
 echo
-echo "✅ Synced and generalized. Final check: python3 leakcheck.py"
+echo "✅ Synced and generalized. Final check: python3 scripts/leakcheck.py"

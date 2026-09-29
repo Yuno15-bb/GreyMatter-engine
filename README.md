@@ -294,22 +294,24 @@ your trunk on every launch, and quitting the app stops its local server.
 **The full install** — ask your agent:
 
 ```
-Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine into ~/dev/greymatter, read its INSTALL.md,
-then run ./install.sh and show me the final verification output.
+Install GreyMatter: clone https://github.com/Yuno15-bb/GreyMatter-engine at tag v2.1.1
+into ~/dev/greymatter, read its INSTALL.md, then run ./install.sh
+and show me the final verification output.
 ```
 
-Or by hand: `git clone … && cd greymatter && ./install.sh` — add `--core-only` for the memory and nothing else.
+Or by hand: `git clone --branch v2.1.1 … && cd greymatter && ./install.sh` — add `--core-only` for the memory and nothing else.
+Without `--branch v2.1.1` you get `main`, the unfinished v2.2: [what differs](INSTALL.md#the-version-in-development).
 
 | | Plugin | Full install | `--core-only` |
 |---|:---:|:---:|:---:|
 | Trunk, recall, the four agents | ✅ | ✅ | ✅ |
 | `/greymatter:recall` · `:distill` · `:doctor` | ✅ | — | — |
 | `brain` in your own terminal | inside Claude Code | ✅ | ✅ |
-| Menu bar pill and map app | — | ✅ | — |
+| Floating orb and planet (v2.2: menu bar pill and map app) | — | ✅ | — |
 | Scheduled maintenance jobs (launchd) | — | ✅ | — |
 
 The plugin creates `~/.greymatter/trunk` on your first session and tells you so.
-It does not set up the pill, the map or the scheduled jobs — a plugin cannot
+It does not set up the orb, the planet or the scheduled jobs — a plugin cannot
 install a background service, and pretending otherwise would leave you with a
 window that never opens.
 

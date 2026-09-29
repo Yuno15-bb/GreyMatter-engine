@@ -1,83 +1,130 @@
 # Security
 
+> [!IMPORTANT]
+> **Found a vulnerability? Please do not open a public issue.** Use
+> **Security → Report a vulnerability** on this repository — it reaches the
+> maintainer privately. [How to report](#reporting-a-vulnerability).
+
+[What it does to your machine](#what-this-software-actually-does-to-your-machine) ·
+[Supported versions](#supported-versions) ·
+[Reporting](#reporting-a-vulnerability) ·
+[In scope](#in-scope) · [Out of scope](#out-of-scope)
+
 ## What this software actually does to your machine
 
-Worth stating plainly, because it is the honest basis for judging risk:
+| It… | Where, or when | To opt out |
+|---|---|---|
+| **writes inside `$HOME`** | `~/.greymatter/`, `~/.claude/`, `~/Library/LaunchAgents/com.greymatter.*`, a Desktop launcher, a `GreyMatter` shortcut | `uninstall.sh` undoes it all · `--no-shortcut` |
+| **runs code unattended** | hooks on your agent's events · two `launchd` jobs on a timer | install with `--no-launchd` |
+| **updates itself** | every session start, from published tags | `brain update --auto-off` |
+| **reads your notes** | on your machine, to find them | — that is how recall works |
+| **makes no network call** | except `git pull` | — |
+| **adds 2–3 note titles to your prompt** | name, one-line description and path, not the bodies | remove the `UserPromptSubmit` hook |
+| **lets agents send whole notes** | only when you start one | do not start it |
 
-- **It writes inside `$HOME`.** `~/.greymatter/` (engine and trunk), `~/.claude/`
-  (settings merge, status line), `~/Library/LaunchAgents/com.greymatter.*`
-  (scheduled jobs), a launcher on the Desktop, and a `GreyMatter` shortcut in your
-  home folder pointing at your trunk (`--no-shortcut` skips it). `install.sh` records every
-  one of them in a manifest, and `uninstall.sh` undoes them.
-- **It runs code on your machine automatically.** That is the point: hooks fire
-  on your CLI agent's events, and two `launchd` jobs run on a timer. Install
-  `--no-launchd` if you would rather nothing ran unattended.
-- **It makes no network call except `git pull`.** No telemetry, no analytics, no
-  crash reporting, no phone-home on install.
-- **It updates itself — know this before you install.** Since v1.28.0, every
-  session start fetches the published tags and installs the latest version, in
-  the background. That is **remote code running on your machine without you
-  asking for it**: the heaviest trade-off in this package, and a deliberate one —
-  a fix nobody installs fixes nothing. What bounds it:
-  - updates follow **published tags**, never a working branch;
-  - the **selftest decides**: on red, the previous version is restored
-    automatically and the next session tells you so;
-  - the **trunk is never touched** — only `~/.greymatter/engine` is replaced;
-  - `brain update --auto-off` restores the old behaviour (report, do not
-    install). `--auto-on` brings it back.
+Worth stating plainly, because it is the honest basis for judging risk. The two
+rows that deserve a second look are the self-update and what travels with a
+prompt — both are spelled out below.
 
-  If you want to inspect before anything runs, turn it off **at install time**:
-  `brain update --auto-off`.
-- **It reads your notes locally, and that is how it works.** Recall, the index,
-  the graph and the agents all open the files — there is no way to find a note
-  without reading one. It happens on your machine, and nothing is written back
-  to us.
-- **What leaves your machine is what any prompt carries.** The recall hook adds
-  the **name, one-line description and path** of the two or three most relevant
-  notes to the prompt you are about to send — not the file bodies. That prompt
-  goes to your model provider, exactly like the rest of your message. GreyMatter
-  makes no request of its own, but it is not true that nothing of your trunk
-  ever travels: what it puts in a prompt travels with the prompt.
-  `brain doctor` shows what the hook would inject; remove the
-  `UserPromptSubmit` hook from `settings.json` to stop it entirely.
-- **Agents are the loud case.** When you run a ship's distiller or gardener
-  mission, it reads whole notes and sends them to the provider — that is
-  what you asked it to do. Nothing is automatic about it: you start them.
+<details>
+<summary><b>What it writes, and how it is undone</b></summary>
+
+`~/.greymatter/` (engine and trunk), `~/.claude/` (settings merge, status line),
+`~/Library/LaunchAgents/com.greymatter.*` (scheduled jobs), a launcher on the
+Desktop, and a `GreyMatter` shortcut in your home folder pointing at your trunk
+(`--no-shortcut` skips it). `install.sh` records every one of them in a
+manifest, and `uninstall.sh` undoes them.
+
+</details>
+
+<details>
+<summary><b>What runs without you asking</b></summary>
+
+That is the point: hooks fire on your CLI agent's events, and two `launchd` jobs
+run on a timer. Install `--no-launchd` if you would rather nothing ran
+unattended.
+
+No telemetry, no analytics, no crash reporting, no phone-home on install. The
+only network call is `git pull`.
+
+</details>
+
+<details>
+<summary><b>It updates itself — know this before you install</b></summary>
+
+Since v1.28.0, every session start fetches the published tags and installs the
+latest version, in the background. That is **remote code running on your
+machine without you asking for it**: the heaviest trade-off in this package,
+and a deliberate one — a fix nobody installs fixes nothing. What bounds it:
+
+- updates follow **published tags**, never a working branch;
+- the **selftest decides**: on red, the previous version is restored
+  automatically and the next session tells you so;
+- the **trunk is never touched** — only `~/.greymatter/engine` is replaced;
+- `brain update --auto-off` restores the old behaviour (report, do not
+  install). `--auto-on` brings it back.
+
+If you want to inspect before anything runs, turn it off **at install time**:
+`brain update --auto-off`.
+
+</details>
+
+<details>
+<summary><b>Your notes, and what leaves your machine</b></summary>
+
+**It reads your notes locally, and that is how it works.** Recall, the index,
+the graph and the agents all open the files — there is no way to find a note
+without reading one. It happens on your machine, and nothing is written back
+to us.
+
+**What leaves your machine is what any prompt carries.** The recall hook adds
+the **name, one-line description and path** of the two or three most relevant
+notes to the prompt you are about to send — not the file bodies. That prompt
+goes to your model provider, exactly like the rest of your message. GreyMatter
+makes no request of its own, but it is not true that nothing of your trunk ever
+travels: what it puts in a prompt travels with the prompt. `brain doctor` shows
+what the hook would inject; remove the `UserPromptSubmit` hook from
+`settings.json` to stop it entirely.
+
+**Agents are the loud case.** When you run a ship's distiller or gardener
+mission, it reads whole notes and sends them to the provider — that is what you
+asked it to do. Nothing is automatic about it: you start them.
+
+</details>
 
 ## Supported versions
 
-Fixes go onto the latest release. There is no long-term support branch, and
-older tags are not patched — `brain update` moves you forward.
+| Version | Gets security fixes |
+|---|:---:|
+| The latest release | ✅ |
+| Any older tag | ❌ — `brain update` moves you forward |
+
+There is no long-term support branch.
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue for a security problem.**
+1. Go to **Security → Report a vulnerability** on this repository. It stays
+   private until there is a fix.
+2. Say what an attacker can do, what they need first (local access? a malicious
+   repo? a crafted note?), and the smallest sequence that shows it.
+3. Expect a first answer within about a week.
 
-Use GitHub's private reporting on this repository:
-**Security → Report a vulnerability**. It reaches the maintainer directly and
-stays private until there is a fix.
-
-Useful in a report: what an attacker can do, what they need first (local access?
-a malicious repo? a crafted note?), and the smallest sequence that shows it.
-
-Expect a first answer within about a week. This is a personal project, not a
-staffed product — that number is what one maintainer can honestly promise.
+This is a personal project, not a staffed product — a week is what one
+maintainer can honestly promise.
 
 ## In scope
 
-- Anything letting a **note, a repository, or a hook payload** run code that the
-  user did not ask for.
-- **Path handling** in `install.sh`, `uninstall.sh` and the migrations — they
-  move directories inside `$HOME` and a mistake there costs real work.
-- **`leakcheck.py` failing open**: it is what stands between a personal trunk
-  and a public push. A way to get a secret past it is a vulnerability, and one
-  of the more interesting kinds here.
-- **`merge_settings.py` corrupting or losing keys** in `~/.claude/settings.json`.
+| Area | Why it matters here |
+|---|---|
+| A **note, a repository or a hook payload** running code the user did not ask for | all three reach the engine as input |
+| **Path handling** in `install.sh`, `uninstall.sh` and the migrations | they move directories inside `$HOME`; a mistake costs real work |
+| **`scripts/leakcheck.py` failing open** | it is what stands between a personal trunk and a public push — a secret that gets past it is a vulnerability, and one of the more interesting kinds here |
+| **`merge_settings.py` corrupting or losing keys** | it edits your `~/.claude/settings.json` |
 
 ## Out of scope
 
-- The fact that the engine executes on your machine by design — see above.
-- Anything requiring an attacker who already has write access to your `$HOME`;
-  at that point they do not need GreyMatter.
-- Reports against the `fr` branch that do not also apply to `main`, unless the
-  bug is specifically in the French version.
+| Report | Why not |
+|---|---|
+| The engine executes on your machine | by design — see [above](#what-this-software-actually-does-to-your-machine) |
+| An attacker who already has write access to your `$HOME` | at that point they do not need GreyMatter |
+| A bug on the `fr` branch that does not also apply to `main` | unless the bug is specifically in the French version |
