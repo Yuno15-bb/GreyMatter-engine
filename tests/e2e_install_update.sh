@@ -229,6 +229,9 @@ if ( cd "$LAB/user-clone" && ./install.sh --core-only ) >"$LAB/install.log" 2>&1
 else
   ko "install.sh failed"; tail -5 "$LAB/install.log" | sed 's/^/       /'
 fi
+# An update re-runs install.sh without --core-only, so the flag alone does
+# not hold: light mode does, or a live pill lands in the real menu bar.
+mkdir -p "$GM/trunk/state" && touch "$GM/trunk/state/no-capsule"
 
 ENGINE_LINK="$(readlink "$GM/engine" 2>/dev/null || echo "")"
 case "$ENGINE_LINK" in

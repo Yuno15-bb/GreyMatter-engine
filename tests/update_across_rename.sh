@@ -93,7 +93,7 @@ git -C "$H/engine-src" checkout -q v9.8.0
 mkdir -p "$H/.claude" "$H/Desktop"
 printf '{"model": "opus", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}\n' \
   > "$SETTINGS"
-( cd "$H/engine-src" && ./install.sh ) >"$H/install.log" 2>&1 \
+( cd "$H/engine-src" && ./install.sh --no-capsule ) >"$H/install.log" 2>&1 \
   || { echo "❌ old install failed:"; tail -20 "$H/install.log"; exit 1; }
 [ -d "$OLD" ] && [ ! -L "$OLD" ]; check $? "the old install has its root at the old name"
 [ -L "$H/C Brain" ]; check $? "…its Home shortcut"                         # pre-rename
@@ -102,6 +102,9 @@ case "$(registered)" in *com.claudebrain.resume*) r=0 ;; *) r=1 ;; esac      # p
 check $r "…and its launchd jobs" "$(registered)"
 
 TRUNK="$OLD/trunk"
+# An update re-runs install.sh without the flags above, so --no-capsule alone
+# does not hold: light mode does, or a live pill lands in the real menu bar.
+mkdir -p "$TRUNK/state" && touch "$TRUNK/state/no-capsule"
 mkdir -p "$TRUNK/lessons"
 printf -- "---\nname: mine\ndescription: \"my own note\"\n---\nwork I cannot lose\n" \
   > "$TRUNK/lessons/mine.md"

@@ -105,6 +105,9 @@ printf '{"model": "opus"}\n' > "$H/.claude/settings.json"
 export PATH="$H/.local/bin:$PATH"
 
 TRUNK="$H/.greymatter/trunk"
+# An update re-runs install.sh without the flags above, so --no-capsule alone
+# does not hold: light mode does, or a live pill lands in the real menu bar.
+mkdir -p "$TRUNK/state" && touch "$TRUNK/state/no-capsule"
 mkdir -p "$TRUNK/lessons"
 printf -- "---\nname: mine\ndescription: \"a note of my own\"\n---\nwork I cannot afford to lose\n" \
   > "$TRUNK/lessons/mine.md"

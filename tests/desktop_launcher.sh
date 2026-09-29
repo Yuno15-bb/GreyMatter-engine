@@ -72,7 +72,7 @@ sum_app() { find "$APP" -type f -exec shasum {} + 2>/dev/null | sort | shasum | 
 
 echo "▸ 1. install with a foreign GreyMatter.app on the Desktop"
 foreign; BEFORE="$(sum_app)"
-( cd "$H/src" && ./install.sh ) >"$H/install1.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install1.log")"
+( cd "$H/src" && ./install.sh --no-capsule ) >"$H/install1.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install1.log")"
 [ "$(sum_app)" = "$BEFORE" ]; check $? "the foreign app is byte-identical"
 grep -q "is not this launcher" "$H/install1.log"; check $? "the installer says why it made no launcher"
 ! grep -q "GreyMatter.app opens the map" "$H/install1.log"; check $? "…and does not announce a launcher it did not make"
@@ -83,7 +83,7 @@ echo "▸ 2. uninstall with the foreign app still there"
 
 echo "▸ 3. install on a free Desktop"
 rm -rf "$APP"
-( cd "$H/src" && ./install.sh ) >"$H/install2.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install2.log")"
+( cd "$H/src" && ./install.sh --no-capsule ) >"$H/install2.log" 2>&1; check $? "install exits 0" "$(tail -3 "$H/install2.log")"
 grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; check $? "GreyMatter.app is ours"
 [ -x "$APP/Contents/MacOS/planet" ]; check $? "…and it launches the planet"
 # v2.2: with the Apple developer tools present, the launcher is the native map
@@ -97,7 +97,7 @@ grep -q "GreyMatter.app opens the map" "$H/install2.log"; check $? "the install 
 [ ! -e "$H/Desktop/GreyMatter Planet.app" ]; check $? "no second launcher under the longer name"
 
 echo "▸ 4. a second install rebuilds ours in place"
-( cd "$H/src" && ./install.sh ) >"$H/install3.log" 2>&1; check $? "re-install exits 0"
+( cd "$H/src" && ./install.sh --no-capsule ) >"$H/install3.log" 2>&1; check $? "re-install exits 0"
 grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; check $? "still ours, still one"
 
 echo "▸ 5. uninstall removes ours"
