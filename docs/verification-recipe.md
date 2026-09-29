@@ -405,6 +405,7 @@ HOME=$T brain update
 - [ ] the migration ran **exactly once** and is in the log;
 - [ ] `brain version` returns the new tag;
 - [ ] a second `brain update` says "already up to date" and does **not** replay the migration;
+- [ ] what the reinstall printed is in `$T/.greymatter/state/update.log`, not in a shared `/tmp` file;
 - [ ] `brain update --rollback` returns to the previous version, selftest green, note still there.
 
 Since v2.1.1 a session only **looks** for the new tag: the agent asks before

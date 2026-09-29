@@ -556,7 +556,11 @@ say "engine now on $NEW"
 # COPY in ~/.claude, the launchd jobs and the settings hooks are generated files.
 # Everything else was switched by the link itself.
 say "reinstalling (idempotent)…"
-bash "$CANDIDATE/install.sh" >/tmp/greymatter-update.log 2>&1 || warn "install.sh reported a problem (/tmp/greymatter-update.log)"
+# The log stays in this install's own state folder. Under one fixed /tmp name,
+# two updates at once (two users, two benches) wrote the same file and it came
+# out headed by NUL bytes; a predictable path in a shared folder is also one
+# anyone can plant a link at.
+bash "$CANDIDATE/install.sh" >"$STATE/update.log" 2>&1 || warn "install.sh reported a problem ($STATE/update.log)"
 
 # The installer must not have dirtied the version it just mounted. npm used to do
 # exactly that (it rewrites package-lock.json where it runs), which is why the

@@ -245,6 +245,10 @@ unchanged.
 - **Rollback switches between managed versions.** No checkout, no network. If
   the version being rolled back to is no longer on disk, the rollback refuses
   and says which versions remain, rather than landing somewhere else.
+- **What the reinstall printed is kept.** After switching, the update replays
+  the installer and keeps its output. The updater you run is the one you are
+  coming FROM: up to v2.1.1 it writes `/tmp/greymatter-update.log`; from v2.2.0
+  on it writes `~/.greymatter/state/update.log`.
 - **The trunk is not touched.** As before, and now structurally: no git command
   in the update path names the trunk.
 - **`install.sh --dry-run` is inert, and reaches the end.** Reviewed 2026-08-26,

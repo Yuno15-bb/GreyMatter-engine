@@ -49,6 +49,7 @@ the installer **creates** what it owns, and owns nothing else.
 │   ├── engine-dev             present ONLY in --dev mode, mutually exclusive
 │   ├── previous-version       a version directory name, not a git ref
 │   ├── applied-migrations.txt
+│   ├── update.log             what the last update's reinstall printed
 │   └── tag-family
 ├── trunk/                     the user's notes. Nothing above ever writes here.
 ├── backups/
@@ -222,7 +223,8 @@ closing screen says "works" only when the verification agrees.
    the immutability oracle, and it replaces the git-based dirt check, since a
    version has no `.git`.
 4. Mirror the source into `source.git`, so updates have an origin that does not
-   live in anybody's working repository.
+   live in anybody's working repository. If the mirror cannot be created, the
+   install stops there and shows git's reason.
 5. Build the menu bar pill into `runtime/capsule-native-<hash>/` and link it as
    `versions/<id>/capsule/macos/.build`. The version stays immutable: the build
    happens outside it, and only the binary (under 1 MB) is kept. The key is the

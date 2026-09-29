@@ -327,7 +327,7 @@ jobs:
         run: |
           set -euo pipefail
           bash tests/install_exit_code.sh
-          for sab in exit-zero path-hides-selftest; do
+          for sab in exit-zero path-hides-selftest mirror-silent; do
             if bash tests/install_exit_code.sh --sabotage "$sab" >/dev/null 2>&1; then
               echo "❌ sabotage $sab left the contract green"; exit 1
             fi
@@ -362,7 +362,7 @@ jobs:
           # source's working tree while `git archive HEAD` had left that work out.
           for s in no-ownership dev-updated switch-before-selftest \
                    rollback-missing update-touches-trunk source-mutated \
-                   host-brain-leak dirty-renames-engine; do
+                   host-brain-leak dirty-renames-engine log-in-tmp; do
             if bash tests/e2e_install_update.sh --sabotage "$s" >/dev/null 2>&1; then
               echo "❌ sabotage $s left the contract green"; exit 1
             fi

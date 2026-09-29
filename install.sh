@@ -344,7 +344,8 @@ else
     fi
     # The mirror the updater fetches into. It exists so that NO git command in
     # the update path ever names a directory the user created.
-    mirror_source "$SOURCE" "$MIRROR"
+    # Under `set -e` a bare failure here ended the install with no word at all.
+    mirror_source "$SOURCE" "$MIRROR" || die "could not create the update mirror $MIRROR"
     # ─── SAY IT, AT THE ONE MOMENT IT IS TRUE ────────────────────────────────
     # An installation upgrading from v1.28.1 or earlier arrives here with
     # `engine` still pointing at the user's own clone, and leaves with it

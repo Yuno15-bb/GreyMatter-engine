@@ -21,9 +21,16 @@
 # The case needs Swift: without it the installer skips the pill, the selftest
 # skips its check, and there is nothing honest left to break — it says so.
 #
-# Run: bash tests/install_exit_code.sh [--sabotage exit-zero|path-hides-selftest]
+# The same goes for a failure before the selftest. The update mirror could not
+# be created and the installer ended with no word at all: under `set -e` a bare
+# failing call exits on the spot. Seen in CI on 2026-09-29, where the log stopped
+# at "engine built". The bench takes the mirror's path with a plain file, which a
+# machine can have, and reads what the screen says.
+#
+# Run: bash tests/install_exit_code.sh [--sabotage exit-zero|path-hides-selftest|mirror-silent]
 #   exit-zero           — the installer exits 0 again after a red selftest; must go RED.
 #   path-hides-selftest — the PATH advice hides the failed verification again; must go RED.
+#   mirror-silent       — a failed mirror ends the install without a word again; must go RED.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -63,13 +70,12 @@ case "$SABOTAGE" in
   path-hides-selftest)
     sabotage path-hides-selftest 'if [ "${SELFTEST_OK:-1}" = "0" ]; then' \
       'if [ "${SELFTEST_OK:-1}" = "0" ] && [ "${PATH_OK:-1}" = "1" ]; then' ;;
+  mirror-silent)
+    sabotage mirror-silent 'mirror_source "$SOURCE" "$MIRROR" || die "could not create the update mirror $MIRROR"' \
+      'mirror_source "$SOURCE" "$MIRROR"' ;;
   *) echo "unknown sabotage: $SABOTAGE"; exit 2 ;;
 esac
 
-if ! { PATH="$APPLE_PATH" command -v swift >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1; }; then
-  echo "Install exit code — skipped (no Swift: the pill, the only honest way to fail the selftest from outside, is not built here)"
-  exit 0
-fi
 # seed_broken_pill <home>: the build install.sh would reuse for these sources
 # (same key, see capsule_dir), already there and unable to answer --check.
 seed_broken_pill() {
@@ -81,9 +87,10 @@ seed_broken_pill() {
 }
 
 N=0
-install_in() {  # install_in <1 if a broken pill waits> <1 if ~/.local/bin on PATH> → sets OUT, RC
+install_in() {  # install_in <1 if a broken pill waits> <1 if ~/.local/bin on PATH> [1 if the mirror's path is taken] → sets OUT, RC
   N=$((N + 1)); local home="$H/home-$N" p="$APPLE_PATH" mode=(--core-only)
   mkdir -p "$home"
+  [ "${3:-0}" = "1" ] && { mkdir -p "$home/.greymatter" && : > "$home/.greymatter/source.git"; }
   [ "$2" = "1" ] && p="$home/.local/bin:$p"
   # --core-only: no launchd job, no capsule, no planet — a bench registers nothing
   # on the machine running it. The broken case keeps the capsule step so the
@@ -102,6 +109,20 @@ install_in() {  # install_in <1 if a broken pill waits> <1 if ~/.local/bin on PA
 # exits at the first match, tail can still be writing, takes a SIGPIPE, and a
 # true line reads as absent. Measured on 2026-09-26: 15 false reds in 3000.
 last_screen_has() { grep -q "$1" <<<"$LAST"; }
+
+echo "▸ the update mirror cannot be created (its path is taken by a file)"
+install_in 0 1 1
+[ "$RC" -ne 0 ]; check $? "the installer exits non-zero" "exit code $RC"
+last_screen_has "could not create the update mirror"
+check $? "the screen says what failed" "last line: $(tail -1 <<<"$LAST")"
+grep -q "already exists" <<<"$OUT"
+check $? "and git's own reason is shown, not thrown away"
+
+if ! { PATH="$APPLE_PATH" command -v swift >/dev/null 2>&1 && xcode-select -p >/dev/null 2>&1; }; then
+  echo "Install exit code — selftest cases skipped (no Swift: the pill, the only honest way to fail the selftest from outside, is not built here)"
+  [ "$FAILS" -eq 0 ] || { echo "❌ $FAILS check(s) failed"; exit 1; }
+  exit 0
+fi
 
 echo "▸ the selftest fails, ~/.local/bin on PATH"
 install_in 1 1

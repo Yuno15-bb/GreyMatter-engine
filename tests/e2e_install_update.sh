@@ -42,7 +42,7 @@ done
 # `--sabotage swtich-before-selftest` would quietly perturb nothing, go green,
 # and be recorded as proof that the sabotage reddens — the harness lying about
 # itself, which is the most expensive kind of green there is.
-SABOTAGES="no-ownership dev-updated switch-before-selftest rollback-missing update-touches-trunk source-mutated host-brain-leak dirty-renames-engine"
+SABOTAGES="no-ownership dev-updated switch-before-selftest rollback-missing update-touches-trunk source-mutated host-brain-leak dirty-renames-engine log-in-tmp"
 if [ -n "$SABOTAGE" ]; then
   case " $SABOTAGES " in
     *" $SABOTAGE "*) : ;;
@@ -121,6 +121,8 @@ PY
 }
 
 case "$SABOTAGE" in
+  log-in-tmp)
+    sabotage_patch greymatter/update.sh 's.replace(">\"$STATE/update.log\" 2>&1", ">/tmp/greymatter-update.log 2>&1")' ;;
   # The installer stops recording that it owns what it built. One line.
   no-ownership)
     sabotage_patch install.sh 's.replace(chr(39)+chr(37)+"s\\n"+chr(39)+" \"$VERSIONS\" > \"$GM/state/engine-managed\"", ": # SABOTAGE")' ;;
@@ -408,6 +410,11 @@ else
   grep -q "still inactive" "$LAB/update.log" \
     && ok "the selftest ran on the candidate BEFORE the switch" \
     || ko "no evidence the candidate was tested before being switched to"
+  # The replayed installer's log is this install's own. Under one fixed /tmp
+  # name two updates at once wrote the same file, headed by NUL bytes.
+  [ -s "$GM/state/update.log" ] \
+    && ok "the reinstall's log is in the install's own state/update.log" \
+    || ko "no state/update.log — the reinstall wrote its log somewhere shared"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════

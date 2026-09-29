@@ -75,7 +75,7 @@ mirror_source() {    # mirror_source <git-repo> <mirror-dir>
   if [ -d "$mirror" ]; then
     git -C "$mirror" fetch --tags --force --quiet origin '+refs/heads/*:refs/heads/*' 2>/dev/null || true
   else
-    git clone --bare --quiet "$repo" "$mirror" 2>/dev/null || return 1
+    git clone --bare --quiet "$repo" "$mirror" || return 1   # git says why; the caller says what
     # Point the mirror at the SOURCE's own origin, not at the user's clone: an
     # update must follow the published repository, not a copy on this disk that
     # may never be fetched again.
