@@ -323,6 +323,10 @@ Two native macOS programs, built on your Mac by the installer — no Electron, n
 browser tab. Neither is the product: they are how you *watch* it, optional, and
 skipped by `--core-only` and by the plugin install.
 
+<p align="center">
+  <img src="docs/media/pill.webp" alt="The right-hand corner of a Mac menu bar, at night. Top right, the GreyMatter pill with its panel open underneath; below, the same corner enlarged. Torrens tidies the map, Anesidora writes the digest, Torrens commits; the glass orb changes colour with the kind of work. At the end, Done and three steps." width="100%">
+</p>
+
 <table>
 <tr>
 <td width="50%" valign="top">
