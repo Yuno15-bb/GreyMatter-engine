@@ -157,7 +157,7 @@ def drapeaux(mission, brain=BRAIN, extra_dirs=()):
     if rendus:
         f += ["--settings", json.dumps(rendus, ensure_ascii=False)]
     # extra_dirs: the finished session's OWN transcript folder. A session opened in
-    # ~/some-project writes to ~/.claude/projects/<home key>-some-project, a sibling
+    # a project folder writes to ~/.claude/projects/<home key>-<that folder>, a sibling
     # of TRANSCRIPTS that the fixed grant never covered: the distiller was refused
     # the very transcript it was sent to read. Only that one folder is added, never
     # all of ~/.claude/projects, which holds every other project's history too.
