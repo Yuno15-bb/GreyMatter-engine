@@ -164,8 +164,9 @@ HOME=$T bash $T/dev-greymatter/install.sh --no-launchd
 followed by `▸ Your trunk is empty.` — and *only* on a genuinely empty trunk. On a
 re-install over notes it must read `▸ Your trunk is already growing.` instead.
 Since v2.1.1 the end screen also names the desktop interfaces it actually made —
-`GreyMatter.app opens the planet` only when the Desktop app is ours, the capsule
-line only when Electron is installed (`--no-capsule` drops it) — and closes with
+`GreyMatter.app opens the map of your notes` only when the Desktop app is ours,
+the menu bar line only when the pill is built (`--no-capsule`, or no Swift, drops
+it) — and closes with
 `These are the only desktop interfaces GreyMatter ships.`
 
 Read the exit code too (`echo $?` right after): `0` only when the selftest is

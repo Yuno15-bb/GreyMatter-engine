@@ -28,7 +28,8 @@ whichever row is yours.
 opens the pill, never the orb. Without Swift only the pill is skipped, and
 `brain capsule` then tells you how to add it: `xcode-select --install`, then
 `./install.sh` again from your clone. The planet is still there, through
-`planet/launch.sh`.
+`planet/launch.sh`. Should an old orb still be on screen afterwards,
+`brain capsule status` says so and `brain capsule` retires it.
 
 ### If you declined pieces at install
 

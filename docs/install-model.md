@@ -232,7 +232,11 @@ closing screen says "works" only when the verification agrees.
    one binary. It needs Swift from Apple's Command Line Tools; without it the
    installer skips only the pill and names `xcode-select --install`
    (`build_capsule` in `greymatter/engine-lib.sh`, held by
-   `tests/capsule_runtime.py`).
+   `tests/capsule_runtime.py`). Before that, it stops a v2.1.x Electron orb
+   still running — found where Node runs it, the shared
+   `runtime/capsule-<hash>/` or a `--dev` checkout, never the trunk, whose path
+   its command line does not hold (`orb_patterns` in the same file, held by
+   `tests/update_keeps_choices.sh`).
 6. Write `state/engine-managed`, remove `state/engine-dev`.
 7. Point `engine` at `versions/<id>`, then do everything the installer already
    does: trunk, mounts, CLI, hooks, launchd, planet, shortcut, verification —
@@ -338,6 +342,10 @@ became `GreyMatter.app`, a name plain enough for another app to carry, so both
 scripts read `org.greymatter.planet` in its `Info.plist` before their
 `rm -rf`; anything else under that name stays, with a warning
 (`tests/desktop_launcher.sh`).
+
+**It stops the old orb where it runs** (2026-09-29). A v2.1.x Electron orb
+still on screen is found in the same two resolved folders as in the installer,
+written inline because the engine may already be gone.
 
 **An uninstaller from before the rename hands over.** A clone at v2.0.x has its
 own `uninstall.sh`, which sources `cbrain/launchd-lib.sh` from the engine and knows <!-- pre-rename -->
