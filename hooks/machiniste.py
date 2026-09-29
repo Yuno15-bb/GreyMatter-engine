@@ -62,6 +62,17 @@ DEV_SERVER = re.compile(
     r"rails\s+s(erver)?|php\s+-S|serve\s+-p|live-server)",
     re.I)
 
+# The Electron capsule from before 2.2, where Node really runs it: this trunk's
+# resolved capsule folder, or the shared runtime of a managed install
+# (orb_patterns in greymatter/engine-lib.sh says why). Its main binary only —
+# another Electron app under a folder named `capsule` is not ours to count.
+def _rx(path):
+    return re.sub(r"([][.*^$+?(){}|\\])", r"\\\1", path)
+ORB_MAIN = re.compile(
+    "(" + _rx(os.path.realpath(os.path.join(BRAIN, "capsule"))) + "|"
+    + _rx(os.path.realpath(os.path.expanduser("~/.greymatter/runtime"))) + "/capsule-[^/]*)"
+    + r"/node_modules/electron/dist/Electron\.app/Contents/MacOS/Electron( |$)")
+
 MIN_AGE_S = 20 * 60      # an orphan must be at least 20 min old to be suspect
 IDLE_SAMPLE_S = 5        # sampling window used to prove inactivity
 IDLE_MAX_CPU_S = 0.2     # above this the process is working → we do not touch it
@@ -281,11 +292,10 @@ def find_reportable(procs, mem, cpu):
 
     # Duplicate pills (cf. lesson electron-zombie-process-cleanup). The native pill
     # holds a flock on state/capsule-natif.lock, so two of them mean two trunks —
-    # or an Electron capsule left over from before 2.2, counted here as well. Its
-    # command line never holds the trunk: Node resolves the links first, so it
-    # shows a --dev checkout's capsule folder or a managed install's shared runtime.
+    # or an Electron capsule left over from before 2.2, counted here as well
+    # (ORB_MAIN: its command line never holds the trunk).
     caps = [p for p in procs if ("capsule/macos/.build/release/Capsule" in p["cmd"]
-            or re.search(r"/(capsule|runtime/capsule-[^/]+)/node_modules/electron/dist/", p["cmd"]))
+            or ORB_MAIN.search(p["cmd"]))
             and "--type=" not in p["cmd"]]
     if len(caps) > 1:
         alerts.append({"niveau": "warn", "sujet": "capsule-doublon",
