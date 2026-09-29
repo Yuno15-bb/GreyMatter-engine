@@ -79,6 +79,11 @@ class SensorNeverStuck(unittest.TestCase):
         finally:
             if backup is not None:
                 open(path, "w", encoding="utf-8").write(backup)
+            elif os.path.exists(path):
+                # A fresh trunk had no file: leaving the fake pair behind woke the
+                # challenger on the first maintenance, to arbitrate two notes that
+                # never existed.
+                os.remove(path)
 
     def test_non_actionable_entries_do_not_wake_the_challenger(self):
         self.assertFalse(self._has_work(MALFORMED),
