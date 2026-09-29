@@ -150,7 +150,16 @@ def manual_saves_for(sid):
 MOTIF_CAPSULE = os.path.join(BRAIN, "capsule", "macos", ".build", "release", "Capsule")
 # Since v2.2 the capsule is native (capsule/macos). An Electron pill left by an older
 # install is closed on sight, or two pills would sit side by side in the menu bar.
-MOTIF_ELECTRON = os.path.join(BRAIN, "capsule", "node_modules", "electron")
+# Matched where Node really runs it, never on the trunk path, which its command line
+# does not hold: the resolved capsule folder (a --dev checkout), or the shared runtime
+# of a managed install. Same two patterns as orb_patterns in greymatter/engine-lib.sh.
+def _rx(path):
+    return re.sub(r"([][.*^$+?(){}|\\])", r"\\\1", path)
+MOTIFS_ELECTRON = [
+    _rx(os.path.realpath(os.path.join(BRAIN, "capsule"))) + "/node_modules/electron/dist/",
+    _rx(os.path.realpath(os.path.expanduser("~/.greymatter/runtime")))
+    + "/capsule-[^/]*/node_modules/electron/dist/",
+]
 HEARTBEAT_MAX = 60          # 12 missed beats: we do not react to a hiccup
 STARTUP_GRACE = 90          # a capsule that just started has not beaten yet
 
@@ -221,9 +230,10 @@ def ensure_capsule():
             return
         # The Electron orb of v2.1.x first, before either return below: light mode
         # or a pill that is not built must not keep an orb this version replaced.
-        if subprocess.run(["pgrep", "-f", MOTIF_ELECTRON], capture_output=True).returncode == 0:
-            subprocess.run(["pkill", "-f", MOTIF_ELECTRON], capture_output=True)
-            time.sleep(1)
+        for motif in MOTIFS_ELECTRON:
+            if subprocess.run(["pgrep", "-f", motif], capture_output=True).returncode == 0:
+                subprocess.run(["pkill", "-f", motif], capture_output=True)
+                time.sleep(1)
         if os.path.exists(os.path.join(BRAIN, "state", "no-capsule")):
             return
         if not os.access(MOTIF_CAPSULE, os.X_OK):

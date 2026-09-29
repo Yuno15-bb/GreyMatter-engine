@@ -95,7 +95,14 @@ if pgrep -f "$TRUNK/capsule/macos/.build/release/Capsule" >/dev/null 2>&1; then
   pkill -f "$TRUNK/capsule/macos/.build/release/Capsule" 2>/dev/null || true
   say "- menu bar pill stopped"
 fi
-pkill -f "$TRUNK/capsule/node_modules/electron" 2>/dev/null || true
+# The v2.1.x Electron orb, where Node really runs it: the resolved capsule folder,
+# or the shared runtime of a managed install (orb_patterns in engine-lib.sh says
+# why). Inline, like the rest of this script: the engine may already be gone.
+rx() { printf '%s' "$1" | sed 's/[][\.*^$+?(){}|]/\\&/g'; }
+d="$(cd "$TRUNK/capsule" 2>/dev/null && pwd -P)" \
+  && { pkill -f "$(rx "$d")/node_modules/electron/dist/" 2>/dev/null || true; }
+d="$(cd "$GM/runtime" 2>/dev/null && pwd -P)" \
+  && { pkill -f "$(rx "$d")/capsule-[^/]*/node_modules/electron/dist/" 2>/dev/null || true; }
 
 # ─── 3. Links ─────────────────────────────────────────────────────────────
 # We delete symlinks ONLY. If something has become a real folder, that is

@@ -281,9 +281,11 @@ def find_reportable(procs, mem, cpu):
 
     # Duplicate pills (cf. lesson electron-zombie-process-cleanup). The native pill
     # holds a flock on state/capsule-natif.lock, so two of them mean two trunks —
-    # or an Electron capsule left over from before 2.2, counted here as well.
+    # or an Electron capsule left over from before 2.2, counted here as well. Its
+    # command line never holds the trunk: Node resolves the links first, so it
+    # shows a --dev checkout's capsule folder or a managed install's shared runtime.
     caps = [p for p in procs if ("capsule/macos/.build/release/Capsule" in p["cmd"]
-            or "greymatter/trunk/capsule/node_modules/electron/dist" in p["cmd"])
+            or re.search(r"/(capsule|runtime/capsule-[^/]+)/node_modules/electron/dist/", p["cmd"]))
             and "--type=" not in p["cmd"]]
     if len(caps) > 1:
         alerts.append({"niveau": "warn", "sujet": "capsule-doublon",

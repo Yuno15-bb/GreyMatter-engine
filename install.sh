@@ -609,8 +609,11 @@ capsule_start() {
 # running, it would sit next to the new pill, or outlive a pill the user declined.
 # Stopped BEFORE any branch below, light mode and --no-capsule included — inside
 # capsule_start it came after the light-mode return, and survived the update.
-if [ "$DRY" != "1" ] && orb_trunk="$(cd "$TRUNK" 2>/dev/null && pwd -P)"; then
-  pkill -f "$orb_trunk/capsule/node_modules/electron" 2>/dev/null || true
+# Matched where Node really runs it (orb_patterns), not on the trunk path.
+if [ "$DRY" != "1" ]; then
+  while IFS= read -r orb; do
+    pkill -f "$orb" 2>/dev/null || true
+  done < <(orb_patterns "$TRUNK" "$RUNTIME")
 fi
 
 if [ "$DO_CAPSULE" = "0" ]; then say "(skipped — --no-capsule)"

@@ -21,8 +21,24 @@ TRUNK="$(cd "${BRAIN_HOME:-$HOME/.greymatter/trunk}" 2>/dev/null && pwd -P)" || 
   echo "capsule: no trunk at ~/.greymatter/trunk — run ./install.sh"; exit 1; }
 BIN="$TRUNK/capsule/macos/.build/release/Capsule"
 # The pre-2.2 Electron capsule, still running after an update, would sit next
-# to the native pill: `start` retires it, `status` names it.
-ELECTRON="$TRUNK/capsule/node_modules/electron"
+# to the native pill: `start` retires it, `status` names it. Its command line
+# holds the resolved path, never the trunk's: engine-lib.sh says why.
+. "$(cd "$(dirname "$0")" && pwd -P)/engine-lib.sh"
+ORBS="$(orb_patterns "$TRUNK" "$HOME/.greymatter/runtime")"
+orb_running() {
+  local p
+  while IFS= read -r p; do
+    [ -n "$p" ] && pgrep -f "$p" >/dev/null 2>&1 && return 0
+  done <<<"$ORBS"
+  return 1
+}
+orb_stop() {
+  local p
+  while IFS= read -r p; do
+    [ -n "$p" ] && { pkill -f "$p" 2>/dev/null || true; }
+  done <<<"$ORBS"
+  return 0
+}
 
 alive() { kill -0 "$1" 2>/dev/null; }
 running_pid() { pgrep -f "$BIN" 2>/dev/null | head -1; }
@@ -44,7 +60,7 @@ case "${1:-start}" in
       [ -x "$BIN" ] && echo "  the pill is built — \`brain capsule\` opens it" \
                     || echo "  the pill is not built — \`brain capsule\` says how to add it"
     fi
-    pgrep -f "$ELECTRON" >/dev/null 2>&1 && echo "  an old Electron capsule is still running — \`brain capsule\` retires it"
+    orb_running && echo "  an old Electron capsule is still running — \`brain capsule\` retires it"
     [ -e "$TRUNK/state/no-capsule" ] && echo "  light mode is on (state/no-capsule): the hooks never start it"
     true
     ;;
@@ -81,7 +97,7 @@ case "${1:-start}" in
       fi
       exit 1
     fi
-    pkill -f "$ELECTRON" 2>/dev/null || true
+    orb_stop
     if pid="$(running_pid)" && [ -n "$pid" ]; then
       echo "capsule: already running (pid $pid) — look for \"GreyMatter\" in the menu bar"
       exit 0

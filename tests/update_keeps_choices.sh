@@ -16,14 +16,16 @@
 #
 # The old release is the tag v2.1.1, read from this repository's own history.
 # launchd is a text file (tests/_fake_launchd.py): $HOME does not isolate the real
-# domain. npm is kept off PATH, so v2.1.1 has no Electron orb; light mode
-# (state/no-capsule) is set before anything runs, so no pill can reach the real
-# menu bar even if a sabotage builds one.
+# domain. npm is kept off PATH, so v2.1.1 builds no Electron orb of its own; the
+# test lays one out the way v2.1.1's shared runtime did and starts it the way its
+# hook did, because the orb's command line is what the installer has to match.
+# Light mode (state/no-capsule) is set before anything runs, so no pill can reach
+# the real menu bar even if a sabotage builds one.
 #
 # Usage: bash tests/update_keeps_choices.sh [--sabotage <name>]
 #   replay-ignores-record   the replay installs every piece again
 #   rollback-without-flags  the rollback runs the old installer bare
-#   orb-survives            the Electron orb outlives the update in light mode
+#   orb-survives            the installer looks for the orb on the trunk path again
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -51,8 +53,9 @@ git -C "$ROOT" rev-parse -q --verify "refs/tags/$OLD_TAG" >/dev/null \
 
 H="$(mktemp -d)"
 H="$(cd "$H" && pwd -P)"
-ORB_PID=""
-trap '[ -n "$ORB_PID" ] && kill "$ORB_PID" 2>/dev/null; rm -rf "$H"' EXIT
+rx() { printf '%s' "$1" | sed 's/[][\.*^$+?(){}|]/\\&/g'; }   # a path as a regex of itself
+# Anything still running from the sandbox (an orb a sabotage let live) goes with it.
+trap 'pkill -f "$(rx "$H")/" 2>/dev/null; rm -rf "$H"' EXIT
 export HOME="$H"
 unset GREYMATTER_NO_AUTO_UPDATE CBRAIN_NO_AUTO_UPDATE 2>/dev/null || true   # pre-rename
 
@@ -96,7 +99,9 @@ case "$SABOTAGE" in
   rollback-without-flags)
     sabotage_patch greymatter/update.sh 'install.sh" $(choices_flags) >' 'install.sh" >' ;;
   orb-survives)
-    sabotage_patch install.sh 'pkill -f "$orb_trunk/capsule/node_modules/electron"' ': "$orb_trunk"' ;;
+    # The pattern v2.2.0 shipped with before its review: the trunk path.
+    sabotage_patch install.sh 'done < <(orb_patterns "$TRUNK" "$RUNTIME")' \
+      'done < <(printf '"'"'%s\n'"'"' "$TRUNK/capsule/node_modules/electron")' ;;
 esac
 
 git add -A
@@ -136,13 +141,6 @@ assert_record() {    # assert_record <moment>
 }
 assert_declined "after the $OLD_TAG install"
 
-# A v2.1.x orb, running when the update comes: named like the real one, so the
-# installer's pattern matches it, and nothing else on this Mac can.
-( exec -a "$TRUNK/capsule/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" sleep 600 ) &
-ORB_PID=$!
-disown "$ORB_PID" 2>/dev/null || true   # its death is checked below, not announced
-sleep 0.3
-
 echo "▸ the OLD updater brings in the release under test"
 brain update >"$H/update.log" 2>&1; check $? "brain update exits 0" "$(tail -3 "$H/update.log")"
 [ "$(engine_tag)" = "v9.9.0" ]; check $? "the engine is the new tag" "got $(engine_tag)"
@@ -150,8 +148,6 @@ assert_declined "after the update"
 assert_record "after the update"
 ls "$GM"/runtime/capsule-native-*/release/Capsule >/dev/null 2>&1
 [ $? -ne 0 ]; check $? "after the update: the declined pill was not built"
-if kill -0 "$ORB_PID" 2>/dev/null; then r=1; else r=0; ORB_PID=""; fi
-check $r "after the update: the Electron orb is gone, light mode or not"
 # What the user reads on asking for the pill. Only while none is built: an
 # explicit `brain capsule` starts a built pill, light mode or not.
 if ! ls "$GM"/runtime/capsule-native-*/release/Capsule >/dev/null 2>&1; then
@@ -166,11 +162,76 @@ check $? "brain update --rollback exits 0" "$(tail -3 "$H/rollback.log")"
 [ "$(engine_tag)" = "v9.8.0" ]; check $? "the engine is the old tag again" "got $(engine_tag)"
 assert_declined "after the rollback"
 
+# ─── A v2.1.x orb, running when the next update comes ───────────────────────
+# v2.1.1 made the version's capsule/node_modules a link to an empty shared
+# runtime at every install, pill or not (link_runtime): the test only adds what
+# npm would have put there. Electron's cli.js starts the binary it finds next to
+# ITSELF. Node resolves that link first, so the orb's command line holds
+# runtime/capsule-<hash>/…, never the trunk. Started the way v2.1.1's hook did,
+# from the trunk's capsule link. Faked by name, it would only prove the pattern
+# matches its own spelling: the first fix did exactly that, and let the orb live.
+alive() { local s; s="$(ps -o stat= -p "$1" 2>/dev/null)"; [ -n "$s" ] && [ "${s#Z}" = "$s" ]; }
+ORB="" WRAP=""
+echo "▸ a v2.1.x Electron orb is running when the update comes"
+RT="$(cd "$TRUNK/capsule/node_modules" 2>/dev/null && pwd -P)"
+case "$RT" in "$GM"/runtime/capsule-*/node_modules) r=0 ;; *) r=1 ;; esac
+check $r "$OLD_TAG left its capsule linked to the shared runtime" "got '$RT'"
+if [ -z "$NODE" ]; then
+  echo "  ⤳ skipped: the orb needs node, absent here"
+elif [ "$r" = 0 ]; then   # never with an empty $RT: the paths below would start at /
+  mkdir -p "$RT/electron/dist/Electron.app/Contents/MacOS" "$RT/.bin"
+  cat >"$RT/electron/cli.js" <<'JS'
+#!/usr/bin/env node
+// Electron's own cli.js, reduced: start the binary next to this file, pass on
+// SIGINT and SIGTERM, and leave when it does.
+const path = require('path');
+const bin = path.join(__dirname, 'dist', 'Electron.app', 'Contents', 'MacOS', 'Electron');
+const child = require('child_process').spawn(bin, process.argv.slice(2), { stdio: 'inherit' });
+child.on('close', (code) => process.exit(code === null ? 1 : code));
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { if (!child.killed) child.kill(sig); });
+JS
+  printf '#!/usr/bin/env node\nsetInterval(() => {}, 1000);\n' \
+    >"$RT/electron/dist/Electron.app/Contents/MacOS/Electron"
+  chmod +x "$RT/electron/cli.js" "$RT/electron/dist/Electron.app/Contents/MacOS/Electron"
+  ln -s ../electron/cli.js "$RT/.bin/electron"
+  ( cd "$TRUNK/capsule" && exec "$TRUNK/capsule/node_modules/.bin/electron" ilot.js ) >"$H/orb.log" 2>&1 &
+  WRAP=$!
+  disown "$WRAP" 2>/dev/null || true   # its death is checked below, not announced
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    ORB="$(pgrep -f "$(rx "$RT")/electron/dist/Electron\.app/Contents/MacOS/Electron ilot\.js" | head -1)"
+    [ -n "$ORB" ] && break
+    sleep 0.5
+  done
+  [ -n "$ORB" ]; check $? "the orb runs, its command line on the shared runtime" \
+    "$(head -3 "$H/orb.log")"
+  ! pgrep -f "$TRUNK/capsule/node_modules/electron" >/dev/null
+  check $? "the trunk path does not find it (the pattern the first fix used)"
+  # Read whole, then searched: `| grep -q` would close the pipe on the first
+  # match, and pipefail would count the writer's SIGPIPE as a failure.
+  st="$(bash "$GM/versions/v9.9.0/greymatter/capsule.sh" status 2>&1)"
+  grep -q 'old Electron capsule is still running' <<<"$st"
+  check $? "the new brain capsule status sees it" "$(echo "$st" | tr '\n' ' ')"
+  found=0
+  while IFS= read -r motif; do
+    pgrep -f "$motif" >/dev/null && found=1
+  done < <(python3 -c "import sys; sys.path.insert(0, '$GM/versions/v9.9.0/hooks'); import auto_maintain as a; print('\n'.join(a.MOTIFS_ELECTRON))")
+  [ "$found" = 1 ]; check $? "the new hook's patterns see it"
+fi
+
 echo "▸ and forward again, now with a record"
 brain update >"$H/update2.log" 2>&1; check $? "the second update exits 0" "$(tail -3 "$H/update2.log")"
 [ "$(engine_tag)" = "v9.9.0" ]; check $? "the engine is the new tag" "got $(engine_tag)"
 assert_declined "after the second update"
 assert_record "after the second update"
+if [ -n "$ORB" ]; then
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    alive "$ORB" || alive "$WRAP" || break
+    sleep 0.5
+  done
+  ! alive "$ORB"; check $? "after the update: the Electron orb is gone, light mode or not"
+  ! alive "$WRAP"; check $? "after the update: its node wrapper is gone with it"
+  rm -rf "$RT/electron" "$RT/.bin"   # the case below brings its own orb
+fi
 
 echo "▸ the documented repair: ./install.sh again, by hand, with no option"
 ( cd "$H/engine-src" && git checkout -q v9.9.0 && ./install.sh ) >"$H/rerun.log" 2>&1

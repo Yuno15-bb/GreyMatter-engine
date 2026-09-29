@@ -145,6 +145,22 @@ build_capsule() {
 # read back by both consumers — the installer when it is replayed, the updater
 # when it rolls back to an installer that predates this record and only
 # understands flags. The file is parsed, never sourced: nothing in state/ runs.
+# The v2.1.x Electron orb, the way `ps` shows it. Node resolves the links before
+# it starts Electron, so the command line never holds the trunk path: a managed
+# install shows the shared runtime (the version's capsule/node_modules is a link
+# into runtime/capsule-<hash>), a --dev install its checkout. A pattern on the
+# trunk path matched nothing, and the orb outlived every update.
+rx_escape() {        # rx_escape <path> → the path as a regex that matches only itself
+  printf '%s' "$1" | sed 's/[][\.*^$+?(){}|]/\\&/g'
+}
+
+orb_patterns() {     # orb_patterns <trunk> <runtime-root> → one `pgrep -f` pattern per line
+  local d
+  d="$(cd "$1/capsule" 2>/dev/null && pwd -P)" && printf '%s/node_modules/electron/dist/\n' "$(rx_escape "$d")"
+  d="$(cd "$2" 2>/dev/null && pwd -P)" && printf '%s/capsule-[^/]*/node_modules/electron/dist/\n' "$(rx_escape "$d")"
+  return 0
+}
+
 choices_file() {     # choices_file → the record's path
   printf '%s/state/install-choices\n' "${GM:-$HOME/.greymatter}"
 }
