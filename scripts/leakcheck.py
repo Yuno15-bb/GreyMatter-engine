@@ -387,7 +387,8 @@ EXEMPT = {
         "fa03a9f2789aaaf103171f7fb33ea30dedaace2daf4eaa5c9e4a7a0674e5ef3e"
     ],
     "phone number": [
-        "69d74d046b34ed02407040f13c1956327c1c60afdbd547916ccfeac30ef1cd56"
+        "69d74d046b34ed02407040f13c1956327c1c60afdbd547916ccfeac30ef1cd56",   # .sync-manifest, before scripts/
+        "8dd65370cd1ce5edcd6bae41ab14aee3adc0f3b886bfa3307710965c1d300871"    # scripts/.sync-manifest
     ]
 }
 
