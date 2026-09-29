@@ -7,10 +7,10 @@ whichever row is yours.
 | Coming from | Read | Anything to do? |
 |---|---|---|
 | v2.2.0 | nothing — `brain update` | No |
-| v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Only if you installed with `--core-only` or a `--no-…` option |
-| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No. `brain update --auto-on` if you preferred silent installs |
-| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if a job is "left running", or if you use the plugin |
-| **v1.28.1 or earlier** | [The one-time warning](#-important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
+| v2.1.1 | [The menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Only if you [declined pieces at install](#if-you-declined-pieces-at-install) |
+| v2.1.0 | [It asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | No, unless you [declined pieces at install](#if-you-declined-pieces-at-install). `brain update --auto-on` if you preferred silent installs |
+| v2.0.x | [One name](#upgrading-to-v210--one-name), then [it asks before it updates](#upgrading-to-v211--it-asks-before-it-updates), then [the menu bar pill](#upgrading-to-v220--the-menu-bar-pill) | Usually no. Yes if you [declined pieces at install](#if-you-declined-pieces-at-install), if a job is "left running", or if you use the plugin |
+| **v1.28.1 or earlier** | [The one-time warning](#%EF%B8%8F-important--one-time-warning-before-upgrading-from-v1281-or-earlier) **first**, then [why 2.0.0](#why-this-is-200) and [the new install model](#what-changes-in-how-the-engine-is-installed) | **Yes — one command before you upgrade** |
 
 ## Upgrading to v2.2.0 — the menu bar pill
 
@@ -28,17 +28,33 @@ orb. Without Swift only the pill is skipped, and `brain capsule` then tells
 you how to add it: `xcode-select --install`, then `./install.sh` again from your
 clone. The planet is still there, through `planet/launch.sh`.
 
-**If you declined pieces at install.** The updater shipped with v2.1.1 reinstalls
-with the default options: after the update, a machine installed with
-`--core-only` or a `--no-…` option has the pieces it had declined. To keep the
-pill from starting, create one empty file — the installer and every session
-start both respect it:
+### If you declined pieces at install
+
+Every updater up to v2.1.1 — the one that runs when you type `brain update` —
+reinstalls with the default options. A machine installed with `--core-only` or
+a `--no-…` option gets back, after the update, the pieces it had declined.
+
+**Before** `brain update`, create this empty file. The installer and every
+session start both respect it: the pill is built, but never started.
 
 ```bash
 touch ~/.greymatter/trunk/state/no-capsule
 ```
 
-**On a full menu bar.** macOS tucks the icons furthest left behind the «
+Created after the update, it keeps the pill off from the next session on, and
+`brain capsule stop` closes the one already running. The other pieces have no
+such switch, so remove what you had declined once the update is done — and
+again after the next one, since each update reinstalls them:
+
+| Declined with | Comes back as | Remove it with |
+|---|---|---|
+| `--no-launchd` | two scheduled jobs, `com.greymatter.resume` and `com.greymatter.machiniste` | `launchctl bootout gui/$(id -u)/com.greymatter.resume`, the same for `.machiniste`, then delete both files in `~/Library/LaunchAgents/` |
+| `--no-planet` | `GreyMatter.app` on your Desktop | drag it to the Trash |
+| `--no-shortcut` | the `~/GreyMatter` shortcut | `rm ~/GreyMatter` — a link: your notes stay where they are |
+
+### On a full menu bar
+
+macOS tucks the icons furthest left behind the «
 arrow when the bar runs out of room, and on macOS 27 a relaunched pill is placed
 furthest left until the menu bar restarts. `killall MenuBarAgent` puts it back
 in its place; macOS restarts the menu bar on its own within a second.
