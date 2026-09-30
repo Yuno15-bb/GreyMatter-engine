@@ -351,7 +351,9 @@ copy by what it is — `org.greymatter.planet` AND this trunk's path inside it,
 which keeps out another trunk's copy — through Spotlight, then the usual
 folders, never in the Trash. The update rebuilds the first copy and gives every
 other one the same bundle; the uninstaller, with the same lines inline, removes
-them all (`tests/desktop_launcher.sh`, section 6).
+them all (`tests/desktop_launcher.sh`, section 6). A copy that cannot be
+cleared — a file locked in Finder — is named and passed over: the update and
+the uninstall go on, and the end screen never announces it as current.
 
 **It stops the old orb where it runs** (2026-09-29). A v2.1.x Electron orb
 still on screen is found in the same two resolved folders as in the installer,

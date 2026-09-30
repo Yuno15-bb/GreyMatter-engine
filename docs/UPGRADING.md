@@ -114,7 +114,8 @@ alias that still names it keeps working. Then it replaces what it provably owns:
 the scheduled jobs (by label), the hook commands in `~/.claude/settings.json`
 (by path), the map app (by bundle id and the trunk it opens — rebuilt where you
 moved it, never doubled on the Desktop) and the Home shortcut (by where it
-points). Anything with the old name that it cannot prove is its own is left
+points). A copy of the map app it says "could not be rebuilt" has a locked file in
+it: delete that copy, then update again. Anything with the old name that it cannot prove is its own is left
 alone.
 
 **A job left under the old name.** If the installer says an old-label job is
