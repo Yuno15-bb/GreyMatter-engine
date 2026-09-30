@@ -14,7 +14,7 @@
       "source": {
         "source": "url",
         "url": "https://github.com/Yuno15-bb/GreyMatter-engine.git",
-        "ref": "v2.1.1"
+        "ref": "v2.2.0"
       },
       "description": "A memory that grows. What you work out once is distilled into a note, filed, linked, and handed back when you ask for it — from any project. No telemetry, and no request of its own: the notes your agent recalls or reads travel with your prompts to your model provider, like the rest of your message."
     }
