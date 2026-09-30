@@ -343,6 +343,7 @@ if [ "$CHOSEN_BY_HAND" = "0" ]; then
     for f in "$HOME/Desktop/GreyMatter.app" "$HOME/Desktop/C Brain Planet.app"; do  # pre-rename
       [ -e "$f" ] && DO_PLANET=1
     done
+    [ -n "$(map_apps "$TRUNK")" ] && DO_PLANET=1   # moved by the user: still installed
     for f in "$HOME/GreyMatter" "$HOME/C Brain"; do  # pre-rename
       [ -L "$f" ] && DO_SHORTCUT=1
     done
@@ -724,6 +725,14 @@ fi
 # author's desktop app icon), which replaced the planet icon with the map.
 step "Planet launcher (Desktop)"
 APP="$HOME/Desktop/GreyMatter.app"
+# The Desktop is only where the FIRST install puts it: a copy the user moved or
+# renamed is rebuilt where it is, not doubled on the Desktop (map_apps says why).
+# EVERY copy, not the first one found: the updates before this fix left a Desktop
+# duplicate beside the moved app, and a copy left unbuilt keeps the old binary
+# and the bugs this very update fixes, one double-click away.
+MAP_APPS="$(map_apps "$TRUNK")"
+[ -z "$MAP_APPS" ] || APP="$(printf '%s\n' "$MAP_APPS" | head -1)"
+BUILT_APPS=""                               # what the end screen names
 OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
 if [ "$DO_PLANET" = "0" ]; then say "(skipped — --no-planet)"
 elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
@@ -732,7 +741,7 @@ elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
 elif [ -d "$APP" ] && ! grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; then
   warn "$APP is not this launcher — left alone. The planet stays reachable at:"
   warn "  $TRUNK/gmtr/launch.sh"
-elif [ -d "$HOME/Desktop" ]; then
+elif [ -d "${APP%/*}" ]; then
   run rm -rf "$APP"                       # idempotent: rebuilt whole, never patched
   run mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   if [ "$DRY" != "1" ]; then
@@ -783,6 +792,18 @@ PLIST
   note dir "$APP"
   if [ "$MAP_APP" = "native" ]; then say "+ $APP (double-click → the GMTR map in its own window)"
   else say "+ $APP (double-click → GMTR map in your browser, localhost:8767)"; fi
+  BUILT_APPS="$APP"
+  # The other copies get the bundle just built: one build, the same app everywhere.
+  while IFS= read -r a; do
+    [ -n "$a" ] && [ ! "$a" -ef "$APP" ] || continue
+    run rm -rf "$a"
+    run ditto "$APP" "$a"
+    [ "$DRY" = "1" ] || touch "$a"           # the icon cache, as above
+    note dir "$a"
+    say "+ $a (the same map app, where you keep another copy)"
+    BUILT_APPS="$BUILT_APPS
+$a"
+  done <<< "$MAP_APPS"
   # An installer that leaves the previous version's shortcut behind hands the
   # user two icons for one action, and lets them pick the stale one.
   OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
@@ -953,14 +974,17 @@ echo
 # only the ones actually in place.
 if [ "$DRY" != "1" ]; then
   _gm_ui=0
-  if grep -q "org.greymatter.planet" "${APP:-/nonexistent}/Contents/Info.plist" 2>/dev/null; then
+  while IFS= read -r a; do
+    grep -q "org.greymatter.planet" "${a:-/nonexistent}/Contents/Info.plist" 2>/dev/null || continue
+    _gm_where="On your Desktop: GreyMatter.app"
+    [ "$a" -ef "$HOME/Desktop/GreyMatter.app" ] || _gm_where="In ${a%/*}: ${a##*/}"
     case "${MAP_APP:-}" in
-      native)  echo "   On your Desktop: GreyMatter.app opens the map of your notes, in its own window." ;;
-      browser) echo "   On your Desktop: GreyMatter.app opens the map of your notes, in your browser." ;;
-      *)       echo "   On your Desktop: GreyMatter.app opens the map of your notes." ;;
+      native)  echo "   $_gm_where opens the map of your notes, in its own window." ;;
+      browser) echo "   $_gm_where opens the map of your notes, in your browser." ;;
+      *)       echo "   $_gm_where opens the map of your notes." ;;
     esac
     _gm_ui=1
-  fi
+  done <<< "${BUILT_APPS:-${APP:-}}"
   if [ "$DO_CAPSULE" = "1" ] && [ -x "${CAPSULE_BIN:-/nonexistent}" ]; then
     echo "   In the menu bar: the pill, the agents at work, live"
     echo "   (\`brain capsule\` opens it now)."

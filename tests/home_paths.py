@@ -20,6 +20,8 @@ ALLOWED = {
     "claude-brain": "legacy trunk migration and maintainer source",
     "other-trunk": "temporary occupied-surface test fixture",
     "Desktop": "product launcher and generic import examples",
+    "Applications": "where a user may move the map app: found there, never put there",
+    ".Trash": "a map app in the Trash is skipped, never touched",
     "GreyMatter": "Finder shortcut to the trunk",
     ".c-brain": "root before v2.1.0, kept as a compatibility link",  # pre-rename
     "C": "Finder shortcut before v2.1.0, removed by install.sh",  # pre-rename

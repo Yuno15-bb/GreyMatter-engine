@@ -129,6 +129,25 @@ echo "▸ Odds and ends"
 if [ -d "$HOME/Desktop/GreyMatter.app" ] && grep -q org.greymatter.planet "$HOME/Desktop/GreyMatter.app/Contents/Info.plist" 2>/dev/null; then
   rm -rf "$HOME/Desktop/GreyMatter.app"; say "- Desktop launcher (GreyMatter.app)"
 fi
+# …and wherever the user moved or renamed it: found by what it is, not where it
+# was left. The same lines as map_apps in engine-lib.sh, inline because the
+# engine may already be gone; that comment says why each condition is there.
+map_apps() {
+  local a h
+  h="$(cd "$HOME" && pwd -P)"   # mdfind answers /private/var where $HOME says /var
+  { mdfind -onlyin "$HOME" 'kMDItemCFBundleIdentifier == "org.greymatter.planet"'
+    mdfind -onlyin /Applications 'kMDItemCFBundleIdentifier == "org.greymatter.planet"'
+    for a in "$HOME/Desktop"/*.app "$HOME/Desktop"/*/*.app "$HOME/Applications"/*.app \
+             "$HOME/Applications"/*/*.app /Applications/*.app; do echo "$a"; done
+  } 2>/dev/null | while IFS= read -r a; do
+    a="$(cd "$a" 2>/dev/null && pwd -P)" || continue
+    case "$a" in "$h/.Trash"/*) continue ;; esac
+    if grep -q org.greymatter.planet "$a/Contents/Info.plist" 2>/dev/null \
+       && grep -qsF "$1/" "$a/Contents/Info.plist" "$a/Contents/MacOS/planet"; then echo "$a"; fi
+  done | sort -u
+  return 0
+}
+map_apps "$TRUNK" | while IFS= read -r a; do rm -rf "$a"; say "- the map app, moved to $a"; done
 
 OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
 if [ -d "$OLD_APP" ] && grep -q org.cbrain.planet "$OLD_APP/Contents/Info.plist" 2>/dev/null; then  # pre-rename

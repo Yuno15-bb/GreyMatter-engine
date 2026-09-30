@@ -200,3 +200,28 @@ choices_flags() {    # choices_flags → the options that reproduce the RECORD (
   choices_read && choices_as_flags
   return 0
 }
+
+# THE MAP APP, WHEREVER THE USER PUT IT. Users move apps — a Desktop that iCloud
+# syncs cannot even start one — and rename them. An installer that only looks at
+# ~/Desktop/GreyMatter.app then builds a second copy on every update, leaves the
+# moved one stale, and leaves it behind on uninstall (all three seen 2026-09-30).
+# So it is found by what it is, never by where it was left: our bundle id AND
+# this trunk's path inside it, which keeps out another account's copy in
+# /Applications and a throwaway HOME's tests. Spotlight first, then the usual
+# folders for a Mac where it is off. uninstall.sh carries the same lines inline:
+# the engine may already be gone when it runs.
+map_apps() {         # map_apps <trunk> → one path per line, each of our map apps
+  local a h
+  h="$(cd "$HOME" && pwd -P)"   # mdfind answers /private/var where $HOME says /var
+  { mdfind -onlyin "$HOME" 'kMDItemCFBundleIdentifier == "org.greymatter.planet"'
+    mdfind -onlyin /Applications 'kMDItemCFBundleIdentifier == "org.greymatter.planet"'
+    for a in "$HOME/Desktop"/*.app "$HOME/Desktop"/*/*.app "$HOME/Applications"/*.app \
+             "$HOME/Applications"/*/*.app /Applications/*.app; do echo "$a"; done
+  } 2>/dev/null | while IFS= read -r a; do
+    a="$(cd "$a" 2>/dev/null && pwd -P)" || continue
+    case "$a" in "$h/.Trash"/*) continue ;; esac
+    if grep -q org.greymatter.planet "$a/Contents/Info.plist" 2>/dev/null \
+       && grep -qsF "$1/" "$a/Contents/Info.plist" "$a/Contents/MacOS/planet"; then echo "$a"; fi
+  done | sort -u
+  return 0
+}
