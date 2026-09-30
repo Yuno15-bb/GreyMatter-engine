@@ -73,7 +73,7 @@ changes.
 | the `brain` CLI | `$GM/engine/brain` | `install.sh` §4 |
 | Claude Code hooks in `settings.json` | `~/.greymatter/engine/...` | `merge_settings.py` |
 | launchd jobs | `~/.greymatter/trunk/hooks/...` → engine | plist templates, **guarded** — see [ownership](#ownership-is-recorded-never-guessed) |
-| the Desktop planet launcher | `$TRUNK/gmtr/launch.sh` → engine (GMTR map, since v2.2) | `install.sh` §9 |
+| the map app — on the Desktop, or wherever the user moved it | `$TRUNK/gmtr/launch.sh` → engine (GMTR map, since v2.2) | `install.sh` §9 |
 
 One exception: `~/.claude/statusline.py` is a **copy** (`install.sh` §6), not a
 link. It is refreshed by the `install.sh` replay that follows every switch.
@@ -342,6 +342,16 @@ became `GreyMatter.app`, a name plain enough for another app to carry, so both
 scripts read `org.greymatter.planet` in its `Info.plist` before their
 `rm -rf`; anything else under that name stays, with a warning
 (`tests/desktop_launcher.sh`).
+
+**The map app is found wherever the user put it** (2026-09-30). Users move
+apps and rename them. Looking at `~/Desktop/GreyMatter.app` alone, an update
+built a second copy there, left the moved one on the old binary, and the
+uninstall left it behind. `map_apps` in `greymatter/engine-lib.sh` finds every
+copy by what it is — `org.greymatter.planet` AND this trunk's path inside it,
+which keeps out another trunk's copy — through Spotlight, then the usual
+folders, never in the Trash. The update rebuilds the first copy and gives every
+other one the same bundle; the uninstaller, with the same lines inline, removes
+them all (`tests/desktop_launcher.sh`, section 6).
 
 **It stops the old orb where it runs** (2026-09-29). A v2.1.x Electron orb
 still on screen is found in the same two resolved folders as in the installer,

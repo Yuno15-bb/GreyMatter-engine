@@ -164,7 +164,8 @@ HOME=$T bash $T/dev-greymatter/install.sh --no-launchd
 followed by `▸ Your trunk is empty.` — and *only* on a genuinely empty trunk. On a
 re-install over notes it must read `▸ Your trunk is already growing.` instead.
 Since v2.1.1 the end screen also names the desktop interfaces it actually made —
-`GreyMatter.app opens the map of your notes` only when the Desktop app is ours,
+`GreyMatter.app opens the map of your notes` only when the Desktop app is ours
+(a copy moved elsewhere is named where it is: `In <folder>: <name>.app opens…`),
 the menu bar line only when the pill is built (`--no-capsule`, or no Swift, drops
 it) — and closes with
 `These are the only desktop interfaces GreyMatter ships.`
@@ -254,7 +255,7 @@ HOME=$T bash $T/dev-greymatter/uninstall.sh --yes
 ```
 
 **Expected**: the note still exists, `settings.json` is **identical to its
-original state**, the engine symlinks are gone, and so is `~/Desktop/GreyMatter.app`.
+original state**, the engine symlinks are gone, and so is `~/Desktop/GreyMatter.app`, with any copy of it moved elsewhere.
 
 ## 4. Every CLI command
 

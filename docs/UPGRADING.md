@@ -112,7 +112,8 @@ Nothing to do. `brain update` (or `git pull && ./install.sh`) moves the root to
 `~/.greymatter` and leaves a permanent link at the old path, so a script or an
 alias that still names it keeps working. Then it replaces what it provably owns:
 the scheduled jobs (by label), the hook commands in `~/.claude/settings.json`
-(by path), the Desktop app (by bundle id) and the Home shortcut (by where it
+(by path), the map app (by bundle id and the trunk it opens — rebuilt where you
+moved it, never doubled on the Desktop) and the Home shortcut (by where it
 points). Anything with the old name that it cannot prove is its own is left
 alone.
 
