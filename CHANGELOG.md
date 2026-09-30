@@ -8,6 +8,10 @@ buffer the engine is synced onto, and `publish.sh` refuses to tag from it. The `
 tags up to v1.27.0-fr stay published (moving a tag breaks the fetch of anyone still on
 it), and are not listed here.
 
+## v2.2.0 — 2026-09-30
+
+Native on macOS: the menu bar pill replaces the floating orb and the map opens in its own window. The map app is found wherever you move it, a locked copy never stops an update, and the map skips a post-process it did not need.
+
 ## v2.1.1 — 2026-09-28
 
 Asks before updating: session start looks for a new version and your agent asks you; silent installing is now opt-in (brain update --auto-on). The install screen names the two desktop interfaces GreyMatter ships.
