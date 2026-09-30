@@ -2258,7 +2258,9 @@ function tick(now){
                : 'panel — the families, laid flat · click a family = 3D');
   syncModeButtons();
   syncFiches();
-  composer.render();
+  // With the halo off, the composer only drew the scene off-screen and copied it back: same
+  // image, about a quarter of the map's GPU load. Turning the halo on brings it back.
+  if (bloom.enabled) composer.render(); else renderer.render(scene, camera);
   podTick(dtF);
 }
 tick(0);
