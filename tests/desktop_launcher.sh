@@ -20,6 +20,8 @@
 # with a decoy beside it: our bundle id, another trunk — it must not be touched.
 # And since those updates already left a Desktop duplicate beside the moved app,
 # the second update carries both: a copy left unbuilt keeps the old binary.
+# A copy with a file locked in Finder is named and passed over — first found or
+# not — never the reason an update or an uninstall stops halfway.
 #
 # Usage: tests/desktop_launcher.sh [--sabotage no-guard|desktop-only]
 #   no-guard      removes the install-side check; the foreign app must then be lost.
@@ -35,7 +37,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
   || { echo "⤳ skipped: $ROOT is not a Git checkout (a managed install ships none)"; exit 0; }
 
 H="$(cd "$(mktemp -d)" && pwd -P)"
-trap 'rm -rf "$H"' EXIT
+trap 'chflags -R nouchg "$H" 2>/dev/null; rm -rf "$H"' EXIT   # section 6 locks files
 export HOME="$H"
 export GREYMATTER_NO_AUTO_UPDATE=1
 
@@ -137,17 +139,28 @@ DECOY_SUM="$(find "$DECOY" -type f -exec shasum {} + | sort | shasum)"
 check $? "the moved app is rebuilt where the user put it"
 grep -q "My map.app opens the map" "$H/install5.log"; check $? "the install screen names it where it is"
 [ "$(find "$DECOY" -type f -exec shasum {} + | sort | shasum)" = "$DECOY_SUM" ]; check $? "another trunk's app is left byte-identical"
-# The duplicate the old updates made on the Desktop, beside the moved one.
-ditto "$MOVED" "$APP" && touch "$MOVED/Contents/Resources/stale" "$APP/Contents/Resources/stale"
-( cd "$H/src" && ./install.sh ) >"$H/install6.log" 2>&1; check $? "update with two copies exits 0" "$(tail -3 "$H/install6.log")"
+# The duplicate the old updates made on the Desktop, beside the moved one — and a
+# third copy with a file locked in Finder, which no rm can clear.
+LOCKED="$H/Desktop/Old/Locked map.app"          # found last: not the one built
+ditto "$MOVED" "$APP" && ditto "$MOVED" "$LOCKED" && chflags uchg "$LOCKED/Contents/Info.plist" \
+  && touch "$MOVED/Contents/Resources/stale" "$APP/Contents/Resources/stale"
+( cd "$H/src" && ./install.sh ) >"$H/install6.log" 2>&1; check $? "update with two copies and a locked one exits 0" "$(tail -3 "$H/install6.log")"
 [ ! -e "$MOVED/Contents/Resources/stale" ] && [ ! -e "$APP/Contents/Resources/stale" ] \
   && grep -q "org.greymatter.planet" "$MOVED/Contents/Info.plist" 2>/dev/null \
   && grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null
 check $? "both copies are rebuilt, none left with the old app"
 grep -q "My map.app opens the map" "$H/install6.log" && grep -q "Desktop: GreyMatter.app opens the map" "$H/install6.log"
 check $? "the install screen names both"
-( cd "$H/src" && ./uninstall.sh --yes ) >"$H/uninstall3.log" 2>&1 </dev/null; check $? "uninstall exits 0"
+grep -q "Locked map.app could not be rebuilt" "$H/install6.log"; check $? "…and names the locked one it could not rebuild"
+# Now the copy found first, the one built from, is the locked one.
+chflags uchg "$MOVED/Contents/Info.plist"
+( cd "$H/src" && ./install.sh ) >"$H/install7.log" 2>&1; check $? "update with the first copy locked exits 0" "$(tail -3 "$H/install7.log")"
+grep -q "My map.app could not be rebuilt" "$H/install7.log"; check $? "…and names it"
+! grep -q "My map.app opens the map" "$H/install7.log"; check $? "…without announcing it as current"
+chflags nouchg "$MOVED/Contents/Info.plist"
+( cd "$H/src" && ./uninstall.sh --yes ) >"$H/uninstall3.log" 2>&1 </dev/null; check $? "uninstall exits 0" "$(tail -3 "$H/uninstall3.log")"
 [ ! -e "$MOVED" ] && [ ! -e "$APP" ]; check $? "the moved app and its duplicate are gone"
+grep -q "Locked map.app could not be removed" "$H/uninstall3.log"; check $? "…the locked one is named and left"
 [ "$(find "$DECOY" -type f -exec shasum {} + 2>/dev/null | sort | shasum)" = "$DECOY_SUM" ]; check $? "…and the other trunk's is still there"
 
 echo

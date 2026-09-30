@@ -735,14 +735,21 @@ MAP_APPS="$(map_apps "$TRUNK")"
 BUILT_APPS=""                               # what the end screen names
 OLD_CMD="$HOME/Desktop/Planete-C-Brain.command"   # pre-rename
 if [ "$DO_PLANET" = "0" ]; then say "(skipped — --no-planet)"
-elif [ "$DRY" = "1" ]; then say "(dry-run) would create $APP"
+elif [ "$DRY" = "1" ]; then
+  while IFS= read -r a; do say "(dry-run) would create $a"; done <<< "${MAP_APPS:-$APP}"
 # "GreyMatter.app" is a plain name another app could carry: only OUR launcher
 # (its bundle id) is rebuilt, anything else under that name is left alone.
 elif [ -d "$APP" ] && ! grep -q "org.greymatter.planet" "$APP/Contents/Info.plist" 2>/dev/null; then
   warn "$APP is not this launcher — left alone. The planet stays reachable at:"
   warn "  $TRUNK/gmtr/launch.sh"
-elif [ -d "${APP%/*}" ]; then
-  run rm -rf "$APP"                       # idempotent: rebuilt whole, never patched
+# A copy that cannot be cleared — a file locked in Finder, another owner's — is
+# named and passed over, never the reason the whole update stops: the day a
+# moved copy became ours to rebuild, one locked file in it failed every update.
+elif [ -d "${APP%/*}" ] && ! run rm -rf "$APP"; then
+  warn "$APP could not be rebuilt (a locked file? not yours?) — it is NOT"
+  warn "  current: delete it, then run the update again."
+  APP=""; MAP_APPS=""                     # nothing current to name at the end
+elif [ -d "${APP%/*}" ]; then             # cleared just above: rebuilt whole, never patched
   run mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   if [ "$DRY" != "1" ]; then
     # The GUI hands a launched app a minimal PATH — python3 and `open` have to be
@@ -796,13 +803,16 @@ PLIST
   # The other copies get the bundle just built: one build, the same app everywhere.
   while IFS= read -r a; do
     [ -n "$a" ] && [ ! "$a" -ef "$APP" ] || continue
-    run rm -rf "$a"
-    run ditto "$APP" "$a"
-    [ "$DRY" = "1" ] || touch "$a"           # the icon cache, as above
-    note dir "$a"
-    say "+ $a (the same map app, where you keep another copy)"
-    BUILT_APPS="$BUILT_APPS
+    if run rm -rf "$a" && run ditto "$APP" "$a"; then   # a locked one: see above
+      [ "$DRY" = "1" ] || touch "$a"         # the icon cache, as above
+      note dir "$a"
+      say "+ $a (the same map app, where you keep another copy)"
+      BUILT_APPS="$BUILT_APPS
 $a"
+    else
+      warn "$a could not be rebuilt (a locked file? not yours?) — it is NOT"
+      warn "  current: delete it. $APP is."
+    fi
   done <<< "$MAP_APPS"
   # An installer that leaves the previous version's shortcut behind hands the
   # user two icons for one action, and lets them pick the stale one.
@@ -984,7 +994,7 @@ if [ "$DRY" != "1" ]; then
       *)       echo "   $_gm_where opens the map of your notes." ;;
     esac
     _gm_ui=1
-  done <<< "${BUILT_APPS:-${APP:-}}"
+  done <<< "${BUILT_APPS:-${MAP_APPS:-${APP:-}}}"
   if [ "$DO_CAPSULE" = "1" ] && [ -x "${CAPSULE_BIN:-/nonexistent}" ]; then
     echo "   In the menu bar: the pill, the agents at work, live"
     echo "   (\`brain capsule\` opens it now)."

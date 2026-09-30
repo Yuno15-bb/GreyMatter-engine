@@ -127,7 +127,8 @@ echo "▸ Odds and ends"
 # the impression the tool is still installed, and the icon still points at a
 # trunk we may just have unlinked.
 if [ -d "$HOME/Desktop/GreyMatter.app" ] && grep -q org.greymatter.planet "$HOME/Desktop/GreyMatter.app/Contents/Info.plist" 2>/dev/null; then
-  rm -rf "$HOME/Desktop/GreyMatter.app"; say "- Desktop launcher (GreyMatter.app)"
+  if rm -rf "$HOME/Desktop/GreyMatter.app"; then say "- Desktop launcher (GreyMatter.app)"
+  else say "! $HOME/Desktop/GreyMatter.app could not be removed (a locked file?) — left in place"; fi
 fi
 # …and wherever the user moved or renamed it: found by what it is, not where it
 # was left. The same lines as map_apps in engine-lib.sh, inline because the
@@ -147,7 +148,11 @@ map_apps() {
   done | sort -u
   return 0
 }
-map_apps "$TRUNK" | while IFS= read -r a; do rm -rf "$a"; say "- the map app, moved to $a"; done
+# A locked copy is named and left, never the reason the uninstall stops halfway.
+map_apps "$TRUNK" | while IFS= read -r a; do
+  if rm -rf "$a"; then say "- the map app, moved to $a"
+  else say "! $a could not be removed (a locked file?) — left in place"; fi
+done
 
 OLD_APP="$HOME/Desktop/C Brain Planet.app"   # pre-rename
 if [ -d "$OLD_APP" ] && grep -q org.cbrain.planet "$OLD_APP/Contents/Info.plist" 2>/dev/null; then  # pre-rename
